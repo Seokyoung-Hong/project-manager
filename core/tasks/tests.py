@@ -1,3 +1,4 @@
+import time
 from datetime import timedelta
 
 import pytest
@@ -572,6 +573,8 @@ def test_me_view_sort_orders_inside_groups(five, member):
     yesterday, today, week, nxt, none = five
     for t, p in ((none, 9), (nxt, 8)):
         update_task(t, {"priority": p}, actor=member, source="web", expected_version=t.version)
+        # Windows 시계 해상도(~15ms) 안에서 두 갱신이 같은 updated_at을 받으면 pk 역순으로 떨어진다
+        time.sleep(0.02)
 
     def order(**kw):
         return [t.title for g in me_view(member, **kw)["groups"] for t in g["tasks"]]

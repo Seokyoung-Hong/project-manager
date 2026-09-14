@@ -691,11 +691,11 @@ GUIDE-00 §3 "설정값이 될 이유가 없는 상수를 설정으로 빼지 �
 | §6.3 `task.overdue_grace_days` | 내 태스크 화면의 "기한 초과" 묶음에만 적용. 조직 개요·부하 현황·Discord 초과 알림은 그대로 | 세 집계를 한 함수로 묶는 리팩터가 이 라운드 밖 |
 | §4.6 `user.*` 6개 | 7개(`me_group`·`me_sort` 분리) | 표 오기 |
 | 저장소 규칙 폼 | `projects/_repo_rules.html` partial로 뽑아 저장소 탭과 설정 탭 양쪽에서 그린다 | 계획대로 |
-| 테스트 | core 385 · discord 94 · mcp 20 (SQLite). `test_me_view_sort_orders_inside_groups`는 전체 스위트에서만 간헐 실패 — §15 | |
+| 테스트 | core 385 · discord 94 · mcp 20 전부 통과(SQLite). Postgres는 미실행 — §15 | |
 
 ## 15. 남은 것
 
-- `test_me_view_sort_orders_inside_groups`: `updated_at` 정렬이 같은 시각 두 갱신에서 pk 역순으로 떨어지는 경우. 파일 단위·단독 실행은 통과하고 전체 스위트에서만 재현된다. 이 라운드 코드와 무관해 보이나 원인은 확정하지 못했다.
+- ~~`test_me_view_sort_orders_inside_groups` 간헐 실패~~ — Windows 시계 해상도(~15ms) 안에서 두 갱신이 같은 `updated_at`을 받아 pk 역순으로 떨어지던 것. 테스트에 20ms 간격을 두어 해결(전체 385개 통과).
 - Postgres에서 한 번 더 돌릴 것(`DATABASE_URL=postgres://...`). JSONField `settings__has_key` 조회가 두 DB 모두에서 동작해야 한다.
 - 조직·프로젝트·개인 설정 화면을 실제 브라우저에서 한 번 볼 것(테스트는 200과 저장 결과만 본다).
 - 4단계 승인 대기 큐 → IMPL-PLAN-5.
