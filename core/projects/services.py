@@ -12,7 +12,8 @@ from django.utils import timezone
 
 from common.dates import fmt_md, today_kst
 from common.errors import ConflictError, ServiceError
-from orgs.services import is_member, require_admin
+from orgs import settings as S
+from orgs.services import is_admin, is_member, require_admin
 
 from .models import ApiSpec, Milestone, Project, ProjectDependency
 
@@ -58,6 +59,27 @@ def _ids(users) -> str:
     return ",".join(str(pk) for pk in sorted(u.pk for u in users))
 
 
+def is_owner(user, project) -> bool:
+    return project.owners.filter(pk=user.pk).exists()
+
+
+def require_level(actor, target, level: str, key: str):
+    """level: member|owner|admin. 부족하면 ServiceError({key: ...}). 조직 관리자는 항상 통과.
+
+    target 은 프로젝트(owner 판정 가능) 또는 조직(생성처럼 프로젝트가 아직 없을 때).
+    """
+    project = target if isinstance(target, Project) else None
+    org = target.org if project is not None else target
+    if is_admin(actor, org):
+        return
+    if level == "member" and is_member(actor, org):
+        return
+    if level == "owner" and project is not None and is_owner(actor, project):
+        return
+    who = "조직 관리자만" if level == "admin" or project is None else "프로젝트 관리자만"
+    raise ServiceError({key: f"{who} 할 수 있어요. [설정]"})
+
+
 def _validate(org, name, owners, status):
     errors = {}
     if not name or not name.strip():
@@ -87,6 +109,7 @@ def create_project(
 ):
     if not is_member(actor, org):
         raise ServiceError({"org": "이 조직의 멤버가 아닙니다."})
+    require_level(actor, org, S.effective("project.create_by", org=org), "org")
     owners = list(owners)
     teams = list(teams)
     _validate(org, name, owners, status)
@@ -201,6 +224,35 @@ def set_project_channel(project, channel_id: str, actor) -> Project:
     """봇이 만든 채널 id를 적는다. 빈 문자열이면 연결을 끊는다(Discord에서 지워졌을 때)."""
     require_admin(actor, project.org)
     Project.objects.filter(pk=project.pk).update(discord_channel_id=(channel_id or "").strip()[:32])
+    project.refresh_from_db()
+    return project
+
+
+@transaction.atomic
+def set_project_settings(project, data: dict, *, actor, source="web") -> Project:
+    """프로젝트 설정 전체 교체. 잠긴 키는 거부. 이력은 ChangeLog(target=project)."""
+    require_level(actor, project, S.effective("project.settings_by", org=project.org), "settings")
+    new = S.clean("org", data, overridable_only=True)
+    locked = [k for k in new if k in S.locked_keys(project.org)]
+    if locked:
+        raise ServiceError({k: "조직에서 잠근 항목이에요." for k in locked})
+    old = dict(project.settings)
+    if old == new:
+        return project
+    Project.objects.filter(pk=project.pk).update(settings=new)
+    project.refresh_from_db()
+    from orgs.services import _log_settings
+
+    _log_settings("project", project.pk, old, new, actor, source)
+    return project
+
+
+def set_governance_extra(project, text: str, *, actor) -> Project:
+    require_level(actor, project, S.effective("project.settings_by", org=project.org), "settings")
+    text = (text or "").strip()
+    if len(text) > 5000:
+        raise ServiceError({"governance_extra": "5천 자를 넘을 수 없습니다."})
+    Project.objects.filter(pk=project.pk).update(governance_extra=text)
     project.refresh_from_db()
     return project
 

@@ -7,4 +7,5 @@
   <a href="{% url 'org_governance' org.pk %}" {% if tab == "governance" %}aria-current="page"{% endif %}>거버넌스</a>
   <a href="{% url 'org_notes' org.pk %}" {% if tab == "notes" %}aria-current="page"{% endif %}>회의록</a>
   {% if github_enabled and is_admin %}<a href="{% url 'org_github' org.pk %}" {% if tab == "github" %}aria-current="page"{% endif %}>GitHub</a>{% endif %}
+  {% if is_admin %}<a href="{% url 'org_settings' org.pk %}" {% if tab == "settings" %}aria-current="page"{% endif %}>설정</a>{% endif %}
 </nav>

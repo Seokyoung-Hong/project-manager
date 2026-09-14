@@ -2,6 +2,7 @@ from ninja import Router
 from ninja.errors import HttpError
 
 from accounts.models import User
+from orgs import settings as S
 from orgs.governance import governance_text
 from orgs.models import Invite, OrgMembership, Team
 from orgs.services import (
@@ -11,6 +12,7 @@ from orgs.services import (
     remove_team_member,
     revoke_invite,
     set_governance,
+    set_org_settings,
 )
 from reports.services import org_status
 from tasks.brief import user_brief
@@ -23,6 +25,8 @@ from ..schemas import (
     InviteIn,
     InviteOut,
     OrgOut,
+    SettingsIn,
+    SettingsOut,
     TeamCreateIn,
     TeamMemberIn,
     TeamOut,
@@ -112,6 +116,35 @@ def get_governance(request, org_id: int):
 def put_governance(request, org_id: int, payload: GovernanceIn):
     org = set_governance(org_or_404(request, org_id), payload.text, request.auth)
     return {"text": governance_text(org), "is_default": not org.governance.strip()}
+
+
+# ---- 설정 ----
+
+
+def _settings_out(org) -> dict:
+    return {
+        "values": {k: v for k, v in org.settings.items() if k != S.LOCKED},
+        "defaults": {s.key: s.default for s in S.specs("org")},
+        "locked": S.locked_keys(org),
+    }
+
+
+@router.get("/{org_id}/settings", response=SettingsOut)
+def get_settings(request, org_id: int):
+    return _settings_out(org_or_404(request, org_id))
+
+
+@router.put("/{org_id}/settings", response={200: SettingsOut, 400: ErrorOut})
+def put_settings(request, org_id: int, payload: SettingsIn):
+    c = ctx(request)
+    org = set_org_settings(
+        org_or_404(request, org_id),
+        payload.values,
+        c["actor"],
+        source=c["source"],
+        locked=payload.locked,
+    )
+    return _settings_out(org)
 
 
 # ---- 팀 쓰기 ----

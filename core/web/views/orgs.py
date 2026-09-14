@@ -8,6 +8,7 @@ from django.views.decorators.http import require_POST
 from common.errors import ServiceError
 from github import writes as gh_writes
 from orgs import services as osv
+from orgs import settings as S
 from orgs.governance import governance_text
 from orgs.models import Invite, OrgMembership
 from projects.services import project_stats
@@ -235,5 +236,87 @@ def org_governance(request, org_id):
             "is_admin": is_admin,
             "error": error,
             "tab": "governance",
+        },
+    )
+
+
+def _settings_form(post, scope: str, *, overridable_only=False) -> dict:
+    """폼 POST → 설정 dict. bool·int·choice 는 마지막 값(hidden 0 + checkbox 1), set 은 목록."""
+    data = {}
+    for spec in S.specs(scope):
+        if overridable_only and not spec.overridable:
+            continue
+        if spec.kind == "set":
+            if spec.key in post:
+                data[spec.key] = [v for v in post.getlist(spec.key) if v]
+        elif spec.key in post:
+            data[spec.key] = post.get(spec.key)
+    return data
+
+
+def _settings_rows(org, project=None):
+    """템플릿용. 그룹마다 [{spec, value, is_default, choices, lockable, locked, override_count}]."""
+    from projects.models import Project
+
+    locked = S.locked_keys(org)
+    groups = []
+    for code, label in S.GROUPS:
+        if code == "user":
+            continue
+        items = []
+        for spec in S.specs("org", code):
+            value = org.settings.get(spec.key, spec.default)
+            n = 0
+            if spec.overridable:
+                n = Project.objects.filter(org=org, settings__has_key=spec.key).count()
+            items.append(
+                {
+                    "spec": spec,
+                    "value": value,
+                    "is_default": value == spec.default,
+                    "default_text": S.display(spec, spec.default),
+                    "lockable": spec.overridable,
+                    "locked": spec.key in locked,
+                    "override_count": n,
+                }
+            )
+        groups.append({"code": code, "label": label, "items": items})
+    return groups
+
+
+@login_required
+def org_settings(request, org_id):
+    """조직 설정. 관리자는 고치고 멤버는 읽는다(왜 막혔는지 알아야 한다)."""
+    from tasks.models import ChangeLog
+
+    org = org_or_404(request.user, org_id)
+    is_admin = can_admin(request.user, org)
+    errors = {}
+    if request.method == "POST" and is_admin:
+        data = _settings_form(request.POST, "org")
+        lockable = [s.key for s in S.specs("org") if s.overridable]
+        locked = [k for k in lockable if not request.POST.get(f"lock:{k}")]
+        try:
+            osv.set_org_settings(org, data, request.user, locked=locked)
+            messages.success(request, "설정을 저장했습니다.")
+            return redirect("org_settings", org_id=org.pk)
+        except ServiceError as e:
+            errors = e.errors
+    history = (
+        ChangeLog.objects.filter(target_type="org", target_id=org.pk)
+        .select_related("actor")
+        .order_by("-created_at")[:20]
+    )
+    return render(
+        request,
+        "orgs/settings.html",
+        {
+            "org": org,
+            "groups": _settings_rows(org),
+            "labels": {k: s.label for k, s in S.SPECS.items()},
+            "history": history,
+            "is_admin": is_admin,
+            "errors": errors,
+            "tab": "settings",
         },
     )

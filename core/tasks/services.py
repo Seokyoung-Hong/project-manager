@@ -7,8 +7,9 @@ from django.utils import timezone
 from accounts.models import IdempotencyKey, User
 from common.dates import kst_day_range, today_kst, week_bounds
 from common.errors import ConflictError, ServiceError
-from orgs.services import is_member, orgs_of
-from projects.services import project_stats
+from orgs import settings as S
+from orgs.services import is_admin, is_member, orgs_of
+from projects.services import is_owner, project_stats
 
 from .models import ChangeLog, ChecklistItem, Link, Task, TodayItem
 
@@ -128,6 +129,18 @@ def _validate(
         raise ServiceError(errors)
 
 
+def _check_priority_cap(project, priority: int, actor):
+    """task.priority_cap: 상한 초과는 프로젝트 관리자·조직 관리자만. actor 가 None(GitHub 웹훅)이면 면제."""
+    cap = S.effective("task.priority_cap", project=project)
+    if actor is None or not cap or priority <= cap:
+        return
+    if is_owner(actor, project) or is_admin(actor, project.org):
+        return
+    raise ServiceError(
+        {"priority": f"중요도 {cap + 1} 이상은 프로젝트 관리자만 정할 수 있어요. [설정]"}
+    )
+
+
 def _apply(task, expected_version: int, fields: dict):
     """낙관적 잠금 갱신. 버전이 다르면 ConflictError(최신 객체)."""
     updated = Task.objects.filter(pk=task.pk, version=expected_version).update(
@@ -170,7 +183,7 @@ def create_task(
     description="",
     done_when="",
     next_action="",
-    priority=5,
+    priority=None,
     due_date=None,
     no_due_reason="",
     idempotency_key=None,
@@ -184,6 +197,8 @@ def create_task(
         if hit:
             return Task.objects.get(pk=hit.target_id)
     assignee = assignee or actor
+    if priority is None:
+        priority = S.effective("task.default_priority", project=project)
     _validate(
         project=project,
         assignee=assignee,
@@ -194,6 +209,7 @@ def create_task(
         stop_reason="",
         title=title,
     )
+    _check_priority_cap(project, priority, actor)
     task = Task.objects.create(
         project=project,
         title=title.strip()[:200],
@@ -270,6 +286,8 @@ def update_task(
     fields = {f: v for f, v in new.items() if v != old[f]}
     if not fields:
         return task
+    if "priority" in fields:
+        _check_priority_cap(new["project"], fields["priority"], actor)
     _apply(task, expected_version, fields)
     for f in TRACKED:
         if f in fields:
@@ -315,6 +333,13 @@ def transition(
         raise ServiceError({"due_date": NO_DUE_FOR_DOING})
     if new_status == "blocked" and not reason:
         raise ServiceError({"stop_reason": "막힘 사유를 입력하세요."})
+    if (
+        new_status == "done"
+        and task.status != "review"
+        and actor is not None
+        and S.effective("task.review_required", project=task.project)
+    ):
+        raise ServiceError({"status": "검토 대기를 거쳐야 완료할 수 있어요. [설정]"})
     fields = {"status": new_status}
     if new_status in Task.STOPPED:
         fields["stop_reason"] = reason or (task.stop_reason if task.is_stopped else "")

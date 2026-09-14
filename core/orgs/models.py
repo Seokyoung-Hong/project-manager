@@ -1,7 +1,7 @@
 import secrets
 from datetime import timedelta
 
-from django.conf import settings
+from django.conf import settings as conf  # 모델의 settings 필드와 이름이 겹친다
 from django.db import models
 from django.utils import timezone
 
@@ -21,12 +21,12 @@ class Organization(models.Model):
     purpose = models.CharField("목적", max_length=200, blank=True)
     # 개발 거버넌스(마크다운). 비어 있으면 governance.DEFAULT_GOVERNANCE를 쓴다.
     governance = models.TextField("개발 거버넌스", blank=True)
-    created_by = models.ForeignKey(
-        settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="+"
-    )
+    # 조직 설정. 키·형·기본값은 orgs/settings.py 레지스트리가 정한다. 키가 없으면 기본값이다.
+    settings = models.JSONField("설정", default=dict, blank=True)
+    created_by = models.ForeignKey(conf.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="+")
     created_at = models.DateTimeField(auto_now_add=True)
     members = models.ManyToManyField(
-        settings.AUTH_USER_MODEL, through="OrgMembership", related_name="orgs"
+        conf.AUTH_USER_MODEL, through="OrgMembership", related_name="orgs"
     )
 
     class Meta:
@@ -41,7 +41,7 @@ class OrgMembership(models.Model):
 
     org = models.ForeignKey(Organization, on_delete=models.CASCADE, related_name="memberships")
     user = models.ForeignKey(
-        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="org_memberships"
+        conf.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="org_memberships"
     )
     role = models.CharField(max_length=6, choices=ROLES, default="member")
     # 스킬 태그(부하 현황에서 담당자 찾기에 쓴다). ArrayField는 Postgres 전용이라
@@ -70,12 +70,10 @@ class Team(models.Model):
     purpose = models.CharField("목적", max_length=200, blank=True)
     # 봇이 만든 팀 채널의 snowflake. 비밀이 아니고 core는 저장·표시만 한다(발송은 봇 전담).
     discord_channel_id = models.CharField("Discord 채널", max_length=32, blank=True)
-    created_by = models.ForeignKey(
-        settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="+"
-    )
+    created_by = models.ForeignKey(conf.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="+")
     created_at = models.DateTimeField(auto_now_add=True)
     members = models.ManyToManyField(
-        settings.AUTH_USER_MODEL, through="TeamMembership", related_name="teams"
+        conf.AUTH_USER_MODEL, through="TeamMembership", related_name="teams"
     )
 
     class Meta:
@@ -91,7 +89,7 @@ class Team(models.Model):
 class TeamMembership(models.Model):
     team = models.ForeignKey(Team, on_delete=models.CASCADE, related_name="memberships")
     user = models.ForeignKey(
-        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="team_memberships"
+        conf.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="team_memberships"
     )
     joined_at = models.DateTimeField(auto_now_add=True)
 
@@ -106,19 +104,20 @@ class Invite(models.Model):
 
     org = models.ForeignKey(Organization, on_delete=models.CASCADE, related_name="invites")
     token = models.CharField(max_length=64, unique=True, default=_token)
-    created_by = models.ForeignKey(
-        settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="+"
-    )
+    created_by = models.ForeignKey(conf.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="+")
     created_at = models.DateTimeField(auto_now_add=True)
     expires_at = models.DateTimeField(default=_default_expiry)
     revoked_at = models.DateTimeField(null=True, blank=True)
     use_count = models.PositiveIntegerField(default=0)
+    max_uses = models.PositiveIntegerField("최대 사용 횟수", default=0)  # 0=무제한
 
     class Meta:
         ordering = ["-created_at"]
 
     @property
     def is_usable(self) -> bool:
+        if self.max_uses and self.use_count >= self.max_uses:
+            return False
         return self.revoked_at is None and self.expires_at > timezone.now()
 
     @property

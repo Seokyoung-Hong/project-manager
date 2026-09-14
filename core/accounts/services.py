@@ -84,3 +84,12 @@ def user_by_discord_id(discord_user_id: str):
     return User.objects.filter(
         discord_user_id=did, discord_linked_at__isnull=False, is_active=True
     ).first()
+
+
+def set_user_settings(user, data: dict):
+    """개인 설정 전체 교체. 이력 없음(개인 계획과 같은 원칙)."""
+    from orgs import settings as S
+
+    user.settings = S.clean("user", data)
+    user.save(update_fields=["settings"])
+    return user

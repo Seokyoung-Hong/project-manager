@@ -291,6 +291,17 @@ class GovernanceIn(Schema):
     text: str
 
 
+class SettingsOut(Schema):
+    values: dict  # 저장값(기본값과 다른 것만)
+    defaults: dict
+    locked: list[str]
+
+
+class SettingsIn(Schema):
+    values: dict
+    locked: list[str] | None = None  # 주지 않으면 잠금 목록은 그대로
+
+
 class TeamCreateIn(Schema):
     name: str
     purpose: str = ""

@@ -3,6 +3,7 @@ from django.utils import timezone
 
 from common.errors import ServiceError
 
+from . import settings as S
 from .models import Invite, Organization, OrgMembership, Team, TeamMembership
 
 # ---------- 조직 ----------
@@ -38,12 +39,19 @@ def create_org(name: str, purpose: str, actor) -> Organization:
     return org
 
 
-def create_invite(org, actor, days: int = 7) -> Invite:
+def create_invite(org, actor, days: int | None = None) -> Invite:
     require_admin(actor, org)
+    if days is None:
+        days = S.effective("org.invite_days", org=org)
     if not 1 <= days <= 90:
         raise ServiceError({"days": "만료일은 1~90일 사이여야 합니다."})
     expires_at = timezone.now() + timezone.timedelta(days=days)
-    return Invite.objects.create(org=org, created_by=actor, expires_at=expires_at)
+    return Invite.objects.create(
+        org=org,
+        created_by=actor,
+        expires_at=expires_at,
+        max_uses=S.effective("org.invite_max_uses", org=org),
+    )
 
 
 def revoke_invite(invite, actor):
@@ -174,6 +182,51 @@ def set_team_channel(team, channel_id: str, actor) -> Team:
 def teams_of(user, org):
     """org 안에서 user가 속한 팀 queryset. 가시성 계산에 쓰지 않는다."""
     return Team.objects.filter(org=org, memberships__user=user).distinct()
+
+
+# ---------- 설정 ----------
+
+
+def _log_settings(target_type, target_id, old: dict, new: dict, actor, source):
+    """바뀐 키마다 ChangeLog 한 줄. 값은 JSON 문자열 그대로."""
+    import json
+
+    from tasks.models import ChangeLog
+
+    for key in sorted(set(old) | set(new)):
+        if old.get(key) != new.get(key):
+            ChangeLog.objects.create(
+                target_type=target_type,
+                target_id=target_id,
+                field=key,
+                old_value=json.dumps(old.get(key), ensure_ascii=False) if key in old else "",
+                new_value=json.dumps(new.get(key), ensure_ascii=False) if key in new else "",
+                actor=actor,
+                source=source,
+            )
+
+
+@transaction.atomic
+def set_org_settings(org, data: dict, actor, *, source="web", locked=None) -> Organization:
+    """조직 설정 전체 교체(폼과 같다). locked 를 주면 잠금 목록도 교체한다."""
+    require_admin(actor, org)
+    new = S.clean("org", data)
+    if locked is None:
+        locked = S.locked_keys(org)
+    else:
+        bad = [k for k in locked if k not in S.SPECS or not S.SPECS[k].overridable]
+        if bad:
+            raise ServiceError({S.LOCKED: "잠글 수 없는 항목이에요: " + ", ".join(bad)})
+        locked = sorted(set(locked))
+    if locked:
+        new[S.LOCKED] = locked
+    old = dict(org.settings)
+    if old == new:
+        return org
+    org.settings = new
+    org.save(update_fields=["settings"])
+    _log_settings("org", org.pk, old, new, actor, source)
+    return org
 
 
 # ---------- 거버넌스 ----------

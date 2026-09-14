@@ -24,6 +24,8 @@ class User(AbstractUser):
     auto_pull_days = models.PositiveSmallIntegerField(
         "마감 기준 자동 담기(일)", choices=AUTO_PULL_CHOICES, default=5
     )
+    # 개인 설정(알림·표시 취향). 규칙은 없다 — orgs/settings.py 의 user.* 키만.
+    settings = models.JSONField("설정", default=dict, blank=True)
 
     def save(self, *args, **kwargs):
         if not self.discord_user_id:

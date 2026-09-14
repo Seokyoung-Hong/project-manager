@@ -124,6 +124,15 @@ def api(client, write_token):
                 **kw,
             )
 
+        def put(self, url, data=None, **kw):
+            return client.put(
+                url,
+                data=data,
+                content_type="application/json",
+                headers=self._h(kw.pop("headers", None)),
+                **kw,
+            )
+
         def delete(self, url, **kw):
             return client.delete(url, headers=self._h(kw.pop("headers", None)), **kw)
 
