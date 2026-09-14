@@ -30,6 +30,11 @@ Webhook은 쓰지 않는다 — 발송은 봇 토큰으로 `discord.com/api/v10`
 | `DB_PATH` | | `/data/discord.sqlite` | 발송 기록·DM 채널 캐시 SQLite 경로 |
 | `SITE_NAME` | | `산돌이 업무` | 테스트 메시지에 쓰는 이름 |
 
+`SEND_HOUR`·`WEEKLY_WEEKDAY`·`WEEKLY_HOUR`는 조직이 웹 `/orgs/<id>/settings`에서 해당 값(`notify.send_hour`
+등)을 정하면 그 값이 이 env보다 우선한다(`core_client.org_settings`가 매 틱 조직 설정을 읽고, 값이 없을 때만
+이 env로 대체한다). 재배포 없이 시각을 바꾸고 싶으면 조직 설정을, 조직이 하나도 안 건드렸으면 이 env가
+지금처럼 그대로 적용된다.
+
 `DISCORD_BOT_TOKEN`과 `CORE_TOKEN`은 **`.env.discord`에만** 둔다(core(web) 프로세스에는 넣지 않는다).
 채널 id는 비밀이 아니다. 개발자 모드를 켜고 채널 우클릭 → ID 복사로 얻는다.
 

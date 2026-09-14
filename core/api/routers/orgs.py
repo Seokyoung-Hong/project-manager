@@ -64,7 +64,26 @@ def get_org(request, org_id: int):
 @router.get("/{org_id}/members", response=list[UserBrief])
 def members(request, org_id: int):
     org = org_or_404(request, org_id)
-    return [user_brief(u) for u in org.members.filter(is_active=True).order_by("display_name")]
+    users = org.members.filter(is_active=True).order_by("display_name")
+    token = getattr(request, "api_token", None)
+    if token is None or token.scope != "bot":
+        return [user_brief(u) for u in users]
+    # 봇만 개인 알림 설정을 본다. 멤버 전원에게 남의 취향이 보일 이유가 없다.
+    org_kinds = S.effective("notify.deadline_kinds", org=org)
+    out = []
+    for u in users:
+        kinds = [k for k in S.effective("user.notify_kinds", user=u) if k in org_kinds]
+        out.append(
+            {
+                **user_brief(u),
+                "notify": {
+                    "dm": S.effective("user.notify_dm", user=u),
+                    "kinds": kinds,
+                    "hour": S.effective("user.notify_hour", user=u),
+                },
+            }
+        )
+    return out
 
 
 @router.get("/{org_id}/teams", response=list[TeamOut])
@@ -76,6 +95,7 @@ def teams(request, org_id: int):
             "name": t.name,
             "purpose": t.purpose,
             "member_count": t.members.count(),
+            "discord_channel_id": t.discord_channel_id,
         }
         for t in org.teams.all()
     ]

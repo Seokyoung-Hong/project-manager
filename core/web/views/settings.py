@@ -4,7 +4,10 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
 
 from accounts.models import ApiToken
-from accounts.services import issue_link_code, unlink_discord
+from accounts.services import issue_link_code, set_user_settings, unlink_discord
+from common.errors import ServiceError
+from orgs import settings as S
+from orgs.services import orgs_of
 
 from ..forms import ProfileForm, TokenForm
 
@@ -70,3 +73,41 @@ def token_revoke(request, token_id):
     token = get_object_or_404(ApiToken, pk=token_id, user=request.user)
     token.revoke()
     return redirect("tokens")
+
+
+@login_required
+def preferences(request):
+    """개인 설정(알림·표시). 본인만. 이력 없음."""
+    from .orgs import _settings_form
+
+    u = request.user
+    errors = {}
+    if request.method == "POST":
+        try:
+            set_user_settings(u, _settings_form(request.POST, "user"))
+            messages.success(request, "설정을 저장했습니다.")
+            return redirect("preferences")
+        except ServiceError as e:
+            errors = e.errors
+    # 조직이 끈 마감 알림 종류는 고를 수 없다(교집합). 조직이 여럿이면 합집합을 보여 준다.
+    org_kinds = set()
+    for org in orgs_of(u):
+        org_kinds |= set(S.effective("notify.deadline_kinds", org=org))
+    items = [
+        {
+            "spec": spec,
+            "value": u.settings.get(spec.key, spec.default),
+            "is_default": spec.key not in u.settings,
+        }
+        for spec in S.specs("user")
+    ]
+    return render(
+        request,
+        "settings/preferences.html",
+        {
+            "items": items,
+            "org_kinds": org_kinds,
+            "errors": errors,
+            "auto_pull_days": u.auto_pull_days,
+        },
+    )

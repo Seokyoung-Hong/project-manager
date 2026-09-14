@@ -100,6 +100,7 @@ urlpatterns = [
     path("settings/profile/discord", settings.discord_link, name="discord_link"),
     path("settings/profile/discord/unlink", settings.discord_unlink, name="discord_unlink"),
     path("settings/tokens", settings.tokens, name="tokens"),
+    path("settings/preferences", settings.preferences, name="preferences"),
     path("settings/tokens/<int:token_id>/revoke", settings.token_revoke, name="token_revoke"),
     path("ops", ops.ops, name="ops"),
     path("ops/export.json", ops.export_json, name="export_json"),

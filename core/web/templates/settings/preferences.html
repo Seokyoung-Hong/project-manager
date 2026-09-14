@@ -1,0 +1,39 @@
+{% extends "base.html" %}{% load rows %}{% block title %}내 설정{% endblock %}
+{% block main %}
+<form method="post" class="stack">{% csrf_token %}
+<section class="card">
+  <div class="card-head"><h1 class="t24">내 설정</h1><span class="muted t13">알림과 화면 취향입니다. 조직 규칙은 여기서 바꿀 수 없습니다.</span></div>
+  <table class="grid settings">
+    {% for it in items %}{% with s=it.spec %}
+    <tr>
+      <th style="width:34%">{{ s.label }}
+        {% if s.help %}<div class="muted t13" style="font-weight:400">{{ s.help }}</div>{% endif %}
+        {% if errors|get_item:s.key %}<div class="error">{{ errors|get_item:s.key }}</div>{% endif %}
+      </th>
+      <td>
+        {% if s.kind == "bool" %}
+          <input type="hidden" name="{{ s.key }}" value="0">
+          <label class="check"><input type="checkbox" name="{{ s.key }}" value="1" {% if it.value %}checked{% endif %}> {{ it.value|yesno:"켜짐,꺼짐" }}</label>
+        {% elif s.kind == "int" %}
+          <input class="input" style="width:120px" type="number" name="{{ s.key }}" min="{{ s.lo }}" max="{{ s.hi }}" value="{{ it.value|default_if_none:'' }}" placeholder="조직 기본">
+        {% elif s.kind == "choice" %}
+          <div class="row">{% for c, l in s.choices %}<label class="check"><input type="radio" name="{{ s.key }}" value="{{ c }}" {% if c == it.value %}checked{% endif %}> {{ l }}</label>{% endfor %}</div>
+        {% elif s.kind == "set" %}
+          <input type="hidden" name="{{ s.key }}" value="">
+          <div class="row">{% for c, l in s.choices %}
+            {% if s.key == "user.notify_kinds" and c not in org_kinds %}<label class="check muted" title="조직에서 끈 알림"><input type="checkbox" disabled> {{ l }}</label>
+            {% else %}<label class="check"><input type="checkbox" name="{{ s.key }}" value="{{ c }}" {% if c in it.value %}checked{% endif %}> {{ l }}</label>{% endif %}
+          {% endfor %}</div>
+        {% endif %}
+      </td>
+    </tr>
+    {% endwith %}{% endfor %}
+  </table>
+  <div class="row" style="margin-top:8px"><button class="btn primary">저장</button></div>
+</section>
+</form>
+<section class="card">
+  <h2>오늘 목록</h2>
+  <p class="muted t13">마감 기준 자동 담기는 오늘 화면에서 바꿉니다. 지금 값: {{ auto_pull_days }}일 · <a href="{% url 'today' %}">오늘 화면으로</a></p>
+</section>
+{% endblock %}

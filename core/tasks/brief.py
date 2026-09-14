@@ -19,5 +19,7 @@ def task_brief(t) -> dict:
         "due_date": t.due_date.isoformat() if t.due_date else None,
         "stop_reason": t.stop_reason,
         "next_action": t.next_action,
+        "stopped_at": t.stopped_at,
+        "updated_at": t.updated_at,
         "url": f"{settings.SITE_URL}/tasks/{t.pk}",
     }

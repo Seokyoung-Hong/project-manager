@@ -76,5 +76,20 @@ def today_message(view: dict) -> str:
     return head + "\n" + body + (f"\n… 그리고 {more}건 더" if more > 0 else "")
 
 
+def escalate_message(kind: str, project_name: str, tasks: list[dict]) -> str:
+    """막힘·검토 지연 에스컬레이션. 프로젝트 관리자에게 프로젝트별로 묶어 하루 1건."""
+    title = "막힘 경과" if kind == "blocked" else "검토 대기 경과"
+    head = f"⏱ {title} · {project_name}"
+    lines = [f"• **{t['number']}** {t['title']}" for t in tasks]
+    return head + "\n" + "\n".join(lines)
+
+
+def channel_event_message(event: str, task: dict) -> str:
+    """프로젝트 Discord 채널 게시. 멘션은 만들지 않는다(마감 DM과 같은 원칙)."""
+    title = {"created": "생성", "done": "완료", "blocked": "막힘"}.get(event, event)
+    assignee = (task.get("assignee") or {}).get("display_name", "미배정")
+    return f"📋 {title} · **{task['number']}** {task['title']} — {assignee}"
+
+
 def test_message(site_name: str) -> str:
     return f"✅ {site_name} Discord 봇 연결 테스트"

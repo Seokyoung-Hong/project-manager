@@ -20,6 +20,8 @@ CREATE TABLE IF NOT EXISTS runs(
   id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, ran_at TEXT NOT NULL,
   ok INTEGER NOT NULL, note TEXT
 );
+-- channels_post의 폴링 차이 감지용. 중복 방지(sent 표)와는 다른 관심사라 따로 둔다.
+CREATE TABLE IF NOT EXISTS seen(task_id INTEGER PRIMARY KEY, status TEXT NOT NULL);
 """
 
 
@@ -121,6 +123,20 @@ class Store:
                     sent_status,
                     _now() if sent_status == "sent" else None,
                 ),
+            )
+
+    # --- 채널 게시 사건 감지 ---
+    def seen_status(self, task_id: int) -> str | None:
+        with self._conn() as c:
+            row = c.execute("SELECT status FROM seen WHERE task_id=?", (task_id,)).fetchone()
+            return row["status"] if row else None
+
+    def set_seen(self, task_id: int, status: str):
+        with self._conn() as c:
+            c.execute(
+                "INSERT INTO seen(task_id, status) VALUES(?,?) "
+                "ON CONFLICT(task_id) DO UPDATE SET status=excluded.status",
+                (task_id, status),
             )
 
     # --- 실행 기록 ---

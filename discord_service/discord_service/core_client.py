@@ -1,4 +1,14 @@
+import time
+
 import httpx
+
+SETTINGS_TTL = 300  # 5분
+
+
+def setting(values: dict, key: str, env_default=None):
+    """조직 설정값, 없으면(None 포함) env_default로."""
+    v = values.get(key)
+    return v if v is not None else env_default
 
 
 class CoreClient:
@@ -9,6 +19,70 @@ class CoreClient:
             headers={"Authorization": f"Bearer {token}", "X-Source": "api"},
             transport=transport,
         )
+        # ponytail: 인스턴스 레벨 캐시 하나, TTL 5분. 프로세스가 하나뿐이라 이걸로 충분하다.
+        self._settings_cache: dict[int, tuple[float, dict]] = {}
+
+    def org_settings(self, org_id: int) -> dict:
+        """조직 설정의 유효값(값이 없는 키는 기본값). 5분 캐시.
+
+        `send_hour`·`weekly_weekday`·`weekly_hour`는 기본값이 null이라 여기서는 None
+        그대로 돌려준다 — env로 대체하는 것은 호출자(`setting()`)의 몫이다.
+        """
+        cached = self._settings_cache.get(org_id)
+        now = time.monotonic()
+        if cached and now - cached[0] < SETTINGS_TTL:
+            return cached[1]
+        r = self.http.get(f"/api/orgs/{org_id}/settings")
+        r.raise_for_status()
+        data = r.json()
+        merged = {**data.get("defaults", {}), **data.get("values", {})}
+        self._settings_cache[org_id] = (now, merged)
+        return merged
+
+    def org_members(self, org_id: int) -> list[dict]:
+        r = self.http.get(f"/api/orgs/{org_id}/members")
+        r.raise_for_status()
+        return r.json()
+
+    def org_teams(self, org_id: int) -> list[dict]:
+        r = self.http.get(f"/api/orgs/{org_id}/teams")
+        r.raise_for_status()
+        return r.json()
+
+    def org_projects(self, org_id: int) -> list[dict]:
+        r = self.http.get("/api/projects", params={"org": org_id})
+        r.raise_for_status()
+        return r.json()
+
+    def project(self, project_id: int) -> dict | None:
+        r = self.http.get(f"/api/projects/{project_id}")
+        if r.status_code == 404:
+            return None
+        r.raise_for_status()
+        return r.json()
+
+    def tasks_by_status(
+        self, org_id: int, status: str, project_id: int | None = None
+    ) -> list[dict]:
+        """페이지 순회. `status`는 core가 받는 그대로(쉼표 구분 가능)."""
+        items, offset = [], 0
+        while True:
+            params = {"org": org_id, "status": status, "limit": 200, "offset": offset}
+            if project_id is not None:
+                params["project"] = project_id
+            r = self.http.get("/api/tasks", params=params)
+            r.raise_for_status()
+            data = r.json()
+            items.extend(data["items"])
+            offset += data["limit"]
+            if offset >= data["total"]:
+                return items
+
+    def blocked_tasks(self, org_id: int) -> list[dict]:
+        return self.tasks_by_status(org_id, "blocked")
+
+    def review_tasks(self, org_id: int) -> list[dict]:
+        return self.tasks_by_status(org_id, "review")
 
     def open_tasks(self, org_id: int, due_to: str | None = None) -> list[dict]:
         """미완료 태스크 전부 (페이지 순회). due_to는 'YYYY-MM-DD'."""

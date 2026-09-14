@@ -180,7 +180,13 @@ def project_detail(request, project_id):
     project = project_or_404(request.user, project_id)
     request.session["org_id"] = project.org_id
     request.session["project_id"] = project.pk
-    view = "board" if request.GET.get("view") == "board" else "list"
+    # 개인 설정 > 프로젝트 설정(조직 덮어쓰기 포함) > 목록. 명시 파라미터가 있으면 그것.
+    default_view = (
+        "board"
+        if S.effective("user.board_default", user=request.user)
+        else S.effective("project.default_view", project=project)
+    )
+    view = "board" if request.GET.get("view", default_view) == "board" else "list"
     include_closed = request.GET.get("include_closed") == "1"
     if request.GET.get("part") == "board":
         return render(

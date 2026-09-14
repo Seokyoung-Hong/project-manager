@@ -3,7 +3,7 @@
 버전: 0.1
 작성일: 2026-09-14
 기준 문서: [GOVERNANCE.md](GOVERNANCE.md) §"앞으로", [IMPL-PLAN-3.md](IMPL-PLAN-3.md), [GUIDE-00-rules.md](GUIDE-00-rules.md), 현재 코드(커밋 `96a7955`)
-상태: **기획. 구현 0줄.** 확정되면 이 문서가 구현 지시서를 대신한다. §12 미결 6건은 기본값으로 진행해도 된다.
+상태: **0~3단계 구현 완료 (2026-09-14, 브랜치 `worktree-settings`).** §12 미결 7건은 전부 기본값으로 진행했다. 4단계(승인 대기 큐)는 IMPL-PLAN-5로 분리한다. 구현하며 달라진 점은 §14.
 
 ---
 
@@ -676,3 +676,26 @@ AI 정책
 
 문서 갱신은 이 계획이 확정된 뒤 한 번에: GOVERNANCE.md §"앞으로 2"를 "→ IMPL-PLAN-4"로, PLAN.md 머리말에 한 줄,
 GUIDE-00 §3 "설정값이 될 이유가 없는 상수를 설정으로 빼지 않는다"에 "레지스트리에 있는 것만 설정이다" 한 줄.
+
+---
+
+## 14. 구현하며 달라진 것 (2026-09-14)
+
+| 계획 | 실제 | 이유 |
+|---|---|---|
+| §7.3 오류 문구에 `[설정]` 마커 → 링크 | **뺐다.** 문구만 남긴다 | 마커를 벗기는 자리가 API·MCP·웹 세 곳이라 값어치보다 비쌌다. 필요해지면 `ServiceError(hints=)` |
+| §4.4 `ApiToken.kind` | **불필요.** MCP 서버가 이미 `X-Source: mcp`를 보내고 `api/context.py`가 `source="mcp"`로 바꾼다 | 기획 때 코드를 덜 읽었다 |
+| §4.5 개인 시각(`user.notify_hour`) | 마감 작업이 **매시 1회** 돌고(`deadline-<hour>` 일일 키) 사람별 게이트가 발송을 정한다 | 최소 시각을 미리 계산하는 것보다 단순. HTTP 호출 하루 24회 |
+| §4.5 팀 채널 주간 보고 | 조직 보고 전문을 담당 프로젝트가 있는 팀 채널에 그대로 게시 | 팀별 재요약은 LLM 재호출이 필요 |
+| §4.5 `project_channel_events`의 `overdue_daily`·`milestone_due` | **미구현.** `created`·`done`·`blocked`만. 설정에서 고를 수는 있으나 무시된다 | 폴링 차이로 잡히지 않는 사건이라 별도 작업 |
+| §6.3 `task.overdue_grace_days` | 내 태스크 화면의 "기한 초과" 묶음에만 적용. 조직 개요·부하 현황·Discord 초과 알림은 그대로 | 세 집계를 한 함수로 묶는 리팩터가 이 라운드 밖 |
+| §4.6 `user.*` 6개 | 7개(`me_group`·`me_sort` 분리) | 표 오기 |
+| 저장소 규칙 폼 | `projects/_repo_rules.html` partial로 뽑아 저장소 탭과 설정 탭 양쪽에서 그린다 | 계획대로 |
+| 테스트 | core 385 · discord 94 · mcp 20 (SQLite). `test_me_view_sort_orders_inside_groups`는 전체 스위트에서만 간헐 실패 — §15 | |
+
+## 15. 남은 것
+
+- `test_me_view_sort_orders_inside_groups`: `updated_at` 정렬이 같은 시각 두 갱신에서 pk 역순으로 떨어지는 경우. 파일 단위·단독 실행은 통과하고 전체 스위트에서만 재현된다. 이 라운드 코드와 무관해 보이나 원인은 확정하지 못했다.
+- Postgres에서 한 번 더 돌릴 것(`DATABASE_URL=postgres://...`). JSONField `settings__has_key` 조회가 두 DB 모두에서 동작해야 한다.
+- 조직·프로젝트·개인 설정 화면을 실제 브라우저에서 한 번 볼 것(테스트는 200과 저장 결과만 본다).
+- 4단계 승인 대기 큐 → IMPL-PLAN-5.

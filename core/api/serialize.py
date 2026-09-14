@@ -61,6 +61,7 @@ def project_out(p) -> dict:
         ],
         "status": p.status,
         "status_label": p.status_label,
+        "discord_channel_id": p.discord_channel_id,
         "is_archived": p.is_archived,
         "version": p.version,
         "stats": project_stats(p),

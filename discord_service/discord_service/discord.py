@@ -120,6 +120,11 @@ class Bot:
         self._send(self.channel_id, text, parse=["users"])
         return "sent"
 
+    def send_channel_to(self, channel_id: str, text: str) -> str:
+        """프로젝트·팀별 채널 게시. 멘션은 만들지 않는다(개인 DM과 같은 원칙)."""
+        self._send(str(channel_id), text, parse=[])
+        return "sent"
+
     # ---------- 내부 ----------
 
     def _send(self, channel_id: str, text: str, *, parse: list[str]) -> None:

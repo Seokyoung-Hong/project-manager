@@ -10,7 +10,11 @@ from ..forms import SignupForm
 
 
 def root(request):
-    return redirect("today" if request.user.is_authenticated else "login")
+    if not request.user.is_authenticated:
+        return redirect("login")
+    from orgs import settings as S
+
+    return redirect("me" if S.effective("user.start_page", user=request.user) == "me" else "today")
 
 
 def signup(request):

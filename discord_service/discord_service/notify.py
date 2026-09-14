@@ -29,12 +29,41 @@ def classify(task: dict, today: date) -> str | None:
     return None
 
 
-def run_deadlines(core: CoreClient, bot: Bot, store: Store, org_id: int, today: date) -> dict:
-    """하루 1회. 담당자별 개인 DM으로 보낸다.
+def _overdue_allowed(repeat: str, today: date) -> bool:
+    if repeat == "never":
+        return False
+    if repeat == "weekly":
+        return today.weekday() == 0  # 월요일
+    if repeat == "weekdays":
+        return today.weekday() < 5
+    return True  # daily
+
+
+def _allowed_kinds(st: dict, today: date) -> set[str]:
+    kinds = set(st.get("notify.deadline_kinds") or KINDS)
+    if "overdue" in kinds and not _overdue_allowed(st.get("notify.overdue_repeat", "daily"), today):
+        kinds.discard("overdue")
+    return kinds
+
+
+def run_deadlines(
+    core: CoreClient,
+    bot: Bot,
+    store: Store,
+    org_id: int,
+    today: date,
+    hour: int = 23,
+    org_hour: int = 0,
+    st: dict | None = None,
+) -> dict:
+    """하루 1회(사람별로는 시각이 다를 수 있어 여러 번 불릴 수 있다). 담당자별 개인 DM으로 보낸다.
 
     한 사람이 하루에 받는 DM은 종류당 1건, 최대 4건이다(D-3·D-1·당일·기한 초과).
     태스크마다 한 통씩 보내면 아침에 DM 폭탄이 되고 Discord Developer Policy의
     '원치 않는 반복 DM'에 걸린다.
+
+    `hour`는 이번 틱의 시각, `org_hour`는 사람별 시각이 없을 때 쓸 조직 기본 시각이다.
+    `st`가 있으면 조직 설정(§4.5)을 적용한다 — 없으면(테스트 등) 지금까지의 기본 동작 그대로.
     """
     today_s = today.isoformat()
     result = {
@@ -43,11 +72,16 @@ def run_deadlines(core: CoreClient, bot: Bot, store: Store, org_id: int, today: 
         "failed": 0,
         "unknown": 0,
         "unlinked": 0,
+        "opted_out": 0,
         # 자리를 놓아준 것들. 하루 1회 문턱(claim_daily)을 다시 열어야 실제로 재시도된다.
         "open_failed": 0,
         "recheck_failed": 0,
     }
     unlinked_names: list[str] = []
+    st = st or {}
+    allowed_kinds = _allowed_kinds(st, today) if st else set(KINDS)
+    # 개인 설정은 st가 있을 때만 본다(호출자가 설정을 안 건넸으면 예전 그대로 전원 대상).
+    members_by_id = {m["id"]: m for m in core.org_members(org_id)} if st else {}
     candidates = core.open_tasks(org_id, due_to=(today + timedelta(days=3)).isoformat())
 
     # (종류, 담당자) 로 묶는다. 담당자는 태스크당 한 명이다.
@@ -55,10 +89,12 @@ def run_deadlines(core: CoreClient, bot: Bot, store: Store, org_id: int, today: 
     for t in candidates:
         kind = classify(t, today)
         assignee = t.get("assignee") or {}
-        if kind and assignee.get("id"):
+        if kind and kind in allowed_kinds and assignee.get("id"):
             grouped[(kind, assignee["id"])].append(t)
 
     for kind in KINDS:
+        if kind not in allowed_kinds:
+            continue
         for uid in sorted(u for (k, u) in grouped if k == kind):
             tasks = grouped[(kind, uid)]
             assignee = tasks[0]["assignee"]
@@ -71,6 +107,18 @@ def run_deadlines(core: CoreClient, bot: Bot, store: Store, org_id: int, today: 
                     unlinked_names.append(name)
                 log.warning("Discord 미연결이라 DM을 못 보낸다: %s", assignee.get("display_name"))
                 continue
+            personal = members_by_id.get(uid, {}).get("notify") or {}
+            if personal.get("dm") is False:
+                result["opted_out"] += 1
+                continue
+            personal_kinds = personal.get("kinds")
+            if personal_kinds is not None and kind not in personal_kinds:
+                continue
+            effective_hour = personal.get("hour")
+            if effective_hour is None:
+                effective_hour = org_hour
+            if hour < effective_hour:
+                continue  # 이 사람 시각이 아직 안 됐다 — 자리를 잡지 않고 넘긴다(다음 시간에 다시 훑는다)
             key = f"{kind}:{uid}"
             if not store.claim(0, key, today_s):
                 result["skipped"] += 1

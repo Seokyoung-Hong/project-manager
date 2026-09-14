@@ -15,6 +15,7 @@ class UserBrief(Schema):
     id: int
     display_name: str
     discord_user_id: str | None = None
+    notify: dict | None = None  # bot 토큰의 멤버 목록에만 실린다(개인 알림 설정)
 
 
 class ProjectBrief(Schema):
@@ -34,6 +35,8 @@ class TaskBriefOut(Schema):
     due_date: date | None
     stop_reason: str
     next_action: str
+    stopped_at: datetime | None = None
+    updated_at: datetime | None = None
     url: str
 
 
@@ -147,6 +150,7 @@ class TeamOut(Schema):  # 새 의미: 조직 안의 사람 묶음
     name: str
     purpose: str
     member_count: int
+    discord_channel_id: str = ""
 
 
 class ProjectOut(Schema):
@@ -158,6 +162,7 @@ class ProjectOut(Schema):
     teams: list[TeamOut]
     status: ProjectStatus
     status_label: str
+    discord_channel_id: str = ""
     is_archived: bool
     version: int
     stats: ProjectStats
@@ -188,6 +193,15 @@ class OrgBrief(Schema):
     name: str
     purpose: str
     role: str
+
+
+class UserSettingsOut(Schema):
+    values: dict
+    defaults: dict
+
+
+class UserSettingsIn(Schema):
+    values: dict
 
 
 class MeOut(Schema):

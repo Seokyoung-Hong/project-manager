@@ -1,8 +1,10 @@
 from ninja import Router
 
+from accounts.services import set_user_settings
+from orgs import settings as S
 from orgs.models import OrgMembership
 
-from ..schemas import MeOut
+from ..schemas import ErrorOut, MeOut, UserSettingsIn, UserSettingsOut
 
 router = Router(tags=["me"])
 
@@ -22,3 +24,17 @@ def me(request):
             for m in memberships
         ],
     }
+
+
+def _user_settings_out(u) -> dict:
+    return {"values": dict(u.settings), "defaults": {s.key: s.default for s in S.specs("user")}}
+
+
+@router.get("/me/settings", response=UserSettingsOut)
+def get_my_settings(request):
+    return _user_settings_out(request.auth)
+
+
+@router.put("/me/settings", response={200: UserSettingsOut, 400: ErrorOut})
+def put_my_settings(request, payload: UserSettingsIn):
+    return _user_settings_out(set_user_settings(request.auth, payload.values))

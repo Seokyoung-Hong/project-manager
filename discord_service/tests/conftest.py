@@ -12,6 +12,20 @@ OPEN = ("todo", "doing", "paused", "blocked", "review")
 BOT_PREFIX = "/api/integrations/discord/"
 CHANNEL = "999"  # 조직 채널 id (DISCORD_CHANNEL_ID)
 
+DEFAULT_SETTINGS = {
+    "notify.deadline_kinds": ["d3", "d1", "d0", "overdue"],
+    "notify.send_hour": None,
+    "notify.overdue_repeat": "daily",
+    "notify.quiet_weekend": False,
+    "notify.weekly_enabled": True,
+    "notify.weekly_weekday": None,
+    "notify.weekly_hour": None,
+    "notify.blocked_escalate_days": 0,
+    "notify.review_nudge_days": 0,
+    "notify.project_channel_events": [],
+    "notify.team_channel_weekly": False,
+}
+
 
 def member(i=2, did="111", name="팀원"):
     return {"id": i, "display_name": name, "discord_user_id": did}
@@ -99,6 +113,14 @@ class FakeCore:
         self.channel_save_fail = False
         self.channels = {"team": "", "project": ""}
         self.next_id = 100
+        # --- 설정 시스템 (IMPL-PLAN-4 §4.5) ---
+        self.org_settings_values: dict = {}
+        self.org_members_data: list[
+            dict
+        ] = []  # [{id, display_name, discord_user_id, notify:{dm,kinds,hour}}]
+        self.org_teams_data: list[dict] = []  # [{id, name, discord_channel_id}]
+        self.org_projects_data: list[dict] = []  # [{id, name, discord_channel_id, teams:[...]}]
+        self.projects_by_id: dict[int, dict] = {}  # id -> project_out 흉내 (owners 포함)
 
     # --- 조회 도움말 ---
     def paths(self) -> list[str]:
@@ -107,7 +129,12 @@ class FakeCore:
     def handler(self, request: httpx.Request) -> httpx.Response:
         path = request.url.path
         if path == "/api/tasks":
-            items = [t for t in self.tasks.values() if t["status"] in OPEN]
+            status_param = request.url.params.get("status")
+            statuses = set(status_param.split(",")) if status_param else set(OPEN)
+            items = [t for t in self.tasks.values() if t["status"] in statuses]
+            project_param = request.url.params.get("project")
+            if project_param:
+                items = [t for t in items if str(t["project"]["id"]) == project_param]
             due_to = request.url.params.get("due_to")
             if due_to:
                 items = [t for t in items if t["due_date"] and t["due_date"] <= due_to]
@@ -119,6 +146,24 @@ class FakeCore:
             return httpx.Response(200, json=t) if t else httpx.Response(404, json={"detail": "x"})
         if path == "/api/reports/weekly":
             return httpx.Response(200, json=self.weekly_data)
+        if path == "/api/projects":
+            return httpx.Response(200, json=self.org_projects_data)
+        if path.startswith("/api/projects/"):
+            p = self.projects_by_id.get(int(path.rsplit("/", 1)[1]))
+            return httpx.Response(200, json=p) if p else httpx.Response(404, json={"detail": "x"})
+        if path.endswith("/settings") and path.startswith("/api/orgs/"):
+            return httpx.Response(
+                200,
+                json={
+                    "values": self.org_settings_values,
+                    "defaults": DEFAULT_SETTINGS,
+                    "locked": [],
+                },
+            )
+        if path.endswith("/members") and path.startswith("/api/orgs/"):
+            return httpx.Response(200, json=self.org_members_data)
+        if path.endswith("/teams") and path.startswith("/api/orgs/"):
+            return httpx.Response(200, json=self.org_teams_data)
         if path == BOT_PREFIX + "status":
             self.status_reports.append(json.loads(request.content))
             return httpx.Response(204)
