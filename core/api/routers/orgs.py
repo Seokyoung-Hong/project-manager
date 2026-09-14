@@ -107,15 +107,33 @@ def delete_invite(request, invite_id: int):
 
 
 @router.get("/{org_id}/governance", response=GovernanceOut)
-def get_governance(request, org_id: int):
+def get_governance(request, org_id: int, project_id: int | None = None):
     org = org_or_404(request, org_id)
-    return {"text": governance_text(org), "is_default": not org.governance.strip()}
+    text = governance_text(org)
+    project = None
+    if project_id is not None:
+        from projects.models import Project
+
+        project = Project.objects.filter(pk=project_id, org=org).first()
+        if project is None:
+            raise HttpError(404, "프로젝트를 찾을 수 없습니다.")
+        if project.governance_extra.strip():
+            text += "\n\n## 프로젝트 규칙\n" + project.governance_extra
+    return {
+        "text": text,
+        "is_default": not org.governance.strip(),
+        "enforced": S.enforced(org, project=project),
+    }
 
 
 @router.put("/{org_id}/governance", response={200: GovernanceOut, 400: ErrorOut})
 def put_governance(request, org_id: int, payload: GovernanceIn):
     org = set_governance(org_or_404(request, org_id), payload.text, request.auth)
-    return {"text": governance_text(org), "is_default": not org.governance.strip()}
+    return {
+        "text": governance_text(org),
+        "is_default": not org.governance.strip(),
+        "enforced": S.enforced(org),
+    }
 
 
 # ---- 설정 ----

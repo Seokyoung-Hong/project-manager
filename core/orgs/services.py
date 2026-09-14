@@ -86,8 +86,12 @@ def change_role(membership, role: str, actor):
 
 
 def set_tags(membership, tags, actor):
-    """스킬 태그. 관리자만 고친다. 공백 제거·중복 제거·20자·최대 10개."""
-    require_admin(actor, membership.org)
+    """스킬 태그. 관리자 또는(설정이 허락하면) 본인이 고친다. 공백 제거·중복 제거·20자·최대 10개."""
+    self_edit = (
+        actor == membership.user and S.effective("org.tags_by", org=membership.org) == "self"
+    )
+    if not self_edit:
+        require_admin(actor, membership.org)
     cleaned, seen = [], set()
     for t in tags:
         t = (t or "").strip()[:20]
@@ -156,8 +160,13 @@ def delete_team(team, actor):
     team.delete()
 
 
+def _self_join(team, user, actor) -> bool:
+    return actor == user and S.effective("org.team_join_self", org=team.org)
+
+
 def add_team_member(team, user, actor) -> TeamMembership:
-    require_admin(actor, team.org)
+    if not _self_join(team, user, actor):
+        require_admin(actor, team.org)
     if not is_member(user, team.org):
         raise ServiceError({"user": "먼저 조직에 초대해야 합니다."})
     if not user.is_active:
@@ -167,7 +176,8 @@ def add_team_member(team, user, actor) -> TeamMembership:
 
 
 def remove_team_member(team, user, actor):
-    require_admin(actor, team.org)
+    if not _self_join(team, user, actor):
+        require_admin(actor, team.org)
     TeamMembership.objects.filter(team=team, user=user).delete()
 
 

@@ -37,26 +37,7 @@
   <a class="btn sm" target="_blank" rel="noopener" href="https://github.com/{{ state.conn.full_name }}/settings/access">GitHub에서 변경</a>
 
   <h3 class="t15">이슈 가져오기</h3>
-  <form method="post" action="{% url 'repo_settings' project.pk %}" class="stack">{% csrf_token %}
-    <div class="row">
-      <label class="field">라벨 필터<input class="input" name="import_label" value="{{ state.conn.import_label }}" placeholder="task"></label>
-      <label class="field">기본 담당자
-        <select name="assignee_default" class="select">
-          <option value="issue"{% if state.conn.assignee_default == "issue" %} selected{% endif %}>이슈 담당자</option>
-          <option value="none"{% if state.conn.assignee_default == "none" %} selected{% endif %}>비워 두기</option>
-        </select>
-      </label>
-    </div>
-    <label class="row"><input type="checkbox" name="auto_import" {% if state.conn.auto_import %}checked{% endif %}> 새 이슈 자동 가져오기</label>
-    <div class="row t13">
-      <label class="row"><input type="checkbox" name="rule_issue" {% if state.conn.rule_issue %}checked{% endif %}> 이슈 → 태스크</label>
-      <label class="row"><input type="checkbox" name="rule_branch" {% if state.conn.rule_branch %}checked{% endif %}> 브랜치 연결 → 진행 중</label>
-      <label class="row"><input type="checkbox" name="rule_commit" {% if state.conn.rule_commit %}checked{% endif %}> 커밋 → 체크리스트</label>
-      <label class="row"><input type="checkbox" name="rule_pr" {% if state.conn.rule_pr %}checked{% endif %}> PR 오픈 → 검토 대기</label>
-      <label class="row"><input type="checkbox" name="rule_merge" {% if state.conn.rule_merge %}checked{% endif %}> 머지 → 완료</label>
-    </div>
-    <button class="btn sm primary">규칙 저장</button>
-  </form>
+  {% include "projects/_repo_rules.html" with conn=state.conn %}
   <form method="post" action="{% url 'repo_issues_sync' project.pk %}">{% csrf_token %}<button class="btn sm">이슈 새로고침</button></form>
   <table class="grid">
     <thead><tr><th>#</th><th>제목</th><th>담당자</th><th></th></tr></thead>

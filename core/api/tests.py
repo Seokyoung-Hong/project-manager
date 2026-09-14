@@ -7,7 +7,7 @@ from accounts.services import issue_link_code
 from api.models import IntegrationStatus
 from common.dates import last_week_start, today_kst, week_bounds
 from orgs.models import OrgMembership
-from orgs.services import create_org
+from orgs.services import create_org, set_org_settings
 from projects.services import create_project
 from tasks.models import ChangeLog
 from tasks.services import create_task
@@ -118,6 +118,20 @@ def test_patch_notes_no_version_bump(api, task):
 def test_patch_checklist_replaces(api, task):
     r = api.patch(f"/api/tasks/{task.pk}", {"version": 1, "checklist": [{"text": "x"}]})
     assert r.json()["checklist_total"] == 1
+
+
+def test_patch_assignee_with_reason_setting(api, task, org, admin):
+    """task.assignee_change_reason이 켜지면 reason 없이는 400, 있으면 통과."""
+    set_org_settings(org, {"task.assignee_change_reason": True}, admin)
+    r = api.patch(f"/api/tasks/{task.pk}", {"version": 1, "assignee_id": admin.pk})
+    assert r.status_code == 400
+    assert "reason" in r.json()["detail"]
+    r = api.patch(
+        f"/api/tasks/{task.pk}",
+        {"version": 1, "assignee_id": admin.pk, "reason": "인수인계"},
+    )
+    assert r.status_code == 200
+    assert r.json()["assignee"]["id"] == admin.pk
 
 
 def test_transition_done_via_api_matches_web(api, task):

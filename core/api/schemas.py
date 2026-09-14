@@ -100,6 +100,7 @@ class TaskPatchIn(Schema):
     no_due_reason: str | None = None
     stop_reason: str | None = None
     checklist: list[ChecklistItemIn] | None = None
+    reason: str = ""  # 담당자·기한 변경 사유. 조직 설정이 요구할 수 있다.
 
 
 class TransitionIn(Schema):
@@ -285,6 +286,7 @@ class ConflictOut(Schema):
 class GovernanceOut(Schema):
     text: str
     is_default: bool  # True면 조직이 아직 고치지 않은 기본안
+    enforced: list[dict] = []  # settings.enforced() — 기본값이 아닌 항목만
 
 
 class GovernanceIn(Schema):
@@ -300,6 +302,24 @@ class SettingsOut(Schema):
 class SettingsIn(Schema):
     values: dict
     locked: list[str] | None = None  # 주지 않으면 잠금 목록은 그대로
+
+
+class ProjectSettingsOut(Schema):
+    values: dict  # 프로젝트 저장값(조직값과 다른 것만)
+    effective: dict  # 덮어쓸 수 있는 키의 실제 적용값
+    locked: list[str]  # 조직이 잠근 키(무시됨)
+
+
+class ProjectSettingsIn(Schema):
+    values: dict
+
+
+class GovernanceExtraOut(Schema):
+    text: str
+
+
+class GovernanceExtraIn(Schema):
+    text: str
 
 
 class TeamCreateIn(Schema):

@@ -9,6 +9,7 @@ from common.dates import today_kst
 from common.errors import ConflictError, ServiceError
 from github.services import pr_compare_url, repo_state
 from github.writes import default_branch_name
+from orgs import settings as S
 from tasks import services as ts
 from tasks.models import ChangeLog, ChecklistItem, Link
 
@@ -130,7 +131,12 @@ def task_edit(request, task_id):
         "next_action": task.next_action,
         "version": task.version,
     }
-    form = TaskForm(request.POST or None, org=task.project.org, initial=initial)
+    reason_required = S.effective(
+        "task.assignee_change_reason", project=task.project
+    ) or S.effective("task.due_change_reason", project=task.project)
+    form = TaskForm(
+        request.POST or None, org=task.project.org, initial=initial, reason_required=reason_required
+    )
     if request.method == "POST" and form.is_valid():
         d = form.cleaned_data
         changes = {
@@ -149,7 +155,12 @@ def task_edit(request, task_id):
         }
         try:
             ts.update_task(
-                task, changes, actor=request.user, source="web", expected_version=d["version"]
+                task,
+                changes,
+                actor=request.user,
+                source="web",
+                expected_version=d["version"],
+                reason=d.get("reason", ""),
             )
             return redirect("task_detail", task_id=task.pk)
         except ServiceError as e:

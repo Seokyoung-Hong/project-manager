@@ -2,4 +2,5 @@
   <a href="{% url 'project_detail' project.pk %}" {% if tab == "tasks" %}aria-current="page"{% endif %}>태스크</a>
   <a href="{% url 'project_api' project.pk %}" {% if tab == "api" %}aria-current="page"{% endif %}>API 문서</a>
   {% if github_enabled %}<a href="{% url 'project_repo' project.pk %}" {% if tab == "repo" %}aria-current="page"{% endif %}>저장소 연결</a>{% endif %}
+  <a href="{% url 'project_settings' project.pk %}" {% if tab == "settings" %}aria-current="page"{% endif %}>설정</a>
 </nav>

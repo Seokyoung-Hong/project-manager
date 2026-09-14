@@ -1,6 +1,16 @@
 {% extends "base.html" %}{% block title %}개발 거버넌스{% endblock %}
 {% block main %}
 {% include "orgs/_tabs.html" %}
+{% if enforced %}
+<section class="card">
+  <h2 class="t15">설정에서 강제 중</h2>
+  <p class="muted t13">이 항목은 글이 아니라 기계가 막습니다.</p>
+  <ul>
+    {% for e in enforced %}<li>{{ e.label }} — {{ e.value }} <span class="muted t13">({{ e.where }})</span></li>{% endfor %}
+  </ul>
+  <a class="btn sm" href="{% url 'org_settings' org.pk %}">조직 설정으로</a>
+</section>
+{% endif %}
 <section class="card">
   <div class="card-head">
     <h1 class="t24">개발 거버넌스</h1>

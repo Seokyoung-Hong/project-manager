@@ -8,6 +8,7 @@
     </div>
   </div>
   {% if error %}<p class="error">{{ error }}</p>{% endif %}
+  {% if doing_warn %}<p class="muted t13 warning">동시 진행 {{ doing_warn.0 }}/{{ doing_warn.1 }} — 한도를 넘었어요.</p>{% endif %}
   {% if focus %}
   <section class="focus stack" aria-label="지금 할 일">
     <div class="muted t13">지금 할 일 · 중요도 {{ focus.priority }}/10 · 오늘 목록 기준</div>

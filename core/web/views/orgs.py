@@ -233,6 +233,7 @@ def org_governance(request, org_id):
             "org": org,
             "text": governance_text(org),
             "is_default": not org.governance.strip(),
+            "enforced": S.enforced(org),
             "is_admin": is_admin,
             "error": error,
             "tab": "governance",

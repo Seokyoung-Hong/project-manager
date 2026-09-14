@@ -1,0 +1,21 @@
+{# 저장소 자동 전환 규칙 폼. repo.html과 projects/settings.html이 같이 쓴다. 컨텍스트: project, conn. #}
+<form method="post" action="{% url 'repo_settings' project.pk %}" class="stack">{% csrf_token %}
+  <div class="row">
+    <label class="field">라벨 필터<input class="input" name="import_label" value="{{ conn.import_label }}" placeholder="task"></label>
+    <label class="field">기본 담당자
+      <select name="assignee_default" class="select">
+        <option value="issue"{% if conn.assignee_default == "issue" %} selected{% endif %}>이슈 담당자</option>
+        <option value="none"{% if conn.assignee_default == "none" %} selected{% endif %}>비워 두기</option>
+      </select>
+    </label>
+  </div>
+  <label class="row"><input type="checkbox" name="auto_import" {% if conn.auto_import %}checked{% endif %}> 새 이슈 자동 가져오기</label>
+  <div class="row t13">
+    <label class="row"><input type="checkbox" name="rule_issue" {% if conn.rule_issue %}checked{% endif %}> 이슈 → 태스크</label>
+    <label class="row"><input type="checkbox" name="rule_branch" {% if conn.rule_branch %}checked{% endif %}> 브랜치 연결 → 진행 중</label>
+    <label class="row"><input type="checkbox" name="rule_commit" {% if conn.rule_commit %}checked{% endif %}> 커밋 → 체크리스트</label>
+    <label class="row"><input type="checkbox" name="rule_pr" {% if conn.rule_pr %}checked{% endif %}> PR 오픈 → 검토 대기</label>
+    <label class="row"><input type="checkbox" name="rule_merge" {% if conn.rule_merge %}checked{% endif %}> 머지 → 완료</label>
+  </div>
+  <button class="btn sm primary">규칙 저장</button>
+</form>

@@ -130,10 +130,12 @@ def update_task(
     next_action: str | None = None,
     notes: str | None = None,
     checklist: list[dict] | None = None,
+    reason: str = "",
 ) -> dict:
     """태스크 수정. version은 get_task로 읽은 최신 값. 바꿀 항목만 준다. due_date는 YYYY-MM-DD.
     기한을 비우려면 clear_due_date=True 와 no_due_reason. checklist는 [{text, is_done}] 전체 교체.
-    stop_reason은 일시정지·막힘 상태에서만 바꿀 수 있다. notes는 통째로 교체되므로 덧붙이려면 append_note."""
+    stop_reason은 일시정지·막힘 상태에서만 바꿀 수 있다. notes는 통째로 교체되므로 덧붙이려면 append_note.
+    담당자·기한 변경에 조직 설정이 사유를 요구할 수 있다. 그때는 reason을 채운다."""
     body = {"version": version}
     for k, v in {
         "title": title,
@@ -150,6 +152,8 @@ def update_task(
     }.items():
         if v is not None:
             body[k] = v
+    if reason:
+        body["reason"] = reason
     if clear_due_date:
         body["due_date"] = None
     elif due_date is not None:

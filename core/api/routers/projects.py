@@ -4,19 +4,31 @@ from ninja import Router
 from ninja.errors import HttpError
 
 from accounts.models import User
+from orgs import settings as S
 from orgs.models import Team
 from orgs.services import orgs_of
 from projects.models import Project
-from projects.services import create_project, parse_spec, set_api_spec, update_project
+from projects.services import (
+    create_project,
+    parse_spec,
+    set_api_spec,
+    set_governance_extra,
+    set_project_settings,
+    update_project,
+)
 
 from ..context import ctx, org_or_404
 from ..schemas import (
     ApiSpecIn,
     ConflictOut,
     ErrorOut,
+    GovernanceExtraIn,
+    GovernanceExtraOut,
     ProjectCreateIn,
     ProjectOut,
     ProjectPatchIn,
+    ProjectSettingsIn,
+    ProjectSettingsOut,
 )
 from ..serialize import project_out
 
@@ -110,3 +122,40 @@ def put_api_spec(request, project_id: int, payload: ApiSpecIn):
     spec = parse_spec(json.dumps(payload.spec).encode(), source=payload.source_url or "요청 본문")
     obj = set_api_spec(p, spec, source_url=payload.source_url, actor=request.auth)
     return {"ok": True, "fetched_at": obj.fetched_at}
+
+
+# ---- 설정 ----
+
+
+def _project_settings_out(project) -> dict:
+    overridable = [s for s in S.specs("org") if s.overridable]
+    return {
+        "values": dict(project.settings),
+        "effective": {s.key: S.effective(s.key, project=project) for s in overridable},
+        "locked": S.locked_keys(project.org),
+    }
+
+
+@router.get("/{project_id}/settings", response=ProjectSettingsOut)
+def get_project_settings(request, project_id: int):
+    return _project_settings_out(_project_or_404(request, project_id))
+
+
+@router.put("/{project_id}/settings", response={200: ProjectSettingsOut, 400: ErrorOut})
+def put_project_settings(request, project_id: int, payload: ProjectSettingsIn):
+    p = _project_or_404(request, project_id)
+    c = ctx(request)
+    p = set_project_settings(p, payload.values, actor=c["actor"], source=c["source"])
+    return _project_settings_out(p)
+
+
+@router.get("/{project_id}/governance-extra", response=GovernanceExtraOut)
+def get_governance_extra(request, project_id: int):
+    return {"text": _project_or_404(request, project_id).governance_extra}
+
+
+@router.put("/{project_id}/governance-extra", response={200: GovernanceExtraOut, 400: ErrorOut})
+def put_governance_extra(request, project_id: int, payload: GovernanceExtraIn):
+    p = _project_or_404(request, project_id)
+    p = set_governance_extra(p, payload.text, actor=request.auth)
+    return {"text": p.governance_extra}

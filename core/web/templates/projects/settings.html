@@ -1,0 +1,75 @@
+{% extends "base.html" %}{% load rows %}{% block title %}{{ project.name }} · 설정{% endblock %}
+{% block main %}
+{% include "projects/_tabs.html" %}
+<form method="post" class="stack">{% csrf_token %}
+{% for g in groups %}
+<section class="card">
+  <div class="card-head"><h2>{{ g.label }}</h2></div>
+  <table class="grid settings">
+    {% for it in g.items %}{% with s=it.spec %}
+    <tr>
+      <th style="width:34%">
+        {{ s.label }}
+        {% if s.help %}<div class="muted t13" style="font-weight:400">{{ s.help }}</div>{% endif %}
+        {% if errors|get_item:s.key %}<div class="error">{{ errors|get_item:s.key }}</div>{% endif %}
+      </th>
+      <td>
+        {% if it.locked %}
+          조직에서 잠금 · {{ it.org_text }}
+        {% elif not can_edit %}
+          {% if it.own %}직접: {% endif %}{{ it.org_text }}
+        {% else %}
+          <label class="check"><input type="radio" name="use:{{ s.key }}" value="org" {% if not it.own %}checked{% endif %}> 조직값 {{ it.org_text }}</label>
+          <label class="check">
+            <input type="radio" name="use:{{ s.key }}" value="own" {% if it.own %}checked{% endif %}> 직접:
+            {% if s.kind == "bool" %}
+              <input type="hidden" name="{{ s.key }}" value="0">
+              <input type="checkbox" name="{{ s.key }}" value="1" {% if it.value %}checked{% endif %}>
+            {% elif s.kind == "int" %}
+              <input class="input" style="width:100px" type="number" name="{{ s.key }}" min="{{ s.lo }}" max="{{ s.hi }}" value="{{ it.value|default_if_none:'' }}">
+            {% elif s.kind == "choice" %}
+              {% for c, l in s.choices %}<label class="check"><input type="radio" name="{{ s.key }}" value="{{ c }}" {% if c == it.value %}checked{% endif %}> {{ l }}</label>{% endfor %}
+            {% elif s.kind == "set" %}
+              <input type="hidden" name="{{ s.key }}" value="">
+              {% for c, l in s.choices %}<label class="check"><input type="checkbox" name="{{ s.key }}" value="{{ c }}" {% if c in it.value %}checked{% endif %}> {{ l }}</label>{% endfor %}
+            {% endif %}
+          </label>
+        {% endif %}
+      </td>
+    </tr>
+    {% endwith %}{% endfor %}
+  </table>
+</section>
+{% endfor %}
+<section class="card">
+  <h2>프로젝트 거버넌스</h2>
+  <p class="muted t13">조직 규칙 뒤에 덧붙는 문단이에요. AI는 조직 거버넌스 + 이 문단을 함께 읽어요.</p>
+  <textarea class="input" name="governance_extra" rows="8" {% if not can_edit %}disabled{% endif %}>{{ governance_extra }}</textarea>
+  {% if errors|get_item:"governance_extra" %}<div class="error">{{ errors|get_item:"governance_extra" }}</div>{% endif %}
+</section>
+{% if can_edit %}
+<div class="row"><button class="btn primary">저장</button></div>
+{% else %}<p class="muted t13">프로젝트 관리자만 바꿀 수 있습니다.</p>{% endif %}
+</form>
+
+{% if project.repo and can_edit %}
+<section class="card">
+  <h2>저장소 자동 전환</h2>
+  {% include "projects/_repo_rules.html" with conn=project.repo %}
+</section>
+{% endif %}
+
+<section class="card">
+  <h2>설정 변경 이력</h2>
+  {% if history %}
+  <table class="grid">
+    {% for h in history %}<tr>
+      <td class="muted t13" style="white-space:nowrap">{{ h.created_at|date:"m-d H:i" }}</td>
+      <td>{{ h.actor|default:"—" }}</td>
+      <td>{{ labels|get_item:h.field|default:h.field }}</td>
+      <td class="muted">{{ h.old_value|default:"기본값" }} → {{ h.new_value|default:"기본값" }}</td>
+    </tr>{% endfor %}
+  </table>
+  {% else %}<p class="muted t13">아직 바꾼 적이 없습니다.</p>{% endif %}
+</section>
+{% endblock %}

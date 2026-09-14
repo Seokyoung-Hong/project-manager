@@ -16,6 +16,8 @@ from github import services as gh_services
 from github import writes as gh_writes
 from github.client import GitHubError
 from github.models import GitHubIdentity, TaskGitLink
+from orgs import settings as S
+from projects.services import require_level
 from tasks import services as ts
 from tasks.models import Task
 
@@ -177,6 +179,12 @@ def project_repo(request, project_id):
     error = None
     if request.method == "POST":
         try:
+            require_level(
+                request.user,
+                project,
+                S.effective("project.settings_by", org=project.org),
+                "settings",
+            )
             gh_services.connect_repo(
                 project=project, url=request.POST.get("url", ""), actor=request.user
             )
@@ -204,6 +212,13 @@ def project_repo(request, project_id):
 @require_POST
 def repo_disconnect(request, project_id):
     project = project_or_404(request.user, project_id)
+    try:
+        require_level(
+            request.user, project, S.effective("project.settings_by", org=project.org), "settings"
+        )
+    except ServiceError as e:
+        messages.error(request, " ".join(e.errors.values()))
+        return redirect("project_repo", project_id=project.pk)
     conn = getattr(project, "repo", None)
     if conn is not None:
         conn.delete()
@@ -215,6 +230,13 @@ def repo_disconnect(request, project_id):
 @require_POST
 def repo_settings(request, project_id):
     project = project_or_404(request.user, project_id)
+    try:
+        require_level(
+            request.user, project, S.effective("project.settings_by", org=project.org), "settings"
+        )
+    except ServiceError as e:
+        messages.error(request, " ".join(e.errors.values()))
+        return redirect("project_repo", project_id=project.pk)
     conn = getattr(project, "repo", None)
     if conn is None:
         raise Http404

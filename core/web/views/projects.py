@@ -5,6 +5,7 @@ from django.urls import reverse
 from django.views.decorators.http import require_POST
 
 from common.errors import ConflictError, ServiceError
+from orgs import settings as S
 from projects.models import Project
 from projects.services import (
     SPEC_MAX,
@@ -13,8 +14,11 @@ from projects.services import (
     fetch_spec,
     parse_spec,
     project_stats,
+    require_level,
     restore_project,
     set_api_spec,
+    set_governance_extra,
+    set_project_settings,
     spec_view,
     update_project,
 )
@@ -195,7 +199,8 @@ def project_detail(request, project_id):
         "tab": "tasks",
         "form": TaskInlineForm(
             org=project.org,
-            initial={"assignee": request.user.pk, "priority": 5, "idem": new_idem()},
+            project=project,
+            initial={"assignee": request.user.pk, "idem": new_idem()},
         ),
     }
     if view == "board":
@@ -324,3 +329,78 @@ def project_api(request, project_id):
     if request.GET.get("part") == "endpoints":
         return render(request, "projects/_endpoints.html", ctx)
     return render(request, "projects/api.html", ctx)
+
+
+def _can_edit_settings(user, project) -> bool:
+    try:
+        require_level(
+            user, project, S.effective("project.settings_by", org=project.org), "settings"
+        )
+        return True
+    except ServiceError:
+        return False
+
+
+@login_required
+def project_settings(request, project_id):
+    """프로젝트 설정. 조직이 덮어쓰기를 허락한 항목만 여기서 고친다(§7.2)."""
+    from tasks.models import ChangeLog
+
+    from .orgs import _settings_form
+
+    project = project_or_404(request.user, project_id)
+    can_edit = _can_edit_settings(request.user, project)
+    errors = {}
+    if request.method == "POST" and can_edit:
+        raw = _settings_form(request.POST, "org", overridable_only=True)
+        data = {k: v for k, v in raw.items() if request.POST.get(f"use:{k}") == "own"}
+        try:
+            set_project_settings(project, data, actor=request.user)
+            set_governance_extra(
+                project, request.POST.get("governance_extra", ""), actor=request.user
+            )
+            messages.success(request, "설정을 저장했습니다.")
+            return redirect("project_settings", project_id=project.pk)
+        except ServiceError as e:
+            errors = e.errors
+    locked = S.locked_keys(project.org)
+    groups = []
+    for code, label in S.GROUPS:
+        items = []
+        for spec in S.specs("org", code):
+            if not spec.overridable:
+                continue
+            org_val = S.effective(spec.key, org=project.org)
+            own = spec.key in project.settings
+            items.append(
+                {
+                    "spec": spec,
+                    "org_text": S.display(spec, org_val),
+                    "own": own,
+                    "value": project.settings.get(spec.key, org_val),
+                    "locked": spec.key in locked,
+                }
+            )
+        if items:
+            groups.append({"code": code, "label": label, "items": items})
+    history = (
+        ChangeLog.objects.filter(
+            target_type="project", target_id=project.pk, field__in=S.SPECS.keys()
+        )
+        .select_related("actor")
+        .order_by("-created_at")[:10]
+    )
+    return render(
+        request,
+        "projects/settings.html",
+        {
+            "project": project,
+            "groups": groups,
+            "labels": {k: s.label for k, s in S.SPECS.items()},
+            "history": history,
+            "can_edit": can_edit,
+            "errors": errors,
+            "governance_extra": project.governance_extra,
+            "tab": "settings",
+        },
+    )

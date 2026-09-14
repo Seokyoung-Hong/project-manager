@@ -245,7 +245,11 @@ def test_governance_api_read_and_write(client, org, admin, member):
         content_type="application/json",
         headers=h,
     )
-    assert r.status_code == 200 and r.json() == {"text": "# 우리 규칙", "is_default": False}
+    assert r.status_code == 200 and r.json() == {
+        "text": "# 우리 규칙",
+        "is_default": False,
+        "enforced": [],
+    }
     # 멤버는 읽을 수 있고 고칠 수 없다.
     mh = {"Authorization": f"Bearer {member_raw}"}
     assert client.get(f"/api/orgs/{org.pk}/governance", headers=mh).json()["text"] == "# 우리 규칙"

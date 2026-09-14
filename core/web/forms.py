@@ -1,12 +1,28 @@
+from datetime import timedelta
+
 from django import forms
 from django.contrib.auth.forms import UserCreationForm
 
 from accounts.models import User
+from common.dates import today_kst
+from orgs import settings as S
 from orgs.models import Team
 from projects.models import Project
 from tasks.models import Link
 
 PRIORITY_CHOICES = [(n, str(n)) for n in range(10, 0, -1)]
+
+
+def _business_days_from(start, n):
+    """start + n영업일(월~금, 공휴일 없음).
+    # ponytail: 공휴일 표가 필요해지면 여기만 바꾼다.
+    """
+    d = start
+    while n > 0:
+        d += timedelta(days=1)
+        if d.weekday() < 5:
+            n -= 1
+    return d
 
 
 class SignupForm(UserCreationForm):
@@ -76,8 +92,16 @@ class TaskForm(forms.Form):
     next_action = forms.CharField(label="다음 행동", max_length=200, required=False)
     version = forms.IntegerField(widget=forms.HiddenInput)
 
-    def __init__(self, *args, org, **kwargs):
+    def __init__(self, *args, org, reason_required=False, **kwargs):
         super().__init__(*args, **kwargs)
+        if reason_required:
+            # task.assignee_change_reason·task.due_change_reason이 켜져 있을 때만 보인다.
+            self.fields["reason"] = forms.CharField(
+                label="변경 사유",
+                max_length=300,
+                required=False,
+                widget=forms.TextInput(attrs={"placeholder": "변경 사유"}),
+            )
         self.fields["project"].queryset = Project.objects.filter(
             org=org, is_archived=False
         ).order_by("name")
@@ -97,11 +121,16 @@ class TaskInlineForm(forms.Form):
     # IdempotencyKey.key는 varchar(100)이다. 클라이언트가 보내는 값이므로 폼에서 막는다.
     idem = forms.CharField(widget=forms.HiddenInput, required=False, max_length=100)
 
-    def __init__(self, *args, org, **kwargs):
+    def __init__(self, *args, org, project=None, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields["assignee"].queryset = org.members.filter(is_active=True).order_by(
             "display_name"
         )
+        if project is not None and not self.is_bound:
+            self.fields["priority"].initial = S.effective("task.default_priority", project=project)
+            days = S.effective("task.default_due_days", project=project)
+            if days > 0:
+                self.fields["due_date"].initial = _business_days_from(today_kst(), days)
 
 
 class QuickTaskForm(forms.Form):

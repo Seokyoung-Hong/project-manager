@@ -132,6 +132,7 @@ def patch_task(request, task_id: int, payload: TaskPatchIn):
     c = ctx(request)
     data = payload.dict(exclude_unset=True)
     version = data.pop("version")
+    reason = data.pop("reason", "")
     checklist = data.pop("checklist", None)
     if "assignee_id" in data:
         aid = data.pop("assignee_id")
@@ -142,7 +143,7 @@ def patch_task(request, task_id: int, payload: TaskPatchIn):
         if data["project"] is None:
             raise HttpError(404, "프로젝트를 찾을 수 없습니다.")
     if data:
-        task = update_task(task, data, expected_version=version, **c)
+        task = update_task(task, data, expected_version=version, reason=reason, **c)
     if checklist is not None:
         replace_checklist(task, checklist, actor=c["actor"])
     return task_out(task)
