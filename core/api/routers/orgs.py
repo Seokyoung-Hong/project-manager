@@ -183,7 +183,10 @@ def _team_or_404(request, team_id: int) -> Team:
 @router.post("/{org_id}/teams", response={201: TeamOut, 400: ErrorOut})
 def create_team_ep(request, org_id: int, payload: TeamCreateIn):
     org = org_or_404(request, org_id)
-    team = create_team(org=org, name=payload.name, purpose=payload.purpose, actor=request.auth)
+    c = ctx(request)
+    team = create_team(
+        org=org, name=payload.name, purpose=payload.purpose, actor=c["actor"], source=c["source"]
+    )
     return 201, _team_out(team)
 
 
@@ -193,7 +196,8 @@ def add_team_member_ep(request, team_id: int, payload: TeamMemberIn):
     user = User.objects.filter(pk=payload.user_id).first()
     if user is None:
         raise HttpError(404, "사용자를 찾을 수 없습니다.")
-    add_team_member(team, user, request.auth)
+    c = ctx(request)
+    add_team_member(team, user, c["actor"], source=c["source"])
     return _team_out(team)
 
 
@@ -203,5 +207,6 @@ def remove_team_member_ep(request, team_id: int, user_id: int):
     user = User.objects.filter(pk=user_id).first()
     if user is None:
         raise HttpError(404, "사용자를 찾을 수 없습니다.")
-    remove_team_member(team, user, request.auth)
+    c = ctx(request)
+    remove_team_member(team, user, c["actor"], source=c["source"])
     return _team_out(team)

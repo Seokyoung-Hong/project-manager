@@ -13,6 +13,8 @@ INSTRUCTIONS = """산돌이 조직 업무 관리 도구.
 - 기한처럼 중요한 값이 모호하면 확인한 뒤 수정한다. 날짜는 모두 YYYY-MM-DD.
 - 상태: todo(시작 전) doing(진행 중) paused(일시정지) blocked(막힘, 사유 필수) review(검토 대기) done(완료) cancelled(취소).
 - 중요도는 1~10 정수. 8~10 높음, 4~7 중간, 1~3 낮음.
+- 조직 설정(get_settings)은 거버넌스 글보다 우선하고 서버가 강제한다. 설정에 막힌 일은 우회하지 말고
+  "사람이 웹에서 해야 한다"고 답한다. 오류 문구를 그대로 전한다.
 - 진행 메모(notes)는 태스크당 한 덩어리 텍스트다. 덧붙일 때는 append_note를 쓴다. update_task(notes=...)는 통째로 바꾼다.
 """
 
@@ -185,10 +187,22 @@ def append_note(task_id: int, text: str) -> dict:
 
 
 @mcp.tool()
-def get_governance(org_id: int) -> dict:
+def get_governance(org_id: int, project_id: int | None = None) -> dict:
     """그 조직의 개발 거버넌스 본문(마크다운). 쓰기 작업 전에 먼저 읽는다.
-    is_default가 True면 조직이 아직 고치지 않은 기본안이다. 결과: {text, is_default}"""
-    return _core().get(f"/api/orgs/{org_id}/governance")
+    project_id를 주면 프로젝트 문단이 뒤에 붙는다. enforced는 설정이 기계로 막는 항목 목록.
+    is_default가 True면 조직이 아직 고치지 않은 기본안이다. 결과: {text, is_default, enforced}"""
+    return _core().get(f"/api/orgs/{org_id}/governance", project_id=project_id)
+
+
+@mcp.tool()
+def get_settings(org_id: int, project_id: int | None = None) -> dict:
+    """조직(또는 프로젝트) 설정. 쓰기 전에 get_governance와 함께 읽는다.
+    조직: {values, defaults, locked}. project_id를 주면 {values, effective, locked} — effective가 실제 적용값.
+    ai.* 항목은 AI 경로(이 서버)에만 걸리는 정책이다. 설정 쓰기 도구는 없다(사람이 웹에서 바꾼다)."""
+    core = _core()
+    if project_id is not None:
+        return core.get(f"/api/projects/{project_id}/settings")
+    return core.get(f"/api/orgs/{org_id}/settings")
 
 
 @mcp.tool()

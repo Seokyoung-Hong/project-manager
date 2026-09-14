@@ -8,7 +8,7 @@ from accounts.models import IdempotencyKey, User
 from common.dates import kst_day_range, today_kst, week_bounds
 from common.errors import ConflictError, ServiceError
 from orgs import settings as S
-from orgs.services import is_admin, is_member, orgs_of
+from orgs.services import ai_check, is_admin, is_member, orgs_of
 from projects.services import is_owner, project_stats
 
 from .models import ChangeLog, ChecklistItem, Link, Task, TodayItem
@@ -139,16 +139,23 @@ def _validate(
         raise ServiceError(errors)
 
 
-def _check_priority_cap(project, priority: int, actor):
-    """task.priority_cap: 상한 초과는 프로젝트 관리자·조직 관리자만. actor 가 None(GitHub 웹훅)이면 면제."""
+def _check_priority_cap(project, priority: int, actor, source="web"):
+    """task.priority_cap: 상한 초과는 프로젝트 관리자·조직 관리자만. actor 가 None(GitHub 웹훅)이면 면제.
+    ai.priority_cap: AI 경로는 사람의 등급과 무관하게 이 상한을 넘지 못한다."""
+    if source == "mcp":
+        ai_cap = S.effective("ai.priority_cap", org=project.org)
+        if ai_cap and priority > ai_cap:
+            raise ServiceError(
+                {
+                    "priority": f"AI는 중요도 {ai_cap}까지만 정할 수 있어요. 더 높이려면 사람에게 요청하세요."
+                }
+            )
     cap = S.effective("task.priority_cap", project=project)
     if actor is None or not cap or priority <= cap:
         return
     if is_owner(actor, project) or is_admin(actor, project.org):
         return
-    raise ServiceError(
-        {"priority": f"중요도 {cap + 1} 이상은 프로젝트 관리자만 정할 수 있어요."}
-    )
+    raise ServiceError({"priority": f"중요도 {cap + 1} 이상은 프로젝트 관리자만 정할 수 있어요."})
 
 
 def doing_over_limit(user, org) -> tuple[int, int] | None:
@@ -214,6 +221,7 @@ def create_task(
     idempotency_key=None,
 ) -> Task:
     _require_member(actor, project)
+    ai_check(project.org, "create_task", source, "태스크 생성", "title")
     if idempotency_key:
         idempotency_key = idempotency_key[:100]
         hit = IdempotencyKey.objects.filter(
@@ -241,7 +249,7 @@ def create_task(
         title=title,
         actor=actor,
     )
-    _check_priority_cap(project, priority, actor)
+    _check_priority_cap(project, priority, actor, source)
     task = Task.objects.create(
         project=project,
         title=title.strip()[:200],
@@ -302,6 +310,15 @@ def update_task(
     unknown = set(changes) - EDITABLE
     if unknown:
         raise ServiceError({k: "수정할 수 없는 항목입니다." for k in sorted(unknown)})
+    org = task.project.org
+    if any(f in changes for f in TEXT_FIELDS):
+        ai_check(org, "edit_text", source, "본문 수정", "title")
+    if "assignee" in changes:
+        ai_check(org, "change_assignee", source, "담당자 변경", "assignee")
+    if "due_date" in changes or "no_due_reason" in changes:
+        ai_check(org, "change_due", source, "기한 변경", "due_date")
+    if "priority" in changes:
+        ai_check(org, "change_priority", source, "중요도 변경", "priority")
     for f in TEXT_FIELDS:
         if f in changes:
             update_text(task, f, changes[f], actor=actor)
@@ -332,7 +349,7 @@ def update_task(
     if not fields:
         return task
     if "priority" in fields:
-        _check_priority_cap(new["project"], fields["priority"], actor)
+        _check_priority_cap(new["project"], fields["priority"], actor, source)
     reason = (reason or "").strip()[:300]
     if actor is not None:
         if (
@@ -391,6 +408,12 @@ def transition(
         raise ServiceError({"status": "알 수 없는 상태입니다."})
     if new_status == task.status:
         return task
+    if task.is_closed:
+        ai_check(task.project.org, "reopen_task", source, "재개", "status")
+    elif new_status in Task.CLOSED:
+        ai_check(task.project.org, "close_task", source, "완료·취소 처리", "status")
+    else:
+        ai_check(task.project.org, "transition_open", source, "상태 변경", "status")
     if task.is_closed and new_status not in ("todo", "doing"):
         raise ServiceError(
             {
@@ -519,6 +542,7 @@ def extend_due(
     """목표일 연장. 기한이 없던 태스크는 목표일 정하기. 새 날짜는 현 기한보다 뒤, 사유 필수.
     이력에 'due_date' 행 하나, note='연장: 사유'. 진행 메모는 건드리지 않는다."""
     _require_member(actor, task.project)
+    ai_check(task.project.org, "change_due", source, "기한 변경", "due_date")
     if not task.is_open:
         raise ServiceError({"due_date": "완료·취소된 태스크의 기한은 바꿀 수 없습니다."})
     if new_date is None:
@@ -575,9 +599,10 @@ def delete_link(link, *, actor):
 
 
 @transaction.atomic
-def replace_checklist(task, items: list[dict], *, actor) -> list[ChecklistItem]:
+def replace_checklist(task, items: list[dict], *, actor, source="web") -> list[ChecklistItem]:
     """items: [{'text': str, 'is_done': bool}, ...]. 전체 교체."""
     _require_member(actor, task.project)
+    ai_check(task.project.org, "edit_text", source, "체크리스트 수정", "checklist")
     cleaned = []
     for i, item in enumerate(items):
         text = (item.get("text") or "").strip()

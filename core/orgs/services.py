@@ -22,6 +22,16 @@ def is_admin(user, org) -> bool:
     return OrgMembership.objects.filter(org=org, user=user, role="admin").exists()
 
 
+def ai_check(org, action: str, source: str, what: str, key: str = "status"):
+    """ai.* 정책. source == "mcp"(AI 에이전트 경로)에만 걸린다. 사람(web·api·dc)과 GitHub(gh)는 면제."""
+    if source != "mcp":
+        return
+    if not S.effective("ai.enabled", org=org) or S.effective(f"ai.{action}", org=org) == "deny":
+        raise ServiceError(
+            {key: f"이 조직 설정에서 AI의 {what}이 꺼져 있어요. 사람이 웹에서 해 주세요."}
+        )
+
+
 def require_admin(user, org):
     if not is_admin(user, org):
         raise ServiceError({"org": "조직 관리자만 할 수 있습니다."})
@@ -136,8 +146,9 @@ def _validate_team_name(org, name: str, exclude_pk=None) -> str:
     return name
 
 
-def create_team(*, org, name: str, purpose: str = "", actor) -> Team:
+def create_team(*, org, name: str, purpose: str = "", actor, source="web") -> Team:
     require_admin(actor, org)
+    ai_check(org, "manage_teams", source, "팀 관리", "name")
     return Team.objects.create(
         org=org,
         name=_validate_team_name(org, name),
@@ -164,9 +175,10 @@ def _self_join(team, user, actor) -> bool:
     return actor == user and S.effective("org.team_join_self", org=team.org)
 
 
-def add_team_member(team, user, actor) -> TeamMembership:
+def add_team_member(team, user, actor, source="web") -> TeamMembership:
     if not _self_join(team, user, actor):
         require_admin(actor, team.org)
+    ai_check(team.org, "manage_teams", source, "팀 관리", "user")
     if not is_member(user, team.org):
         raise ServiceError({"user": "먼저 조직에 초대해야 합니다."})
     if not user.is_active:
@@ -175,9 +187,10 @@ def add_team_member(team, user, actor) -> TeamMembership:
     return membership
 
 
-def remove_team_member(team, user, actor):
+def remove_team_member(team, user, actor, source="web"):
     if not _self_join(team, user, actor):
         require_admin(actor, team.org)
+    ai_check(team.org, "manage_teams", source, "팀 관리", "user")
     TeamMembership.objects.filter(team=team, user=user).delete()
 
 

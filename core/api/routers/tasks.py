@@ -122,7 +122,9 @@ def create_task_ep(request, payload: TaskCreateIn):
         **c,
     )
     if payload.checklist is not None and not task.checklist.exists():
-        replace_checklist(task, [i.dict() for i in payload.checklist], actor=c["actor"])
+        replace_checklist(
+            task, [i.dict() for i in payload.checklist], actor=c["actor"], source=c["source"]
+        )
     return 201, task_out(task)
 
 
@@ -145,7 +147,7 @@ def patch_task(request, task_id: int, payload: TaskPatchIn):
     if data:
         task = update_task(task, data, expected_version=version, reason=reason, **c)
     if checklist is not None:
-        replace_checklist(task, checklist, actor=c["actor"])
+        replace_checklist(task, checklist, actor=c["actor"], source=c["source"])
     return task_out(task)
 
 

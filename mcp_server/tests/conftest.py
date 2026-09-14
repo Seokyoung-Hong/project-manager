@@ -75,7 +75,17 @@ class FakeCore:
             self.tasks[1]["version"] += 1
             return httpx.Response(200, json=self.tasks[1])
         if p == "/api/orgs/1/governance" and request.method == "GET":
-            return httpx.Response(200, json={"text": "# 기본안", "is_default": True})
+            return httpx.Response(
+                200, json={"text": "# 기본안", "is_default": True, "enforced": []}
+            )
+        if p == "/api/orgs/1/settings" and request.method == "GET":
+            return httpx.Response(
+                200, json={"values": {"ai.close_task": "deny"}, "defaults": {}, "locked": []}
+            )
+        if p == "/api/projects/1/settings" and request.method == "GET":
+            return httpx.Response(
+                200, json={"values": {}, "effective": {"task.priority_cap": 7}, "locked": []}
+            )
         if p == "/api/tasks" and request.method == "POST":
             if json.loads(request.content).get("project_id") == 999:
                 return httpx.Response(404, json={"detail": "프로젝트를 찾을 수 없습니다."})
