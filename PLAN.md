@@ -7,6 +7,8 @@
 
 **구현 지시서:** 실제 구현은 [docs/GUIDE-00-rules.md](docs/GUIDE-00-rules.md)부터 시작하는 GUIDE 문서를 따른다. 이 계획서와 지시서가 다르면 지시서가 우선한다.
 
+**2026-09-14 기획 (설정·권한):** 코드에 굳어 있던 정책을 조직 → 프로젝트 → 개인 세 층의 설정으로 꺼내고, 프로젝트 관리자(`owners`)에게 실제 권한을 주며, AI(MCP) 쓰기 범위를 기계 규칙으로 옮긴다. 항목 목록·권한 표·단계는 [docs/IMPL-PLAN-4.md](docs/IMPL-PLAN-4.md). 구현 0줄.
+
 **2026-09-12 (v1 완료):** 위 v0.6 범위의 여덟 단계가 전부 끝났다. core 306 · discord_service 58 · mcp_server 16 테스트 통과(SQLite·Postgres). 결과·확인 내역·배포 전에 해야 할 일은 [docs/IMPL-REPORT-2.md](docs/IMPL-REPORT-2.md).
 
 **2026-09-11 추가 (v0.6):** 계층을 **조직 → 팀 → 멤버**로 바꾸고 GitHub 통합(App 설치·저장소 연결·자동 상태 전환·조직과 팀 관리)을 넣는다. 회의록·부하 현황·로드맵·API 문서 화면도 함께 들어온다. 결정과 근거는 [docs/IMPL-PLAN-2.md](docs/IMPL-PLAN-2.md), 구현 순서는 [docs/GUIDE-V2-00-overview.md](docs/GUIDE-V2-00-overview.md)에 있다. 이 계획서의 "팀"은 개명 전 용어이므로 조직으로 읽는다.
