@@ -1,5 +1,5 @@
 <div class="page-head"><h1 class="t24">{{ org.name }}</h1></div>
-<nav class="tabs" aria-label="조직 메뉴">
+<nav class="tabs org-tabs" aria-label="조직 메뉴">
   <a href="{% url 'org_detail' org.pk %}" {% if tab == "overview" %}aria-current="page"{% endif %}>개요</a>
   {% if is_admin %}<a href="{% url 'org_teams' org.pk %}" {% if tab == "teams" %}aria-current="page"{% endif %}>팀</a>{% endif %}
   <a href="{% url 'org_capacity' org.pk %}" {% if tab == "capacity" %}aria-current="page"{% endif %}>부하 현황</a>

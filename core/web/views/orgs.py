@@ -334,6 +334,8 @@ def org_settings(request, org_id):
                 "value": effective(s.key, org=org),
                 "display": display(s.key, effective(s.key, org=org)),
                 "unlocked": s.key not in locked,
+                "can_edit": is_admin,
+                "show_override": is_admin,
             }
             for s in specs
             if s.group == code

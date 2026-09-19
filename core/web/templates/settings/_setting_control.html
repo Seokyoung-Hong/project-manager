@@ -1,0 +1,21 @@
+{% if row.spec.kind == "bool" %}
+<label class="setting-toggle">
+  <input id="setting-{{ row.spec.key }}" type="checkbox" name="{{ row.spec.key }}"{% if row.value %} checked{% endif %}{% if row.spec.help %} aria-describedby="setting-help-{{ row.spec.key }}"{% endif %}>
+  <span class="setting-toggle-state" aria-hidden="true"></span>
+</label>
+{% elif row.spec.kind == "int" %}
+<input id="setting-{{ row.spec.key }}" class="input setting-number" type="number" name="{{ row.spec.key }}" value="{{ row.value }}" min="{{ row.spec.lo }}" max="{{ row.spec.hi }}"{% if row.spec.help %} aria-describedby="setting-help-{{ row.spec.key }}"{% endif %}>
+{% elif row.spec.kind == "choice" %}
+<select id="setting-{{ row.spec.key }}" class="select setting-select" name="{{ row.spec.key }}"{% if row.spec.help %} aria-describedby="setting-help-{{ row.spec.key }}"{% endif %}>
+  {% for code, clabel in row.spec.choices %}<option value="{{ code }}"{% if code == row.value %} selected{% endif %}>{{ clabel }}</option>{% endfor %}
+</select>
+{% elif row.spec.kind == "set" %}
+<fieldset class="setting-options" aria-labelledby="setting-label-{{ row.spec.key }}"{% if row.spec.help %} aria-describedby="setting-help-{{ row.spec.key }}"{% endif %}>
+  <legend class="sr-only">{{ row.spec.label }}</legend>
+  {% for code, clabel in row.spec.choices %}
+  <label class="setting-option"><input id="setting-{{ row.spec.key }}-{{ code }}" type="checkbox" name="{{ row.spec.key }}" value="{{ code }}"{% if code in row.value %} checked{% endif %}><span>{{ clabel }}</span></label>
+  {% endfor %}
+</fieldset>
+{% else %}
+<input id="setting-{{ row.spec.key }}" class="input setting-text" name="{{ row.spec.key }}" value="{{ row.value }}"{% if row.spec.help %} aria-describedby="setting-help-{{ row.spec.key }}"{% endif %}>
+{% endif %}

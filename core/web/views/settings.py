@@ -98,5 +98,17 @@ def preferences(request):
         except ServiceError as e:
             messages.error(request, " ".join(e.errors.values()))
         return redirect("preferences")
-    rows = [{"spec": s, "value": effective(s.key, user=user)} for s in specs]
-    return render(request, "settings/preferences.html", {"rows": rows})
+    rows = [
+        {
+            "spec": s,
+            "value": effective(s.key, user=user),
+            "can_edit": True,
+            "show_override": False,
+        }
+        for s in specs
+    ]
+    groups = [
+        ("알림", [row for row in rows if row["spec"].key.startswith("user.notify_")]),
+        ("화면 기본값", [row for row in rows if not row["spec"].key.startswith("user.notify_")]),
+    ]
+    return render(request, "settings/preferences.html", {"rows": rows, "groups": groups})

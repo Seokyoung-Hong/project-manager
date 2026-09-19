@@ -1,17 +1,16 @@
 {% extends "base.html" %}{% block title %}회의록{% endblock %}
 {% block main %}
 {% include "orgs/_tabs.html" %}
-<div class="notes-columns">
-  <section class="card list">
+<div class="notes-columns{% if editor_open %} note-editor-open{% endif %}">
+  <section class="card list note-list" id="note-list">
     <div class="card-head">
       <h1 class="t24">회의록</h1>
-      <label class="btn sm">.md 올리기
-        <form method="post" action="{% url 'note_upload' org.pk %}" enctype="multipart/form-data" style="display:none">
+      <form class="file-upload" method="post" action="{% url 'note_upload' org.pk %}" enctype="multipart/form-data">
           {% csrf_token %}
           <input type="hidden" name="project" value="{% if scope != 'all' and scope != 'team' %}{{ scope }}{% endif %}">
-          <input type="file" name="file" accept=".md,.markdown" onchange="this.form.requestSubmit()">
-        </form>
-      </label>
+          <input id="note-upload-file" class="file-upload-input" type="file" name="file" accept=".md,.markdown" onchange="this.form.requestSubmit()">
+          <label class="btn sm file-upload-button" for="note-upload-file">.md 올리기</label>
+      </form>
       <form method="post" action="{% url 'note_new' org.pk %}">{% csrf_token %}<button class="btn sm primary">새 회의록</button></form>
     </div>
     {# 범위는 프로젝트 수만큼 늘어난다. 칩을 늘어놓으면 줄이 끝없이 길어지므로 목록에서 고른다. #}
@@ -41,7 +40,7 @@
     <div class="section">
       <span class="label">{{ g.title }} · {{ g.hint }}</span>
       {% for n in g.items %}
-      <a class="note-item{% if note.pk == n.pk %} sel{% endif %}" href="?scope={{ scope }}{% if tag %}&amp;tag={{ tag|urlencode }}{% endif %}&amp;note={{ n.pk }}">
+      <a class="note-item{% if note.pk == n.pk %} sel{% endif %}" href="?scope={{ scope }}{% if tag %}&amp;tag={{ tag|urlencode }}{% endif %}&amp;note={{ n.pk }}"{% if note.pk == n.pk %} aria-current="page"{% endif %}>
         <b>{{ n.title }}</b>
         <span class="muted t13">{{ n.created_by.display_name }} · v{{ n.version }} · {{ n.updated_at|date:"n/j" }}</span>
         {% if n.tags %}<span class="row" style="gap:4px">{% for t in n.tags %}<span class="tag">{{ t }}</span>{% endfor %}</span>{% endif %}
@@ -53,27 +52,42 @@
   </section>
 
   {% if note %}
-  <section class="card" id="note-editor">
+  <section class="card note-editor-card" id="note-editor">
+    <div class="note-editor-toolbar">
+      <a class="btn sm note-back" href="?scope={{ scope }}{% if tag %}&amp;tag={{ tag|urlencode }}{% endif %}#note-list">← 회의록 목록</a>
+      <span id="note-status" class="note-save-status" data-state="saved" aria-live="polite">저장됨 · v{{ note.version }} · {{ note.updated_at|date:"n/j H:i" }}</span>
+    </div>
     <input class="title-input" data-note-field="title" value="{{ note.title }}" aria-label="제목">
-    <div class="row t13 muted">
-      <select class="select auto" data-note-field="project" aria-label="프로젝트">
-        <option value="">팀 공통 (프로젝트 없음)</option>
-        {% for p in projects %}<option value="{{ p.pk }}"{% if p.pk == note.project_id %} selected{% endif %}>{{ p.name }}</option>{% endfor %}
-      </select>
-      <span>{{ note.created_by.display_name }}</span>
-      <label class="row" style="gap:4px">회의 일시
+    <div class="note-meta">
+      <label class="note-meta-field">
+        <span class="label">프로젝트</span>
+        <select class="select" data-note-field="project" aria-label="프로젝트">
+          <option value="">팀 공통 (프로젝트 없음)</option>
+          {% for p in projects %}<option value="{{ p.pk }}"{% if p.pk == note.project_id %} selected{% endif %}>{{ p.name }}</option>{% endfor %}
+        </select>
+      </label>
+      <div class="note-meta-field note-author">
+        <span class="label">작성자</span>
+        <span class="note-author-value">{{ note.created_by.display_name }}</span>
+      </div>
+      <label class="note-meta-field note-date">
+        <span class="label">회의 일시</span>
         <input class="input auto" type="datetime-local" data-note-field="created_on" value="{{ note.created_on|date:'Y-m-d\TH:i' }}" aria-label="회의 일시">
       </label>
-      <label class="row grow" style="gap:4px">태그
+      <label class="note-meta-field note-tags">
+        <span class="label">태그</span>
         <input class="input auto" data-note-field="tags" value="{{ note.tags|join:', ' }}" placeholder="예: 스프린트, 결정사항" aria-label="태그">
       </label>
-      <span id="note-status" class="status" aria-live="polite">v{{ note.version }} · {{ note.updated_at|date:"n/j H:i" }}</span>
     </div>
     <div id="note-conflict" class="error" hidden>다른 사람이 먼저 수정했습니다. 새로고침한 뒤 다시 쓰세요.</div>
 
     <form id="doc-form" method="post" action="{% url 'note_save' note.pk %}">{% csrf_token %}
       <input type="hidden" name="field" value="body_md">
       <input type="hidden" name="version" value="{{ note.version }}">
+      <div class="doc-edit-toolbar">
+        <button type="button" class="btn sm doc-edit-start" aria-controls="doc-body">본문 편집</button>
+        <span class="muted t13">Enter로 시작 · Esc로 나가기</span>
+      </div>
       <div id="doc" class="doc" data-url="{% url 'note_save' note.pk %}" data-version="{{ note.version }}">
         <div id="doc-body"></div>
         <textarea id="doc-src" name="value" class="textarea" rows="16">{{ note.body_md }}</textarea>
@@ -85,7 +99,7 @@
       {# 한 줄에 12개를 욱여넣으면 아무도 읽지 않는다. 필요할 때 펼치게 둔다. #}
       <details class="grow">
         <summary>쓰는 법</summary>
-        <p class="t13 muted" style="margin-top:6px">아무 곳이나 눌러 바로 씁니다. 자동 저장됩니다.<br>
+        <p class="t13 muted" style="margin-top:6px">‘본문 편집’을 누르거나 본문을 눌러 바로 씁니다. 자동 저장됩니다. Esc로 편집을 마칩니다.<br>
           <code># 제목</code> · <code>- 목록</code> · <code>- [ ] 체크</code> · <code>&gt; 인용</code> · <code>---</code> 구분선 · <code>**굵게**</code> · <code>*기울임*</code> · <code>`코드`</code><br>
           Enter 새 줄, Backspace 합치기, 화살표로 이동.</p>
       </details>
@@ -93,7 +107,7 @@
     </div>
   </section>
   {% else %}
-  <section class="card">
+  <section class="card note-editor-card">
     <p class="muted t13">왼쪽에서 회의록을 고르거나 새로 만드세요.</p>
   </section>
   {% endif %}

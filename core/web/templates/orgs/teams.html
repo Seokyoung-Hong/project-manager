@@ -6,8 +6,10 @@
     <h2>멤버</h2>
   </div>
   <p class="muted t13">관리자 {{ admin_count }}명. 마지막 관리자는 역할을 바꾸거나 제거할 수 없습니다.</p>
-  <table class="grid">
-    <thead><tr><th>이름</th><th>역할</th><th>소속 팀</th><th>스킬 태그</th><th>Discord</th><th class="num">미완료</th><th></th></tr></thead>
+  <p class="table-scroll-hint">멤버 정보와 스킬 태그는 좌우로 이동해 확인하세요.</p>
+  <div class="table-scroll member-table-scroll" tabindex="0" role="region" aria-label="조직 멤버 관리, 좌우로 스크롤 가능">
+  <table class="grid member-table">
+    <thead><tr><th>이름</th><th>역할</th><th>소속 팀</th><th class="member-skills-cell">스킬 태그</th><th>Discord</th><th class="num">미완료</th><th></th></tr></thead>
     <tbody>
     {% for r in rows %}
     <tr>
@@ -21,9 +23,10 @@
         </form>
       </td>
       <td>{% for t in r.m.user.teams.all %}{% if t.org_id == org.pk %}<span class="badge">{{ t.name }}</span> {% endif %}{% endfor %}</td>
-      <td>
-        <form method="post" action="{% url 'member_tags' r.m.pk %}" class="row">{% csrf_token %}
-          <input class="input" name="tags" value="{{ r.m.tags|join:', ' }}" placeholder="백엔드, Django">
+      <td class="member-skills-cell">
+        <form method="post" action="{% url 'member_tags' r.m.pk %}" class="row member-skills-form">{% csrf_token %}
+          <label class="sr-only" for="member-tags-{{ r.m.pk }}">{{ r.m.user.display_name }} 스킬 태그</label>
+          <input class="input member-skills-input" id="member-tags-{{ r.m.pk }}" name="tags" value="{{ r.m.tags|join:', ' }}" placeholder="백엔드, Django">
           <button class="btn sm">저장</button>
         </form>
       </td>
@@ -35,6 +38,7 @@
     {% endfor %}
     </tbody>
   </table>
+  </div>
   <p class="muted t13">Discord가 &lsquo;없음&rsquo;인 멤버는 마감 알림 DM을 받지 못합니다. 본인이 프로필 → [Discord 연결]에서 코드를 받아 봇에게 DM으로 보내면 됩니다.</p>
 </section>
 <section class="card">

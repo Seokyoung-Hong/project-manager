@@ -1,17 +1,21 @@
-<section class="card schedule" aria-label="일정">
+<section id="today-schedule" class="card schedule today-schedule-card" tabindex="-1" aria-labelledby="today-schedule-title"
+         hx-get="{% url 'today' %}?part=schedule{% if today_state_query %}&amp;{{ today_state_query }}{% endif %}"
+         hx-trigger="task-changed from:body, task-updated from:body, today-changed from:body"
+         hx-swap="outerHTML">
   <div class="card-head">
-    <h2>일정</h2>
-    <div class="row" style="gap:4px">
+    <h2 id="today-schedule-title">일정</h2>
+    <div class="row schedule-actions" style="gap:4px">
       <a class="btn sm icon" href="{{ cal_prev }}" aria-label="이전 달" title="이전 달">‹</a>
       <span class="t13" style="min-width:96px;text-align:center;font-weight:600">{{ cal_title }}</span>
       <a class="btn sm icon" href="{{ cal_next }}" aria-label="다음 달" title="다음 달">›</a>
       {% if cal_this %}<a class="btn sm" href="{{ cal_this }}">이번 달</a>{% endif %}
+      <a class="btn sm" href="{% url 'today' %}#today-list">닫기</a>
     </div>
   </div>
   <div class="cal">
     {% for w in "월화수목금토일" %}<span class="muted t12">{{ w }}</span>{% endfor %}
     {% for c in cal_cells %}
-      {% if c %}<a href="{{ c.url }}" class="{% if c.today %}today{% endif %}{% if c.sel %} sel{% endif %}" aria-label="{{ c.aria }}">{{ c.day }}{% if c.n %}<small>●{{ c.n }}</small>{% endif %}</a>
+      {% if c %}<a href="{{ c.url }}" class="{% if c.today %}today{% endif %}{% if c.sel %} sel{% endif %}" aria-label="{{ c.aria }}"{% if c.today %} aria-current="date"{% endif %}>{{ c.day }}{% if c.n %}<small>●{{ c.n }}</small>{% endif %}</a>
       {% else %}<span></span>{% endif %}
     {% endfor %}
   </div>

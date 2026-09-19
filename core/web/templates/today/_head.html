@@ -1,10 +1,13 @@
-<div id="today-head" class="card" hx-get="{% url 'today' %}?part=head" hx-trigger="task-changed from:body, task-updated from:body, today-changed from:body" hx-swap="outerHTML">
-  <div class="card-head">
+<div id="today-head" class="card today-head-card" hx-get="{% url 'today' %}?part=head" hx-trigger="task-changed from:body, task-updated from:body, today-changed from:body" hx-swap="outerHTML">
+  <div class="card-head today-overview-head">
     <div><h1 class="t17">{{ date_label }}</h1><div class="muted t13">{{ today_hint }}</div></div>
-    <div class="stats">
-      <a class="stat" href="{% url 'me' %}?status=done_today"><b>{{ counts.done_today }}</b><span>오늘 완료</span></a>
-      <a class="stat" href="{% url 'me' %}?status=done_7d"><b>{{ counts.done_7d }}</b><span>지난 7일 완료</span></a>
-      <a class="stat" href="{% url 'me' %}"><b>{{ counts.my_open }}</b><span>남은 내 태스크</span></a>
+    <div class="today-metrics" aria-label="전체 조직 내 담당 태스크 지표">
+      <span class="today-scope-label">전체 조직 · 내 담당 태스크</span>
+      <div class="stats">
+        <a class="stat" href="{% url 'me' %}?status=done_today"><b>{{ counts.done_today }}</b><span>오늘 완료</span></a>
+        <a class="stat" href="{% url 'me' %}?status=done_7d"><b>{{ counts.done_7d }}</b><span>7일 완료</span></a>
+        <a class="stat" href="{% url 'me' %}"><b>{{ counts.my_open }}</b><span>미완료</span></a>
+      </div>
     </div>
   </div>
   {% if error %}<p class="error">{{ error }}</p>{% endif %}
@@ -18,7 +21,7 @@
       <span class="badge{% if focus.priority >= 8 %} high{% endif %}">중요도 {{ focus.priority }}/10</span>
       {% if focus.next_action %}<span>{{ focus.title }}</span>{% endif %}
     </div>
-    <div class="row">
+    <div class="row today-focus-actions">
       <form hx-post="{% url 'task_status' focus.pk %}" hx-target="#today-head" hx-swap="outerHTML">
         <input type="hidden" name="version" value="{{ focus.version }}">
         <input type="hidden" name="from" value="head">

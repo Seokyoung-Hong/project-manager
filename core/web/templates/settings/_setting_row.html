@@ -1,0 +1,34 @@
+<div class="setting-row{% if row.show_override %} setting-row-with-override{% endif %}" role="listitem">
+  <div class="setting-name">
+    {% if row.can_edit and row.spec.kind != "set" %}
+    <label id="setting-label-{{ row.spec.key }}" class="setting-label" for="setting-{{ row.spec.key }}">{{ row.spec.label }}</label>
+    {% else %}
+    <span id="setting-label-{{ row.spec.key }}" class="setting-label">{{ row.spec.label }}</span>
+    {% endif %}
+    {% if row.spec.help %}<span id="setting-help-{{ row.spec.key }}" class="muted t12 setting-help">{{ row.spec.help }}</span>{% endif %}
+    {% if row.locked %}
+      {% if is_admin %}<a class="badge setting-lock" href="{% url 'org_settings' project.org_id %}">조직에서 잠금 · 조직 설정에서 해제</a>
+      {% else %}<span class="badge setting-lock">조직에서 잠금</span>{% endif %}
+    {% endif %}
+  </div>
+  <div class="setting-control" aria-labelledby="setting-label-{{ row.spec.key }}">
+    {% if row.can_edit %}
+      {% include "settings/_setting_control.html" with row=row %}
+    {% else %}
+      <span class="setting-readonly">{{ row.display }}</span>
+    {% endif %}
+  </div>
+  {% if row.show_override %}
+  <div class="setting-override">
+    <span class="setting-override-label">프로젝트 변경 허용</span>
+    {% if row.spec.overridable %}
+    <label class="setting-toggle">
+      <input id="unlock-{{ row.spec.key }}" type="checkbox" name="unlock__{{ row.spec.key }}"{% if row.unlocked %} checked{% endif %} aria-label="{{ row.spec.label }} · 프로젝트 변경 허용">
+      <span class="setting-toggle-state" aria-hidden="true"></span>
+    </label>
+    {% else %}
+    <span class="muted t12 setting-fixed">조직에서 고정</span>
+    {% endif %}
+  </div>
+  {% endif %}
+</div>

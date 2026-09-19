@@ -1,22 +1,35 @@
 {% load rows %}
-<section id="today-list" class="card" aria-label="오늘 태스크" hx-get="{% url 'today' %}?part=list" hx-trigger="task-changed from:body, task-updated from:body, today-changed from:body" hx-swap="outerHTML">
-  <div class="card-head">
-    <h2>오늘 태스크 <span class="muted">{{ counts.today }}</span></h2>
-    <div class="row">
-      <span class="muted t13">중요도순</span>
-      <label class="muted t13">마감 기준 자동 담기
-        <select name="auto_pull_days" class="select auto" style="height:36px" hx-post="{% url 'today_settings' %}" hx-target="#today-list" hx-swap="outerHTML" hx-trigger="change">
-          {% for v, label in auto_pull_choices %}<option value="{{ v }}"{% if v == auto_pull_days %} selected{% endif %}>{{ label }}</option>{% endfor %}
-        </select>
-      </label>
-      <a class="btn sm" href="{% url 'today' %}?schedule={% if schedule_open %}0{% else %}1{% endif %}" aria-pressed="{% if schedule_open %}true{% else %}false{% endif %}">일정 보기</a>
+<section id="today-list" class="card today-list-card" tabindex="-1" aria-label="오늘 목록"
+         hx-get="{% url 'today' %}?part=list{% if today_state_query %}&amp;{{ today_state_query }}{% endif %}"
+         hx-trigger="task-changed from:body, task-updated from:body, today-changed from:body" hx-swap="outerHTML">
+  <div class="card-head today-list-head">
+    <div class="today-list-title">
+      <h2>오늘 목록 <span class="muted">{{ counts.today }}</span></h2>
+      <p class="muted t12">직접 담은 순서 · 자동 담김은 중요도순</p>
     </div>
+    <a class="btn sm today-schedule-toggle"
+       href="{% url 'today' %}?schedule={% if schedule_open %}0#today-list{% else %}1#today-schedule{% endif %}"
+       aria-expanded="{% if schedule_open %}true{% else %}false{% endif %}"
+       aria-controls="today-schedule">일정 {% if schedule_open %}닫기{% else %}보기{% endif %}</a>
   </div>
-  <p class="t13">오늘 마감 <a href="{% url 'me' %}?due=today">{{ counts.due_today }}</a> · 기한 초과 <a href="{% url 'me' %}?due=overdue">{{ counts.overdue }}</a> · 검토 대기 <a href="{% url 'me' %}?status=review">{{ counts.review }}</a> · 막힘 <a href="{% url 'me' %}?status=blocked">{{ counts.blocked }}</a></p>
+  <div class="today-list-tools">
+    <span class="today-scope-label">전체 조직 · 내 담당 태스크</span>
+    <label class="today-auto-pull muted t13">마감 자동 담기
+      <select name="auto_pull_days" class="select auto" aria-label="마감 기준 자동 담기" hx-post="{% url 'today_settings' %}{% if today_state_query %}?{{ today_state_query }}{% endif %}" hx-target="#today-list" hx-swap="outerHTML" hx-trigger="change">
+        {% for v, label in auto_pull_choices %}<option value="{{ v }}"{% if v == auto_pull_days %} selected{% endif %}>{{ label }}</option>{% endfor %}
+      </select>
+    </label>
+  </div>
+  <nav class="today-assigned-stats" aria-label="전체 조직 내 담당 태스크 상태">
+    <a href="{% url 'me' %}?due=today"><b>{{ counts.due_today }}</b><span>오늘 마감</span></a>
+    <a href="{% url 'me' %}?due=overdue"><b>{{ counts.overdue }}</b><span>기한 초과</span></a>
+    <a href="{% url 'me' %}?status=review"><b>{{ counts.review }}</b><span>검토 대기</span></a>
+    <a href="{% url 'me' %}?status=blocked"><b>{{ counts.blocked }}</b><span>막힘</span></a>
+  </nav>
   {% if counts.auto_pulled %}<p class="muted t13">마감 {{ auto_pull_days }}일 이내 자동 추가 {{ counts.auto_pulled }}건.</p>{% endif %}
-  {% if counts.excluded %}<p class="muted t13">오늘 제외 {{ counts.excluded }}건 · <button type="button" class="btn link" hx-post="{% url 'today_restore' %}" hx-target="#today-list" hx-swap="outerHTML">제외한 태스크 복원</button></p>{% endif %}
+  {% if counts.excluded %}<p class="muted t13">오늘 제외 {{ counts.excluded }}건 · <button type="button" class="btn link" hx-post="{% url 'today_restore' %}{% if today_state_query %}?{{ today_state_query }}{% endif %}" hx-target="#today-list" hx-swap="outerHTML">제외한 태스크 복원</button></p>{% endif %}
   <ul class="tasks">
     {% for r in rows %}{% task_row r %}{% empty %}<li class="muted">담긴 태스크가 없습니다. 내 태스크에서 “오늘 추가”를 누르면 여기에 표시됩니다.</li>{% endfor %}
   </ul>
-  <details><summary>오늘 완료 ({{ done_rows|length }})</summary><ul class="tasks" style="margin-top:8px">{% for r in done_rows %}{% task_row r %}{% endfor %}</ul></details>
+  <details class="today-done"><summary>오늘 완료 ({{ done_rows|length }})</summary><ul class="tasks" style="margin-top:8px">{% for r in done_rows %}{% task_row r %}{% endfor %}</ul></details>
 </section>

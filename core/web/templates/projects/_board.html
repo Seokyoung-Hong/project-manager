@@ -1,11 +1,22 @@
 {% load rows %}
 <div id="board" class="board" data-include-closed="{% if include_closed %}1{% endif %}">
-  {% for code, label, col in columns %}
-  <div class="col" data-status="{{ code }}">
-    <h3>{{ label }} <span class="muted">{{ col|length }}</span></h3>
-    <ul class="tasks">{% for r in col %}{% task_row r %}{% endfor %}</ul>
-    {% if not col %}<span class="t12" style="color:var(--text-disabled)">여기로 끌어다 놓기</span>{% endif %}
+  <div class="board-toolbar">
+    <p class="board-guide" id="board-guide">상태 열을 좌우로 이동해 전체 흐름을 확인하세요.</p>
+    <div class="board-nav" aria-label="보드 열 이동">
+      <button type="button" class="btn sm icon" data-action="scroll-board" data-direction="-1"
+              aria-label="이전 상태 열" title="이전 상태 열">‹</button>
+      <button type="button" class="btn sm icon" data-action="scroll-board" data-direction="1"
+              aria-label="다음 상태 열" title="다음 상태 열">›</button>
+    </div>
   </div>
-  {% endfor %}
+  <div class="board-track" tabindex="0" role="region" aria-label="상태별 태스크 보드" aria-describedby="board-guide">
+    {% for code, label, col in columns %}
+    <div class="col" data-status="{{ code }}">
+      <h3>{{ label }} <span class="muted">{{ col|length }}</span></h3>
+      <ul class="tasks">{% for r in col %}{% task_row r %}{% endfor %}</ul>
+      {% if not col %}<span class="t12" style="color:var(--text-disabled)">여기로 끌어다 놓기</span>{% endif %}
+    </div>
+    {% endfor %}
+  </div>
   {% if error %}<p class="error">{{ error }}</p>{% endif %}
 </div>

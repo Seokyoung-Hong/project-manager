@@ -60,6 +60,30 @@
 {% if user.is_authenticated %}
 <div class="frame">
   {% if nav == "project" %}
+  <details class="project-picker">
+    <summary aria-label="프로젝트 전환, 현재 {{ project.name|default:'프로젝트 선택' }}">
+      <span class="project-picker-copy">
+        <span class="project-picker-label">현재 프로젝트</span>
+        <strong>{{ project.name|default:"프로젝트 선택" }}</strong>
+      </span>
+      <span class="project-picker-total">{{ nav_projects|length }}</span>
+      <svg class="caret" viewBox="0 0 12 12" width="12" height="12" aria-hidden="true">
+        <path d="M2 4.5 6 8.5 10 4.5" fill="none" stroke="currentColor" stroke-width="1.6"
+              stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </summary>
+    <div class="project-picker-list">
+      {% for p in nav_projects %}
+      <a href="{% url 'project_detail' p.pk %}"{% if p.pk == current_project_id %} aria-current="page"{% endif %}>
+        <span class="initial">{{ p.name|initial }}</span>
+        <span class="label">{{ p.name }}</span>
+        <span class="count t12 muted">미완료 {{ p.open_count }}</span>
+      </a>
+      {% empty %}<span class="muted t13 project-picker-empty">프로젝트가 없습니다.</span>{% endfor %}
+      <button type="button" class="btn link project-picker-new"
+              hx-get="{% url 'project_new' %}?org={{ current_org.pk }}" hx-target="#dialog" hx-swap="innerHTML">＋ 새 프로젝트</button>
+    </div>
+  </details>
   <nav class="rail" aria-label="프로젝트" data-rail>
     <div class="rail-head">
       <span class="t13 muted grow rail-only">프로젝트 {{ nav_projects|length }}</span>

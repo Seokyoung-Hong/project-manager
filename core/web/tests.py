@@ -28,7 +28,8 @@ def test_root_redirects(client, member):
 
 def test_today_page_renders(logged, org, project, task):
     body = logged.get("/today").content.decode()
-    assert "오늘 태스크" in body
+    assert "오늘 목록" in body
+    assert "전체 조직 · 내 담당 태스크" in body
     assert "빠른 추가" in body
 
 
@@ -75,7 +76,14 @@ def test_status_change_conflict_shows_message(logged, task):
 
 def test_panel_contains_sections(logged, task):
     body = logged.get(f"/tasks/{task.pk}/panel").content.decode()
-    for needle in ("변경 이력", 'id="checklist"', "진행 메모", "목표일"):
+    for needle in (
+        "변경 이력",
+        'id="checklist"',
+        "진행 메모",
+        "목표일",
+        'class="panel-mobile-context"',
+        'aria-label="태스크 상세 닫기"',
+    ):
         assert needle in body
 
 
@@ -233,11 +241,24 @@ def test_me_group_buttons_mark_one(logged, task):
         body = logged.get(url).content.decode()
         assert group_row(body).count(pressed) == 1
         assert 'value="due" aria-pressed="true">기한별' in body
-        assert "<h2>기한 초과 <" in body and "<h2>미완료 <" not in body
+        assert "<h2>미완료 <" not in body
     body = logged.get("/me?member=0&group=none").content.decode()
     assert group_row(body).count(pressed) == 1
     assert 'value="none" aria-pressed="true">없음' in body
     assert "<h2>미완료 <" in body and "<h2>기한 초과 <" not in body
+
+
+def test_me_omits_empty_due_groups_and_marks_advanced_filters(logged, task):
+    body = logged.get("/me").content.decode()
+    assert task.title in body
+    assert "<h2>기한 초과 <" not in body
+    assert "<h2>오늘 마감 <" not in body
+    assert 'data-filter-active="0"' in body
+    assert "기한 · 프로젝트 · 상태 · 중요도" in body
+
+    filtered = logged.get("/me?priority=high").content.decode()
+    assert 'data-filter-active="1"' in filtered
+    assert "조건 적용됨" in filtered
 
 
 def test_me_sort_survives_filters(logged, task):
@@ -532,8 +553,32 @@ def test_project_index_empty_screen(logged, org):
 
 def test_rail_only_in_project_area(logged, org, project):
     assert 'class="rail"' not in logged.get("/today").content.decode()
+    assert 'class="project-picker"' not in logged.get("/today").content.decode()
     assert 'class="rail"' not in logged.get(f"/orgs/{org.pk}").content.decode()
-    assert 'class="rail"' in logged.get(f"/projects/{project.pk}").content.decode()
+    body = logged.get(f"/projects/{project.pk}").content.decode()
+    assert 'class="rail"' in body
+    assert 'class="project-picker"' in body
+
+
+def test_project_and_org_sibling_tabs_keep_shell_context(logged, org, project):
+    for url in (f"/projects/{project.pk}/docs", f"/projects/{project.pk}/settings"):
+        body = logged.get(url).content.decode()
+        assert 'href="/projects" aria-current="page"' in body
+        assert 'class="rail"' in body
+        assert f"프로젝트 전환, 현재 {project.name}" in body
+
+    for url in (f"/orgs/{org.pk}/governance", f"/orgs/{org.pk}/settings"):
+        body = logged.get(url).content.decode()
+        assert 'href="/org" aria-current="page"' in body
+
+
+def test_mobile_project_picker_names_current_project(logged, project, task):
+    body = logged.get(f"/projects/{project.pk}").content.decode()
+    assert f"프로젝트 전환, 현재 {project.name}" in body
+    assert f"<strong>{project.name}</strong>" in body
+    assert f'href="/projects/{project.pk}" aria-current="page"' in body
+    assert 'class="tiles five project-kpis" tabindex="0" role="region"' in body
+    assert "프로젝트 태스크 요약, 좌우로 스크롤 가능" in body
 
 
 def test_rail_shows_open_counts(logged, project, task):
@@ -642,6 +687,38 @@ def test_org_overview_tiles(logged, org, project, task):
     assert f"<b>{st['counts']['open']}</b>" in body
 
 
+def test_org_overview_marks_mobile_scroll_regions(as_admin, org, project, task):
+    body = as_admin.get(f"/orgs/{org.pk}").content.decode()
+    assert 'class="tabs org-tabs"' in body
+    assert 'class="tiles org-kpis" tabindex="0" role="region"' in body
+    assert 'aria-label="조직 태스크 요약, 좌우로 스크롤 가능"' in body
+    assert 'class="table-scroll" tabindex="0" role="region"' in body
+    assert 'class="grid project-table"' in body
+    assert 'class="grid assignee-table"' in body
+
+
+def test_capacity_uses_aligned_load_grid_and_focusable_summary(as_admin, org, project, task):
+    body = as_admin.get(f"/orgs/{org.pk}/capacity").content.decode()
+    assert 'class="tiles five org-kpis" tabindex="0" role="region"' in body
+    assert 'class="grow stack load-meter"' in body
+    assert 'class="chips load-tags"' in body
+    assert 'class="badge load-verdict' in body
+
+
+def test_roadmap_marks_responsive_timeline_regions(as_admin, org, project, admin):
+    from projects.services import create_milestone
+
+    create_milestone(
+        project=project,
+        name="모바일 마일스톤",
+        target_date=today_kst() + timedelta(days=7),
+        actor=admin,
+    )
+    body = as_admin.get(f"/orgs/{org.pk}/roadmap").content.decode()
+    assert 'class="card org-roadmap-card"' in body
+    assert 'class="row tl-actions"' in body
+
+
 # ---------- V2-03: 칸반 드래그 ----------
 
 
@@ -660,6 +737,14 @@ def test_board_part_renders_only_board(logged, project, task):
     r = logged.get(f"/projects/{project.pk}?view=board&part=board")
     body = r.content.decode().strip()
     assert body.startswith('<div id="board"')
+
+
+def test_board_has_explicit_scroll_navigation(logged, project, task):
+    body = logged.get(f"/projects/{project.pk}?view=board").content.decode()
+    assert 'class="board-track" tabindex="0" role="region"' in body
+    assert body.count('data-action="scroll-board"') == 2
+    assert 'aria-label="이전 상태 열"' in body
+    assert 'aria-label="다음 상태 열"' in body
 
 
 def test_drop_changes_status_and_returns_board(logged, task):
@@ -730,6 +815,59 @@ def test_schedule_has_no_time_view(logged, task):
     assert '<div class="cal">' in body
 
 
+def test_schedule_disclosure_and_date_state_are_accessible(logged, task):
+    body = logged.get("/today?schedule=1").content.decode()
+    assert 'href="/today?schedule=0#today-list"' in body
+    assert 'aria-expanded="true"' in body
+    assert 'aria-controls="today-schedule"' in body
+    assert 'class="card today-list-card" tabindex="-1"' in body
+    assert 'id="today-schedule"' in body
+    assert 'aria-current="date"' in body
+    assert "선택됨" in body
+    assert "일정 닫기" in body
+
+
+def test_schedule_state_survives_htmx_partial_refreshes(logged, task):
+    current = "http://testserver/today?schedule=1&month=2026-08&day=2026-08-12"
+    headers = {**HX, "HX-Current-URL": current}
+
+    body = logged.get("/today?part=list", headers=headers).content.decode()
+    assert 'href="/today?schedule=0#today-list"' in body
+    assert 'aria-expanded="true"' in body
+
+    body = logged.get("/today?part=schedule", headers=headers).content.decode()
+    assert "2026년 8월" in body
+    assert "8월 12일" in body
+    assert (
+        'hx-trigger="task-changed from:body, task-updated from:body, today-changed from:body"'
+        in body
+    )
+
+    body = logged.post(
+        "/today/settings",
+        {"auto_pull_days": 3},
+        headers=headers,
+    ).content.decode()
+    assert 'aria-expanded="true"' in body
+    assert "일정 닫기" in body
+
+
+def test_schedule_state_is_explicit_when_task_panel_owns_current_url(logged, task):
+    state = "schedule=1&month=2026-08&day=2026-08-12"
+    escaped_state = state.replace("&", "&amp;")
+    headers = {**HX, "HX-Current-URL": f"http://testserver/tasks/{task.pk}"}
+
+    body = logged.get(f"/today?part=list&{state}", headers=headers).content.decode()
+    assert f"/today?part=list&amp;{escaped_state}" in body
+    assert f"/tasks/{task.pk}/status?{escaped_state}" in body
+    assert 'aria-expanded="true"' in body
+    assert "일정 닫기" in body
+
+    body = logged.get(f"/today?part=schedule&{state}", headers=headers).content.decode()
+    assert f"/today?part=schedule&amp;{escaped_state}" in body
+    assert "2026년 8월" in body
+
+
 def test_schedule_cells_multiple_of_seven(member, task):
     from datetime import date
 
@@ -741,6 +879,7 @@ def test_schedule_cells_multiple_of_seven(member, task):
     req.user = member
     ctx = _schedule(req, date(2026, 9, 12))
     assert len(ctx["cal_cells"]) in (28, 35, 42)
+    assert ctx["cal_prev"].endswith("#today-schedule")
 
 
 def test_schedule_month_nav(logged, task):
@@ -829,14 +968,35 @@ def test_note_click_shows_selected_body(logged, org, member):
     n2 = create_note(org=org, actor=member, title="둘째 회의록", body_md="둘째 회의 본문")
 
     body = logged.get(f"/orgs/{org.pk}/notes?scope=all&note={n2.pk}").content.decode()
+    assert 'class="notes-columns note-editor-open"' in body
     assert 'class="doc"' in body
     assert 'id="doc-src"' in body
+    assert 'class="card note-editor-card" id="note-editor"' in body
+    assert 'class="btn sm note-back"' in body
+    assert 'class="note-save-status" data-state="saved"' in body
+    assert "저장됨 · v1" in body
+    assert 'aria-current="page"' in body
     assert "둘째 회의 본문" in body
     assert "첫 회의 본문" not in body
 
     body = logged.get(f"/orgs/{org.pk}/notes?scope=all&note={n1.pk}").content.decode()
     assert "첫 회의 본문" in body
     assert "둘째 회의 본문" not in body
+
+
+def test_note_list_mode_is_distinct_from_requested_editor(logged, org, member):
+    from notes.services import create_note
+
+    note = create_note(org=org, actor=member, title="목록과 편집기")
+    body = logged.get(f"/orgs/{org.pk}/notes?scope=all").content.decode()
+    assert 'class="notes-columns">' in body
+    assert 'class="notes-columns note-editor-open"' not in body
+    assert 'class="card list note-list" id="note-list"' in body
+    assert f"note={note.pk}" in body
+
+    selected = logged.get(f"/orgs/{org.pk}/notes?scope=all&note={note.pk}").content.decode()
+    assert 'class="notes-columns note-editor-open"' in selected
+    assert "← 회의록 목록" in selected
 
 
 def test_note_save_bumps_version(logged, org, member):
@@ -1057,6 +1217,22 @@ def test_docs_tab_is_always_there(logged, project, settings):
     assert f"/projects/{project.pk}/repo" not in body  # GitHub 탭만 사라진다
 
 
+def test_file_upload_controls_are_keyboard_focusable(logged, org, project):
+    pages = (
+        (f"/projects/{project.pk}/docs", "doc-upload-file"),
+        (f"/projects/{project.pk}/api", "api-upload-file"),
+        (f"/orgs/{org.pk}/notes?scope=all", "note-upload-file"),
+    )
+    for url, control_id in pages:
+        body = logged.get(url).content.decode()
+        control = re.search(rf'<input[^>]*id="{re.escape(control_id)}"[^>]*>', body)
+        assert control is not None
+        assert 'class="file-upload-input"' in control.group()
+        assert " hidden" not in control.group()
+        assert f'for="{control_id}"' in body
+    assert 'style="display:none"' not in logged.get(f"/projects/{project.pk}/docs").content.decode()
+
+
 def test_doc_new_then_edit_through_the_screen(logged, project, member):
     r = logged.post(f"/projects/{project.pk}/docs/new")
     assert r.status_code == 302 and "?doc=" in r.headers["Location"]
@@ -1196,6 +1372,7 @@ def test_org_lock_blocks_project_override(as_admin, org, project):
 
     body = as_admin.get(f"/projects/{project.pk}/settings").content.decode()
     assert "조직에서 잠금" in body
+    assert 'id="setting-task.require_done_when"' not in body
 
     as_admin.post(f"/projects/{project.pk}/settings", {"task.require_done_when": "off"})
     project.refresh_from_db()
@@ -1238,6 +1415,25 @@ def test_preferences_roundtrip(logged, member):
     assert r.status_code == 302
     member.refresh_from_db()
     assert member.settings.get("user.start_page") == "me"
+
+
+def test_settings_controls_have_programmatic_labels(client, member, admin, org, project):
+    client.force_login(member)
+    personal = client.get("/settings/preferences").content.decode()
+    assert 'for="setting-user.notify_dm"' in personal
+    assert 'id="setting-user.notify_kinds-d3"' in personal
+    assert 'aria-describedby="setting-help-user.notify_hour"' in personal
+
+    client.force_login(admin)
+    organization = client.get(f"/orgs/{org.pk}/settings").content.decode()
+    assert 'aria-label="기본 중요도 · 프로젝트 변경 허용"' in organization
+    assert 'class="settings-save-bar"' in organization
+    assert organization.count('class="card settings-section"') == 5
+
+    project_page = client.get(f"/projects/{project.pk}/settings").content.decode()
+    assert "{# 태스크 규칙" not in project_page
+    assert "프로젝트 설정 저장" in project_page
+    assert "거버넌스 저장" in project_page
 
 
 def test_governance_shows_enforced_settings(as_admin, org):
@@ -1285,7 +1481,11 @@ def test_project_settings_groups_share_one_card_with_the_save_button(client, pro
     """태스크 규칙·프로젝트 권한·알림은 한 번에 저장되는 한 벌이다 — 카드도 하나다."""
     client.force_login(admin)
     body = client.get(f"/projects/{project.pk}/settings").content.decode()
-    rules = body[body.index('<form method="post">') : body.index("설정 저장")]
+    rules = body[
+        body.index('<form method="post" class="settings-form project-settings-form">') : body.index(
+            "프로젝트 설정 저장"
+        )
+    ]
     assert rules.count('<section class="card') == 1
 
 

@@ -1,11 +1,11 @@
 {% extends "base.html" %}{% load rows %}{% block title %}{{ project.name }}{% endblock %}
 {% block main %}
 {% include "projects/_tabs.html" %}
-<div class="card">
-  <div class="card-head">
-    <div class="stack">
+<div class="card project-summary">
+  <div class="card-head project-summary-head">
+    <div class="stack project-summary-copy">
       {% if project.purpose %}<p class="muted">{{ project.purpose }}</p>{% endif %}
-      <div class="row t13">
+      <div class="row t13 project-meta">
         <span>관리자 {% for u in owners %}{{ u.display_name }}{% if not forloop.last %}, {% endif %}{% empty %}<span class="warning">미지정</span>{% endfor %}</span>
         <span class="badge">{{ project.status_label }}</span>
         {% for l in links %}<a href="{{ l.url }}" target="_blank" rel="noopener">{{ l.get_kind_display }}: {{ l.title }}</a>{% endfor %}
@@ -14,13 +14,13 @@
       </div>
       <p class="muted t13">{{ project.status_desc }}</p>
     </div>
-    <div class="row">
+    <div class="row project-actions">
       <button type="button" class="btn" hx-get="{% url 'project_edit' project.pk %}" hx-target="#dialog" hx-swap="innerHTML">프로젝트 수정</button>
       <button type="button" class="btn primary" data-action="toggle" data-target="#task-form" data-alt="닫기">{% if form_open %}닫기{% else %}태스크 만들기{% endif %}</button>
     </div>
   </div>
   {% include "projects/_task_form.html" %}
-  <div class="tiles five">
+  <div class="tiles five project-kpis" tabindex="0" role="region" aria-label="프로젝트 태스크 요약, 좌우로 스크롤 가능">
     <div class="tile"><b>{{ stats.done }}/{{ stats.total }}</b><span>완료</span></div>
     <div class="tile"><b>{{ stats.open }}</b><span>미완료</span></div>
     <div class="tile"><b{% if stats.overdue %} class="danger"{% endif %}>{{ stats.overdue }}</b><span>기한 초과</span></div>
@@ -28,7 +28,7 @@
     <div class="tile"><b{% if stats.blocked %} class="danger"{% endif %}>{{ stats.blocked }}</b><span>막힘</span></div>
   </div>
 </div>
-<section class="card">
+<section class="card project-task-surface" id="project-tasks">
   <div class="card-head">
     <div class="row" role="group" aria-label="보기">
       <a class="btn sm" href="?view=list{% if include_closed %}&include_closed=1{% endif %}" aria-pressed="{% if view == 'list' %}true{% else %}false{% endif %}">목록</a>

@@ -1,53 +1,31 @@
 {% extends "base.html" %}{% block title %}{{ project.name }} · 설정{% endblock %}
 {% block main %}
 {% include "projects/_tabs.html" %}
-{% if not editable %}<p class="muted t13">이 설정은 프로젝트 관리자만 고칠 수 있습니다.</p>{% endif %}
-<form method="post">{% csrf_token %}
-{# 태스크 규칙·프로젝트 권한·알림은 한 번에 저장되는 한 벌이다. 카드를 쪼개면 저장 버튼이
-   어느 묶음에 걸리는지 헷갈린다 — 한 장에 담고 버튼도 그 안에 둔다. #}
+<form method="post" class="settings-form project-settings-form">{% csrf_token %}
+{% comment %}태스크 규칙·프로젝트 권한·알림은 한 번에 저장되는 한 벌이다.{% endcomment %}
 <section class="card settings-card">
-{% for label, rows in groups %}
-  <h2>{{ label }}</h2>
-  <table class="grid">
-    <thead><tr><th>항목</th><th>값</th></tr></thead>
-    <tbody>
-    {% for row in rows %}
-    <tr>
-      <td>{{ row.spec.label }}{% if row.spec.help %}<div class="muted t12">{{ row.spec.help }}</div>{% endif %}
-        {% if row.locked %}
-          {% if is_admin %}<a class="badge" href="{% url 'org_settings' project.org_id %}">조직에서 잠금 · 풀려면 설정에서</a>
-          {% else %}<span class="badge">조직에서 잠금</span>{% endif %}
-        {% endif %}
-      </td>
-      <td>
-        {% if editable and not row.locked %}
-          {% if row.spec.kind == "bool" %}
-            <input type="checkbox" name="{{ row.spec.key }}" {% if row.value %}checked{% endif %}>
-          {% elif row.spec.kind == "int" %}
-            <input class="input" type="number" name="{{ row.spec.key }}" value="{{ row.value }}" min="{{ row.spec.lo }}" max="{{ row.spec.hi }}" style="width:6em">
-          {% elif row.spec.kind == "choice" %}
-            <select class="select" name="{{ row.spec.key }}">
-              {% for code, clabel in row.spec.choices %}<option value="{{ code }}" {% if code == row.value %}selected{% endif %}>{{ clabel }}</option>{% endfor %}
-            </select>
-          {% elif row.spec.kind == "set" %}
-            <div class="stack t13">
-            {% for code, clabel in row.spec.choices %}
-              <label class="row"><input type="checkbox" name="{{ row.spec.key }}" value="{{ code }}" {% if code in row.value %}checked{% endif %}> {{ clabel }}</label>
-            {% endfor %}
-            </div>
-          {% else %}
-            <input class="input" name="{{ row.spec.key }}" value="{{ row.value }}">
-          {% endif %}
-        {% else %}
-          {{ row.display }}
-        {% endif %}
-      </td>
-    </tr>
-    {% endfor %}
-    </tbody>
-  </table>
-{% endfor %}
-{% if editable %}<button class="btn primary">설정 저장</button>{% endif %}
+  <div class="settings-heading">
+    <div><h2>프로젝트 설정</h2><p class="muted t13">이 프로젝트의 태스크 규칙·기본 화면·알림을 한 번에 저장합니다.</p></div>
+    <span class="badge">{{ groups|length }}개 섹션</span>
+  </div>
+  <div class="notice settings-scope-note">
+    <span aria-hidden="true">ⓘ</span>
+    <span>{% if editable %}조직에서 변경을 허용한 항목만 수정할 수 있습니다. “조직에서 잠금”은 조직 값을 표시하며 이 화면에서 바꿀 수 없습니다.{% else %}프로젝트 관리자만 고칠 수 있습니다. 현재 적용값을 읽기 전용으로 표시합니다.{% endif %}</span>
+  </div>
+  <nav class="settings-jump" aria-label="프로젝트 설정 섹션">
+    {% for label, group_rows in groups %}<a class="chip" href="#project-settings-group-{{ forloop.counter }}" data-action="open-settings-group" data-target="#project-settings-group-{{ forloop.counter }}">{{ label }} <span>{{ group_rows|length }}</span></a>{% endfor %}
+  </nav>
+  {% if editable %}<div class="settings-save-bar"><span class="settings-save-hint">세 섹션을 함께 저장합니다.</span><button class="btn primary">프로젝트 설정 저장</button></div>{% endif %}
+  {% for label, group_rows in groups %}
+  <details id="project-settings-group-{{ forloop.counter }}" class="settings-section"{% if forloop.first %} open{% endif %}>
+    <summary class="settings-section-summary"><span>{{ label }}</span><span class="muted t12">{{ group_rows|length }}개 항목</span></summary>
+    <div class="settings-section-body">
+      <div class="settings-list" role="list">
+        {% for row in group_rows %}{% include "settings/_setting_row.html" with row=row %}{% endfor %}
+      </div>
+    </div>
+  </details>
+  {% endfor %}
 </section>
 </form>
 
@@ -67,7 +45,7 @@
       <label class="row"><input type="checkbox" name="rule_pr" {% if repo_state.conn.rule_pr %}checked{% endif %}> PR 오픈 → 검토 대기</label>
       <label class="row"><input type="checkbox" name="rule_merge" {% if repo_state.conn.rule_merge %}checked{% endif %}> 머지 → 완료</label>
     </div>
-    <button class="btn sm primary">규칙 저장</button>
+    <button class="btn sm primary">저장소 규칙 저장</button>
   </form>
   <p class="muted t13">저장소 연결·해제와 이슈 가져오기는 <a href="{% url 'project_repo' project.pk %}">GitHub 탭</a>에서 합니다.</p>
   {% else %}
@@ -121,7 +99,7 @@
   <form method="post" class="stack">{% csrf_token %}
     <input type="hidden" name="action" value="governance_extra">
     <textarea name="governance_extra" class="textarea" rows="8">{{ governance_extra }}</textarea>
-    <button class="btn primary">저장</button>
+    <button class="btn primary">거버넌스 저장</button>
   </form>
   {% else %}
   <p class="t13">{{ governance_extra|default:"없음" }}</p>

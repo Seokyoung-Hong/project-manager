@@ -8,22 +8,33 @@
       {% for m in members %}<option value="{{ m.pk }}"{% if m.pk == member_id %} selected{% endif %}>{% if m.pk == user.pk %}나{% else %}{{ m.display_name }}{% endif %}</option>{% endfor %}
     </select>
   </div>
-  <form id="me-filter" method="get" class="row">
+  <form id="me-filter" method="get" class="me-filter">
     <input type="hidden" name="group" value="{{ group }}">
     <input type="hidden" name="sort" value="{{ sort }}">
-    <span class="seg" role="group" aria-label="묶음">
-      <span class="seg-label">묶음</span>
-      {% for code, label in group_options %}<button class="btn sm" name="group" value="{{ code }}" aria-pressed="{% if code == group %}true{% else %}false{% endif %}">{{ label }}</button>{% endfor %}
-    </span>
-    <span class="seg" role="group" aria-label="정렬">
-      <span class="seg-label">정렬</span>
-      {% for code, label in sort_options %}<button class="btn sm" name="sort" value="{{ code }}" aria-pressed="{% if code == sort %}true{% else %}false{% endif %}">{{ label }}</button>{% endfor %}
-    </span>
-    <select name="due" class="select auto" aria-label="기한" onchange="this.form.requestSubmit()">{% for code, label in due_options %}<option value="{{ code }}"{% if code == f.due %} selected{% endif %}>{{ label }}</option>{% endfor %}</select>
-    <select name="project" class="select auto" aria-label="프로젝트" onchange="this.form.requestSubmit()"><option value="">모든 프로젝트</option>{% for p in projects %}<option value="{{ p.pk }}"{% if p.pk|stringformat:"s" == f.project %} selected{% endif %}>{{ p.name }}</option>{% endfor %}</select>
-    <select name="status" class="select auto" aria-label="상태" onchange="this.form.requestSubmit()">{% for code, label in status_options %}<option value="{{ code }}"{% if code == f.status %} selected{% endif %}>{{ label }}</option>{% endfor %}</select>
-    <select name="priority" class="select auto" aria-label="중요도" onchange="this.form.requestSubmit()">{% for code, label in priority_options %}<option value="{{ code }}"{% if code == f.priority %} selected{% endif %}>{{ label }}</option>{% endfor %}</select>
-    {% if has_filter %}<a class="btn" href="{% url 'me' %}?member={{ member_id }}&group={{ group }}&sort={{ sort }}">필터 지우기</a>{% endif %}
+    <div class="me-primary-controls">
+      <span class="seg" role="group" aria-label="묶음">
+        <span class="seg-label">묶음</span>
+        {% for code, label in group_options %}<button class="btn sm" name="group" value="{{ code }}" aria-pressed="{% if code == group %}true{% else %}false{% endif %}">{{ label }}</button>{% endfor %}
+      </span>
+      <span class="seg" role="group" aria-label="정렬">
+        <span class="seg-label">정렬</span>
+        {% for code, label in sort_options %}<button class="btn sm" name="sort" value="{{ code }}" aria-pressed="{% if code == sort %}true{% else %}false{% endif %}">{{ label }}</button>{% endfor %}
+      </span>
+    </div>
+    <details class="me-filter-details" open data-filter-active="{% if has_filter %}1{% else %}0{% endif %}">
+      <summary class="btn sm">
+        <span>필터</span>
+        <span class="filter-summary">{% if has_filter %}조건 적용됨{% else %}기한 · 프로젝트 · 상태 · 중요도{% endif %}</span>
+        <span class="filter-chevron" aria-hidden="true">⌄</span>
+      </summary>
+      <div class="filter-body">
+        <select name="due" class="select auto" aria-label="기한" onchange="this.form.requestSubmit()">{% for code, label in due_options %}<option value="{{ code }}"{% if code == f.due %} selected{% endif %}>{{ label }}</option>{% endfor %}</select>
+        <select name="project" class="select auto" aria-label="프로젝트" onchange="this.form.requestSubmit()"><option value="">모든 프로젝트</option>{% for p in projects %}<option value="{{ p.pk }}"{% if p.pk|stringformat:"s" == f.project %} selected{% endif %}>{{ p.name }}</option>{% endfor %}</select>
+        <select name="status" class="select auto" aria-label="상태" onchange="this.form.requestSubmit()">{% for code, label in status_options %}<option value="{{ code }}"{% if code == f.status %} selected{% endif %}>{{ label }}</option>{% endfor %}</select>
+        <select name="priority" class="select auto" aria-label="중요도" onchange="this.form.requestSubmit()">{% for code, label in priority_options %}<option value="{{ code }}"{% if code == f.priority %} selected{% endif %}>{{ label }}</option>{% endfor %}</select>
+        {% if has_filter %}<a class="btn sm" href="{% url 'me' %}?member={{ member_id }}&group={{ group }}&sort={{ sort }}">필터 지우기</a>{% endif %}
+      </div>
+    </details>
   </form>
 </div>
 {% for g in groups %}

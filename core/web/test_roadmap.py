@@ -75,3 +75,24 @@ def test_roadmap_tabs_visible_to_member(logged, org):
     assert "부하 현황" in body
     assert "로드맵" in body
     assert logged.get(f"/orgs/{org.pk}/roadmap").status_code == 200
+
+
+def test_roadmap_dependency_rows_have_responsive_regions(logged, org, project, admin):
+    from projects.services import create_dependency, create_project
+
+    other = create_project(org=org, name="다른 프로젝트", actor=admin, owners=[admin])
+    create_dependency(
+        from_project=project,
+        to_project=other,
+        actor=admin,
+        note="공통 인증 API 안정화 후 출시",
+        is_blocking=True,
+    )
+
+    body = logged.get(f"/orgs/{org.pk}/roadmap").content.decode()
+    assert 'class="card org-dependencies-card"' in body
+    assert 'class="dependency-row"' in body
+    assert 'class="dependency-route"' in body
+    assert 'class="dependency-note muted t13"' in body
+    assert 'class="dependency-form"' in body
+    assert 'aria-label="학식 API에서 다른 프로젝트 의존성 삭제"' in body

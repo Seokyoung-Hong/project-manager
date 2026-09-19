@@ -919,7 +919,9 @@ def me_view(
             grp("그 이후", preds["later"]),
             grp("기한 미정", preds["none"]),
         ]
-        groups = [g for g in groups if g["count"] or (g["empty_text"] and not due)]
+        # 빈 기한 구간을 큰 카드로 먼저 나열하면 실제 태스크가 화면 아래로 밀린다.
+        # 결과가 하나도 없을 때는 아래의 단일 '결과 없음' 상태가 같은 피드백을 맡는다.
+        groups = [g for g in groups if g["count"]]
     if not groups:
         groups = [
             {

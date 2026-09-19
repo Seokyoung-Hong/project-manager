@@ -9,10 +9,10 @@
   <label class="field">이름<input class="input" name="name" value="{{ values.name }}" required autofocus></label>
   <label class="field">시작일<input class="input" type="date" name="start_date" value="{{ values.start_date }}"></label>
   <label class="field">목표일<input class="input" type="date" name="target_date" value="{{ values.target_date }}" required></label>
-  <div class="section">
-    <span class="label">상태</span>
+  <fieldset class="choice-fieldset">
+    <legend>상태</legend>
     <div class="radios">{% for code, label in statuses %}<label class="radio-card"><input type="radio" name="status" value="{{ code }}"{% if values.status == code %} checked{% endif %}><b>{{ label }}</b></label>{% endfor %}</div>
-  </div>
+  </fieldset>
   {% for msg in errors.values %}<div class="error">{{ msg }}</div>{% endfor %}
   <div class="row">
     <button class="btn primary">{% if ms %}변경 내용 저장{% else %}마일스톤 만들기{% endif %}</button>
