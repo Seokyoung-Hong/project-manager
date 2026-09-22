@@ -1,5 +1,5 @@
 {% load rows %}<li id="task-{{ task.pk }}"
-    class="task-row{% if task.is_closed %} closed{% endif %}{% if selected %} selected{% endif %}"
+    class="task-row{% if in_today_page %} today-task-row{% endif %}{% if task.is_closed %} closed{% endif %}{% if selected %} selected{% endif %}"
     role="button" tabindex="0" aria-label="{{ task.title }} 상세 보기"
     data-id="{{ task.pk }}" data-panel="{% url 'task_panel' task.pk %}"
     {% if in_board %}draggable="true" data-version="{{ task.version }}" data-status="{{ task.status }}"{% endif %}
@@ -27,7 +27,7 @@
       <input type="hidden" name="opts" value="{{ row_opts }}">
       <select name="status" class="pill {{ task.status }}" aria-label="상태"
               data-status="{{ task.status }}" data-id="{{ task.pk }}" data-panel="{% url 'task_panel' task.pk %}"
-              hx-post="{% url 'task_status' task.pk %}" hx-target="#task-{{ task.pk }}" hx-swap="outerHTML"
+              hx-post="{% url 'task_status' task.pk %}{% if today_state_query %}?{{ today_state_query }}{% endif %}" hx-target="#task-{{ task.pk }}" hx-swap="outerHTML"
               hx-trigger="change[!(this.value=='blocked' && this.dataset.status!='blocked')]"
               {% if read_only %}disabled{% endif %}>
         {% for code, label in task.STATUSES %}<option value="{{ code }}"{% if code == task.status %} selected{% endif %}>{{ code|status_mark }} {{ label }}</option>{% endfor %}
@@ -45,8 +45,8 @@
     {% endif %}
     <button type="button" class="btn sm icon" data-copy="{{ task.pk }}" aria-label="바로가기 링크 복사" title="바로가기 링크 복사"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M6.5 9.5l3-3M7 4.5l1.2-1.2a2.8 2.8 0 014 4L11 8.5M9 11.5l-1.2 1.2a2.8 2.8 0 01-4-4L5 7.5"></path></svg></button>
     {% if show_move %}
-    <button type="button" class="btn sm icon" hx-post="{% url 'today_move' task.pk 'up' %}" hx-target="#today-list" hx-swap="outerHTML" aria-label="위로">↑</button>
-    <button type="button" class="btn sm icon" hx-post="{% url 'today_move' task.pk 'down' %}" hx-target="#today-list" hx-swap="outerHTML" aria-label="아래로">↓</button>
+    <button type="button" class="btn sm icon" hx-post="{% url 'today_move' task.pk 'up' %}?{{ row_query }}" hx-target="#today-list" hx-swap="outerHTML" aria-label="위로">↑</button>
+    <button type="button" class="btn sm icon" hx-post="{% url 'today_move' task.pk 'down' %}?{{ row_query }}" hx-target="#today-list" hx-swap="outerHTML" aria-label="아래로">↓</button>
     {% endif %}
   </div>
 </li>

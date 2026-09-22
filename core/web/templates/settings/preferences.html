@@ -1,39 +1,25 @@
 {% extends "base.html" %}{% block title %}환경설정{% endblock %}
 {% block main %}
 {% with settings_tab="preferences" %}{% include "settings/_tabs.html" %}{% endwith %}
-<div class="card">
-  <h2>환경설정</h2>
-  <form method="post">{% csrf_token %}
-  <table class="grid">
-    <thead><tr><th>항목</th><th>값</th></tr></thead>
-    <tbody>
-    {% for row in rows %}
-    <tr>
-      <td>{{ row.spec.label }}{% if row.spec.help %}<div class="muted t12">{{ row.spec.help }}</div>{% endif %}</td>
-      <td>
-        {% if row.spec.kind == "bool" %}
-          <input type="checkbox" name="{{ row.spec.key }}" {% if row.value %}checked{% endif %}>
-        {% elif row.spec.kind == "int" %}
-          <input class="input" type="number" name="{{ row.spec.key }}" value="{{ row.value }}" min="{{ row.spec.lo }}" max="{{ row.spec.hi }}" style="width:6em">
-        {% elif row.spec.kind == "choice" %}
-          <select class="select" name="{{ row.spec.key }}">
-            {% for code, clabel in row.spec.choices %}<option value="{{ code }}" {% if code == row.value %}selected{% endif %}>{{ clabel }}</option>{% endfor %}
-          </select>
-        {% elif row.spec.kind == "set" %}
-          <div class="stack t13">
-          {% for code, clabel in row.spec.choices %}
-            <label class="row"><input type="checkbox" name="{{ row.spec.key }}" value="{{ code }}" {% if code in row.value %}checked{% endif %}> {{ clabel }}</label>
-          {% endfor %}
-          </div>
-        {% else %}
-          <input class="input" name="{{ row.spec.key }}" value="{{ row.value }}">
-        {% endif %}
-      </td>
-    </tr>
+<section class="card settings-card personal-settings-card">
+  <div class="settings-heading">
+    <div><h2>환경설정</h2><p class="muted t13">내 알림과 기본 화면에만 적용됩니다.</p></div>
+    <span class="badge">개인 설정</span>
+  </div>
+  <div class="notice settings-scope-note">
+    <span aria-hidden="true">ⓘ</span>
+    <span>조직의 태스크 규칙이나 권한은 완화하지 않습니다. 조직에서 제한한 알림 종류도 여기서 다시 켤 수 없습니다.</span>
+  </div>
+  <form method="post" class="settings-form">{% csrf_token %}
+    <div class="settings-save-bar"><span class="settings-save-hint">알림과 화면 기본값을 함께 저장합니다.</span><button class="btn primary">환경설정 저장</button></div>
+    {% for label, group_rows in groups %}
+    <section class="personal-settings-group" aria-labelledby="personal-settings-{{ forloop.counter }}">
+      <h3 id="personal-settings-{{ forloop.counter }}" class="settings-group-title">{{ label }} <span class="muted t12">{{ group_rows|length }}</span></h3>
+      <div class="settings-list" role="list">
+        {% for row in group_rows %}{% include "settings/_setting_row.html" with row=row %}{% endfor %}
+      </div>
+    </section>
     {% endfor %}
-    </tbody>
-  </table>
-  <button class="btn primary">저장</button>
   </form>
-</div>
+</section>
 {% endblock %}

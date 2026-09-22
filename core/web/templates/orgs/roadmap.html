@@ -1,7 +1,7 @@
 {% extends "base.html" %}{% block title %}로드맵{% endblock %}
 {% block main %}
 {% include "orgs/_tabs.html" %}
-<section class="card">
+<section class="card org-roadmap-card">
   <div class="card-head">
     <h2>로드맵</h2>
     <button type="button" class="btn primary" hx-get="{% url 'milestone_new' org.pk %}" hx-target="#dialog" hx-swap="innerHTML">새 마일스톤</button>
@@ -22,7 +22,7 @@
           <i style="width:{{ r.pct }}%"></i>
         </div>
       </div>
-      <div class="row">
+      <div class="row tl-actions">
         <button class="btn sm" hx-get="{% url 'milestone_edit' r.ms.pk %}" hx-target="#dialog" hx-swap="innerHTML">수정</button>
       </div>
     </div>
@@ -31,32 +31,44 @@
   {% if hidden %}<p class="muted t13">표시 기간 밖의 마일스톤 {{ hidden }}건은 보이지 않습니다.</p>{% endif %}
   <p class="muted t13">세로선은 오늘, 점선 테두리는 준비 중, 채워진 부분은 진행률입니다.</p>
 </section>
-<section class="card">
+<section class="card org-dependencies-card">
   <h2>프로젝트 의존성</h2>
-  <div class="stack">
+  <div class="stack dependency-list">
     {% for d in deps %}
-    <div class="row" style="padding:12px 16px;border:1px solid var(--border);border-radius:8px">
-      <span style="font-weight:600">{{ d.from_project.name }}</span>
-      <span aria-hidden="true" class="muted">→</span>
-      <span style="font-weight:600">{{ d.to_project.name }}</span>
-      <span class="grow muted t13">{{ d.note }}</span>
-      <span class="badge{% if d.is_blocking %} danger{% endif %}">{% if d.is_blocking %}차단{% else %}차단 없음{% endif %}</span>
-      <form method="post" action="{% url 'dependency_delete' d.pk %}">{% csrf_token %}<button class="btn sm danger">삭제</button></form>
-    </div>
+    <article class="dependency-row">
+      <div class="dependency-route">
+        <span class="dependency-project">{{ d.from_project.name }}</span>
+        <span aria-hidden="true" class="dependency-arrow muted">→</span>
+        <span class="dependency-project">{{ d.to_project.name }}</span>
+      </div>
+      {% if d.note %}<p class="dependency-note muted t13">{{ d.note }}</p>{% endif %}
+      <span class="dependency-status badge{% if d.is_blocking %} danger{% endif %}">{% if d.is_blocking %}차단{% else %}차단 없음{% endif %}</span>
+      <form class="dependency-actions" method="post" action="{% url 'dependency_delete' d.pk %}">{% csrf_token %}<button class="btn sm danger" aria-label="{{ d.from_project.name }}에서 {{ d.to_project.name }} 의존성 삭제">삭제</button></form>
+    </article>
     {% empty %}<p class="muted">의존성이 없습니다.</p>{% endfor %}
   </div>
-  <form method="post" action="{% url 'dependency_add' org.pk %}" class="row">{% csrf_token %}
-    <select class="select" name="from_project" required>
-      <option value="">시작 프로젝트</option>
-      {% for p in projects %}<option value="{{ p.pk }}">{{ p.name }}</option>{% endfor %}
-    </select>
-    <select class="select" name="to_project" required>
-      <option value="">의존 프로젝트</option>
-      {% for p in projects %}<option value="{{ p.pk }}">{{ p.name }}</option>{% endfor %}
-    </select>
-    <input class="input" name="note" placeholder="메모">
-    <label class="check t13"><input type="checkbox" name="is_blocking"> 차단</label>
-    <button class="btn sm">추가</button>
+  <form method="post" action="{% url 'dependency_add' org.pk %}" class="dependency-form">{% csrf_token %}
+    <div class="dependency-form-route">
+      <label class="sr-only" for="dependency-from">시작 프로젝트</label>
+      <select class="select" id="dependency-from" name="from_project" required>
+        <option value="">시작 프로젝트</option>
+        {% for p in projects %}<option value="{{ p.pk }}">{{ p.name }}</option>{% endfor %}
+      </select>
+      <span aria-hidden="true" class="dependency-arrow muted">→</span>
+      <label class="sr-only" for="dependency-to">의존 프로젝트</label>
+      <select class="select" id="dependency-to" name="to_project" required>
+        <option value="">의존 프로젝트</option>
+        {% for p in projects %}<option value="{{ p.pk }}">{{ p.name }}</option>{% endfor %}
+      </select>
+    </div>
+    <div class="dependency-form-note">
+      <label class="sr-only" for="dependency-note">의존성 메모</label>
+      <input class="input" id="dependency-note" name="note" placeholder="메모">
+    </div>
+    <div class="dependency-form-actions">
+      <label class="check t13"><input type="checkbox" name="is_blocking"> 차단</label>
+      <button class="btn sm">추가</button>
+    </div>
   </form>
 </section>
 {% endblock %}

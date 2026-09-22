@@ -1,11 +1,15 @@
 <div class="panel" hx-get="{% url 'task_panel' task.pk %}" hx-trigger="task-updated[event.detail.id=={{ task.pk }}] from:body" hx-target="#panel" hx-swap="innerHTML">
   <div class="panel-bar">
     {% if full_page %}<a class="btn sm" href="{% url 'project_detail' task.project_id %}">← {{ task.project.name }}</a>{% endif %}
+    <span class="panel-mobile-context" aria-hidden="true">
+      <span>{{ task.number }}</span>
+      <strong>{{ task.title }}</strong>
+    </span>
     <span id="save-status" class="status" aria-live="polite"></span>
     <button type="button" class="btn sm icon" data-copy="{{ task.pk }}" aria-label="링크 복사" title="링크 복사"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M6.5 9.5l3-3M7 4.5l1.2-1.2a2.8 2.8 0 014 4L11 8.5M9 11.5l-1.2 1.2a2.8 2.8 0 01-4-4L5 7.5"></path></svg></button>
     {% if not full_page %}
     <button type="button" class="btn sm" data-action="toggle-wide">크게 보기</button>
-    <button type="button" class="btn sm" data-action="close-panel">닫기</button>
+    <button type="button" class="btn sm" data-action="close-panel" aria-label="태스크 상세 닫기">닫기</button>
     {% endif %}
   </div>
   {% if error %}<p class="error">{{ error }}</p>{% endif %}

@@ -6,12 +6,11 @@
     <div class="card-head">
       <h2>문서 <span class="muted">{{ docs|length }}</span></h2>
       <div class="row">
-        <label class="btn sm">.md 올리기
-          <form method="post" action="{% url 'doc_upload' project.pk %}" enctype="multipart/form-data" style="display:none">
-            {% csrf_token %}
-            <input type="file" name="file" accept=".md,.markdown" onchange="this.form.requestSubmit()">
-          </form>
-        </label>
+        <form class="file-upload" method="post" action="{% url 'doc_upload' project.pk %}" enctype="multipart/form-data">
+          {% csrf_token %}
+          <input id="doc-upload-file" class="file-upload-input" type="file" name="file" accept=".md,.markdown" onchange="this.form.requestSubmit()">
+          <label class="btn sm file-upload-button" for="doc-upload-file">.md 올리기</label>
+        </form>
         <form method="post" action="{% url 'doc_new' project.pk %}">{% csrf_token %}<button class="btn sm primary">새 문서</button></form>
       </div>
     </div>
@@ -41,6 +40,10 @@
     <form id="doc-form" method="post" action="{% url 'doc_save' doc.pk %}">{% csrf_token %}
       <input type="hidden" name="field" value="body_md">
       <input type="hidden" name="version" value="{{ doc.version }}">
+      <div class="doc-edit-toolbar">
+        <button type="button" class="btn sm doc-edit-start" aria-controls="doc-body">본문 편집</button>
+        <span class="muted t13">Enter로 시작 · Esc로 나가기</span>
+      </div>
       <div id="doc" class="doc" data-url="{% url 'doc_save' doc.pk %}" data-version="{{ doc.version }}">
         <div id="doc-body"></div>
         <textarea id="doc-src" name="value" class="textarea" rows="16">{{ doc.body_md }}</textarea>
@@ -51,7 +54,7 @@
     <div class="row t13 muted" style="border-top:1px solid var(--border);padding-top:8px">
       <details class="grow">
         <summary>쓰는 법</summary>
-        <p class="t13 muted" style="margin-top:6px">아무 곳이나 눌러 바로 씁니다. 자동 저장됩니다.<br>
+        <p class="t13 muted" style="margin-top:6px">‘본문 편집’을 누르거나 본문을 눌러 바로 씁니다. 자동 저장됩니다. Esc로 편집을 마칩니다.<br>
           <code># 제목</code> · <code>- 목록</code> · <code>- [ ] 체크</code> · <code>&gt; 인용</code> · <code>---</code> 구분선 · <code>**굵게**</code> · <code>*기울임*</code> · <code>`코드`</code><br>
           Enter 새 줄, Backspace 합치기, 화살표로 이동.</p>
       </details>

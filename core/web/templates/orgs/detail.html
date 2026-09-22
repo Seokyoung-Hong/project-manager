@@ -1,12 +1,12 @@
 {% extends "base.html" %}{% block title %}조직{% endblock %}
 {% block main %}
 {% include "orgs/_tabs.html" %}
-<div class="card">
-  <div class="tiles">
+<div class="card org-summary-card">
+  <div class="tiles org-kpis" tabindex="0" role="region" aria-label="조직 태스크 요약, 좌우로 스크롤 가능">
     {% for label, value, url, danger in tiles %}<a class="tile{% if danger and value %} danger{% endif %}" href="{{ url }}"><b>{{ value }}</b><span>{{ label }}</span></a>{% endfor %}
   </div>
 </div>
-<section class="card">
+<section class="card org-projects-card">
   <div class="card-head">
     <h2>프로젝트</h2>
     <form method="get" class="row">
@@ -14,7 +14,9 @@
       <button type="button" class="btn primary" hx-get="{% url 'project_new' %}?org={{ org.pk }}" hx-target="#dialog" hx-swap="innerHTML">새 프로젝트</button>
     </form>
   </div>
-  <table class="grid">
+  <p class="table-scroll-hint" id="project-table-hint">표를 좌우로 밀어 전체 항목을 확인하세요.</p>
+  <div class="table-scroll" tabindex="0" role="region" aria-label="프로젝트 현황 표, 좌우로 스크롤 가능" aria-describedby="project-table-hint">
+  <table class="grid project-table">
     <thead><tr><th>이름</th><th>관리자</th><th>담당 팀</th><th>상태</th><th class="num">미완료</th><th class="num">완료</th></tr></thead>
     <tbody>
     {% for p, st in project_rows %}
@@ -29,10 +31,13 @@
     {% empty %}<tr><td colspan="6" class="muted">프로젝트가 없습니다.</td></tr>{% endfor %}
     </tbody>
   </table>
+  </div>
 </section>
 <section class="card">
   <h2>담당자별</h2>
-  <table class="grid">
+  <p class="table-scroll-hint" id="assignee-table-hint">표를 좌우로 밀어 전체 항목을 확인하세요.</p>
+  <div class="table-scroll" tabindex="0" role="region" aria-label="담당자별 현황 표, 좌우로 스크롤 가능" aria-describedby="assignee-table-hint">
+  <table class="grid assignee-table">
     <thead><tr><th>이름</th><th class="num">미완료</th><th class="num">기한 초과</th><th class="num">검토 대기</th><th class="num">막힘</th></tr></thead>
     <tbody>
     {% for a in by_assignee %}
@@ -40,5 +45,6 @@
     {% empty %}<tr><td colspan="5" class="muted">미완료 태스크가 없습니다.</td></tr>{% endfor %}
     </tbody>
   </table>
+  </div>
 </section>
 {% endblock %}

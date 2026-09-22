@@ -120,6 +120,8 @@
     var src = doc.querySelector("#doc-src, .doc-src");
     if (!bodyEl || !src) return;
     var scope = doc.closest(".card") || document;
+    var editorForm = doc.closest("form");
+    var editStart = editorForm && editorForm.querySelector(".doc-edit-start");
     var submit = scope.querySelector("#doc-submit, .doc-submit");
     var statusEl = scope.querySelector("#note-status, .note-status");
     var conflictEl = scope.querySelector("#note-conflict, .note-conflict");
@@ -132,6 +134,12 @@
       caret = null,
       timer = null,
       dead = false;
+    var bodyDirty = false,
+      pendingFields = Object.create(null),
+      pendingSeq = 0,
+      worker = null,
+      returning = false,
+      navigating = false;
     // 읽기 전용(거버넌스 보기 등): 같은 파서로 그리기만 하고 편집·저장은 하지 않는다.
     var readonly = doc.dataset.readonly === "1";
     // / 메뉴 상태. 한 화면에 문서가 둘일 수 있으므로 id 앞머리를 문서마다 따로 만든다.
@@ -425,6 +433,22 @@
       }
     }
 
+    function beginEditing() {
+      if (readonly) return;
+      editing = 0;
+      caret = null;
+      render();
+    }
+
+    function exitEditing() {
+      editing = -1;
+      caret = null;
+      render();
+      if (editStart) editStart.focus();
+    }
+
+    if (editStart) editStart.addEventListener("click", beginEditing);
+
     function changed() { render(); save(); }
 
     function toggle(i) {
@@ -468,7 +492,16 @@
       }
       // 코드 블록 안에서는 Enter가 줄바꿈이고 Backspace가 글자 지우기다. 블록을 쪼개지 않는다.
       if (u.code) {
-        if (e.key === "Escape") { e.preventDefault(); editing = -1; render(); }
+        // 맨 앞·뒤에서만 이웃 블록으로 건너간다. 코드 안쪽의 화살표는 native 이동을 유지한다.
+        var plainArrow = !e.shiftKey && !e.altKey && !e.metaKey && !e.ctrlKey;
+        var collapsed = ta.selectionStart === ta.selectionEnd;
+        if (plainArrow && collapsed && e.key === "ArrowUp" && at === 0 && u.start > 0) {
+          e.preventDefault(); editing = u.start - 1; caret = null; render();
+        } else if (plainArrow && collapsed && e.key === "ArrowDown" && at === ta.value.length && u.end < lines.length - 1) {
+          e.preventDefault(); editing = u.end + 1; caret = 0; render();
+        } else if (e.key === "Escape") {
+          e.preventDefault(); exitEditing();
+        }
         return;
       }
       if (e.key === "Enter" && !e.shiftKey) {
@@ -491,7 +524,7 @@
       } else if (e.key === "ArrowDown" && at === ta.value.length && i < lines.length - 1) {
         e.preventDefault(); editing = i + 1; caret = 0; render();
       } else if (e.key === "Escape") {
-        e.preventDefault(); editing = -1; render();
+        e.preventDefault(); exitEditing();
       }
     }
 
@@ -509,44 +542,178 @@
     });
 
     // ---------- 저장 ----------
-    function flash(text) { if (statusEl) statusEl.textContent = text; }
+    function flash(text, state) {
+      if (!statusEl) return;
+      statusEl.textContent = text;
+      statusEl.dataset.state = state || "saved";
+    }
 
-    function send(field, value) {
-      if (dead || !doc.dataset.url) return;
+    function pendingCount() { return Object.keys(pendingFields).length; }
+
+    function hasUnsaved() {
+      return Boolean(timer || bodyDirty || worker || pendingCount());
+    }
+
+    function maybeShowSaved() {
+      if (!dead && !hasUnsaved()) {
+        flash("저장됨 · v" + version, "saved");
+      }
+    }
+
+    function requestSave(field, value) {
       var data = new FormData();
       data.append("field", field);
       data.append("value", value);
       data.append("version", String(version));
-      flash("저장 중…");
-      fetch(doc.dataset.url, {
+      flash("저장 중…", "saving");
+      return fetch(doc.dataset.url, {
         method: "POST", headers: { "X-CSRFToken": csrf }, body: data, credentials: "same-origin",
       }).then(function (r) {
         if (r.status === 409) {
           dead = true;
           if (conflictEl) conflictEl.hidden = false;
-          flash("저장하지 못했습니다");
-          return;
+          flash("저장하지 못했습니다", "error");
+          return false;
         }
         if (!r.ok) throw new Error(String(r.status));
         version = Number(r.headers.get("X-Note-Version")) || version + 1;
         doc.dataset.version = String(version);
-        flash("자동 저장됨");
-      }).catch(function () { flash("저장 실패 · 새로고침하세요"); });
+        return true;
+      }).catch(function () {
+        flash("저장 실패 · 새로고침하세요", "error");
+        return false;
+      });
+    }
+
+    function nextPending() {
+      var next = null;
+      Object.keys(pendingFields).forEach(function (field) {
+        var item = pendingFields[field];
+        if (!next || item.seq < next.seq) next = item;
+      });
+      return next;
+    }
+
+    // 필드별 최신 값을 outbox에 남긴다. 실패한 항목은 지우지 않으므로 다른 필드가
+    // 나중에 성공해도 전체가 저장됐다고 거짓 표시하지 않는다.
+    function stage(field, value) {
+      if (dead || !doc.dataset.url) return Promise.resolve(false);
+      pendingFields[field] = { field: field, value: value, seq: ++pendingSeq };
+      flash("저장 대기…", "pending");
+      return runQueue();
+    }
+
+    // 요청은 하나씩 보낸다. 성공 응답의 version을 다음 항목이 이어 받고, 전송 중 같은
+    // 필드가 다시 바뀌면 캡처했던 항목만 지우고 최신 항목은 다음 차례에 보낸다.
+    function runQueue() {
+      if (worker) return worker;
+      if (!nextPending()) { maybeShowSaved(); return Promise.resolve(true); }
+      worker = new Promise(function (resolve) {
+        function step() {
+          var item = nextPending();
+          if (!item) {
+            worker = null;
+            maybeShowSaved();
+            resolve(true);
+            return;
+          }
+          requestSave(item.field, item.value).then(function (ok) {
+            if (!ok) {
+              worker = null;
+              resolve(false);
+              return;
+            }
+            if (pendingFields[item.field] === item) delete pendingFields[item.field];
+            step();
+          });
+        }
+        step();
+      });
+      return worker;
+    }
+
+    function stageBody() {
+      clearTimeout(timer);
+      timer = null;
+      if (readonly || !bodyDirty) return runQueue();
+      src.value = lines.join("\n");
+      bodyDirty = false;
+      return stage("body_md", src.value);
+    }
+
+    // 복귀 중 새 입력이 생겨도 outbox와 debounce가 모두 빌 때까지 반복한다.
+    function flushAll() {
+      clearTimeout(timer);
+      timer = null;
+      var current = bodyDirty ? stageBody() : runQueue();
+      return current.then(function (ok) {
+        if (!ok || dead) return false;
+        return (timer || bodyDirty || pendingCount() || worker) ? flushAll() : true;
+      });
     }
 
     function save() {
       if (readonly) return;
+      bodyDirty = true;
       clearTimeout(timer);
-      timer = setTimeout(function () {
-        src.value = lines.join("\n");
-        send("body_md", src.value);
-      }, 800);
+      flash("저장 대기…", "pending");
+      timer = setTimeout(stageBody, 800);
     }
 
     Array.prototype.forEach.call(scope.querySelectorAll("[data-note-field]"), function (el) {
       if (el.dataset.bound === "1") return;
       el.dataset.bound = "1";
-      el.addEventListener("change", function () { send(el.dataset.noteField, el.value); });
+      el.addEventListener("change", function () { stage(el.dataset.noteField, el.value); });
+    });
+
+    var frozenControls = [];
+    function freezeEditor() {
+      frozenControls = [];
+      Array.prototype.forEach.call(scope.querySelectorAll("[data-note-field]"), function (el) {
+        frozenControls.push({ el: el, disabled: el.disabled });
+        el.disabled = true;
+      });
+      doc.setAttribute("inert", "");
+      scope.classList.add("note-returning");
+    }
+    function unfreezeEditor() {
+      frozenControls.forEach(function (item) { item.el.disabled = item.disabled; });
+      frozenControls = [];
+      doc.removeAttribute("inert");
+      scope.classList.remove("note-returning");
+    }
+
+    var back = scope.querySelector(".note-back");
+    if (back) back.addEventListener("click", function (e) {
+      if (returning) { e.preventDefault(); return; }
+      // programmatic click처럼 포커스 이동이 생략된 경우에도 현재 메타데이터의 change를
+      // 먼저 발생시켜 outbox에 넣는다.
+      var active = document.activeElement;
+      if (active && scope.contains(active) && active.matches("[data-note-field]")) active.blur();
+      if (!hasUnsaved()) return;
+      e.preventDefault();
+      returning = true;
+      back.setAttribute("aria-disabled", "true");
+      scope.setAttribute("aria-busy", "true");
+      freezeEditor();
+      flushAll().then(function (ok) {
+        if (ok) {
+          navigating = true;
+          window.location.assign(back.href);
+        } else {
+          returning = false;
+          unfreezeEditor();
+          back.removeAttribute("aria-disabled");
+          scope.removeAttribute("aria-busy");
+        }
+      });
+    });
+
+    // 브라우저 뒤로 가기·탭 닫기도 조용히 최신 입력을 버리면 안 된다.
+    window.addEventListener("beforeunload", function (e) {
+      if (readonly || navigating || !hasUnsaved()) return;
+      e.preventDefault();
+      e.returnValue = "";
     });
 
     render();

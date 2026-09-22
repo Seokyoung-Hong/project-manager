@@ -396,6 +396,8 @@ def project_settings(request, project_id):
                 "value": effective(s.key, org=project.org, project=project),
                 "display": org_display(s.key, effective(s.key, org=project.org, project=project)),
                 "locked": s.key in locked,
+                "can_edit": editable and s.key not in locked,
+                "show_override": False,
             }
             for s in specs
             if s.group == code

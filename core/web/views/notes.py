@@ -48,6 +48,7 @@ def org_notes(request, org_id):
 
     raw = request.GET.get("note", "")
     note = next((n for n in notes if str(n.pk) == raw), None) or (notes[0] if notes else None)
+    editor_open = bool(note and raw == str(note.pk))
 
     # 프로젝트별 묶음. 팀 공통이 맨 뒤.
     groups, seen = [], {}
@@ -70,6 +71,7 @@ def org_notes(request, org_id):
             "is_admin": can_admin(request.user, org),
             "groups": groups,
             "note": note,
+            "editor_open": editor_open,
             "scope": scope,
             "tag": tag,
             "all_tags": all_tags,

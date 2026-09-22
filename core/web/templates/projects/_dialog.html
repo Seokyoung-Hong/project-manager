@@ -4,18 +4,18 @@
   {{ form.version }}
   <label class="field">이름<input class="input" name="name" value="{{ form.name.value|default:'' }}" required autofocus></label>
   <label class="field">목적<textarea class="textarea" name="purpose" rows="2">{{ form.purpose.value|default:'' }}</textarea></label>
-  <div class="section">
-    <span class="label">관리자 (여러 명 가능)</span>
+  <fieldset class="choice-fieldset">
+    <legend>관리자 (여러 명 가능)</legend>
     <div class="chips">{% for u in members %}<label class="chip"><input type="checkbox" name="owners" value="{{ u.pk }}"{% if u.pk in checked_owner_ids %} checked{% endif %}>{{ u.display_name }}</label>{% endfor %}</div>
-  </div>
-  <div class="section">
-    <span class="label">담당 팀</span>
+  </fieldset>
+  <fieldset class="choice-fieldset">
+    <legend>담당 팀</legend>
     <div class="chips">{% for t in teams %}<label class="chip"><input type="checkbox" name="teams" value="{{ t.pk }}"{% if t.pk in checked_team_ids %} checked{% endif %}>{{ t.name }}</label>{% empty %}<span class="muted t13">조직에 팀이 없습니다.</span>{% endfor %}</div>
-  </div>
-  <div class="section">
-    <span class="label">상태</span>
+  </fieldset>
+  <fieldset class="choice-fieldset">
+    <legend>상태</legend>
     <div class="radios">{% for code, label, desc in status_options %}<label class="radio-card"><input type="radio" name="status" value="{{ code }}"{% if code == status_value %} checked{% endif %}><b>{{ label }}</b><span>{{ desc }}</span></label>{% endfor %}</div>
-  </div>
+  </fieldset>
   {% for e in form.non_field_errors %}<div class="error">{{ e }}</div>{% endfor %}
   {% for f in form %}{% for e in f.errors %}<div class="error">{{ f.label }}: {{ e }}</div>{% endfor %}{% endfor %}
   <div class="row">

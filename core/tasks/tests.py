@@ -1,4 +1,4 @@
-from datetime import timedelta
+from datetime import date, timedelta
 
 import pytest
 from django.db import IntegrityError, transaction
@@ -537,15 +537,49 @@ def five(project, member):
 def test_me_view_groups_by_due(five, member, project):
     v = me_view(member)
     titles = [g["title"] for g in v["groups"]]
-    assert titles == ["기한 초과", "오늘 마감", "이번 주 마감", "그 이후", "기한 미정"]
     sunday_is_today = today_kst() == week_bounds()[1]
-    for g in v["groups"]:
-        if sunday_is_today and g["title"] in ("오늘 마감", "이번 주 마감"):
-            continue
-        assert g["count"] == 1
+    expected = ["기한 초과", "오늘 마감"]
+    if not sunday_is_today:
+        expected.append("이번 주 마감")
+    expected.extend(["그 이후", "기한 미정"])
+    assert titles == expected
+    counts = {g["title"]: g["count"] for g in v["groups"]}
+    assert counts["오늘 마감"] == (2 if sunday_is_today else 1)
+    assert all(count == 1 for title, count in counts.items() if title != "오늘 마감")
     overdue = v["groups"][0]
     assert overdue["projects"][0]["project"] == project
     assert "total" in overdue["projects"][0] and "done" in overdue["projects"][0]
+
+
+def test_me_view_omits_empty_week_group_on_sunday(project, member, monkeypatch):
+    sunday = date(2026, 9, 20)
+    monkeypatch.setattr(ts, "today_kst", lambda: sunday)
+    monkeypatch.setattr(ts, "overdue_before", lambda org: sunday)
+    create_task(
+        project=project,
+        title="일요일 마감 A",
+        actor=member,
+        source="web",
+        due_date=sunday,
+    )
+    create_task(
+        project=project,
+        title="일요일 마감 B",
+        actor=member,
+        source="web",
+        due_date=sunday,
+    )
+    create_task(
+        project=project,
+        title="다음 주 마감",
+        actor=member,
+        source="web",
+        due_date=sunday + timedelta(days=3),
+    )
+
+    groups = me_view(member)["groups"]
+    assert [g["title"] for g in groups] == ["오늘 마감", "그 이후"]
+    assert groups[0]["count"] == 2
 
 
 def test_me_view_filters(five, member, project):

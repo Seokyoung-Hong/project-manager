@@ -2,6 +2,7 @@
 (function () {
   var body = document.body;
   var t1, t2;
+  var panelReturnScroll = 0;
 
   function flash(text, after) {
     var el = document.getElementById("save-status");
@@ -39,8 +40,69 @@
   }
   applyRail();
 
+  // 조직 탭은 모바일에서 한 줄로 스크롤된다. 현재 탭이 뒤쪽이어도 첫 렌더부터 보이게 맞춘다.
+  var orgTabs = document.querySelector(".org-tabs");
+  if (orgTabs) {
+    var mobileOrgTabs = window.matchMedia("(max-width: 700px)");
+    function revealCurrentOrgTab(query) {
+      if (!query.matches) { orgTabs.scrollLeft = 0; return; }
+      var current = orgTabs.querySelector('[aria-current="page"]');
+      if (!current) return;
+      requestAnimationFrame(function () {
+        var tabsRect = orgTabs.getBoundingClientRect();
+        var currentRect = current.getBoundingClientRect();
+        orgTabs.scrollLeft += currentRect.left - tabsRect.left - (tabsRect.width - currentRect.width) / 2;
+      });
+    }
+    revealCurrentOrgTab(mobileOrgTabs);
+    if (mobileOrgTabs.addEventListener) mobileOrgTabs.addEventListener("change", revealCurrentOrgTab);
+    window.addEventListener("resize", function () { revealCurrentOrgTab(mobileOrgTabs); });
+  }
+
+  function syncBoardNavigation(board) {
+    if (!board) return;
+    var track = board.querySelector(".board-track");
+    // 모바일 태스크 패널처럼 main이 잠시 display:none이면 폭이 0이다.
+    // 그 순간 양쪽 버튼을 모두 비활성화하지 말고, 다시 보일 때 재계산한다.
+    if (!track || !track.clientWidth) return;
+    var max = Math.max(0, track.scrollWidth - track.clientWidth);
+    Array.prototype.forEach.call(board.querySelectorAll('[data-action="scroll-board"]'), function (button) {
+      var back = Number(button.dataset.direction) < 0;
+      button.disabled = back ? track.scrollLeft <= 2 : track.scrollLeft >= max - 2;
+    });
+  }
+  function syncAllBoardNavigation() {
+    Array.prototype.forEach.call(document.querySelectorAll("#board"), syncBoardNavigation);
+  }
+  body.addEventListener("scroll", function (e) {
+    if (e.target.classList && e.target.classList.contains("board-track")) {
+      syncBoardNavigation(e.target.closest("#board"));
+    }
+  }, { passive: true, capture: true });
+  window.addEventListener("resize", syncAllBoardNavigation);
+  requestAnimationFrame(syncAllBoardNavigation);
+
+  // 고급 필터는 넓은 화면에서 항상 보이고, 모바일 첫 진입에서만 접힌다.
+  // 적용 중인 조건이 있으면 모바일에서도 열어 두어 현재 상태를 숨기지 않는다.
+  var meFilters = document.querySelector(".me-filter-details");
+  if (meFilters) {
+    var mobileFilters = window.matchMedia("(max-width: 700px)");
+    var mobileFilterOpen = meFilters.dataset.filterActive === "1";
+    function syncMeFilters(query) {
+      meFilters.open = query.matches ? mobileFilterOpen : true;
+    }
+    syncMeFilters(mobileFilters);
+    meFilters.addEventListener("toggle", function () {
+      if (mobileFilters.matches) mobileFilterOpen = meFilters.open;
+    });
+    if (mobileFilters.addEventListener) mobileFilters.addEventListener("change", syncMeFilters);
+  }
+
   // 자동 저장 상태 표시
   body.addEventListener("htmx:beforeRequest", function (e) {
+    if (e.detail && e.detail.target && e.detail.target.id === "panel" && !e.detail.target.children.length) {
+      panelReturnScroll = window.scrollY;
+    }
     if (e.target.hasAttribute && e.target.hasAttribute("data-autosave")) flash("저장 중…");
   });
   body.addEventListener("saved", function () { flash("자동 저장됨"); });
@@ -104,8 +166,10 @@
       if (w) w.textContent = layout.classList.contains("wide") ? "작게 보기" : "크게 보기";
       var f = e.target.querySelector("[data-focus]");
       if (f) f.focus();
+      else if (open && window.matchMedia("(max-width: 1150px)").matches) window.scrollTo(0, 0);
     }
     if (e.target.id === "dialog" && e.target.children.length) e.target.showModal();
+    requestAnimationFrame(syncAllBoardNavigation);
   });
 
   // data-action 버튼
@@ -117,12 +181,35 @@
     if (a === "close-panel") {
       panel.innerHTML = ""; layout.classList.remove("has-panel", "wide");
       history.replaceState(null, "", body.dataset.pageUrl || "/today");
+      requestAnimationFrame(function () {
+        window.scrollTo(0, panelReturnScroll);
+        syncAllBoardNavigation();
+      });
     } else if (a === "toggle-wide") {
       var on = !layout.classList.contains("wide");
       layout.classList.toggle("wide", on); localStorage.setItem("panel-wide", on ? "1" : "0");
       b.textContent = on ? "작게 보기" : "크게 보기";
+      requestAnimationFrame(syncAllBoardNavigation);
     } else if (a === "close-dialog") {
       dlg.close(); dlg.innerHTML = "";
+    } else if (a === "open-settings-group") {
+      e.preventDefault();
+      var group = document.querySelector(b.dataset.target);
+      if (!group) return;
+      var settingsForm = group.closest(".settings-form");
+      if (settingsForm) settingsForm.querySelectorAll("details.settings-section").forEach(function (item) {
+        if (item !== group) item.open = false;
+      });
+      group.open = true;
+      var summary = group.querySelector("summary");
+      if (summary) summary.focus({ preventScroll: true });
+      history.replaceState(null, "", b.getAttribute("href"));
+      requestAnimationFrame(function () {
+        group.scrollIntoView({
+          block: "start",
+          behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth"
+        });
+      });
     } else if (a === "toggle") {
       var el = document.querySelector(b.dataset.target);
       el.hidden = !el.hidden;
@@ -131,10 +218,27 @@
     } else if (a === "toggle-rail") {
       setRailClosed(!getRailClosed());
       applyRail();
+      requestAnimationFrame(syncAllBoardNavigation);
+    } else if (a === "scroll-board") {
+      var board = b.closest("#board");
+      var track = board && board.querySelector(".board-track");
+      if (!track) return;
+      var col = track.querySelector(".col");
+      var gap = parseFloat(getComputedStyle(track).columnGap) || 12;
+      var distance = col ? col.getBoundingClientRect().width + gap : track.clientWidth * .8;
+      var reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      track.scrollBy({ left: (Number(b.dataset.direction) || 1) * distance, behavior: reduce ? "auto" : "smooth" });
     }
   });
   var dlg = document.getElementById("dialog");
   if (dlg) dlg.addEventListener("click", function (e) { if (e.target === dlg) { dlg.close(); dlg.innerHTML = ""; } });
+  document.addEventListener("keydown", function (e) {
+    var panel = document.getElementById("panel");
+    if (e.key === "Escape" && panel && panel.children.length && !(dlg && dlg.open)) {
+      var close = panel.querySelector("[data-action='close-panel']");
+      if (close) close.click();
+    }
+  });
 
   // #task-N 해시로 진입하면 패널을 연다 (생성 직후 리다이렉트, 공유 링크 호환)
   function openHash() {
