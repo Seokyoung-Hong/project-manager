@@ -202,9 +202,11 @@ def test_project_owners_via_api(api, org, member, admin):
     )
     assert r.status_code == 201
     pid = r.json()["id"]
+    assert r.json()["discord_channel_id"] == ""
     assert len(r.json()["owners"]) == 2
     r = api.patch(f"/api/projects/{pid}", {"version": 1, "owner_ids": []})
     assert r.json()["owners"] == []
+    assert r.json()["discord_channel_id"] == ""
     assert api.patch(f"/api/projects/{pid}", {"version": 2, "owner_ids": [9999]}).status_code == 400
 
 

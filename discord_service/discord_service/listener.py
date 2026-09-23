@@ -11,6 +11,7 @@ MESSAGE_CONTENT 특권 인텐트 없이도 전달된다(문서 명시 예외). �
 
 import asyncio
 import logging
+import os
 import time
 
 import discord
@@ -18,6 +19,7 @@ from discord import app_commands
 
 from .commands import RATE, handle, too_fast  # noqa: F401  (RATE·too_fast는 기존 import 경로 유지)
 from .core_client import CoreClient
+from .control import start_control_server
 from .discord import chunk
 from .slash import register
 
@@ -53,6 +55,9 @@ def run(cfg, core: CoreClient):
         # 불리므로 거기서 하면 매번 API를 때린다.
         for guild in guilds:
             await tree.sync(guild=guild)
+        # MCP와 같은 내부 Compose 네트워크 전용. Discord 봇 토큰은 이 컨테이너 밖으로 나가지 않는다.
+        port = int(os.environ.get("DISCORD_CONTROL_PORT", "8081"))
+        client.control_runner = await start_control_server(client, cfg.core_url, port)
 
     client.setup_hook = setup_hook
 

@@ -50,16 +50,20 @@ services:
     env_file: .env.discord
     environment:
       CORE_URL: http://web:8000
+      DISCORD_CONTROL_PORT: "8081"
     command: ["python", "-m", "discord_service", "bot"]
     depends_on:
       - web
     # 볼륨 없음: 리스너는 SQLite를 열지 않는다(발송 프로세스가 단일 writer로 남는다).
+    expose:
+      - "8081"                    # MCP 내부 채널 관리 브리지. 호스트 포트로 공개하지 않는다.
     restart: unless-stopped
 
   mcp:
     build: ./mcp_server
     environment:
       CORE_URL: http://web:8000
+      DISCORD_CONTROL_URL: http://discord-bot:8081
       PORT: "8080"
       # core의 공개 주소(= OAuth 인가 서버). 비면 OAuth를 광고하지 않고 토큰만 받는다.
       AUTH_SERVER_URL: ${SITE_URL:-}

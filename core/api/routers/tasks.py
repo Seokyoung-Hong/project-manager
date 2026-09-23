@@ -6,6 +6,11 @@ from ninja import Router
 from ninja.errors import HttpError
 
 from accounts.models import User
+from common.errors import ServiceError
+from github import client as github_client
+from github.models import RepoIssue, TaskGitLink
+from github.services import can_view_repo, user_token
+from github.client import GitHubError
 from orgs.services import orgs_of
 from projects.models import Project
 from tasks.brief import task_brief
@@ -98,6 +103,76 @@ def list_tasks(
 @router.get("/{task_id}", response=TaskOut)
 def get_task(request, task_id: int):
     return task_out(task_or_404(request, task_id))
+
+
+@router.get("/{task_id}/github", response=dict)
+def get_task_github(request, task_id: int):
+    """GitHub 작업 연결과 동기화된 이슈 본문. GitHub 저장소 권한도 확인한다."""
+    task = task_or_404(request, task_id)
+    link = TaskGitLink.objects.filter(task=task).select_related("connection").first()
+    if link is None:
+        return {"linked": False}
+    conn = link.connection
+    if not can_view_repo(request.auth, conn.full_name):
+        raise HttpError(403, "이 GitHub 저장소를 볼 권한이 없습니다.")
+    issue = None
+    if link.issue_number:
+        issue = RepoIssue.objects.filter(connection=conn, number=link.issue_number).first()
+    issue_data = None
+    if link.issue_number:
+        # 캐시 갱신 웹훅이 늦었거나 이슈가 PM에서 막 만들어진 경우도 즉시 읽을 수 있게
+        # 연결한 사용자의 GitHub 권한으로 최신 본문을 요청한다. 실패하면 저장된 스냅샷을 쓴다.
+        live_issue = None
+        try:
+            token = user_token(request.auth.github)
+            live_issue = github_client.request(
+                "GET", f"/repos/{conn.full_name}/issues/{link.issue_number}", token
+            )
+        except (GitHubError, ServiceError):
+            pass
+        issue_data = {
+            "number": link.issue_number,
+            "title": (live_issue or {}).get("title", link.issue_title),
+            "state": (live_issue or {}).get("state", link.issue_state),
+            "url": f"https://github.com/{conn.full_name}/issues/{link.issue_number}",
+            "body": (live_issue or {}).get("body", issue.body if issue else ""),
+            "labels": (
+                [label["name"] for label in live_issue.get("labels", [])]
+                if live_issue
+                else (issue.labels if issue else [])
+            ),
+            "author_login": ((live_issue or {}).get("user") or {}).get(
+                "login", issue.author_login if issue else ""
+            ),
+            "assignee_login": ((live_issue or {}).get("assignee") or {}).get(
+                "login", issue.assignee_login if issue else ""
+            ),
+            "updated_at": (live_issue or {}).get("updated_at") or (
+                issue.updated_at if issue else None
+            ),
+            "source": "github" if live_issue else "cache",
+        }
+    return {
+        "linked": True,
+        "repository": conn.full_name,
+        "repository_url": conn.url,
+        "issue": issue_data,
+        "branch": link.branch,
+        "pull_request": {
+            "number": link.pr_number,
+            "title": link.pr_title,
+            "state": link.pr_state,
+            "url": (
+                f"https://github.com/{conn.full_name}/pull/{link.pr_number}"
+                if link.pr_number
+                else ""
+            ),
+            "merged_at": link.merged_at,
+        }
+        if link.pr_number
+        else None,
+        "commits": link.commits,
+    }
 
 
 @router.get("/{task_id}/history", response=list[ChangeLogOut])
