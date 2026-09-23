@@ -4,7 +4,7 @@ from pathlib import Path
 from mcp.server.fastmcp import FastMCP
 from mcp.server.transport_security import TransportSecuritySettings
 
-from . import permissions
+from . import decision_tools, permissions, portfolio_tools, pr_tools
 from .auth import current_token, require_token
 from .core_client import Core, CoreError
 
@@ -148,6 +148,89 @@ def get_task(task_id: int, include_history: bool = False) -> dict:
     if include_history:
         task["history"] = core.get(f"/api/tasks/{task_id}/history")
     return task
+
+
+@mcp.tool()
+def list_task_decisions(task_id: int, effective_only: bool = False, limit: int = 50, offset: int = 0) -> dict:
+    """태스크의 의사결정 요지와 AI 판단을 조회한다. 확인 상태와 출처를 구분한다."""
+    return decision_tools.list_task_decisions(_core(), task_id, effective_only, limit, offset)
+
+
+@mcp.tool()
+def record_task_decision(
+    task_id: int,
+    kind: decision_tools.DecisionKind,
+    summary: str,
+    input_type: decision_tools.InputType | None = None,
+    question_summary: str = "",
+    reason_summary: str = "",
+    alternatives: list[str] | None = None,
+    impact_summary: str = "",
+    evidence_basis: decision_tools.EvidenceBasis | None = None,
+    client_name: str = "",
+    session_ref: str = "",
+    supersedes_id: int | None = None,
+    client_request_id: str | None = None,
+) -> dict:
+    """대화 원문 대신 짧고 중립적인 의사 요지만 제출한다. 사적 말투·긴 인용·비밀값을 보내지 않는다.
+    명시적 답변·지시는 user_input, inferred는 확인 대기, AI 자율 판단은 ai_judgment로 구분한다."""
+    return decision_tools.record_task_decision(
+        _core(), task_id, kind, summary, input_type, question_summary, reason_summary,
+        alternatives, impact_summary, evidence_basis, client_name, session_ref,
+        supersedes_id, client_request_id,
+    )
+
+
+@mcp.tool()
+def get_pr_context(task_id: int) -> dict:
+    """연결 이슈·TASK 번호·유효 의사결정의 출처를 PR 초안 작성용으로 읽는다. 코드·검증 결과는 별도 확인한다."""
+    return pr_tools.get_pr_context(_core(), task_id)
+
+
+@mcp.tool()
+def list_portfolio_sources(
+    org_id: int | None = None, project_id: int | None = None,
+    from_date: str | None = None, to_date: str | None = None,
+    input_type: portfolio_tools.PortfolioInputType | None = None,
+    limit: int = 50, offset: int = 0,
+) -> dict:
+    """본인 의사결정 요지와 접근 가능한 AI 판단을 포트폴리오 출처로 조회한다. 대화 원문은 포함하지 않는다."""
+    return portfolio_tools.list_portfolio_sources(
+        _core(), org_id, project_id, from_date, to_date, input_type, limit, offset,
+    )
+
+
+@mcp.tool()
+def create_portfolio_draft(
+    org_id: int, title: str, body_md: str, source_ids: list[int], scope_json: dict | None = None,
+) -> dict:
+    """선택한 출처 요지만 근거로 비공개 Markdown 초안을 저장한다. 대화 전문이나 근거 없는 성과를 넣지 않는다."""
+    return portfolio_tools.create_portfolio_draft(
+        _core(), org_id, title, body_md, source_ids, scope_json,
+    )
+
+
+@mcp.tool()
+def get_portfolio_draft(draft_id: int) -> dict:
+    """본인 비공개 포트폴리오 초안과 출처 변경 표시를 읽는다."""
+    return portfolio_tools.get_portfolio_draft(_core(), draft_id)
+
+
+@mcp.tool()
+def update_portfolio_draft(
+    draft_id: int, version: int, title: str | None = None,
+    body_md: str | None = None, source_ids: list[int] | None = None,
+) -> dict:
+    """본인 초안을 버전 검사와 함께 편집한다. 사용자가 편집한 본문은 자동으로 덮어쓰지 않는다."""
+    return portfolio_tools.update_portfolio_draft(
+        _core(), draft_id, version, title, body_md, source_ids,
+    )
+
+
+@mcp.tool()
+def export_portfolio_markdown(draft_id: int) -> dict:
+    """출처 접근권을 다시 확인한 뒤 본인 초안의 Markdown을 가져온다. 외부에 게시하지 않는다."""
+    return portfolio_tools.export_portfolio_markdown(_core(), draft_id)
 
 
 @mcp.tool()

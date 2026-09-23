@@ -1,0 +1,85 @@
+<section class="section decision-records" id="decisions">
+  <div class="row" style="justify-content:space-between;align-items:center;gap:8px">
+    <h3>의사결정 기록 <span class="muted t13">{{ decision_total }}</span></h3>
+    <span class="muted t13">대화 원문이 아니라 의사의 요지를 기록합니다.</span>
+  </div>
+  {% if decision_error %}<p class="error" role="alert">{{ decision_error }}</p>{% endif %}
+
+  {% if decision_rows %}
+  <ol class="decision-list" style="list-style:none;padding:0;margin:12px 0;display:grid;gap:12px">
+    {% for record, replacement in decision_rows %}
+    <li class="card decision-record" style="padding:12px;border:1px solid var(--line,#ddd);border-radius:8px">
+      <div class="row" style="gap:6px;flex-wrap:wrap;align-items:center">
+        <strong>{% if record.kind == "ai_judgment" %}AI 작업 판단{% else %}사용자 입력{% endif %}</strong>
+        <span class="badge">{{ record.get_status_display }}</span>
+        {% if record.kind == "user_input" %}<span class="badge">{{ record.get_input_type_display }}</span>{% endif %}
+        <span class="muted t13">{{ record.get_source_display }} · {{ record.created_at|localtime|date:"Y-m-d H:i" }}</span>
+      </div>
+
+      {% if record.question_summary %}<p class="muted t13" style="margin:8px 0 2px">질문 요지: {{ record.question_summary }}</p>{% endif %}
+      <p style="white-space:pre-wrap;margin:6px 0">{{ record.summary }}</p>
+      {% if record.reason_summary %}<p class="t13" style="margin:4px 0"><strong>이유:</strong> {{ record.reason_summary }}</p>{% endif %}
+      {% if record.rejection_reason %}<p class="t13" style="margin:4px 0"><strong>제외 사유:</strong> {{ record.rejection_reason }}</p>{% endif %}
+      {% if record.alternatives %}<p class="muted t13" style="margin:4px 0"><strong>검토한 대안:</strong> {% for alternative in record.alternatives %}{% if not forloop.first %} · {% endif %}{{ alternative }}{% endfor %}</p>{% endif %}
+      {% if record.impact_summary %}<p class="muted t13" style="margin:4px 0"><strong>영향:</strong> {{ record.impact_summary }}</p>{% endif %}
+
+      <div class="muted t13" style="margin-top:8px">
+        {% if record.kind == "user_input" %}
+          {% if record.subject_user %}입력 주체: {{ record.subject_user.display_name }}{% else %}입력 주체 미확인{% endif %}
+          · 근거: {{ record.get_evidence_basis_display }}
+          {% if record.confirmed_by %} · PM에서 확인: {{ record.confirmed_by.display_name }}{% endif %}
+          {% if record.confirmed_at %} ({{ record.confirmed_at|localtime|date:"Y-m-d H:i" }}){% endif %}
+        {% else %}사용자의 결정으로 귀속하지 않은 AI 판단{% endif %}
+        {% if record.client_name %} · 세션: {{ record.client_name }}{% endif %}
+        {% if record.session_ref %} · 참조: {{ record.session_ref }}{% endif %}
+        {% if record.source_time %} · 세션 시각: {{ record.source_time|localtime|date:"Y-m-d H:i" }}{% endif %}
+      </div>
+
+      {% if record.supersedes_id %}<p class="muted t13">이 기록은 이전 기록 #{{ record.supersedes_id }}을 대체합니다.</p>{% endif %}
+      {% if replacement %}<p class="muted t13">이 기록은 #{{ replacement.pk }} 기록으로 대체되었습니다.</p>{% endif %}
+
+      {% if record.kind == "user_input" and record.subject_user_id == decision_actor_id and record.status != "rejected" and record.status != "superseded" %}
+      <div class="row" style="gap:8px;flex-wrap:wrap;margin-top:10px">
+        {% if record.status == "proposed" or record.status == "captured" %}
+        {% if not record.confirmed_by %}
+        <form method="post" action="{% url 'decision_confirm' task.pk record.pk %}" hx-post="{% url 'decision_confirm' task.pk record.pk %}" hx-target="#decisions" hx-swap="outerHTML">
+          {% csrf_token %}<button class="btn sm" type="submit">{% if record.status == "proposed" %}확인{% else %}웹에서 확인{% endif %}</button>
+        </form>
+        {% endif %}
+        <form method="post" action="{% url 'decision_reject' task.pk record.pk %}" hx-post="{% url 'decision_reject' task.pk record.pk %}" hx-target="#decisions" hx-swap="outerHTML" class="row" style="gap:4px">
+          {% csrf_token %}<input class="input" name="reason" maxlength="500" placeholder="제외 사유(선택)" aria-label="제외 사유">
+          <button class="btn sm" type="submit">기록 제외</button>
+        </form>
+        {% endif %}
+        {% if record.status == "proposed" or record.status == "captured" or record.status == "confirmed" %}
+        <details>
+          <summary class="btn sm">정정 기록 추가</summary>
+          <form method="post" action="{% url 'decision_supersede' task.pk record.pk %}" hx-post="{% url 'decision_supersede' task.pk record.pk %}" hx-target="#decisions" hx-swap="outerHTML" class="stack" style="margin-top:8px">
+            {% csrf_token %}
+            <label class="field">입력 유형
+              <select class="select" name="input_type">
+                <option value="major_choice">주요 선택</option>
+                <option value="requirement">요구·제약</option>
+                <option value="answer">명시적 답변</option>
+                <option value="steer">방향 수정</option>
+                <option value="implementation_instruction" selected>구현 방식 지시</option>
+                <option value="ai_workflow_instruction">AI 협업 방식 지시</option>
+              </select>
+            </label>
+            <label class="field">정정된 의사 요지 <textarea class="textarea" name="summary" rows="3" maxlength="800" required></textarea></label>
+            <label class="field">질문 요지 <input class="input" name="question_summary" maxlength="300"></label>
+            <label class="field">이유 <textarea class="textarea" name="reason_summary" rows="2" maxlength="500"></textarea></label>
+            <label class="field">검토한 대안 <textarea class="textarea" name="alternatives" rows="2"></textarea></label>
+            <label class="field">영향 <textarea class="textarea" name="impact_summary" rows="2" maxlength="500"></textarea></label>
+            <button class="btn sm" type="submit">정정 기록 저장</button>
+          </form>
+        </details>
+      </div>
+      {% endif %}
+    </li>
+    {% endfor %}
+  </ol>
+  {% else %}
+  <p class="muted t13">아직 의사결정 기록이 없습니다. AI 세션에서 의사의 요지를 MCP로 기록할 수 있습니다.</p>
+  {% endif %}
+</section>

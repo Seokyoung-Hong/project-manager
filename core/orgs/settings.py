@@ -345,6 +345,18 @@ SPECS: dict[str, Spec] = {
             ai_only=True,
         ),
         _s(
+            "ai.record_work",
+            "choice",
+            "allow",
+            "org",
+            False,
+            "ai",
+            "AI 작업 기록",
+            "태스크에 사용자 입력과 AI의 주요 판단을 의사 요지로 기록합니다. 대화 원문은 사용자가 명시적으로 요청하지 않는 한 전송하지 않습니다.",
+            choices=ALLOW_DENY,
+            ai_only=True,
+        ),
+        _s(
             "ai.change_assignee",
             "choice",
             "allow",

@@ -261,7 +261,10 @@ def delete_project(project, *, actor, source: str = "web"):
     _check_ai_delete(project.org, source)
     if not project.is_archived:
         raise ServiceError({"project": "먼저 보관한 뒤에 지울 수 있습니다."})
-    from tasks.models import ChangeLog, Task
+    from tasks.models import ChangeLog, Task, TaskDecisionRecord
+
+    if TaskDecisionRecord.objects.filter(task__project=project).exists():
+        raise ServiceError({"project": "의사결정 기록이 있는 프로젝트는 삭제할 수 없습니다. 보관 상태로 유지해 주세요."})
 
     ChangeLog.objects.create(
         target_type="org",
