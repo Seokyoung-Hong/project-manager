@@ -38,6 +38,7 @@ from .models import (
 )
 
 REPO_TTL = timedelta(hours=6)
+ISSUE_TTL = timedelta(minutes=10)
 EVENT_KEEP = 50
 
 
@@ -258,6 +259,7 @@ def connect_repo(*, project, url, actor, source: str = "web") -> RepoConnection:
         project=project,
         defaults={"url": url.strip()[:300], "full_name": full_name, "created_by": actor},
     )
+    sync_issues_if_stale(conn)
     return conn
 
 
@@ -729,6 +731,7 @@ def _on_issues(conn, delivery, payload):
         if link:
             link.issue_state = row.state
             link.save(update_fields=["issue_state"])
+    _mark_issues_synced(conn)
     record_event(
         conn,
         delivery,
@@ -771,6 +774,7 @@ def sync_issues(conn) -> int:
             },
         )
     conn.issues.filter(state="open").exclude(number__in=seen).update(state="closed")
+    _mark_issues_synced(conn)
     return len(seen)
 
 
@@ -838,6 +842,46 @@ def sync_org_issues(org) -> tuple[int, int]:
         except (ServiceError, GitHubError):
             failed += 1
     return total, failed
+
+
+def _mark_issues_synced(conn):
+    conn.issues_synced_at = timezone.now()
+    conn.save(update_fields=["issues_synced_at"])
+
+
+def sync_issues_if_stale(conn):
+    """Refresh issue data at most every ten minutes; webhook deliveries reset the clock."""
+    if conn.issues_synced_at and timezone.now() - conn.issues_synced_at < ISSUE_TTL:
+        return
+    try:
+        sync_issues(conn)
+    except (ServiceError, GitHubError):
+        pass
+
+
+UNLINK_FIELDS = {
+    "issue": {"issue_number": None, "issue_title": "", "issue_state": ""},
+    "branch": {"branch": ""},
+    "pr": {"pr_number": None, "pr_title": "", "pr_state": "", "merged_at": None},
+}
+
+
+def unlink(task, what: str = "all"):
+    """Clear one GitHub link or the whole link, and release an imported issue for reuse."""
+    link = getattr(task, "git", None)
+    if link is None:
+        return
+    if what in ("all", "issue") and link.issue_number:
+        RepoIssue.objects.filter(
+            connection=link.connection, number=link.issue_number, task=task
+        ).update(task=None)
+    if what == "all":
+        link.delete()
+    elif fields := UNLINK_FIELDS.get(what):
+        for name, value in fields.items():
+            setattr(link, name, value)
+        link.save(update_fields=list(fields))
+    task._state.fields_cache.pop("git", None)
 
 
 def pr_compare_url(link) -> str:

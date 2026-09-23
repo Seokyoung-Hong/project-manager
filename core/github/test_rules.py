@@ -406,6 +406,154 @@ def test_event_occurred_at_from_payload(gh, client, conn):
     assert event.occurred_at.isoformat() == "2026-01-02T03:04:05+00:00"
 
 
+# ---------- 연결 해제 ----------
+
+
+@pytest.fixture
+def linked(gh, client, conn, task, member):
+    """저장소를 볼 수 있는 팀원으로 로그인하고, 네 단계가 모두 채워진 링크를 만든다."""
+    GitHubIdentity.objects.create(user=member, github_id=321, login="m", repos=["o/r"])
+    client.login(username="member1", password="pw12345678")
+    issue = RepoIssue.objects.create(connection=conn, number=7, title="이슈", task=task)
+    link = TaskGitLink.objects.create(
+        task=task,
+        connection=conn,
+        issue_number=7,
+        issue_title="이슈",
+        issue_state="open",
+        branch="feature-x",
+        pr_number=9,
+        pr_state="open",
+    )
+    return link, issue
+
+
+@pytest.mark.parametrize(
+    ("what", "gone", "kept"),
+    [
+        ("issue", "issue_number", "branch"),
+        ("branch", "branch", "issue_number"),
+        ("pr", "pr_number", "branch"),
+    ],
+)
+def test_unlink_one_step_keeps_the_rest(linked, client, task, what, gone, kept):
+    link, _ = linked
+    r = client.post(f"/tasks/{task.pk}/git/unlink", {"what": what})
+    assert r.status_code == 200
+    link.refresh_from_db()
+    assert not getattr(link, gone)
+    assert getattr(link, kept)
+
+
+def test_unlink_issue_frees_it_for_reuse(linked, client, task):
+    """이슈를 끊으면 RepoIssue.task도 풀린다 — 그러지 않으면 다시 연결할 수 없다."""
+    _, issue = linked
+    client.post(f"/tasks/{task.pk}/git/unlink", {"what": "issue"})
+    issue.refresh_from_db()
+    assert issue.task_id is None
+    body = client.post(f"/tasks/{task.pk}/git/issue", {"number": 7}).content.decode()
+    assert "#7" in body
+    issue.refresh_from_db()
+    assert issue.task_id == task.pk
+
+
+def test_unlink_all_removes_link_and_panel_shows_it(linked, client, task):
+    r = client.post(f"/tasks/{task.pk}/git/unlink", {"what": "all"})
+    assert not TaskGitLink.objects.filter(task=task).exists()
+    body = r.content.decode()
+    assert "feature-x" not in body  # 지운 링크가 캐시로 다시 그려지지 않는다
+    assert "이슈 선택" in body
+
+
+# ---------- 이슈 조회 ----------
+
+
+def _fake_issue_api(monkeypatch, org, admin, items):
+    GitHubInstallation.objects.get_or_create(
+        installation_id=555, defaults={"org": org, "account_login": "o", "installed_by": admin}
+    )
+    calls = []
+    monkeypatch.setattr(gh_client, "installation_token", lambda iid: "tok")
+
+    def request(method, path, token, **kw):
+        calls.append(path)
+        return items
+
+    monkeypatch.setattr(gh_client, "request", request)
+    return calls
+
+
+def test_sync_issues_omits_empty_label_filter(gh, conn, admin, org, monkeypatch):
+    """labels=를 빈 값으로 보내면 GitHub가 "라벨 없는 이슈"로 읽어 목록이 비어 버린다."""
+    calls = _fake_issue_api(
+        monkeypatch, org, admin, [{"number": 1, "title": "이슈", "labels": [], "assignee": None}]
+    )
+    conn.import_label = ""
+    conn.save(update_fields=["import_label"])
+    ghs.sync_issues(conn)
+    assert "labels=" not in calls[0]
+
+
+def test_stale_issues_synced_on_view_and_webhook_pauses_it(gh, conn, admin, org, monkeypatch):
+    """서버가 알아서 맞춘다. 웹훅이 오면 그 시각으로 갱신되어 폴링하지 않는다."""
+    calls = _fake_issue_api(
+        monkeypatch, org, admin, [{"number": 1, "title": "이슈", "labels": [], "assignee": None}]
+    )
+    ghs.sync_issues_if_stale(conn)
+    assert len(calls) == 1
+    conn.refresh_from_db()
+    ghs.sync_issues_if_stale(conn)
+    assert len(calls) == 1  # TTL 안이면 다시 묻지 않는다
+    conn.issues_synced_at = timezone.now() - ghs.ISSUE_TTL * 2
+    conn.save(update_fields=["issues_synced_at"])
+    ghs.sync_issues_if_stale(conn)
+    assert len(calls) == 2
+
+
+def test_webhook_marks_issues_fresh(gh, client, conn):
+    payload = {
+        "action": "opened",
+        "repository": {"full_name": "o/r"},
+        "issue": {"number": 3, "title": "웹훅", "body": "", "labels": [], "state": "open"},
+        "sender": {"id": 1, "login": "dev"},
+    }
+    signed(client, payload, "issues", "fresh-1")
+    conn.refresh_from_db()
+    assert conn.issues_synced_at is not None
+
+
+def test_issue_state_follows_payload_not_action(gh, client, conn):
+    """labeled·edited 같은 action이 닫힌 이슈를 열린 것으로 되돌리면 안 된다."""
+    RepoIssue.objects.create(connection=conn, number=4, title="닫힘", state="closed")
+    payload = {
+        "action": "labeled",
+        "repository": {"full_name": "o/r"},
+        "issue": {"number": 4, "title": "닫힘", "body": "", "labels": [], "state": "closed"},
+        "sender": {"id": 1, "login": "dev"},
+    }
+    signed(client, payload, "issues", "state-1")
+    assert RepoIssue.objects.get(connection=conn, number=4).state == "closed"
+
+
+def test_viewer_lists_only_open_unclaimed_issues(gh, client, conn, task, member, project):
+    GitHubIdentity.objects.create(user=member, github_id=321, login="m", repos=["o/r"])
+    client.login(username="member1", password="pw12345678")
+    conn.issues_synced_at = timezone.now()  # 폴링이 끼어들지 않게
+    conn.save(update_fields=["issues_synced_at"])
+    RepoIssue.objects.create(connection=conn, number=11, title="열린이슈", state="open")
+    RepoIssue.objects.create(connection=conn, number=12, title="닫힌이슈", state="closed")
+    RepoIssue.objects.create(
+        connection=conn, number=13, title="가져온이슈", state="open", task=task
+    )
+    body = client.get(f"/tasks/{task.pk}").content.decode()
+    assert "열린이슈" in body
+    assert "닫힌이슈" not in body
+    assert "가져온이슈" not in body
+    tab = client.get(f"/projects/{project.pk}/repo").content.decode()
+    assert "열린이슈" in tab
+    assert "닫힌이슈" not in tab
+
+
 # ---------- 권한 필터 · UI ----------
 
 
