@@ -93,7 +93,6 @@
                   hx-post="{% url 'task_text' task.pk 'notes' %}" hx-trigger="change, keyup changed delay:600ms" hx-swap="none">{{ task.notes }}</textarea>
         <span class="muted t13">내용을 수정하면 자동 저장됩니다.</span>
       </label>
-      <div hx-get="{% url 'task_decisions' task.pk %}" hx-trigger="load" hx-swap="outerHTML" aria-label="의사결정 기록"></div>
       {% if github_enabled %}<details class="git-fold"><summary>GitHub · {{ gh_summary }}</summary>{% include "tasks/_git.html" %}</details>{% endif %}
       <div id="refs">{% include "tasks/_refs.html" %}</div>
       <details><summary>변경 이력 {{ history|length }}</summary>{% include "tasks/_history.html" %}</details>
@@ -103,6 +102,7 @@
         <form method="post" action="{% url 'task_delete' task.pk %}" onsubmit="return confirm('태스크를 삭제할까요? 체크리스트·링크도 함께 사라지고 되돌릴 수 없습니다.')">{% csrf_token %}<button class="btn link danger">태스크 삭제</button></form>
         {% endif %}
       </details>
+      <div hx-get="{% url 'task_decisions' task.pk %}" hx-trigger="load" hx-target="this" hx-swap="outerHTML" aria-label="의사결정 기록"></div>
     </div>
   </div>
 </div>
