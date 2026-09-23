@@ -12,7 +12,7 @@ import pytest
 from django.utils import timezone
 
 from common.errors import ServiceError
-from github import writes
+from github import services, writes
 from github.client import GitHubError
 from github.crypto import encrypt
 from github.models import (
@@ -167,6 +167,23 @@ def test_create_branch_uses_default_branch_sha(installed, admin, task, calls):
     post = [c for c in calls if c["method"] == "POST"][0]
     assert post["body"] == {"ref": "refs/heads/feat/x", "sha": "abc123"}
     assert TaskGitLink.objects.get(task=task).branch == "feat/x"
+
+
+def test_default_branch_name_round_trips(installed, admin, task, calls):
+    """기본 이름은 create_branch를 통과하고, 그 이름만으로 다시 태스크를 찾을 수 있어야 한다."""
+    conn = RepoConnection.objects.create(
+        project=task.project, url="u", full_name="o/r", created_by=admin
+    )
+    task.project.refresh_from_db()
+    task.title = "만료 토큰으로 로그인하면 재로그인 안내"
+    task.save(update_fields=["title"])
+    name = writes.default_branch_name(task)
+    assert name.endswith(f"({task.number})")
+    writes.create_branch(task, name, actor=admin)
+    assert services._find_task(conn, name)[0] == task
+
+    task.title = "!!!"
+    assert writes.default_branch_name(task) == f"feat/{task.number}"
 
 
 @pytest.mark.parametrize("name", ["", "  ", "a b", "../evil", "trailing/", "/"])

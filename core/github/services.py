@@ -10,7 +10,7 @@
 
 import re
 from datetime import datetime, timedelta
-from urllib.parse import urlencode
+from urllib.parse import quote, urlencode
 
 from django.conf import settings
 from django.utils import timezone
@@ -715,8 +715,10 @@ def pr_compare_url(link) -> str:
     q = urlencode(
         {
             "quick_pull": "1",
-            "title": f"{link.task.number} {link.task.title}",
+            "title": f"{link.task.title} ({link.task.number})",
             "body": f"Closes #{link.issue_number}" if link.issue_number else "",
         }
     )
-    return f"https://github.com/{link.connection.full_name}/compare/{link.branch}?{q}"
+    # 브랜치 이름에는 괄호나 한글이 들어올 수 있다. 경로에 그대로 붙이지 않는다.
+    branch = quote(link.branch, safe="/")
+    return f"https://github.com/{link.connection.full_name}/compare/{branch}?{q}"

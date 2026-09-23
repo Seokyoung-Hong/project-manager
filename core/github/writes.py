@@ -14,6 +14,7 @@ GitHub가 거부하면 PM 변경은 그대로 두고 경고만 보여 준다. �
 """
 
 from django.utils import timezone
+from django.utils.text import slugify
 
 from common.errors import ServiceError
 
@@ -133,7 +134,7 @@ def create_issue(task, *, actor, body="") -> dict:
         "POST",
         f"/repos/{conn.full_name}/issues",
         _actor_token(actor),
-        body={"title": f"{task.number} {task.title}", "body": body or task.description},
+        body={"title": f"{task.title} ({task.number})", "body": body or task.description},
     )
     link, _ = TaskGitLink.objects.get_or_create(task=task, defaults={"connection": conn})
     link.issue_number, link.issue_title, link.issue_state = data["number"], data["title"], "open"
@@ -181,4 +182,10 @@ def create_branch(task, name: str, *, actor) -> str:
 
 
 def default_branch_name(task) -> str:
-    return f"feat/{task.number}"
+    """`feat/<제목 슬러그>(TASK-147)`.
+
+    앞부분은 사람이 읽으라고 채워 두는 것이고 화면에서 고칠 수 있다. 태스크에 자동으로
+    붙는 근거는 괄호 안의 번호뿐이다. 제목이 전부 기호라 슬러그가 비면 번호만 남긴다.
+    """
+    slug = slugify(task.title, allow_unicode=True)[:60].strip("-")
+    return f"feat/{slug}({task.number})" if slug else f"feat/{task.number}"
