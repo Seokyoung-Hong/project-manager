@@ -50,7 +50,9 @@ class RepoConnection(models.Model):
     )
     url = models.CharField(max_length=300)  # 사용자가 넣은 원문
     full_name = models.CharField(max_length=200)  # owner/repo
-    import_label = models.CharField(max_length=50, default="task")
+    # 기본값은 비움 = 라벨로 거르지 않는다. "task"가 기본이면 그 라벨을 안 쓰는
+    # 저장소에서 이슈가 하나도 안 보인다.
+    import_label = models.CharField(max_length=50, blank=True, default="")
     # ponytail: 더 이상 읽지 않는 열이다. 자동 가져오기는 배정된 멤버만 담당자로 삼으므로 선택지가
     # 없어졌다. 설정 라운드(IMPL-PLAN-4)에서 마이그레이션과 함께 지운다.
     assignee_default = models.CharField(max_length=5, default="issue")  # issue | none
@@ -61,6 +63,7 @@ class RepoConnection(models.Model):
     rule_pr = models.BooleanField(default=True)
     rule_merge = models.BooleanField(default=True)
     last_event_at = models.DateTimeField(null=True, blank=True)
+    issues_synced_at = models.DateTimeField(null=True, blank=True)
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="+"
     )

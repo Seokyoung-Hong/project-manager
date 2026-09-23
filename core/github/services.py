@@ -35,6 +35,7 @@ from .models import (
 )
 
 REPO_TTL = timedelta(hours=6)
+ISSUE_TTL = timedelta(minutes=10)
 EVENT_KEEP = 50
 
 
@@ -215,6 +216,7 @@ def connect_repo(*, project, url, actor) -> RepoConnection:
         project=project,
         defaults={"url": url.strip()[:300], "full_name": full_name, "created_by": actor},
     )
+    sync_issues_if_stale(conn)  # 붙이자마자 목록이 비어 보이지 않게
     return conn
 
 
@@ -619,7 +621,7 @@ def _on_issues(conn, delivery, payload):
         number=number,
         defaults={
             "title": (issue.get("title") or "")[:300],
-            "state": "closed" if action == "closed" else "open",
+            "state": issue.get("state") or ("closed" if action == "closed" else "open"),
             "assignee_login": ((issue.get("assignee") or {}).get("login")) or "",
             "labels": labels,
         },
@@ -669,6 +671,7 @@ def _on_issues(conn, delivery, payload):
         if link:
             link.issue_state = row.state
             link.save(update_fields=["issue_state"])
+    _mark_issues_synced(conn)  # 웹훅이 살아 있다 — 폴링으로 또 물어보지 않는다
     record_event(
         conn,
         delivery,
@@ -690,7 +693,11 @@ def sync_issues(conn) -> int:
     if inst is None:
         raise ServiceError({"github": "조직에 GitHub 앱이 설치되지 않았습니다."})
     token = client.installation_token(inst.installation_id)
-    q = urlencode({"state": "open", "per_page": 100, "labels": conn.import_label or ""})
+    # 빈 labels를 보내면 GitHub가 "라벨 없는 이슈"로 읽는다. 값이 있을 때만 넣는다.
+    params = {"state": "open", "per_page": 100}
+    if conn.import_label:
+        params["labels"] = conn.import_label
+    q = urlencode(params)
     seen = set()
     for item in client.request("GET", f"/repos/{conn.full_name}/issues?{q}", token) or []:
         if "pull_request" in item:
@@ -701,13 +708,69 @@ def sync_issues(conn) -> int:
             number=item["number"],
             defaults={
                 "title": item["title"][:300],
-                "state": "open",
+                "state": item.get("state") or "open",
                 "assignee_login": ((item.get("assignee") or {}).get("login")) or "",
                 "labels": [lb["name"] for lb in item.get("labels", []) if isinstance(lb, dict)],
             },
         )
-    conn.issues.filter(state="open").exclude(number__in=seen).update(state="closed")
+    if not conn.import_label:
+        # 라벨로 걸렀다면 목록에 없는 = 라벨이 없는 이슈다. 닫혔다고 단정할 수 없다.
+        conn.issues.filter(state="open").exclude(number__in=seen).update(state="closed")
+    _mark_issues_synced(conn)
     return len(seen)
+
+
+def _mark_issues_synced(conn):
+    conn.issues_synced_at = timezone.now()
+    conn.save(update_fields=["issues_synced_at"])
+
+
+def sync_issues_if_stale(conn):
+    """이슈 목록은 서버가 알아서 맞춘다 — 사람이 [새로고침]을 누를 일이 없어야 한다.
+
+    웹훅(`issues`)이 들어오면 시각을 갱신하므로, 웹훅이 살아 있는 저장소는 여기서 GitHub를
+    부르지 않는다. 웹훅이 끊겼거나 처음 연결한 저장소만 TTL마다 한 번 물어본다.
+    실패는 조용히 넘긴다 — 화면이 GitHub 때문에 깨지면 안 된다.
+    """
+    if conn.issues_synced_at and timezone.now() - conn.issues_synced_at < ISSUE_TTL:
+        return
+    try:
+        sync_issues(conn)
+    except (ServiceError, GitHubError):
+        pass
+
+
+# ---------- 연결 해제 ----------
+
+# 단계 이름 → 비울 열. "all"은 링크 행 자체를 지운다.
+UNLINK_FIELDS = {
+    "issue": {"issue_number": None, "issue_title": "", "issue_state": ""},
+    "branch": {"branch": ""},
+    "pr": {"pr_number": None, "pr_title": "", "pr_state": "", "merged_at": None},
+}
+
+
+def unlink(task, what: str = "all"):
+    """태스크와 GitHub 사이를 끊는다. 단계 하나만 끊을 수도, 전부 끊을 수도 있다.
+
+    이슈를 끊을 때는 RepoIssue.task도 함께 비운다. 그러지 않으면 저장소 탭에서 그 이슈가
+    영영 "가져옴"으로 남아 다시 가져올 수 없다.
+    """
+    link = getattr(task, "git", None)
+    if link is None:
+        return
+    if what in ("all", "issue") and link.issue_number:
+        RepoIssue.objects.filter(
+            connection=link.connection, number=link.issue_number, task=task
+        ).update(task=None)
+    if what == "all":
+        link.delete()
+    elif fields := UNLINK_FIELDS.get(what):
+        for name, value in fields.items():
+            setattr(link, name, value)
+        link.save(update_fields=list(fields))
+    # 역참조 캐시에 지워진 행이 남으면 화면이 방금 끊은 것을 그대로 다시 그린다.
+    task._state.fields_cache.pop("git", None)
 
 
 def pr_compare_url(link) -> str:

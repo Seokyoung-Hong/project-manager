@@ -7,7 +7,7 @@ from django.views.decorators.http import require_POST
 
 from common.dates import today_kst
 from common.errors import ConflictError, ServiceError
-from github.services import pr_compare_url, repo_state
+from github.services import pr_compare_url, repo_state, sync_issues_if_stale
 from github.writes import default_branch_name
 from tasks import services as ts
 from tasks.models import ChangeLog, ChecklistItem, Link
@@ -31,7 +31,11 @@ def _git_ctx(request, task) -> dict:
     """패널 GitHub 블록의 context. repo_state()가 상태를, pr_compare_url()이 PR 열기 링크를 준다."""
     rs = repo_state(request.user, task.project)
     link = getattr(task, "git", None)
-    issues = rs["conn"].issues.all()[:50] if rs["state"] == "ok" else []
+    issues = []
+    if rs["state"] == "ok" and not (link and link.issue_number):
+        # 고를 수 있는 것만 보여 준다: 열려 있고, 아직 다른 태스크가 가져가지 않은 이슈.
+        sync_issues_if_stale(rs["conn"])
+        issues = rs["conn"].issues.filter(state="open", task__isnull=True)[:50]
     return {
         "gh": {
             **rs,

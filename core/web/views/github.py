@@ -193,7 +193,8 @@ def project_repo(request, project_id):
     }
     if state["state"] == "ok":
         conn = state["conn"]
-        ctx["issues"] = conn.issues.all()[:50]
+        gh_services.sync_issues_if_stale(conn)
+        ctx["issues"] = conn.issues.filter(state="open")[:50]
         ctx["events"] = conn.events.select_related("task")[:50]
         ctx["repo_teams"] = _repo_teams(conn)
         ctx["open_tasks"] = project.tasks.filter(status__in=Task.OPEN).order_by("-id")[:50]
@@ -333,10 +334,11 @@ def git_branch(request, task_id):
 @login_required
 @require_POST
 def git_unlink(request, task_id):
+    """what=issue|branch|pr이면 그 단계만, 없으면 전부 끊는다."""
     task = task_or_404(request.user, task_id)
     if gh_services.repo_state(request.user, task.project)["state"] != "ok":
         raise Http404
-    TaskGitLink.objects.filter(task=task).delete()
+    gh_services.unlink(task, request.POST.get("what") or "all")
     return _panel(request, task)
 
 
