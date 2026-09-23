@@ -122,6 +122,184 @@ class Task(models.Model):
         return self.STATUS_HINT[self.status]
 
 
+class TaskDecisionRecord(models.Model):
+    """Structured, source-aware record of a user input or an AI judgment."""
+
+    KINDS = [
+        ("user_input", "사용자 입력"),
+        ("ai_judgment", "AI 작업 판단"),
+    ]
+    INPUT_TYPES = [
+        ("major_choice", "주요 선택"),
+        ("requirement", "요구·제약"),
+        ("answer", "명시적 답변"),
+        ("steer", "방향 수정"),
+        ("implementation_instruction", "구현 방식 지시"),
+        ("ai_workflow_instruction", "AI 협업 방식 지시"),
+    ]
+    STATUSES = [
+        ("captured", "세션에서 수집"),
+        ("proposed", "확인 대기"),
+        ("confirmed", "사용자 확인"),
+        ("rejected", "제외"),
+        ("recorded", "기록됨"),
+        ("superseded", "대체됨"),
+    ]
+    EVIDENCE_BASES = [
+        ("explicit_reply", "명시적 답변"),
+        ("explicit_instruction", "명시적 지시"),
+        ("inferred", "AI 추론"),
+    ]
+    SOURCES = [("web", "웹"), ("api", "API"), ("mcp", "MCP")]
+
+    task = models.ForeignKey(
+        Task, on_delete=models.PROTECT, related_name="decision_records"
+    )
+    kind = models.CharField(max_length=11, choices=KINDS)
+    input_type = models.CharField(max_length=26, choices=INPUT_TYPES, null=True, blank=True)
+    status = models.CharField(max_length=10, choices=STATUSES)
+    question_summary = models.CharField(max_length=300, blank=True)
+    summary = models.CharField(max_length=800)
+    reason_summary = models.CharField(max_length=500, blank=True)
+    rejection_reason = models.CharField(max_length=300, blank=True)
+    alternatives = models.JSONField(default=list, blank=True)
+    impact_summary = models.CharField(max_length=500, blank=True)
+    recorded_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        related_name="recorded_task_decisions",
+        null=True,
+        blank=True,
+    )
+    subject_user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        related_name="subject_task_decisions",
+        null=True,
+        blank=True,
+    )
+    confirmed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        related_name="confirmed_task_decisions",
+        null=True,
+        blank=True,
+    )
+    evidence_basis = models.CharField(
+        max_length=20, choices=EVIDENCE_BASES, null=True, blank=True
+    )
+    source = models.CharField(max_length=3, choices=SOURCES)
+    client_name = models.CharField(max_length=80, blank=True)
+    session_ref = models.CharField(max_length=200, blank=True)
+    # Verbatim content is an explicit web-only exception; MCP schemas must omit it.
+    verbatim_text = models.CharField(max_length=4000, blank=True)
+    supersedes = models.ForeignKey(
+        "self",
+        on_delete=models.PROTECT,
+        related_name="superseding_records",
+        null=True,
+        blank=True,
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    confirmed_at = models.DateTimeField(null=True, blank=True)
+    source_time = models.DateTimeField(null=True, blank=True)
+    client_request_id = models.UUIDField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["created_at", "id"]
+        constraints = [
+            models.CheckConstraint(
+                condition=~Q(summary=""), name="decision_summary_nonempty"
+            ),
+            models.CheckConstraint(
+                condition=(
+                    Q(
+                        kind="user_input",
+                        input_type__in=[
+                            "major_choice",
+                            "requirement",
+                            "answer",
+                            "steer",
+                            "implementation_instruction",
+                            "ai_workflow_instruction",
+                        ],
+                    )
+                    | Q(kind="ai_judgment", input_type__isnull=True)
+                ),
+                name="decision_kind_input_type",
+            ),
+            models.CheckConstraint(
+                condition=(
+                    Q(
+                        kind="user_input",
+                        status__in=["captured", "proposed", "confirmed", "rejected", "superseded"],
+                        evidence_basis__in=[
+                            "explicit_reply", "explicit_instruction", "inferred"
+                        ],
+                    )
+                    | Q(
+                        kind="ai_judgment",
+                        status__in=["recorded", "superseded"],
+                        evidence_basis__isnull=True,
+                    )
+                ),
+                name="decision_kind_status_basis",
+            ),
+            models.CheckConstraint(
+                condition=(
+                    Q(
+                        kind="user_input",
+                        status="confirmed",
+                        confirmed_by__isnull=False,
+                        confirmed_at__isnull=False,
+                    )
+                    | Q(
+                        kind="user_input",
+                        status__in=["captured", "proposed", "rejected"],
+                        confirmed_by__isnull=True,
+                        confirmed_at__isnull=True,
+                    )
+                    | Q(
+                        kind="user_input",
+                        status="superseded",
+                        confirmed_by__isnull=True,
+                        confirmed_at__isnull=True,
+                    )
+                    | Q(
+                        kind="user_input",
+                        status="superseded",
+                        confirmed_by__isnull=False,
+                        confirmed_at__isnull=False,
+                    )
+                    | Q(
+                        kind="ai_judgment",
+                        confirmed_by__isnull=True,
+                        confirmed_at__isnull=True,
+                    )
+                ),
+                name="decision_confirmation_fields",
+            ),
+            models.UniqueConstraint(
+                fields=["task", "subject_user", "client_request_id"],
+                condition=Q(subject_user__isnull=False, client_request_id__isnull=False),
+                name="decision_req_user_uniq",
+            ),
+            models.UniqueConstraint(
+                fields=["task", "client_request_id"],
+                condition=Q(subject_user__isnull=True, client_request_id__isnull=False),
+                name="decision_req_task_uniq",
+            ),
+        ]
+        indexes = [
+            models.Index(fields=["task", "created_at", "id"]),
+            models.Index(fields=["task", "status", "created_at"]),
+            models.Index(fields=["confirmed_by", "confirmed_at"]),
+        ]
+
+    def __str__(self):
+        return f"{self.task.number} decision {self.pk}: {self.summary[:60]}"
+
+
 class ChecklistItem(models.Model):
     task = models.ForeignKey(Task, on_delete=models.CASCADE, related_name="checklist")
     text = models.CharField(max_length=200)
