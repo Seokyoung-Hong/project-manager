@@ -536,9 +536,11 @@ def extend_due(
 
 @transaction.atomic
 def delete_task(task, *, actor, source: str = "web") -> None:
-    """조직 관리자만. 체크리스트·오늘 목록·링크가 함께 사라진다(CASCADE)."""
+    """조직 관리자만. 의사결정 기록이 있는 태스크는 보존한다."""
     require_admin(actor, task.project.org)
     _ai_check(task.project.org, "ai.delete", "삭제", source, "task")
+    if task.decision_records.exists():
+        raise ServiceError({"task": "의사결정 기록이 있는 태스크는 삭제할 수 없습니다. 취소하거나 프로젝트를 보관해 주세요."})
     ChangeLog.objects.create(
         target_type="org",
         target_id=task.project.org_id,

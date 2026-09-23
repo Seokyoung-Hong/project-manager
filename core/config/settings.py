@@ -31,6 +31,7 @@ INSTALLED_APPS = [
     "orgs",
     "projects",
     "tasks",
+    "portfolio",
     "notes",
     "github",
     "reports",

@@ -50,6 +50,7 @@
     <div class="menu-list">
       <span class="muted t13" style="padding:4px 10px">{{ user.display_name }}</span>
       <a href="{% url 'profile' %}">프로필</a>
+      <a href="{% url 'portfolio' %}">내 포트폴리오</a>
       <a href="{% url 'tokens' %}">API 토큰</a>
       {% if user.is_staff %}<a href="{% url 'ops' %}">운영 상태</a>{% endif %}
       <form method="post" action="{% url 'logout' %}">{% csrf_token %}<button type="submit">로그아웃</button></form>

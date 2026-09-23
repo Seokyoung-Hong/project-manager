@@ -3,15 +3,18 @@ from ninja import NinjaAPI
 from ninja.throttling import AuthRateThrottle
 
 from common.errors import ConflictError, ServiceError
+from portfolio.api import router as portfolio_router
 
 from .auth import BrowserSessionAuth, TokenAuth
 from .routers import (
+    decisions,
     discord,
     docs,
     github,
     integrations,
     me,
     orgs,
+    pr_context,
     projects,
     reports,
     settings,
@@ -72,6 +75,9 @@ api.add_router("/projects", projects.router)
 # /api/docs는 Ninja의 Swagger UI가 이미 쓴다. 겹치면 문서 목록이 로그인 화면으로 넘어간다.
 api.add_router("/project-docs", docs.router)
 api.add_router("/tasks", tasks.router)
+api.add_router("/tasks", decisions.router)
+api.add_router("/tasks", pr_context.router)
+api.add_router("/me", portfolio_router)
 api.add_router("/today", today.router)
 api.add_router("/reports", reports.router)
 # 고정 경로를 먼저. /integrations/{name}/status가 /integrations/discord/...를 삼키지 않게 한다.
