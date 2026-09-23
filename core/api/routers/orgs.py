@@ -45,6 +45,7 @@ def get_org(request, org_id: int):
         "name": org.name,
         "purpose": org.purpose,
         "role": role,
+        "discord_guild_id": org.discord_guild_id,
         "projects": [project_out(p) for p in projects],
         "teams": [
             {

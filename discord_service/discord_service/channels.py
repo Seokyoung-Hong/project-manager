@@ -44,6 +44,7 @@ async def link_channel(
     item_id: int,
     category_name,
     site_name: str,
+    create_category: bool = False,
 ) -> str:
     # 가장 먼저, core를 부르기 전에 본다. 이 검사가 없으면 봇이 권한을 대신 빌려주는 꼴이 된다 —
     # Discord에서 채널을 못 만드는 PM 관리자가 봇을 통해 만들게 되고, 봇은 그 사람이 이미 가진
@@ -72,18 +73,38 @@ async def link_channel(
     # 없으면 Discord에서 지워진 것이다. 새로 만들고 덮어쓴다.
 
     category = None
+    created_category = None
     if category_name:
-        category = discord.utils.get(guild.categories, name=category_name)
+        category = (
+            category_name
+            if isinstance(category_name, discord.CategoryChannel)
+            else discord.utils.get(guild.categories, name=category_name)
+        )
         if category is None:
-            return f"'{category_name}' 카테고리를 찾을 수 없습니다."
+            if not create_category:
+                return f"'{category_name}' 카테고리를 찾을 수 없습니다. 기존 카테고리를 선택하거나 새 카테고리 만들기를 지정해 주세요."
+            try:
+                created_category = await guild.create_category(
+                    category_name, reason=f"산돌이: {label} 채널"
+                )
+                category = created_category
+            except discord.Forbidden:
+                return "봇에게 카테고리 관리 권한이 없습니다."
+            except discord.HTTPException as e:
+                log.warning("카테고리 생성 실패: %s", e)
+                return "카테고리를 만들지 못했습니다. 잠시 뒤 다시 시도해 주세요."
 
     try:
         channel = await guild.create_text_channel(
             item["name"], category=category, topic=f"{site_name} · {label} {item['name']}"
         )
     except discord.Forbidden:
+        if created_category:
+            await created_category.delete(reason="채널 생성 실패로 빈 카테고리 되돌림")
         return NO_PERMISSION
     except discord.HTTPException as e:
+        if created_category:
+            await created_category.delete(reason="채널 생성 실패로 빈 카테고리 되돌림")
         log.warning("채널 생성 실패: %s", e)
         return "채널을 만들지 못했습니다. 잠시 뒤 다시 시도해 주세요."
 
@@ -95,6 +116,8 @@ async def link_channel(
         reply = reply or "연결을 저장하지 못했습니다."
         try:
             await channel.delete(reason="산돌이: 연결 저장 실패로 되돌림")
+            if created_category and not created_category.channels:
+                await created_category.delete(reason="연결 실패로 빈 카테고리 되돌림")
         except discord.HTTPException:
             return f"{reply} 만든 <#{channel.id}> 채널을 지우지도 못했습니다 — 직접 지워 주세요."
         return f"{reply} 만든 채널은 되돌렸습니다."

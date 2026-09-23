@@ -56,6 +56,7 @@ def project_out(p) -> dict:
         "org_id": p.org_id,
         "name": p.name,
         "purpose": p.purpose,
+        "discord_channel_id": p.discord_channel_id,
         "owners": [user_brief(u) for u in p.owners.all()],
         "teams": [
             {"id": t.pk, "name": t.name, "purpose": t.purpose, "member_count": t.members.count()}

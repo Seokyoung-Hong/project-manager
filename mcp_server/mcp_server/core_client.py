@@ -35,7 +35,8 @@ class Core:
         if r.status_code == 401:
             raise CoreError("토큰이 유효하지 않습니다. 폐기됐거나 만료됐을 수 있습니다.")
         if r.status_code == 403:
-            raise CoreError("이 토큰으로는 할 수 없는 작업입니다(읽기 전용).")
+            detail = _detail(r)
+            raise CoreError(detail or "이 토큰으로는 할 수 없는 작업입니다(읽기 전용 또는 접근 권한 없음).")
         if r.status_code == 404:
             # core는 무엇을 못 찾았는지(프로젝트·사용자·팀…) 이미 말해 준다. 그대로 전달한다.
             raise CoreError(_detail(r) or "대상을 찾을 수 없습니다.")
@@ -59,6 +60,9 @@ class Core:
 
     def patch(self, path, body):
         return self._ok(self.http.patch(path, json=body))
+
+    def put(self, path, body):
+        return self._ok(self.http.put(path, json=body))
 
     def delete(self, path):
         return self._ok(self.http.delete(path))

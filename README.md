@@ -6,7 +6,7 @@
 | 파트 | 역할 | 스택 |
 |---|---|---|
 | [`core/`](core) | 웹 화면·데이터·HTTP API. 업무 규칙은 전부 여기 `services.py`에 있다 | Django 5.2, Django Ninja, PostgreSQL, HTMX |
-| [`discord_service/`](discord_service) | 마감 알림(D-3·D-1·당일·초과)을 담당자 **개인 DM**으로 보내고, 봇에게 온 DM 명령(`오늘`·`완료`·`연장`)을 처리한다. 주간 보고는 팀 채널에 | httpx, discord.py, SQLite |
+| [`discord_service/`](discord_service) | 마감 알림과 DM·슬래시 명령, 프로젝트 채널 연결 및 내부 MCP 채널 제어를 제공한다 | httpx, discord.py, SQLite |
 | [`mcp_server/`](mcp_server) | Claude·ChatGPT 등 AI 클라이언트가 태스크를 읽고 고치는 MCP 서버 | mcp, httpx, uvicorn |
 
 ## 문서
@@ -23,6 +23,7 @@
 | [docs/GUIDE-02-discord.md](docs/GUIDE-02-discord.md) | discord_service 구현 지시서 |
 | [docs/GUIDE-03-mcp.md](docs/GUIDE-03-mcp.md) | mcp_server 구현 지시서 |
 | [docs/GUIDE-04-deploy.md](docs/GUIDE-04-deploy.md) | 배포 절차 (Proxmox + Docker Compose + Cloudflare Tunnel) |
+| [docs/OPERATIONS-DEPLOYMENT.md](docs/OPERATIONS-DEPLOYMENT.md) | 운영 서버 SSH 신뢰 확인, 서비스 범위별 배포, Discord 프로젝트 채널 관리 |
 
 ## 브라우저 안 AI 에이전트 (WebMCP)
 

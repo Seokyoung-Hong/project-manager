@@ -165,6 +165,7 @@ class ProjectOut(Schema):
     org_id: int
     name: str
     purpose: str
+    discord_channel_id: str = ""
     owners: list[UserBrief]
     teams: list[TeamOut]
     status: ProjectStatus
@@ -216,6 +217,7 @@ class OrgOut(Schema):  # 기존 TeamOut
     name: str
     purpose: str
     role: str
+    discord_guild_id: str | None = None
     projects: list[ProjectOut]
     teams: list[TeamOut]
 
@@ -360,4 +362,8 @@ class DiscordStatusIn(Schema):
 
 class DiscordChannelIn(Schema):
     discord_user_id: str
+    channel_id: str = ""
+
+
+class ProjectDiscordChannelIn(Schema):
     channel_id: str = ""

@@ -40,7 +40,12 @@ class FakeCore:
 
     def handler(self, request: httpx.Request) -> httpx.Response:
         self.calls.append(
-            (request.method, request.url.path, dict(request.headers), request.content)
+            (
+                request.method,
+                request.url.path + (f"?{request.url.query.decode()}" if request.url.query else ""),
+                dict(request.headers),
+                request.content,
+            )
         )
         auth = request.headers.get("authorization", "")
         token = auth.removeprefix("Bearer ")

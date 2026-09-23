@@ -8,6 +8,7 @@ core 코드를 import하지 않는다. core의 HTTP API만 호출하는 얇은 �
 | 이름 | 기본값 | 설명 |
 |---|---|---|
 | `CORE_URL` | `http://web:8000` | core 주소(컨테이너 안) |
+| `DISCORD_CONTROL_URL` | `http://discord-bot:8081` | Discord 봇 내부 채널 관리 API. `discord` Compose 프로필이 꺼져 있으면 Discord 도구는 사용 불가 |
 | `AUTH_SERVER_URL` | 없음 | core의 **공개** 주소. OAuth 인가 서버다. 비면 OAuth를 광고하지 않는다 |
 | `PORT` | `8080` | 수신 포트 |
 
@@ -82,14 +83,20 @@ MCP_ALLOWED_HOSTS=project.sio2.kr
 한쪽만 고쳐진다. 조직마다 다른 규칙(거버넌스)은 여기가 아니라 `get_governance`가 낸다.
 같은 파일을 `.claude/skills/sandol-pm/SKILL.md`로 복사하면 스킬로도 쓸 수 있다.
 
-## 도구 21개
+## MCP 도구
 
 - 사용법: `get_guide` — 이 서버를 처음 쓸 때 읽는다.
-- 태스크·프로젝트: `list_orgs` `list_projects` `get_project` `list_tasks` `get_task`
-  `create_task` `update_task` `transition_task` `append_note`
-- 거버넌스: `get_governance` — 그 조직의 개발 규칙(마크다운). **쓰기 전에 먼저 읽는다.**
-- 팀: `list_teams` `create_team` `add_team_member` `remove_team_member` `set_project_teams`
-- 현황: `get_org_status` `get_weekly_report_data` `list_members`
+- 조직·프로젝트: `list_orgs` `get_org` `list_projects` `get_project` `create_project` `update_project`
+- 태스크: `list_tasks` `get_task` `get_task_github` `get_task_history` `create_task` `update_task`
+  `transition_task` `extend_task` `append_note` `delete_task`
+- GitHub 저장소: `list_org_repos` `get_project_repo` `connect_repo`; 조회는 저장소 접근 권한을 확인한다.
+- 문서: `list_docs` `get_doc` `create_doc` `update_doc`
+- 조직·팀: `list_members` `list_teams` `create_team` `add_team_member` `remove_team_member` `delete_team`
+  `set_project_teams` `create_invite` `revoke_invite`
+- 설정·개인화: `get_governance` `update_governance` `get_settings` `update_org_settings`
+  `get_project_settings` `update_project_settings` `get_my_settings` `update_my_settings`
+- 오늘 목록·현황: `get_today` `add_today` `exclude_today` `restore_excluded_today` `reorder_today`
+  `set_today_auto_pull` `get_org_status` `get_weekly_report_data`
 - ChatGPT 커넥터 호환 별칭: `search` `fetch`
 
 수정 도구는 `get_task`로 읽은 최신 `version`을 함께 보낸다. 충돌하면 다시 읽고 재시도한다.

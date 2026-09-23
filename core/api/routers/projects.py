@@ -13,6 +13,7 @@ from projects.services import (
     delete_project,
     parse_spec,
     set_api_spec,
+    set_project_channel,
     update_project,
 )
 
@@ -24,6 +25,7 @@ from ..schemas import (
     ProjectCreateIn,
     ProjectOut,
     ProjectPatchIn,
+    ProjectDiscordChannelIn,
     RepoConnectIn,
 )
 from ..serialize import project_out
@@ -73,6 +75,13 @@ def list_projects(request, org: int | None = None, include_archived: bool = Fals
 @router.get("/{project_id}", response=ProjectOut)
 def get_project(request, project_id: int):
     return project_out(_project_or_404(request, project_id))
+
+
+@router.put("/{project_id}/discord-channel", response=dict)
+def set_discord_channel(request, project_id: int, payload: ProjectDiscordChannelIn):
+    """조직 관리자가 Discord 프로젝트 채널 ID를 연결하거나 해제한다."""
+    project = set_project_channel(_project_or_404(request, project_id), payload.channel_id, request.auth)
+    return {"id": project.pk, "name": project.name, "discord_channel_id": project.discord_channel_id}
 
 
 @router.post("", response={201: ProjectOut, 400: ErrorOut})

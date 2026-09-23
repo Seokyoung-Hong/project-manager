@@ -16,17 +16,53 @@ TOOL_NAMES = {
     "delete_task",
     "list_projects",
     "get_project",
+    "get_org",
+    "list_discord_channels",
+    "plan_project_channel_assignments",
+    "assign_project_channel",
+    "unlink_project_channel",
+    "create_project_channel",
+    "update_project",
+    "create_project",
+    "get_project_api_spec",
+    "set_project_api_spec",
+    "get_project_repo",
     "list_tasks",
     "get_task",
+    "list_task_decisions",
+    "record_task_decision",
+    "get_pr_context",
+    "list_portfolio_sources",
+    "create_portfolio_draft",
+    "get_portfolio_draft",
+    "update_portfolio_draft",
+    "export_portfolio_markdown",
+    "get_task_github",
+    "get_task_history",
     "create_task",
     "update_task",
     "transition_task",
+    "extend_task",
     "append_note",
     "get_org_status",
     "get_weekly_report_data",
     "list_members",
     "get_governance",
     "get_settings",
+    "update_org_settings",
+    "get_project_settings",
+    "update_project_settings",
+    "get_my_settings",
+    "update_my_settings",
+    "create_invite",
+    "revoke_invite",
+    "update_governance",
+    "get_today",
+    "add_today",
+    "exclude_today",
+    "restore_excluded_today",
+    "reorder_today",
+    "set_today_auto_pull",
     "list_teams",
     "create_team",
     "add_team_member",
@@ -122,6 +158,18 @@ def test_update_clear_due(fake_core, with_token):
     assert body["no_due_reason"] == "미정"
 
 
+def test_update_clear_assignee(fake_core, with_token):
+    fn("update_task")(1, version=1, clear_assignee=True)
+    assert last_body(fake_core) == {"version": 1, "assignee_id": None}
+
+
+def test_list_tasks_forwards_incremental_and_archived_filters(fake_core, with_token):
+    fn("list_tasks")(updated_since="2026-09-22T12:00:00+09:00", include_archived=True)
+    _, path, _, _ = fake_core.calls[-1]
+    assert "updated_since=2026-09-22T12%3A00%3A00%2B09%3A00" in path
+    assert "include_archived=True" in path
+
+
 def test_append_note_appends_with_version(fake_core, with_token):
     fn("append_note")(1, "첫 메모")
     body = last_body(fake_core)
@@ -188,7 +236,7 @@ async def test_tool_names_registered(fake_core):
     finally:
         current_token.reset(tok)
     assert {t.name for t in tools} == TOOL_NAMES
-    assert len(TOOL_NAMES) == 31
+    assert len(TOOL_NAMES) == 67
 
 
 def test_governance_tool(fake_core, with_token):
