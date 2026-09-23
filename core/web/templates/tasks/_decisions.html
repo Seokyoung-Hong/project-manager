@@ -1,3 +1,4 @@
+{% load tz %}
 <section class="section decision-records" id="decisions">
   <div class="row" style="justify-content:space-between;align-items:center;gap:8px">
     <h3>의사결정 기록 <span class="muted t13">{{ decision_total }}</span></h3>
@@ -75,6 +76,7 @@
           </form>
         </details>
       </div>
+      {% endif %}
       {% endif %}
     </li>
     {% endfor %}
