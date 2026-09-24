@@ -1,0 +1,41 @@
+{
+  "manifest_version": "0.3",
+  "name": "sandol-project-manager-local",
+  "display_name": "Sandol ProjectManager (local)",
+  "version": "1.0.0",
+  "description": "Use Sandol ProjectManager tools from this Claude Desktop installation only.",
+  "author": {
+    "name": "Sandol"
+  },
+  "privacy_policies": [
+    "https://github.com/Seokyoung-Hong/project-manager/blob/main/mcp_server/desktop_extension/PRIVACY.md"
+  ],
+  "server": {
+    "type": "node",
+    "entry_point": "server/index.js",
+    "mcp_config": {
+      "command": "node",
+      "args": ["${__dirname}/server/index.js"],
+      "env": {
+        "SANDOL_PM_TOKEN": "${user_config.api_token}"
+      }
+    }
+  },
+  "tools_generated": true,
+  "user_config": {
+    "api_token": {
+      "type": "string",
+      "title": "ProjectManager API token",
+      "description": "Create a read or write API token at https://project.sio2.kr/settings/tokens",
+      "sensitive": true,
+      "required": true
+    }
+  },
+  "compatibility": {
+    "claude_desktop": ">=1.0.0",
+    "platforms": ["win32", "darwin", "linux"],
+    "runtimes": {
+      "node": ">=18.0.0"
+    }
+  }
+}
