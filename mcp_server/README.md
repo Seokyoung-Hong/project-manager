@@ -58,6 +58,16 @@ MCP_ALLOWED_HOSTS=project.sio2.kr
 
 ## 클라이언트 연결
 
+### MCP 도구를 일반 HTTP API로 호출
+
+MCP와 같은 67개 도구를 JSON API로도 제공한다. 앞단 프록시의 기존 `/mcp` 경로를 사용한다.
+
+- `GET https://project.sio2.kr/mcp/relay/tools`: 이 토큰으로 호출 가능한 도구의 이름, 설명, JSON 입력 스키마
+- `POST https://project.sio2.kr/mcp/relay/tools/{name}`: JSON 객체를 인자로 도구 호출. 응답은 `{"result": ...}`
+- 두 경로 모두 `Authorization: Bearer <TOKEN>` 필수. 유효하지 않은 토큰은 401, 허용되지 않은 도구는 403이다. 실제 데이터 권한과 AI 정책은 기존 core가 검사한다.
+
+기기에만 설치할 Claude 스킬과 표준 라이브러리 호출 스크립트는 [`skill/http/`](skill/http/)에 있다. 해당 기기의 환경 변수 `SANDOL_PM_TOKEN`에 API 토큰을 저장한다. 이 값은 스킬 파일에 넣지 않는다. Claude의 원격 코드 실행 환경에서는 기기의 환경 변수를 읽을 수 없으므로 그 환경에서는 별도의 비밀 전달 방식이 필요하다.
+
 운영 서버의 MCP 주소는 `https://project.sio2.kr/mcp`이다(다른 곳에 올렸다면 그 주소로 바꿔 읽는다). `<TOKEN>`은 core의 `/settings/tokens`에서 발급한 값.
 
 | 클라이언트 | 방식 | 설정 |
