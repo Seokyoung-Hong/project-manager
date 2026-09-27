@@ -59,7 +59,8 @@ services:
       - "8081"                    # MCP 내부 채널 관리 브리지. 호스트 포트로 공개하지 않는다.
     restart: unless-stopped
 
-  mcp:
+  mcp:                           # 선택 확장: claude.ai 웹·모바일용 원격 커넥터. Claude Code는 skills/로 core API를 직접 부른다
+    profiles: ["mcp"]            # 켜려면 --profile mcp 또는 .env의 COMPOSE_PROFILES=mcp
     build: ./mcp_server
     environment:
       CORE_URL: http://web:8000

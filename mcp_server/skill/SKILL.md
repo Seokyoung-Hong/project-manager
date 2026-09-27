@@ -82,7 +82,6 @@ description: 산돌이 PM(조직 업무 관리)을 MCP로 다룬다. 태스크�
 MCP 서버(`sandol-pm`)만 연결하면 된다. 이 글은 서버가 `get_guide` 도구와 `guide://sandol-pm`
 자원으로 그대로 내보내므로, 에이전트가 필요할 때 스스로 읽는다.
 
-파일로도 쓰고 싶으면(MCP 없이 참고하거나, 토큰을 아끼려면) 이 파일을
-`.claude/skills/sandol-pm/SKILL.md` 또는 `~/.claude/skills/sandol-pm/SKILL.md`로 복사한다.
-쓰기 범위 토큰은 PM의 `설정 → API 토큰`에서 발급한다.
+셸이 있는 Claude Code에서는 MCP 대신 저장소의 `skills/`(core API 직접 호출, `/pm-*` 명령)를 쓴다.
+설치 방법은 `skills/README.md`. 쓰기 범위 토큰은 PM의 `설정 → API 토큰`에서 발급한다.
 읽기 토큰으로는 쓰기 도구가 403이 된다.

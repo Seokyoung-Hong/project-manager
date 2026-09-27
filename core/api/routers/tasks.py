@@ -10,9 +10,9 @@ from accounts.models import User
 from common.errors import ServiceError
 from github import client as github_client
 from github import writes as gh_writes
+from github.client import GitHubError
 from github.models import RepoIssue, TaskGitLink
 from github.services import can_view_repo, repo_state, user_token
-from github.client import GitHubError
 from orgs.services import ai_denied, orgs_of
 from orgs.settings import effective
 from projects.models import Project
@@ -204,7 +204,7 @@ def create_task_issue(request, task_id: int):
     try:
         data = gh_writes.create_issue(task, actor=request.auth)
     except GitHubError as e:
-        raise HttpError(502, e.message)
+        raise HttpError(502, e.message) from e
     full_name = task.project.repo.full_name
     return 201, {
         "number": data["number"],

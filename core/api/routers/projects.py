@@ -25,9 +25,9 @@ from ..schemas import (
     ConflictOut,
     ErrorOut,
     ProjectCreateIn,
+    ProjectDiscordChannelIn,
     ProjectOut,
     ProjectPatchIn,
-    ProjectDiscordChannelIn,
     RepoConnectIn,
     TaskOut,
 )
