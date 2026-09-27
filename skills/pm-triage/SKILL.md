@@ -14,7 +14,7 @@ disable-model-invocation: true
 ## 흐름
 
 1. 거버넌스·설정을 읽는다. AI가 바꿀 수 없는 항목(`ai.*`)은 정리안에서 "사람이 할 일"로 분리한다.
-2. 모은다(`GET /api/tasks?org=&project=` — 둘 다 항상 넣는다):
+2. 모은다(`GET /api/orgs/{org}/tasks?project=` — 조직 경로, project 포함):
    - 기한 넘김: `status=todo,doing,paused,blocked,review&due_to=<어제>`
    - 막힘·멈춤: `status=blocked,paused`
    - 기한 없는 진행 중: `status=doing` 중 `due_date`가 빈 것

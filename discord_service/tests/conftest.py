@@ -140,8 +140,9 @@ class FakeCore:
 
     def handler(self, request: httpx.Request) -> httpx.Response:
         path = request.url.path
-        if path == "/api/tasks":
-            org_param = request.url.params.get("org")
+        m = re.fullmatch(r"/api/orgs/(\d+)/tasks", path)
+        if m:
+            org_param = m.group(1)
             updated_since = request.url.params.get("updated_since")
             if updated_since is not None:
                 items = list(self.tasks.values())  # channels_post: 상태 무관 전부

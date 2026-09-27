@@ -9,10 +9,10 @@ argument-hint: "[프로젝트 이름 | 전체]"
 `../pm/SKILL.md`를 이 세션에서 읽지 않았다면 먼저 읽는다. 이 명령은 읽기만 한다.
 
 1. `../pm/SKILL.md`의 "작업 범위"대로 조직·프로젝트를 정한다(인자: $ARGUMENTS). 인자가 "전체"일 때만 그 조직의 모든 프로젝트를 본다.
-2. 읽기(모두 `org`·`project`를 넣는다):
+2. 읽기(목록은 조직 경로, `project` 포함):
    - `GET /api/today` — 오늘 목록. 여러 조직·프로젝트가 섞여 오므로 **범위 밖 항목은 버린다**
-   - `GET /api/tasks?org=&project=&assignee=<내 id>&status=todo,doing,paused,blocked,review&due_to=<오늘>` — 오늘까지 기한
-   - `GET /api/tasks?org=&project=&assignee=<내 id>&status=blocked,paused` — 멈춘 것
+   - `GET /api/orgs/{org}/tasks?project=&assignee=<내 id>&status=todo,doing,paused,blocked,review&due_to=<오늘>` — 오늘까지 기한
+   - `GET /api/orgs/{org}/tasks?project=&assignee=<내 id>&status=blocked,paused` — 멈춘 것
    - 범위 밖에 기한 넘김이 있으면 건수만 한 줄로 알린다(`/api/today`의 `counts`). 내용은 보여 주지 않는다.
 3. 요약(짧게, 서버가 준 값만):
    - **오늘**: `TASK-N 제목 — 다음 행동`

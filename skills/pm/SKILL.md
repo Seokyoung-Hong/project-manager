@@ -54,8 +54,9 @@ PM spec /api/tasks                                    # 엔드포인트의 입�
    - 저장소가 연결된 프로젝트가 없으면 저장소 이름과 프로젝트 이름이 대응하는 것(예: `project-manager` ↔ `ProjectManager`)
    - 그래도 하나로 정해지지 않으면 후보를 보여 주고 묻는다. 임의로 고르지 않는다.
 3. 정한 범위를 한 줄로 밝힌다: `범위: <조직>(id) / <프로젝트>(id)`. 세션 동안 유지하고, 사용자가 바꾸라고 할 때만 바꾼다.
-4. 태스크 목록은 **항상 `org`와 `project`를 함께** 넘긴다: `GET /api/tasks?org=<id>&project=<id>&...`.
-   조직 전체를 보는 명령(주간 보고 등)만 `project`를 뺀다. `org` 없이 목록을 부르지 않는다.
+4. 태스크 목록은 **조직 경로로만** 부르고 `project`를 함께 넘긴다: `GET /api/orgs/<org>/tasks?project=<id>&...`.
+   조직 전체를 보는 명령(주간 보고 등)만 `project`를 뺀다. `GET /api/tasks`(여러 조직을 가로지르는 개인 전체 보기)는 쓰지 않는다.
+   다른 조직의 프로젝트를 넘기면 404다 — 범위를 잘못 잡았다는 뜻이니 다시 정한다.
 5. 새 태스크는 이 프로젝트에 만든다. 다른 프로젝트에 만들어야 할 것 같으면 먼저 묻는다.
 
 ## 자주 쓰는 엔드포인트
@@ -65,7 +66,7 @@ PM spec /api/tasks                                    # 엔드포인트의 입�
 | 내 정보·조직 | `GET /api/me` |
 | 조직 현황·멤버·팀 | `GET /api/orgs/{org}/status` · `/members` · `/teams` |
 | 프로젝트 | `GET /api/projects?org=` · `GET /api/projects/{id}` · `GET /api/projects/{id}/repo` |
-| 태스크 목록 | `GET /api/tasks` (`org` 필수·`project` 기본 포함, `assignee` `status`=쉼표 목록 `due_from` `due_to` `q`=제목 검색) |
+| 태스크 목록 | `GET /api/orgs/{org}/tasks` (`project` 기본 포함, `assignee` `status`=쉼표 목록 `due_from` `due_to` `q`=제목 검색) |
 | 태스크 상세 | `GET /api/tasks/{id}` (`TASK-N`의 id는 N) · 이력 `/history` · GitHub `/github` |
 | 태스크 만들기 | `POST /api/tasks` (`project_id` `title` 필수, 아래 "태스크 만들기") |
 | 태스크 고치기 | `PATCH /api/tasks/{id}` — `version` 필수, 바꿀 필드만 |
@@ -89,7 +90,7 @@ PM spec /api/tasks                                    # 엔드포인트의 입�
 
 ## 태스크 만들기 (pm-new · pm-split · pm-from-issue · pm-followup · pm-start 공통)
 
-1. **중복부터 본다.** `GET /api/tasks?org=&project=&q=<핵심어>&status=todo,doing,paused,blocked,review`로
+1. **중복부터 본다.** `GET /api/orgs/{org}/tasks?project=&q=<핵심어>&status=todo,doing,paused,blocked,review`로
    비슷한 태스크를 찾는다. 있으면 먼저 보여 준다. 핵심어를 두세 개 바꿔 본다.
 2. **초안을 채운다.** `project_id` `title` `done_when`(확인 가능한 완료 조건) `next_action`(바로 할 첫 행동)
    `checklist` `due_date`(YYYY-MM-DD) 또는 `no_due_reason` `priority`(1~10, 비우면 조직 기본값) `assignee_id`(비우면 나).
