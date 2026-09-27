@@ -1,6 +1,6 @@
 ---
 name: pm-pr
-description: 태스크의 결정 기록·이슈·작업 내용으로 PR 제목과 설명 초안을 쓴다. TASK-N과 Closes #N을 넣고, 사용자 결정과 AI 판단을 구분한다. PR을 만들지는 않는다.
+description: "태스크의 결정 기록·이슈·작업 내용으로 PR 제목과 설명 초안을 쓴다. TASK-N과 Closes #N을 넣고, 사용자 결정과 AI 판단을 구분한다. PR을 만들지는 않는다."
 argument-hint: "[TASK-N]"
 ---
 

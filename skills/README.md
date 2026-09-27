@@ -31,14 +31,16 @@ MCP 커넥터(`mcp_server/`)는 claude.ai 웹·모바일처럼 셸이 없는 클
    Copy-Item -Recurse -Force skills\pm, skills\pm-* $HOME\.claude\skills\
    ```
 
-2. PM의 `설정 → API 토큰`(`/settings/tokens`)에서 토큰을 발급해 **그 기기의 사용자 환경 변수** `SANDOL_PM_TOKEN`에 넣는다.
-   쓰기 명령을 쓰려면 쓰기 범위 토큰이어야 한다. 기기를 잃어버리면 설정에서 토큰을 폐기한다.
+2. 로그인한다. 브라우저가 열리면 PM에 로그인하고 읽기/쓰기 중 골라 허용한다(쓰기 명령을 쓰려면 쓰기).
+   처음 명령을 쓸 때 Claude가 대신 실행해 주기도 한다.
 
    ```powershell
-   [Environment]::SetEnvironmentVariable("SANDOL_PM_TOKEN", "<토큰>", "User")
+   python $HOME\.claude\skills\pm\scripts\pm.py login
    ```
 
-   다른 서버를 쓰면 `SANDOL_PM_URL`도 넣는다(기본 `https://project.sio2.kr`). Claude Code를 다시 시작해야 반영된다.
+   토큰은 `~/.config/sandol-pm/token.json`에 저장되고 로그인한 서버 주소로만 쓰인다. `pm.py logout`은 이 파일을 지운다.
+   서버 쪽 토큰은 `/settings/tokens`에 "산돌이 PM 스킬 (기기 이름)"으로 보이며, 기기를 잃어버리면 거기서 폐기한다.
+   환경 변수 `SANDOL_PM_TOKEN`을 넣으면 그것이 우선한다. 다른 서버는 `SANDOL_PM_URL`(기본 `https://project.sio2.kr`).
 
 3. Python 3.9 이상이 필요하다. 추가 패키지는 없다.
 

@@ -4,29 +4,116 @@
     pm.py POST /api/tasks -  < body.json          본문은 표준입력(-) 또는 인자 JSON
     pm.py POST /api/tasks '{"title": "..."}' --key 요청ID   재시도해도 한 번만 만든다
     pm.py spec [경로 일부]                          OpenAPI에서 엔드포인트와 스키마 찾기
+    pm.py login | logout                          브라우저 OAuth로 토큰 받기 / 지우기
 
-토큰은 SANDOL_PM_TOKEN, 주소는 SANDOL_PM_URL(기본 https://project.sio2.kr)에서 읽는다.
+토큰은 환경 변수 SANDOL_PM_TOKEN, 없으면 `pm.py login`이 저장한 ~/.config/sandol-pm/token.json에서 읽는다.
+주소는 SANDOL_PM_URL(기본 https://project.sio2.kr). 저장한 토큰은 받은 주소로만 보낸다.
 모든 요청에 X-Source: ai 를 붙인다. 조직의 AI 정책(ai.*)이 이 헤더로 걸린다.
 """
 
+import base64
+import hashlib
 import json
 import os
+import secrets
+import socket
 import sys
+import webbrowser
+from http.server import BaseHTTPRequestHandler, HTTPServer
+from pathlib import Path
 from urllib.error import HTTPError, URLError
-from urllib.parse import urlencode
+from urllib.parse import parse_qs, urlencode, urlparse
 from urllib.request import Request, urlopen
 
 METHODS = {"GET", "POST", "PATCH", "PUT", "DELETE"}
-USAGE = "usage: pm.py METHOD /api/... [key=value ...|JSON|-] [--key ID]  |  pm.py spec [경로 일부]"
+USAGE = "usage: pm.py METHOD /api/... [key=value ...|JSON|-] [--key ID]  |  pm.py spec [경로 일부]  |  pm.py login|logout"
+TOKEN_FILE = Path.home() / ".config" / "sandol-pm" / "token.json"
+
+
+def _base():
+    return os.environ.get("SANDOL_PM_URL", "https://project.sio2.kr").rstrip("/")
+
+
+def _token(base):
+    if os.environ.get("SANDOL_PM_TOKEN"):
+        return os.environ["SANDOL_PM_TOKEN"]
+    try:
+        saved = json.loads(TOKEN_FILE.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        saved = {}
+    if saved.get("url") == base and saved.get("token"):
+        return saved["token"]
+    raise SystemExit("로그인이 필요합니다. 사용자가 `python pm.py login`을 실행해 브라우저에서 허용해 주세요.")
+
+
+def login():
+    """OAuth 2.1 + PKCE, 루프백 리다이렉트. core가 MCP 커넥터에 쓰는 인가 서버를 그대로 쓴다."""
+    base, got = _base(), {}
+
+    class Callback(BaseHTTPRequestHandler):
+        def do_GET(self):
+            got.update({k: v[0] for k, v in parse_qs(urlparse(self.path).query).items()})
+            self.send_response(200)
+            self.send_header("Content-Type", "text/html; charset=utf-8")
+            self.end_headers()
+            # 브라우저는 스크립트가 열지 않은 탭의 window.close()를 막을 수 있다. 그때는 문구가 남는다.
+            self.wfile.write(
+                "<!doctype html><meta charset=utf-8><title>산돌이 PM</title>"
+                "<p>산돌이 PM 로그인이 끝났습니다. 창이 자동으로 닫히지 않으면 닫아 주세요.</p>"
+                "<script>setTimeout(() => window.close(), 300)</script>".encode()
+            )
+
+        def log_message(self, *a):
+            pass
+
+    server = HTTPServer(("127.0.0.1", 0), Callback)
+    server.timeout = 300
+    redirect = f"http://127.0.0.1:{server.server_port}/callback"
+    client = _post(f"{base}/oauth/register", json.dumps(
+        {"client_name": f"산돌이 PM 스킬 ({socket.gethostname()})", "redirect_uris": [redirect]}
+    ).encode(), "application/json")
+    verifier, state = secrets.token_urlsafe(48), secrets.token_urlsafe(16)
+    challenge = base64.urlsafe_b64encode(hashlib.sha256(verifier.encode()).digest()).rstrip(b"=").decode()
+    url = f"{base}/oauth/authorize?" + urlencode({
+        "response_type": "code", "client_id": client["client_id"], "redirect_uri": redirect,
+        "state": state, "code_challenge": challenge, "code_challenge_method": "S256",
+    })
+    print(f"브라우저에서 로그인하고 허용해 주세요. 창이 열리지 않으면 이 주소를 여세요:\n{url}", file=sys.stderr)
+    webbrowser.open(url)
+    server.handle_request()  # 콜백 한 번만 받는다(5분 제한)
+    server.server_close()
+    if got.get("state") != state or "code" not in got:
+        raise SystemExit(f"로그인하지 못했습니다: {got.get('error', '응답 없음')}")
+    tok = _post(f"{base}/oauth/token", urlencode({
+        "grant_type": "authorization_code", "code": got["code"], "client_id": client["client_id"],
+        "redirect_uri": redirect, "code_verifier": verifier,
+    }).encode(), "application/x-www-form-urlencoded")
+    TOKEN_FILE.parent.mkdir(parents=True, exist_ok=True)
+    TOKEN_FILE.write_text(json.dumps({"url": base, "token": tok["access_token"], "scope": tok["scope"]}), encoding="utf-8")
+    TOKEN_FILE.chmod(0o600)
+    return {"logged_in": base, "scope": tok["scope"], "saved": str(TOKEN_FILE)}
+
+
+def logout():
+    TOKEN_FILE.unlink(missing_ok=True)
+    return {"logged_out": True, "note": "서버의 토큰은 남아 있습니다. /settings/tokens에서 폐기하세요."}
+
+
+def _post(url, data, content_type):
+    try:
+        with urlopen(Request(url, data=data, headers={"Content-Type": content_type}, method="POST"), timeout=30) as r:
+            return json.load(r)
+    except HTTPError as e:
+        raise SystemExit(f"HTTP {e.code}: {e.read().decode('utf-8', errors='replace')}")
+    except URLError as e:
+        raise SystemExit(f"연결 실패: {e.reason}")
 
 
 def call(method, path, query=None, body=None, key=None):
-    token = os.environ.get("SANDOL_PM_TOKEN")
-    if not token:
-        raise SystemExit("SANDOL_PM_TOKEN이 설정되어 있지 않습니다. /settings/tokens에서 발급한 토큰을 이 기기의 환경 변수로 넣어 주세요.")
     if not path.startswith("/api/"):
         raise SystemExit("경로는 /api/ 로 시작해야 합니다.")
-    base = os.environ.get("SANDOL_PM_URL", "https://project.sio2.kr").rstrip("/")
+    base = _base()
+    token = _token(base)
     url = base + path + ("?" + urlencode(query) if query else "")
     headers = {"Authorization": f"Bearer {token}", "X-Source": "ai", "Accept": "application/json"}
     data = None
@@ -61,14 +148,16 @@ def spec(needle=""):
 
 
 def main(argv):
-    for stream in (sys.stdin, sys.stdout):
+    for stream in (sys.stdin, sys.stdout, sys.stderr):
         stream.reconfigure(encoding="utf-8")
     key = None
     if "--key" in argv:
         i = argv.index("--key")
         key = argv[i + 1] if i + 1 < len(argv) else None
         argv = argv[:i] + argv[i + 2:]
-    if argv[:1] == ["spec"]:
+    if argv[:1] in (["login"], ["logout"]):
+        result = login() if argv[0] == "login" else logout()
+    elif argv[:1] == ["spec"]:
         result = spec(argv[1] if len(argv) > 1 else "")
     elif len(argv) >= 2 and argv[0].upper() in METHODS:
         method, path, rest = argv[0].upper(), argv[1], argv[2:]

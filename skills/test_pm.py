@@ -3,13 +3,17 @@
     python skills/test_pm.py
 """
 
+import importlib.util
 import json
 import os
 import subprocess
 import sys
+import tempfile
 import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+from urllib.parse import parse_qs, urlencode, urlparse
+from urllib.request import urlopen
 
 PM = Path(__file__).parent / "pm" / "scripts" / "pm.py"
 SPEC = {
@@ -26,12 +30,31 @@ SPEC = {
 seen = []
 
 
+def _parse(raw):
+    try:
+        return json.loads(raw)
+    except ValueError:
+        return parse_qs(raw.decode())
+
+
 class Fake(BaseHTTPRequestHandler):
     def _reply(self):
         n = int(self.headers.get("Content-Length") or 0)
         seen.append({"method": self.command, "path": self.path, "headers": dict(self.headers),
-                     "body": json.loads(self.rfile.read(n)) if n else None})
-        out = SPEC if self.path == "/api/openapi.json" else {"ok": True}
+                     "body": _parse(self.rfile.read(n)) if n else None})
+        if self.path.startswith("/oauth/authorize"):
+            # 사람이 허용을 누른 셈 치고 콜백으로 돌려보낸다.
+            q = parse_qs(urlparse(self.path).query)
+            assert q["code_challenge_method"] == ["S256"]
+            self.send_response(302)
+            self.send_header("Location", q["redirect_uri"][0] + "?" + urlencode({"code": "c1", "state": q["state"][0]}))
+            self.end_headers()
+            return
+        out = {
+            "/api/openapi.json": SPEC,
+            "/oauth/register": {"client_id": "cid"},
+            "/oauth/token": {"access_token": "oauth-tok", "scope": "read"},
+        }.get(self.path, {"ok": True})
         data = json.dumps(out).encode()
         self.send_response(409 if self.path == "/api/conflict" else 200)
         self.send_header("Content-Length", str(len(data)))
@@ -76,6 +99,29 @@ r = run("spec")
 assert "POST /api/tasks  Create" in r.stdout
 r = run("spec", "/api/tasks")
 assert set(json.loads(r.stdout)["schemas"]) == {"TaskCreateIn", "ChecklistIn"}
+
+# OAuth 로그인: 브라우저 대신 스레드가 인가 주소를 열고, 저장한 토큰은 받은 주소로만 쓴다.
+spec_ = importlib.util.spec_from_file_location("pm", PM)
+pm = importlib.util.module_from_spec(spec_)
+spec_.loader.exec_module(pm)
+with tempfile.TemporaryDirectory() as tmp:
+    pm.TOKEN_FILE = Path(tmp) / "token.json"
+    os.environ.pop("SANDOL_PM_TOKEN", None)
+    os.environ["SANDOL_PM_URL"] = f"http://127.0.0.1:{server.server_port}"
+    pm.webbrowser.open = lambda url: threading.Thread(target=urlopen, args=(url,)).start()
+    assert pm.login()["scope"] == "read"
+    token_req = next(r for r in reversed(seen) if r["path"] == "/oauth/token")
+    assert token_req["headers"]["Content-Type"] == "application/x-www-form-urlencoded"
+    pm.call("GET", "/api/me")
+    assert seen.pop()["headers"]["Authorization"] == "Bearer oauth-tok"
+    os.environ["SANDOL_PM_URL"] = "http://127.0.0.1:1"
+    try:
+        pm.call("GET", "/api/me")
+        raise AssertionError("다른 주소로 저장한 토큰을 보냈다")
+    except SystemExit as e:
+        assert "로그인" in str(e)
+    pm.logout()
+    assert not pm.TOKEN_FILE.exists()
 
 server.shutdown()
 print("ok")
