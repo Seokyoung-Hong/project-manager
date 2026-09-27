@@ -1,7 +1,7 @@
 ---
 name: pm-triage
 description: 기한 넘김·막힘·기한 없는 진행 중 태스크를 모아 정리안을 만들고, 확인받아 일괄 반영한다. "밀린 것 정리", "막힌 것 정리"에 쓴다.
-argument-hint: "[나 | 프로젝트 이름 | 조직]"
+argument-hint: "[프로젝트 이름 | 조직 전체]"
 disable-model-invocation: true
 ---
 
@@ -9,12 +9,12 @@ disable-model-invocation: true
 
 `../pm/SKILL.md`를 이 세션에서 읽지 않았다면 먼저 읽는다.
 
-범위: $ARGUMENTS (비어 있으면 내 담당만. 프로젝트·조직 전체는 그 권한이 있을 때만.)
+범위: $ARGUMENTS (비어 있으면 `../pm/SKILL.md`의 "작업 범위"로 정한 **현재 프로젝트**. 담당자는 가리지 않는다. 조직 전체는 사용자가 명시하고 그 권한이 있을 때만.)
 
 ## 흐름
 
 1. 거버넌스·설정을 읽는다. AI가 바꿀 수 없는 항목(`ai.*`)은 정리안에서 "사람이 할 일"로 분리한다.
-2. 모은다(`GET /api/tasks`, 범위에 맞춰 `assignee`·`project`·`org`):
+2. 모은다(`GET /api/tasks?org=&project=` — 둘 다 항상 넣는다):
    - 기한 넘김: `status=todo,doing,paused,blocked,review&due_to=<어제>`
    - 막힘·멈춤: `status=blocked,paused`
    - 기한 없는 진행 중: `status=doing` 중 `due_date`가 빈 것

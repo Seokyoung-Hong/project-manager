@@ -18,8 +18,9 @@ disable-model-invocation: true
   `POST /api/projects/{id}/issues/{N}/import`. 이미 가져온 이슈면 기존 태스크가 200으로 온다.
   새로 가져오면 담당자는 나, 기한은 비어 있다(4단계에서 정한다).
 - **인자 없음**: 지금까지의 대화에서 하려는 작업을 한두 문장으로 요약한다. 요약할 게 없으면 무엇을 할지 묻고 멈춘다.
-  1. 내 열린 태스크(`GET /api/tasks?assignee=<내 id>&status=todo,doing,paused,blocked,review`)와
-     핵심어 검색(`q=`)으로 후보를 찾는다. 연결된 이슈 제목도 비교한다.
+  1. `../pm/SKILL.md`의 "작업 범위"로 조직·프로젝트를 정하고, **그 프로젝트 안에서만**
+     열린 태스크(`GET /api/tasks?org=&project=&status=todo,doing,paused,blocked,review`)와 핵심어 검색(`q=`)으로 후보를 찾는다.
+     연결된 이슈 제목도 비교한다. 다른 프로젝트는 뒤지지 않는다.
   2. 후보가 있으면 번호·제목·상태·기한을 보여 주고 고르게 한다. 목록 끝에 "새로 만들기"를 둔다.
   3. 후보가 없거나 "새로 만들기"면 `../pm/SKILL.md`의 "태스크 만들기" 절차로 만든다.
      이때 반드시 묻는다: **(a) GitHub 이슈를 만들고 그 이슈를 태스크로 연결해 진행 / (b) 태스크만 만들어 진행.**

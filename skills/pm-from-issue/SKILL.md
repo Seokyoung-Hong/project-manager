@@ -8,6 +8,7 @@ disable-model-invocation: true
 # 이슈에서 태스크 만들기
 
 `../pm/SKILL.md`를 이 세션에서 읽지 않았다면 먼저 읽는다.
+작업 범위(조직·프로젝트)를 먼저 정하고 그 범위의 태스크만 다룬다(`../pm/SKILL.md` "작업 범위").
 
 이슈: $ARGUMENTS
 
