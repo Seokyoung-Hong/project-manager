@@ -10,7 +10,8 @@ def ctx(request) -> dict:
     token = getattr(request, "api_token", None)
     if token is None:
         source = "web"
-    elif request.headers.get("X-Source", "").lower() == "mcp":
+    elif request.headers.get("X-Source", "").lower() in ("mcp", "ai"):
+        # 내부 코드는 "mcp" 하나로 둔다(화면 표시는 "AI"). 스킬은 "ai"를 보낸다.
         source = "mcp"
     else:
         source = "api"

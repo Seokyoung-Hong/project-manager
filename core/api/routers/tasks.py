@@ -1,5 +1,6 @@
 from datetime import date
 
+from django.conf import settings
 from django.db.models import F
 from django.utils.dateparse import parse_datetime
 from ninja import Router
@@ -8,10 +9,12 @@ from ninja.errors import HttpError
 from accounts.models import User
 from common.errors import ServiceError
 from github import client as github_client
+from github import writes as gh_writes
 from github.models import RepoIssue, TaskGitLink
-from github.services import can_view_repo, user_token
+from github.services import can_view_repo, repo_state, user_token
 from github.client import GitHubError
-from orgs.services import orgs_of
+from orgs.services import ai_denied, orgs_of
+from orgs.settings import effective
 from projects.models import Project
 from tasks.brief import task_brief
 from tasks.models import ChangeLog, Task
@@ -172,6 +175,41 @@ def get_task_github(request, task_id: int):
         if link.pr_number
         else None,
         "commits": link.commits,
+    }
+
+
+@router.post("/{task_id}/github/issue", response={201: dict, 400: ErrorOut})
+def create_task_issue(request, task_id: int):
+    """태스크로 GitHub 이슈를 만들고 잇는다. 웹 패널의 '이슈 만들기'와 같은 함수, 같은 조건이다.
+
+    이슈는 호출한 사람의 GitHub 권한으로 만든다. AI는 `ai.create_task`가 막혀 있으면 못 만든다.
+    """
+    if not settings.GITHUB_ENABLED:
+        raise HttpError(404, "GitHub 연동이 꺼져 있습니다.")
+    task = task_or_404(request, task_id)
+    org = task.project.org
+    if ctx(request)["source"] == "mcp" and (
+        not effective("ai.enabled", org=org) or effective("ai.create_task", org=org) == "deny"
+    ):
+        raise ServiceError({"github": ai_denied("GitHub 이슈 생성")})
+    state = repo_state(request.auth, task.project)["state"]
+    if state != "ok":
+        raise ServiceError({"github": {
+            "none": "프로젝트에 연결된 저장소가 없습니다.",
+            "unlinked": "GitHub 계정을 먼저 연결해야 합니다.",
+            "denied": "이 저장소에 접근할 권한이 없습니다.",
+        }[state]})
+    if TaskGitLink.objects.filter(task=task).exclude(issue_number=None).exists():
+        raise ServiceError({"github": "이미 이슈가 연결된 태스크입니다."})
+    try:
+        data = gh_writes.create_issue(task, actor=request.auth)
+    except GitHubError as e:
+        raise HttpError(502, e.message)
+    full_name = task.project.repo.full_name
+    return 201, {
+        "number": data["number"],
+        "title": data["title"],
+        "url": f"https://github.com/{full_name}/issues/{data['number']}",
     }
 
 
