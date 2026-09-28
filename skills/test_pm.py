@@ -125,10 +125,18 @@ with tempfile.TemporaryDirectory() as tmp:
     assert r.returncode == 0, r.stderr
     assert "Authorization" not in seen[-2]["headers"]  # 스펙 주소에는 토큰을 보내지 않는다
 
-# OAuth 로그인: 브라우저 대신 스레드가 인가 주소를 열고, 저장한 토큰은 받은 주소로만 쓴다.
+# Git Bash가 바꿔 넘긴 인자를 되돌린다. 셸 밖(PowerShell 등)에서는 손대지 않는다.
 spec_ = importlib.util.spec_from_file_location("pm", PM)
 pm = importlib.util.module_from_spec(spec_)
 spec_.loader.exec_module(pm)
+pm._msys_root = lambda: "C:/Program Files/Git"
+os.environ["MSYSTEM"] = "MINGW64"
+assert pm._unmangle(["GET", "C:/Program Files/Git/api/me", "q=C:/Program Files/Git/foo", "C:/specs/a.json"]) == [
+    "GET", "/api/me", "q=/foo", "C:/specs/a.json"]
+os.environ.pop("MSYSTEM")
+assert pm._unmangle(["C:/Program Files/Git/api/me"]) == ["C:/Program Files/Git/api/me"]
+
+# OAuth 로그인: 브라우저 대신 스레드가 인가 주소를 열고, 저장한 토큰은 받은 주소로만 쓴다.
 with tempfile.TemporaryDirectory() as tmp:
     pm.TOKEN_FILE = Path(tmp) / "token.json"
     os.environ.pop("SANDOL_PM_TOKEN", None)

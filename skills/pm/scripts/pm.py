@@ -20,6 +20,7 @@ import os
 import re
 import secrets
 import socket
+import subprocess
 import sys
 import webbrowser
 from http.server import BaseHTTPRequestHandler, HTTPServer
@@ -187,9 +188,35 @@ def apidoc(project, args):
     return call("PUT", path, body={"spec": doc, "source_url": src if "://" in src else Path(src).name})
 
 
+def _msys_root():
+    try:
+        out = subprocess.run(["cygpath", "-m", "/"], capture_output=True, text=True, timeout=5).stdout
+    except (OSError, subprocess.SubprocessError):
+        return ""
+    return out.strip().rstrip("/")
+
+
+def _unmangle(argv):
+    """Git Bash(MSYS)는 /로 시작하는 인자와 `key=/값`을 C:/Program Files/Git/... 로 바꿔 넘긴다. 되돌린다."""
+    if not os.environ.get("MSYSTEM") or not any(":/" in a for a in argv):
+        return argv
+    root = _msys_root()
+    if not root:
+        return argv
+    prefix = root.lower() + "/"
+    out = []
+    for a in argv:
+        k, eq, v = a.rpartition("=") if "=" in a else ("", "", a)
+        if v.lower().startswith(prefix):
+            a = k + eq + v[len(root):]
+        out.append(a)
+    return out
+
+
 def main(argv):
     for stream in (sys.stdin, sys.stdout, sys.stderr):
         stream.reconfigure(encoding="utf-8")
+    argv = _unmangle(argv)
     key = None
     if "--key" in argv:
         i = argv.index("--key")
