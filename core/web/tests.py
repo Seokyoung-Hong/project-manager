@@ -329,10 +329,33 @@ def test_healthz(client):
 
 
 def test_token_shown_once(logged):
-    r = logged.post("/settings/tokens", {"name": "t", "scope": "read"})
+    r = logged.post("/settings/tokens", {"name": "t", "scope": "read", "purpose": "ai"})
     assert r.status_code == 302
     assert "pm_" in logged.get("/settings/tokens").content.decode()
     assert "pm_" not in logged.get("/settings/tokens").content.decode()
+
+
+def test_token_purpose_is_chosen_at_issue(logged, member):
+    """용도의 기본은 AI용이고, 사람용은 사람이 골라야 나온다. 봇 범위는 폼으로 만들 수 없다."""
+    from accounts.models import ApiToken
+
+    logged.post("/settings/tokens", {"name": "ai", "scope": "write", "purpose": "ai"})
+    logged.post("/settings/tokens", {"name": "사람", "scope": "write", "purpose": "person"})
+    logged.post("/settings/tokens", {"name": "봇", "scope": "bot", "purpose": "person"})
+    assert dict(member.tokens.values_list("name", "for_ai")) == {"ai": True, "사람": False}
+    assert not ApiToken.issue(member, "봇", "bot")[0].for_ai  # 봇 토큰은 사람 명령을 옮긴다
+
+
+def test_bearer_token_cannot_issue_tokens(client, member, write_token):
+    """토큰 발급은 로그인 세션 전용이다. AI가 가진 토큰으로 사람용 토큰을 만들 길이 없다."""
+    before = member.tokens.count()
+    r = client.post(
+        "/settings/tokens",
+        {"name": "x", "scope": "write", "purpose": "person"},
+        headers={"Authorization": f"Bearer {write_token}"},
+    )
+    assert r.status_code == 302 and "/login" in r.headers["Location"]
+    assert member.tokens.count() == before
 
 
 def test_token_page_shows_the_real_mcp_url(logged, settings):
@@ -1590,6 +1613,7 @@ def test_oauth_full_flow_issues_a_working_token(client, logged, member):
     assert body["token_type"] == "Bearer" and body["scope"] == "write"
     token = ApiToken.authenticate(body["access_token"])
     assert token is not None and token.user == member and token.scope == "write"
+    assert token.for_ai  # OAuth 클라이언트는 전부 AI 도구다
 
     # 같은 코드를 두 번 쓰지 못한다.
     again = client.post(

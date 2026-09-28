@@ -27,8 +27,12 @@ def require_admin(user, org):
         raise ServiceError({"org": "조직 관리자만 할 수 있습니다."})
 
 
+# AI용 토큰으로 막힌 사람에게 원인을 알려 준다. 기존 토큰은 전부 AI용으로 옮겨졌다(accounts 0004).
+TOKEN_HINT = "사람이 쓰는 스크립트라면 설정 → API 토큰에서 '사람용' 토큰을 새로 발급해 주세요."
+
+
 def ai_denied(action: str) -> str:
-    return f"이 조직 설정에서 AI의 {action}이 꺼져 있어요. 사람이 웹에서 해 주세요."
+    return f"이 조직 설정에서 AI의 {action}이 꺼져 있습니다. 사람이 웹에서 해 주세요. " + TOKEN_HINT
 
 
 def _check_ai_manage_teams(org, source: str):

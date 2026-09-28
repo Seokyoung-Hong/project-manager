@@ -58,7 +58,7 @@ def _authorize(task, actor, source, token=None, *, writing=False):
         raise ServiceError({"source": "기록 출처가 올바르지 않습니다."})
     # X-Source is supplied by the caller and cannot identify a browser session.
     # Every bearer-token write therefore obeys the same AI write policy, even
-    # when the caller labels the request "api" or "web".
+    # for a person token (ApiToken.for_ai=False) — stricter than ctx(), on purpose.
     if writing and (source == "mcp" or token is not None):
         _require_mcp_write(task, actor, token)
 

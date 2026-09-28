@@ -10,7 +10,9 @@ def ctx(request) -> dict:
     token = getattr(request, "api_token", None)
     if token is None:
         source = "web"
-    elif request.headers.get("X-Source", "").lower() in ("mcp", "ai"):
+    elif token.for_ai or request.headers.get("X-Source", "").lower() in ("mcp", "ai"):
+        # AI 여부는 발급 때 정한 토큰 표시로 판단한다. 헤더는 호출자가 붙이므로 사람용 토큰을
+        # AI로 올릴 수만 있고, AI용 토큰을 사람으로 내릴 수는 없다.
         # 내부 코드는 "mcp" 하나로 둔다(화면 표시는 "AI"). 스킬은 "ai"를 보낸다.
         source = "mcp"
     else:

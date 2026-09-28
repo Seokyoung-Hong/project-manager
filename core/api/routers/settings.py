@@ -10,7 +10,7 @@ from ninja import Body, Router
 from ninja.errors import HttpError
 
 from accounts.services import set_user_settings
-from orgs.services import orgs_of, set_org_settings
+from orgs.services import TOKEN_HINT, orgs_of, set_org_settings
 from orgs.settings import SPECS, Spec, clean, effective, locked_keys, specs_for
 from projects.models import Project
 from projects.services import set_project_settings
@@ -79,7 +79,7 @@ def put_org_settings(request, org_id: int, payload: dict[str, Any] = _BODY):
     if ctx(request)["source"] == "mcp" and _ai_policy(
         clean("org", payload, allow_locked=True)
     ) != _ai_policy(org.settings or {}):
-        raise HttpError(403, "AI 정책은 사람이 웹 화면에서 바꿉니다.")
+        raise HttpError(403, "AI 정책은 사람이 웹 화면에서 바꿉니다. " + TOKEN_HINT)
     org = set_org_settings(org, payload, request.auth)
     return _payload("org", sorted(locked_keys(org)), org=org)
 

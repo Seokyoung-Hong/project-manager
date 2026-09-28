@@ -123,7 +123,7 @@ PM apidoc 12 put openapi.json                         # 프로젝트 API 문서 
 
 - **조직 설정·거버넌스 바꾸기**(`PUT /api/orgs/{org}/settings` · `/governance`): AI에게 무엇을 허용할지(`ai.*`)를
   정하는 곳이다. AI가 자기 권한을 고치지 않는다. 사람이 웹 화면에서 바꾸도록 안내한다.
-  서버도 막는다: `X-Source: ai` 요청은 거버넌스 변경과 `ai.*` 값을 바꾸는 설정 변경이 403이다.
+  서버도 막는다: AI용 토큰(`pm.py login`으로 받은 토큰 포함)은 거버넌스 변경과 `ai.*` 값을 바꾸는 설정 변경이 403이다.
 - **결정 기록 확인·제외**(`…/decisions/{rid}/confirm` · `/reject`): 서버가 웹 세션에서만 받는다(토큰이면 403).
   사람에게 태스크 화면에서 확인해 달라고 안내한다.
 - `/api/integrations/*`: Discord 봇·GitHub 웹훅·외부 서비스용이다. 사람 토큰으로는 부르지 않는다.

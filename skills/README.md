@@ -47,5 +47,6 @@ MCP 커넥터(`mcp_server/`)는 claude.ai 웹·모바일처럼 셸이 없는 클
 ## 개발
 
 - 스크립트 점검: `python skills/test_pm.py`
-- 스킬이 부르는 요청에는 `X-Source: ai`가 붙어 조직의 AI 정책(`ai.*`)이 적용된다.
+- `pm.py login`(OAuth)으로 받은 토큰은 AI용이라 조직의 AI 정책(`ai.*`)이 적용된다. 요청에 붙는 `X-Source: ai`는 표시일 뿐,
+  서버는 토큰의 용도로 판단한다.
 - 엔드포인트는 스킬에 복사하지 않는다. 자주 쓰는 것만 `pm/SKILL.md`에 두고, 나머지는 `pm.py spec`으로 명세를 읽는다.

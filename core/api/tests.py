@@ -245,14 +245,14 @@ def test_delete_team_endpoint_admin_only(client, api, org, admin):
 
     t = create_team(org=org, name="API팀", actor=admin)
     assert api.delete(f"/api/orgs/teams/{t.pk}").status_code == 400  # member 토큰은 막힌다
-    _, raw = ApiToken.issue(admin, "a", "write")
+    _, raw = ApiToken.issue(admin, "a", "write", for_ai=False)
     r = client.delete(f"/api/orgs/teams/{t.pk}", headers=_h(raw))
     assert r.status_code == 204
     assert not org.teams.filter(pk=t.pk).exists()
 
 
 def test_delete_project_endpoint_requires_archived(client, admin, project):
-    _, raw = ApiToken.issue(admin, "a", "write")
+    _, raw = ApiToken.issue(admin, "a", "write", for_ai=False)
     r = client.delete(f"/api/projects/{project.pk}", headers=_h(raw))
     assert r.status_code == 400  # 아직 보관 전
 
@@ -265,7 +265,7 @@ def test_delete_project_endpoint_requires_archived(client, admin, project):
 
 def test_delete_task_endpoint_admin_only(client, api, admin, task):
     assert api.delete(f"/api/tasks/{task.pk}").status_code == 400  # member 토큰은 막힌다
-    _, raw = ApiToken.issue(admin, "a", "write")
+    _, raw = ApiToken.issue(admin, "a", "write", for_ai=False)
     r = client.delete(f"/api/tasks/{task.pk}", headers=_h(raw))
     assert r.status_code == 204
 
@@ -678,7 +678,7 @@ def test_org_settings_invalid_value_rejected(client, admin, org):
 
 
 def test_ai_cannot_change_its_own_policy(client, admin, org):
-    _, raw = ApiToken.issue(admin, "a", "write")
+    _, raw = ApiToken.issue(admin, "a", "write", for_ai=False)
     url = f"/api/orgs/{org.pk}/settings"
     ai = {**_h(raw), "X-Source": "ai"}
     put = lambda data, h: client.put(url, data=data, content_type="application/json", headers=h)  # noqa: E731
@@ -700,8 +700,56 @@ def test_ai_cannot_change_its_own_policy(client, admin, org):
     assert r.json()["values"]["task.default_priority"] == 3
 
 
-def test_ai_cannot_change_governance(client, admin, org):
+def test_ai_token_is_ai_without_the_header(client, admin, org, project):
+    """AI용 토큰(기본값)은 X-Source를 빼도 AI 정책에 걸린다. 헤더로 사람이 될 수 없다."""
     _, raw = ApiToken.issue(admin, "a", "write")
+    for h in (_h(raw), {**_h(raw), "X-Source": "api"}):
+        r = client.put(
+            f"/api/orgs/{org.pk}/settings",
+            data={"ai.create_task": "deny"},
+            content_type="application/json",
+            headers=h,
+        )
+        assert r.status_code == 403 and "사람용" in r.json()["detail"]
+        r = client.put(
+            f"/api/orgs/{org.pk}/governance",
+            data={"text": "x"},
+            content_type="application/json",
+            headers=h,
+        )
+        assert r.status_code == 403
+    project.is_archived = True
+    project.save(update_fields=["is_archived"])
+    r = client.delete(f"/api/projects/{project.pk}", headers=_h(raw))
+    assert r.status_code == 400 and "AI" in r.content.decode()  # ai.delete 기본값 deny
+    assert project.__class__.objects.filter(pk=project.pk).exists()
+
+
+def test_ai_token_history_says_ai(client, member, task):
+    _, raw = ApiToken.issue(member, "a", "write")
+    h = {**_h(raw), "X-Source": "api"}
+    r = client.post(
+        f"/api/tasks/{task.pk}/transition",
+        data={"status": "doing", "version": 1},
+        content_type="application/json",
+        headers=h,
+    )
+    assert r.status_code == 200
+    assert client.get(f"/api/tasks/{task.pk}/history", headers=h).json()[-1]["source"] == "mcp"
+
+
+def test_person_token_can_be_raised_to_ai_by_header(client, admin, org):
+    """사람용 토큰은 헤더 없이는 사람이고, X-Source로 AI가 될 수는 있다(더 엄격한 쪽만)."""
+    _, raw = ApiToken.issue(admin, "p", "write", for_ai=False)
+    url = f"/api/orgs/{org.pk}/settings"
+    body = {"ai.create_task": "deny"}
+    r = client.put(url, data=body, content_type="application/json", headers={**_h(raw), "X-Source": "mcp"})
+    assert r.status_code == 403
+    assert client.put(url, data=body, content_type="application/json", headers=_h(raw)).status_code == 200
+
+
+def test_ai_cannot_change_governance(client, admin, org):
+    _, raw = ApiToken.issue(admin, "a", "write", for_ai=False)
     url = f"/api/orgs/{org.pk}/governance"
     body = {"text": "# 규칙"}
     for source in ("ai", "mcp"):

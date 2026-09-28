@@ -48,6 +48,9 @@ class ApiToken(models.Model):
     prefix = models.CharField(max_length=12)
     key_hash = models.CharField(max_length=64, unique=True)
     scope = models.CharField(max_length=5, choices=SCOPES, default="read")
+    # AI가 쓰는 토큰인가. 조직의 AI 정책(ai.*)은 이 표시로 걸린다 — 호출자가 붙이는 X-Source 헤더는
+    # 더 엄격하게만 만들 수 있다. 발급 뒤에는 바꾸지 않는다(바꾸려면 새로 발급).
+    for_ai = models.BooleanField("AI용", default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     expires_at = models.DateTimeField(null=True, blank=True)
     revoked_at = models.DateTimeField(null=True, blank=True)
@@ -64,8 +67,11 @@ class ApiToken(models.Model):
         return hashlib.sha256(raw.encode()).hexdigest()
 
     @classmethod
-    def issue(cls, user, name: str, scope: str = "read", expires_at=None):
-        """토큰을 만들고 (객체, 원문)을 돌려준다. 원문은 이때 한 번만 볼 수 있다."""
+    def issue(cls, user, name: str, scope: str = "read", expires_at=None, for_ai: bool = True):
+        """토큰을 만들고 (객체, 원문)을 돌려준다. 원문은 이때 한 번만 볼 수 있다.
+
+        기본은 AI용이다. 사람용은 웹 발급 화면에서 사람이 고를 때만 만든다. 봇 토큰은 사람 명령을 옮기므로 AI가 아니다.
+        """
         raw = "pm_" + secrets.token_urlsafe(32)
         token = cls.objects.create(
             user=user,
@@ -74,6 +80,7 @@ class ApiToken(models.Model):
             key_hash=cls._hash(raw),
             scope=scope,
             expires_at=expires_at,
+            for_ai=for_ai and scope != "bot",
         )
         return token, raw
 

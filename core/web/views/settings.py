@@ -51,7 +51,7 @@ def tokens(request):
         form = TokenForm(request.POST)
         if form.is_valid():
             d = form.cleaned_data
-            _, raw = ApiToken.issue(request.user, d["name"], d["scope"])
+            _, raw = ApiToken.issue(request.user, d["name"], d["scope"], for_ai=d["purpose"] == "ai")
             request.session["new_token"] = raw
             return redirect("tokens")
     else:

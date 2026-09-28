@@ -126,3 +126,9 @@ class TokenForm(forms.Form):
     scope = forms.ChoiceField(
         label="범위", choices=[("read", "읽기"), ("write", "읽기·쓰기")], initial="read"
     )
+    # 조직의 AI 정책(ai.*)이 걸리는지를 정한다. 발급 뒤에는 바꿀 수 없다.
+    purpose = forms.ChoiceField(
+        label="용도",
+        choices=[("ai", "AI 도구(Claude·Codex 등)"), ("person", "사람이 쓰는 스크립트·자동화")],
+        initial="ai",
+    )

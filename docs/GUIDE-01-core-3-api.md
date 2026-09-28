@@ -105,7 +105,8 @@ def ctx(request) -> dict:
     token = getattr(request, "api_token", None)
     if token is None:
         source = "web"
-    elif request.headers.get("X-Source", "").lower() == "mcp":
+    elif token.for_ai or request.headers.get("X-Source", "").lower() in ("mcp", "ai"):
+        # 2026-09-28: AI 여부는 발급 때 정한 토큰 표시(ApiToken.for_ai)로 본다. 헤더는 올리기만 한다.
         source = "mcp"
     else:
         source = "api"
@@ -1111,7 +1112,7 @@ def extend(request, task_id: int, payload: DiscordExtendIn):
 - 인증 실패 401. 읽기 토큰으로 쓰기 요청 403.
 - 검증 실패 400 본문: `{"detail": {"필드": "메시지"}}`.
 - 충돌 409 본문: `{"detail": "conflict", "latest": <TaskOut 또는 ProjectOut>}`.
-- 헤더 `X-Source: mcp`가 있고 토큰 인증이면 변경 이력 `source`가 `mcp`로 기록된다. `/api/integrations/discord/`의 5개 경로는 헤더와 무관하게 `source="dc"`다(라우터가 정한다).
+- AI용 토큰(`for_ai`, 기본값·OAuth 발급분)이거나 헤더 `X-Source: mcp|ai`가 있으면 변경 이력 `source`가 `mcp`로 기록된다. `/api/integrations/discord/`의 5개 경로는 헤더와 무관하게 `source="dc"`다(라우터가 정한다).
 - `/api/integrations/discord/`는 `bot` 범위 토큰만 통한다. 세션 쿠키·읽기·쓰기 토큰은 403이고, 반대로 `bot` 토큰은 `/api/integrations/` 밖의 쓰기(`POST /api/tasks` 등)에서 403이다.
 - 막힘·일시정지는 `transition`으로 한다: `{"status":"blocked","reason":"서류 대기","version":3}`. 이미 멈춘 태스크의 사유만 고치려면 `PATCH {"stop_reason": "...", "version": n}`.
 - 진행 메모는 `PATCH {"notes": "..."}`로 통째로 바꾼다(덧붙이기는 클라이언트가 읽어서 이어 붙인다).

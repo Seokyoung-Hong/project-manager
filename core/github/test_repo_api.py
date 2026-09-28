@@ -69,10 +69,10 @@ def test_ai_gate_blocks_mcp_when_org_says_no(
     assert not hasattr(project, "repo") or project.repo is None
 
 
-def test_same_token_without_the_header_is_not_ai(
+def test_person_token_without_the_header_is_not_ai(
     client, gh, project, member, write_token, viewable
 ):
-    """`ai.*`는 자기 신고인 X-Source 헤더로만 걸린다. 사람이 API로 부르면 걸리지 않는다."""
+    """`ai.*`는 사람용 토큰(write_token)에는 걸리지 않는다. AI용 토큰은 헤더가 없어도 걸린다."""
     project.owners.add(member)
     project.org.settings = {"ai.manage_repo": "deny"}
     project.org.save(update_fields=["settings"])

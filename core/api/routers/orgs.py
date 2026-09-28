@@ -7,6 +7,7 @@ from accounts.models import User
 from orgs.governance import governance_text
 from orgs.models import Invite, OrgMembership, Team
 from orgs.services import (
+    TOKEN_HINT,
     add_team_member,
     create_invite,
     create_team,
@@ -119,7 +120,7 @@ def put_governance(request, org_id: int, payload: GovernanceIn):
     org = org_or_404(request, org_id)
     # 거버넌스는 AI가 따르는 규칙이라 AI가 고치면 안 된다.
     if ctx(request)["source"] == "mcp":
-        raise HttpError(403, "조직 거버넌스는 사람이 웹 화면에서 바꿉니다.")
+        raise HttpError(403, "조직 거버넌스는 사람이 웹 화면에서 바꿉니다. " + TOKEN_HINT)
     org = set_governance(org, payload.text, request.auth)
     return {"text": governance_text(org), "is_default": not org.governance.strip()}
 

@@ -239,8 +239,8 @@ def test_governance_defaults_and_override(org, admin, member):
 
 
 def test_governance_api_read_and_write(client, org, admin, member):
-    _, raw = ApiToken.issue(admin, "a", "write")
-    _, member_raw = ApiToken.issue(member, "m", "write")
+    _, raw = ApiToken.issue(admin, "a", "write", for_ai=False)
+    _, member_raw = ApiToken.issue(member, "m", "write", for_ai=False)
     h = {"Authorization": f"Bearer {raw}"}
     r = client.get(f"/api/orgs/{org.pk}/governance", headers=h)
     assert r.status_code == 200 and r.json()["is_default"] is True

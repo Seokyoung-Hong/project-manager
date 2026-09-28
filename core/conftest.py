@@ -83,13 +83,14 @@ def task(project, member):
 
 @pytest.fixture
 def write_token(member):
-    _, raw = ApiToken.issue(member, "t", "write")
+    # 사람용. AI 시나리오는 테스트 안에서 ApiToken.issue(...)로 AI용(기본값)을 따로 만든다.
+    _, raw = ApiToken.issue(member, "t", "write", for_ai=False)
     return raw
 
 
 @pytest.fixture
 def read_token(member):
-    _, raw = ApiToken.issue(member, "r", "read")
+    _, raw = ApiToken.issue(member, "r", "read", for_ai=False)
     return raw
 
 

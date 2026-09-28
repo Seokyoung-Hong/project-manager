@@ -11,17 +11,18 @@
 <section class="card">
   <h2>API 토큰</h2>
   <table class="grid">
-    <thead><tr><th>이름</th><th>앞자리</th><th>범위</th><th>만료</th><th></th></tr></thead>
+    <thead><tr><th>이름</th><th>앞자리</th><th>범위</th><th>용도</th><th>만료</th><th></th></tr></thead>
     <tbody>
     {% for t in tokens %}
     <tr{% if t.revoked_at %} class="muted"{% endif %}>
       <td>{{ t.name }}{% if t.revoked_at %} <span class="badge">폐기됨</span>{% endif %}</td>
       <td><code>{{ t.prefix|slice:"3:" }}…</code></td>
       <td>{{ t.get_scope_display }}</td>
+      <td>{% if t.for_ai %}AI{% else %}사람{% endif %}</td>
       <td>{{ t.expires_at|date:"Y-m-d"|default:"없음" }}</td>
       <td>{% if not t.revoked_at %}<form method="post" action="{% url 'token_revoke' t.pk %}">{% csrf_token %}<button class="btn sm danger">폐기</button></form>{% endif %}</td>
     </tr>
-    {% empty %}<tr><td colspan="5" class="muted">토큰이 없습니다.</td></tr>{% endfor %}
+    {% empty %}<tr><td colspan="6" class="muted">토큰이 없습니다.</td></tr>{% endfor %}
     </tbody>
   </table>
   {% if revoked_tokens %}
@@ -39,6 +40,7 @@
   <form method="post" class="row">{% csrf_token %}
     <label class="field">{{ form.name.label }}{{ form.name }}</label>
     <label class="field">{{ form.scope.label }}{{ form.scope }}</label>
+    <label class="field">{{ form.purpose.label }}{{ form.purpose }}</label>
     <button class="btn primary">토큰 발급</button>
   </form>
 </section>
