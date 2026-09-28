@@ -54,7 +54,7 @@ def _check_ai_delete(org, source: str):
 def _display_setting(key: str, value) -> str:
     """이력에 남기는 사람이 읽는 문구. 값이 없으면(=기본값) 기본값을 보여 준다."""
     if key == LOCKED:
-        return ", ".join(sorted(value or [])) or "없음"
+        return ", ".join(SPECS[k].label if k in SPECS else k for k in sorted(value or [])) or "없음"
     spec = SPECS[key]
     return display(key, spec.default if value is None else value)
 

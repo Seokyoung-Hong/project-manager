@@ -123,8 +123,11 @@ PM apidoc 12 put openapi.json                         # 프로젝트 API 문서 
 
 | 하려는 일 | 호출 |
 |---|---|
-| ✋ AI 정책(`ai.*`)이 바뀌는 조직 설정 | `PUT /api/orgs/{org}/settings` — `GET …/settings`의 `values` 전체에서 바꿀 값만 고쳐 보낸다(통째 교체) |
-| ✋ 개발 거버넌스 교체 | `PUT /api/orgs/{org}/governance` `{"text"}` — 본문 전체 |
+| ✋ AI 정책(`ai.*`)이 바뀌는 조직 설정 | `PM PUT /api/orgs/{org}/settings reason=<이유> -` — 본문은 `GET …/settings`의 `values` 전체에서 바꿀 값만 고친 것(통째 교체) |
+| ✋ 개발 거버넌스 교체 | `PM PUT /api/orgs/{org}/governance reason=<이유> -` `{"text"}` — 본문 전체 |
+
+- **`reason`(왜 바꾸는지, 500자)은 필수다.** 관리자가 허용할지 판단하는 근거라, 사용자가 말한 목적과 바뀌는 점을
+  한두 문장으로 적는다. 없으면 400이다.
 
 - 응답은 `202 {"status": "pending", "approve_url", "expires_at"}`다. **`approve_url`을 사용자에게 그대로 보여 주고**
   "조직 관리자가 이 링크에서 허용하면 반영됩니다"라고 알린다. 허용될 때까지 같은 요청을 다시 보내지 않는다.

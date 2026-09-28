@@ -61,8 +61,8 @@ class Core:
     def patch(self, path, body):
         return self._ok(self.http.patch(path, json=body))
 
-    def put(self, path, body):
-        return self._ok(self.http.put(path, json=body))
+    def put(self, path, body, params=None):
+        return self._ok(self.http.put(path, json=body, params=params))
 
     def delete(self, path):
         return self._ok(self.http.delete(path))

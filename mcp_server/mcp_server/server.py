@@ -540,11 +540,12 @@ def get_settings(org_id: int) -> dict:
 
 
 @mcp.tool()
-def update_org_settings(org_id: int, values: dict) -> dict:
+def update_org_settings(org_id: int, values: dict, reason: str = "") -> dict:
     """조직 설정을 바꾼다. get_settings의 키·선택지를 확인하고 조직 정책을 따른다.
     AI 정책(ai.*)이 바뀌는 변경은 바로 반영되지 않고 {status: "pending", approve_url}이 온다 —
-    그 링크를 사용자에게 그대로 보여 주고, 조직 관리자가 허용할 때까지 다시 시도하지 않는다."""
-    return _core().put(f"/api/orgs/{org_id}/settings", values)
+    그 링크를 사용자에게 그대로 보여 주고, 조직 관리자가 허용할 때까지 다시 시도하지 않는다.
+    reason: 왜 바꾸려는지(500자). AI 정책을 바꿀 때는 필수 — 사람이 허용할지 판단하는 근거다."""
+    return _core().put(f"/api/orgs/{org_id}/settings", values, params={"reason": reason} if reason else None)
 
 
 @mcp.tool()
@@ -584,11 +585,12 @@ def revoke_invite(invite_id: int) -> dict:
 
 
 @mcp.tool()
-def update_governance(org_id: int, text: str) -> dict:
+def update_governance(org_id: int, text: str, reason: str = "") -> dict:
     """조직 개발 거버넌스 전체 본문을 교체하자고 요청한다. 먼저 현재 내용을 get_governance로 읽는다.
     바로 반영되지 않고 {status: "pending", approve_url}이 온다 — 링크를 사용자에게 보여 주고,
-    조직 관리자가 허용할 때까지 다시 시도하지 않는다."""
-    return _core().put(f"/api/orgs/{org_id}/governance", {"text": text})
+    조직 관리자가 허용할 때까지 다시 시도하지 않는다.
+    reason: 왜 바꾸려는지(500자, 필수) — 사람이 허용할지 판단하는 근거다."""
+    return _core().put(f"/api/orgs/{org_id}/governance", {"text": text}, params={"reason": reason} if reason else None)
 
 
 @mcp.tool()

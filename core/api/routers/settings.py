@@ -74,7 +74,7 @@ def _ai_policy(settings: dict) -> dict:
 
 
 @router.put("/orgs/{org_id}/settings", response={200: dict, 202: dict, 400: ErrorOut, 403: ErrorOut})
-def put_org_settings(request, org_id: int, payload: dict[str, Any] = _BODY):
+def put_org_settings(request, org_id: int, payload: dict[str, Any] = _BODY, reason: str = ""):
     org = org_or_404(request, org_id)
     # AI는 자기 정책(ai.*)을 직접 못 바꾼다. PUT은 통째 교체라 키를 빼기만 해도 기본값으로 풀리므로
     # 키 유무가 아니라 교체 전후의 ai.* 값을 비교한다. 바꾸려 하면 요청으로 남기고 허용 링크를 돌려준다.
@@ -85,7 +85,7 @@ def put_org_settings(request, org_id: int, payload: dict[str, Any] = _BODY):
     if c["source"] == "mcp" and _ai_policy(
         clean("org", payload, allow_locked=True)
     ) != _ai_policy(org.settings or {}):
-        return 202, pending_out(request_change(org, "settings", payload, actor=c["actor"], token=c["token"]))
+        return 202, pending_out(request_change(org, "settings", payload, actor=c["actor"], reason=reason, token=c["token"]))
     org = set_org_settings(org, payload, request.auth)
     return _payload("org", sorted(locked_keys(org)), org=org)
 

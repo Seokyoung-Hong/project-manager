@@ -679,7 +679,7 @@ def test_org_settings_invalid_value_rejected(client, admin, org):
 
 def test_ai_cannot_change_its_own_policy(client, admin, org):
     _, raw = ApiToken.issue(admin, "a", "write", for_ai=False)
-    url = f"/api/orgs/{org.pk}/settings"
+    url = f"/api/orgs/{org.pk}/settings?reason=테스트"
     ai = {**_h(raw), "X-Source": "ai"}
     put = lambda data, h: client.put(url, data=data, content_type="application/json", headers=h)  # noqa: E731
 
@@ -705,14 +705,14 @@ def test_ai_token_is_ai_without_the_header(client, admin, org, project):
     _, raw = ApiToken.issue(admin, "a", "write")
     for h in (_h(raw), {**_h(raw), "X-Source": "api"}):
         r = client.put(
-            f"/api/orgs/{org.pk}/settings",
+            f"/api/orgs/{org.pk}/settings?reason=테스트",
             data={"ai.create_task": "deny"},
             content_type="application/json",
             headers=h,
         )
         assert r.status_code == 202 and r.json()["status"] == "pending"
         r = client.put(
-            f"/api/orgs/{org.pk}/governance",
+            f"/api/orgs/{org.pk}/governance?reason=테스트",
             data={"text": "x"},
             content_type="application/json",
             headers=h,
@@ -741,7 +741,7 @@ def test_ai_token_history_says_ai(client, member, task):
 def test_person_token_can_be_raised_to_ai_by_header(client, admin, org):
     """사람용 토큰은 헤더 없이는 사람이고, X-Source로 AI가 될 수는 있다(더 엄격한 쪽만)."""
     _, raw = ApiToken.issue(admin, "p", "write", for_ai=False)
-    url = f"/api/orgs/{org.pk}/settings"
+    url = f"/api/orgs/{org.pk}/settings?reason=테스트"
     body = {"ai.create_task": "deny"}
     r = client.put(url, data=body, content_type="application/json", headers={**_h(raw), "X-Source": "mcp"})
     assert r.status_code == 202
@@ -750,7 +750,7 @@ def test_person_token_can_be_raised_to_ai_by_header(client, admin, org):
 
 def test_ai_cannot_change_governance(client, admin, org):
     _, raw = ApiToken.issue(admin, "a", "write", for_ai=False)
-    url = f"/api/orgs/{org.pk}/governance"
+    url = f"/api/orgs/{org.pk}/governance?reason=테스트"
     body = {"text": "# 규칙"}
     for source in ("ai", "mcp"):
         h = {**_h(raw), "X-Source": source}

@@ -20,15 +20,18 @@ def ai_admin(admin):
     return ApiToken.issue(admin, "Claude", "write")[1]
 
 
-def _put_settings(client, org, raw, data):
+def _put_settings(client, org, raw, data, reason="팀 합의대로 AI의 태스크 생성을 막습니다"):
     return client.put(
-        f"/api/orgs/{org.pk}/settings", data=data, content_type="application/json", headers=_h(raw)
+        f"/api/orgs/{org.pk}/settings?reason={reason}",
+        data=data,
+        content_type="application/json",
+        headers=_h(raw),
     )
 
 
-def _put_governance(client, org, raw, text):
+def _put_governance(client, org, raw, text, reason="회의에서 정한 규칙을 반영합니다"):
     return client.put(
-        f"/api/orgs/{org.pk}/governance",
+        f"/api/orgs/{org.pk}/governance?reason={reason}",
         data={"text": text},
         content_type="application/json",
         headers=_h(raw),
@@ -188,3 +191,30 @@ def test_history_links_the_ai_request(client, admin, org, ai_admin):
     _as_admin(client).post(f"/orgs/{org.pk}/requests/{req_id}", {"action": "approve"})
     log = ChangeLog.objects.get(target_type="org", field="ai.create_task")
     assert log.actor == admin and log.note == f"AI 요청 #{req_id} 허용" and log.token is not None
+
+
+def test_reason_is_required_and_shown(client, org, ai_admin):
+    assert _put_governance(client, org, ai_admin, "# x", reason="").status_code == 400
+    assert _put_governance(client, org, ai_admin, "# x", reason="가" * 501).status_code == 400
+    assert not ChangeRequest.objects.exists()
+    req_id = _put_governance(client, org, ai_admin, "# 새 규칙" + chr(10) * 2 + "- 한 줄").json()[
+        "request_id"
+    ]
+    html = _as_admin(client).get(f"/orgs/{org.pk}/requests/{req_id}").content.decode()
+    assert "회의에서 정한 규칙을 반영합니다" in html
+    assert "허용하면 적용될 전체 글" in html and "- 한 줄" in html
+    assert (
+        "회의에서 정한 규칙을 반영합니다"
+        in client.get(f"/orgs/{org.pk}/governance").content.decode()
+    )
+
+
+def test_locked_items_are_shown_by_name(client, org, ai_admin):
+    from orgs.settings import SPECS
+
+    key = next(k for k, s in SPECS.items() if s.overridable)
+    req_id = _put_settings(
+        client, org, ai_admin, {"_locked": [key], "ai.create_task": "deny"}
+    ).json()["request_id"]
+    html = _as_admin(client).get(f"/orgs/{org.pk}/requests/{req_id}").content.decode()
+    assert SPECS[key].label in html and key not in html

@@ -21,7 +21,7 @@ def _current(org, kind: str):
     return (org.settings or {}) if kind == "settings" else org.governance
 
 
-def request_change(org, kind: str, data, *, actor, token=None) -> ChangeRequest:
+def request_change(org, kind: str, data, *, actor, reason: str = "", token=None) -> ChangeRequest:
     """바꿀 내용을 검증해 요청으로 남긴다. 바로 바꿀 권한이 있는 사람(조직 관리자)의 AI만 올릴 수 있다.
 
     잘못된 값은 여기서 바로 400으로 돌려보낸다 — 허용 화면에서야 틀린 걸 알면 사람이 헛걸음한다.
@@ -42,8 +42,21 @@ def request_change(org, kind: str, data, *, actor, token=None) -> ChangeRequest:
         same = (proposed or DEFAULT_GOVERNANCE).strip() == (base or DEFAULT_GOVERNANCE).strip()
     if same:
         raise ServiceError({kind: "바뀌는 내용이 없습니다."})
+    reason = (reason or "").strip()
+    if not reason:
+        raise ServiceError(
+            {"reason": "왜 바꾸려는지 reason에 적어 주세요. 사람이 허용할지 판단하는 근거입니다."}
+        )
+    if len(reason) > 500:
+        raise ServiceError({"reason": "변경 이유는 500자까지입니다."})
     return ChangeRequest.objects.create(
-        org=org, kind=kind, base=base, proposed=proposed, requested_by=actor, token=token
+        org=org,
+        kind=kind,
+        base=base,
+        proposed=proposed,
+        reason=reason,
+        requested_by=actor,
+        token=token,
     )
 
 
@@ -142,6 +155,11 @@ def governance_diff(req: ChangeRequest) -> list[str]:
     old, new = req.base or DEFAULT_GOVERNANCE, req.proposed or DEFAULT_GOVERNANCE
     lines = difflib.unified_diff(old.splitlines(), new.splitlines(), lineterm="", n=2)
     return [_visible(line) for line in list(lines)[2:]]  # ---/+++ 머리줄은 빼고 색으로만 구분한다
+
+
+def governance_after(req: ChangeRequest) -> str:
+    """허용하면 적용될 글 전체. 비교만으로는 크게 고친 글의 맥락을 알기 어렵다."""
+    return _visible(req.proposed or DEFAULT_GOVERNANCE)
 
 
 def _visible(text: str) -> str:

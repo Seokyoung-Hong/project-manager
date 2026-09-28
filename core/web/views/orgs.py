@@ -299,6 +299,7 @@ def change_request(request, org_id, req_id):
             "req": req,
             "rows": creq.settings_diff(req) if req.kind == "settings" else [],
             "diff": creq.governance_diff(req) if req.kind == "governance" else [],
+            "after": creq.governance_after(req) if req.kind == "governance" else "",
         },
     )
 

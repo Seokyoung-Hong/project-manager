@@ -17,6 +17,8 @@
     {% if req.is_open %}허용하면 아래 내용이 그대로 반영됩니다. {{ req.expires_at|date:"Y-m-d H:i" }}까지 처리하지 않으면 만료됩니다.{% endif %}
   </p>
 
+  <div class="notice" style="margin-bottom:12px"><strong>AI가 밝힌 이유</strong><br>{{ req.reason|linebreaksbr }}</div>
+
   {% if req.kind == "settings" %}
   <table class="grid">
     <thead><tr><th>항목</th><th>요청 당시</th><th>요청한 값</th></tr></thead>
@@ -34,6 +36,10 @@
   <p class="muted t13">빨간 줄은 지워지고 초록 줄이 더해집니다.</p>
   <pre class="change-diff" aria-label="거버넌스 변경 내용">{% for line in diff %}<span class="{% if line|slice:':1' == '+' %}add{% elif line|slice:':1' == '-' %}del{% endif %}">{{ line }}</span>
 {% endfor %}</pre>
+  <details style="margin-top:8px">
+    <summary>허용하면 적용될 전체 글 보기</summary>
+    <pre class="change-diff" aria-label="바뀐 뒤 전체 거버넌스">{{ after }}</pre>
+  </details>
   {% endif %}
 
   {% if req.is_open %}
