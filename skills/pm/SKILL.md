@@ -27,6 +27,8 @@ argument-hint: "[하려는 일]"
   허용 화면에서 읽기/쓰기를 사람이 고른다 — 쓰기 명령에는 쓰기를 골라야 한다. 환경 변수 `SANDOL_PM_TOKEN`이 있으면 그것이 우선이다.
   **토큰 파일을 열어 보거나 토큰을 대화·명령 인자·파일에 적지 않는다.**
 - 다른 서버를 쓰면 `SANDOL_PM_URL`로 주소를 바꾼다.
+- 출력은 UTF-8 JSON이다. 파일로 저장해 파이썬으로 다시 읽을 때는 `open(..., encoding="utf-8")`로 연다
+  (Windows 기본 인코딩 cp949로 열면 한글에서 `UnicodeDecodeError`가 난다).
 
 ```
 PM GET /api/tasks status=doing,blocked q=메뉴        # 쿼리는 key=value
