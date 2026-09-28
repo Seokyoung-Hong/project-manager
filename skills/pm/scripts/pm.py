@@ -4,6 +4,8 @@
     pm.py POST /api/tasks -  < body.json          본문은 표준입력(-) 또는 인자 JSON
     pm.py POST /api/tasks '{"title": "..."}' --key 요청ID   재시도해도 한 번만 만든다
     pm.py spec [경로 일부]                          OpenAPI에서 엔드포인트와 스키마 찾기
+    pm.py apidoc 프로젝트ID [경로 일부]              프로젝트 API 문서에서 엔드포인트와 스키마 찾기
+    pm.py apidoc 프로젝트ID put 파일|URL             프로젝트 API 문서 올리기(URL은 이 컴퓨터가 받는다)
     pm.py login | logout                          브라우저 OAuth로 토큰 받기 / 지우기
 
 토큰은 환경 변수 SANDOL_PM_TOKEN, 없으면 `pm.py login`이 저장한 ~/.config/sandol-pm/token.json에서 읽는다.
@@ -15,6 +17,7 @@ import base64
 import hashlib
 import json
 import os
+import re
 import secrets
 import socket
 import sys
@@ -26,7 +29,10 @@ from urllib.parse import parse_qs, urlencode, urlparse
 from urllib.request import Request, urlopen
 
 METHODS = {"GET", "POST", "PATCH", "PUT", "DELETE"}
-USAGE = "usage: pm.py METHOD /api/... [key=value ...|JSON|-] [--key ID]  |  pm.py spec [경로 일부]  |  pm.py login|logout"
+USAGE = (
+    "usage: pm.py METHOD /api/... [key=value ...|JSON|-] [--key ID]  |  pm.py spec [경로 일부]  |  "
+    "pm.py apidoc 프로젝트ID [경로 일부 | put 파일|URL]  |  pm.py login|logout"
+)
 TOKEN_FILE = Path.home() / ".config" / "sandol-pm" / "token.json"
 
 
@@ -132,19 +138,53 @@ def call(method, path, query=None, body=None, key=None):
         raise SystemExit(f"연결 실패: {e.reason}")
 
 
-def spec(needle=""):
-    doc = call("GET", "/api/openapi.json")
-    paths = {p: ops for p, ops in doc["paths"].items() if needle in p}
+def summarize(doc, needle=""):
+    """OpenAPI 문서에서 경로 일부가 맞는 엔드포인트만 뽑는다. 없으면 한 줄씩 목록."""
+    paths = {p: ops for p, ops in doc.get("paths", {}).items() if needle in p}
     if not needle:
-        return [f"{m.upper()} {p}  {op.get('summary', '')}" for p, ops in paths.items() for m, op in ops.items()]
-    # 찾은 경로의 요청·응답이 참조하는 스키마를 따라가 함께 돌려준다.
+        return [
+            f"{m.upper()} {p}  {op.get('summary', '')}"
+            for p, ops in paths.items() for m, op in ops.items() if isinstance(op, dict)
+        ]
+    # 찾은 경로가 참조하는 스키마를 따라가 함께 돌려준다. #/definitions/(Swagger 2)도 같은 방식으로 푼다.
     schemas, todo = {}, [json.dumps(paths)]
     while todo:
-        for ref in {s.split('"')[0] for s in todo.pop().split('"#/components/schemas/')[1:]}:
-            if ref not in schemas:
-                schemas[ref] = doc["components"]["schemas"][ref]
-                todo.append(json.dumps(schemas[ref]))
+        for ref in set(re.findall(r'"\$ref": "#/([^"]+)"', todo.pop())):
+            name = ref.rsplit("/", 1)[-1]
+            if name in schemas:
+                continue
+            node = doc
+            for part in ref.split("/"):
+                node = node.get(part) if isinstance(node, dict) else None
+            if node is not None:  # 받은 문서 그대로라 끊긴 참조가 있을 수 있다
+                schemas[name] = node
+                todo.append(json.dumps(node))
     return {"paths": paths, "schemas": schemas}
+
+
+def spec(needle=""):
+    return summarize(call("GET", "/api/openapi.json"), needle)
+
+
+def apidoc(project, args):
+    path = f"/api/projects/{int(project)}/api-spec"
+    if args[:1] != ["put"]:
+        got = call("GET", path)
+        return {"source_url": got["source_url"], "fetched_at": got["fetched_at"],
+                "endpoints": summarize(got["spec"], args[0] if args else "")}
+    if len(args) != 2:
+        raise SystemExit(USAGE)
+    src = args[1]
+    try:
+        if src.startswith(("http://", "https://")):
+            # 이 컴퓨터가 받는다. 로컬 개발 서버의 스펙도 올릴 수 있다. 토큰은 보내지 않는다.
+            with urlopen(Request(src, headers={"Accept": "application/json"}), timeout=30) as r:
+                doc = json.load(r)
+        else:
+            doc = json.loads(Path(src).read_text(encoding="utf-8"))
+    except (OSError, ValueError) as e:
+        raise SystemExit(f"{src}를 JSON으로 읽지 못했습니다: {e}")
+    return call("PUT", path, body={"spec": doc, "source_url": src if "://" in src else Path(src).name})
 
 
 def main(argv):
@@ -159,6 +199,8 @@ def main(argv):
         result = login() if argv[0] == "login" else logout()
     elif argv[:1] == ["spec"]:
         result = spec(argv[1] if len(argv) > 1 else "")
+    elif argv[:1] == ["apidoc"] and len(argv) >= 2 and argv[1].isdigit():
+        result = apidoc(argv[1], argv[2:])
     elif len(argv) >= 2 and argv[0].upper() in METHODS:
         method, path, rest = argv[0].upper(), argv[1], argv[2:]
         query, body = {}, None

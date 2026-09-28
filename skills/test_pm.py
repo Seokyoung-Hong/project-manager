@@ -27,6 +27,14 @@ SPEC = {
         "Unused": {},
     }},
 }
+# 프로젝트 API 문서는 받은 그대로라 Swagger 2(#/definitions/)와 끊긴 참조가 섞여 있을 수 있다.
+PROJECT_SPEC = {
+    "paths": {
+        "/pets": {"parameters": [], "get": {"summary": "List", "responses": {"200": {"$ref": "#/definitions/Pet"}}}},
+        "/gone": {"get": {"responses": {"200": {"$ref": "#/definitions/Missing"}}}},
+    },
+    "definitions": {"Pet": {"properties": {"tag": {"$ref": "#/definitions/Tag"}}}, "Tag": {}},
+}
 seen = []
 
 
@@ -52,6 +60,7 @@ class Fake(BaseHTTPRequestHandler):
             return
         out = {
             "/api/openapi.json": SPEC,
+            "/api/projects/5/api-spec": {"source_url": "a.json", "fetched_at": "t", "spec": PROJECT_SPEC},
             "/oauth/register": {"client_id": "cid"},
             "/oauth/token": {"access_token": "oauth-tok", "scope": "read"},
         }.get(self.path, {"ok": True})
@@ -61,7 +70,7 @@ class Fake(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(data)
 
-    do_GET = do_POST = do_PATCH = _reply
+    do_GET = do_POST = do_PATCH = do_PUT = _reply
 
     def log_message(self, *a):
         pass
@@ -99,6 +108,22 @@ r = run("spec")
 assert "POST /api/tasks  Create" in r.stdout
 r = run("spec", "/api/tasks")
 assert set(json.loads(r.stdout)["schemas"]) == {"TaskCreateIn", "ChecklistIn"}
+
+r = run("apidoc", "5")
+assert "GET /pets  List" in json.loads(r.stdout)["endpoints"], r.stderr
+r = run("apidoc", "5", "/pets")
+assert set(json.loads(r.stdout)["endpoints"]["schemas"]) == {"Pet", "Tag"}
+assert run("apidoc", "5", "/gone").returncode == 0  # 끊긴 참조는 건너뛴다
+with tempfile.TemporaryDirectory() as tmp:
+    f = Path(tmp) / "openapi.json"
+    f.write_text(json.dumps(PROJECT_SPEC), encoding="utf-8")
+    r = run("apidoc", "5", "put", str(f))
+    assert r.returncode == 0, r.stderr
+    req = seen.pop()
+    assert req["method"] == "PUT" and req["body"] == {"spec": PROJECT_SPEC, "source_url": "openapi.json"}
+    r = run("apidoc", "5", "put", f"http://127.0.0.1:{server.server_port}/api/projects/5/api-spec")
+    assert r.returncode == 0, r.stderr
+    assert "Authorization" not in seen[-2]["headers"]  # 스펙 주소에는 토큰을 보내지 않는다
 
 # OAuth 로그인: 브라우저 대신 스레드가 인가 주소를 열고, 저장한 토큰은 받은 주소로만 쓴다.
 spec_ = importlib.util.spec_from_file_location("pm", PM)
