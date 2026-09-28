@@ -1,3 +1,5 @@
+from datetime import date
+
 from ninja import Router
 from ninja.errors import HttpError
 
@@ -24,12 +26,14 @@ from ..schemas import (
     InviteIn,
     InviteOut,
     OrgOut,
+    TaskListOut,
     TeamCreateIn,
     TeamMemberIn,
     TeamOut,
     UserBrief,
 )
 from ..serialize import invite_out, project_out
+from .tasks import list_tasks
 
 router = Router(tags=["orgs"])
 
@@ -181,3 +185,33 @@ def org_repos(request, org_id: int):
 
     org = org_or_404(request, org_id)
     return gh_services.installation_repos(org)
+
+
+@router.get("/{org_id}/tasks", response=TaskListOut)
+def org_tasks(
+    request,
+    org_id: int,
+    project: int | None = None,
+    assignee: int | None = None,
+    status: str | None = None,
+    due_from: date | None = None,
+    due_to: date | None = None,
+    q: str | None = None,
+    updated_since: str | None = None,
+    include_archived: bool = False,
+    limit: int = 50,
+    offset: int = 0,
+):
+    """그 조직 안의 태스크만. 조직 안에서 보는 화면·AI는 이 경로를 쓴다.
+
+    `/api/tasks`는 여러 조직을 가로지르는 개인 전체 보기(DM 등)로 남긴다. 여기서는 조직이 경로라
+    빠뜨릴 수 없고, 다른 조직의 프로젝트를 넘기면 빈 목록이 아니라 404로 알린다.
+    """
+    org = org_or_404(request, org_id)
+    if project is not None and not org.projects.filter(pk=project).exists():
+        raise HttpError(404, "이 조직의 프로젝트가 아닙니다.")
+    return list_tasks(
+        request, org=org.pk, project=project, assignee=assignee, status=status,
+        due_from=due_from, due_to=due_to, q=q, updated_since=updated_since,
+        include_archived=include_archived, limit=limit, offset=offset,
+    )

@@ -7,7 +7,8 @@
 |---|---|---|
 | [`core/`](core) | 웹 화면·데이터·HTTP API. 업무 규칙은 전부 여기 `services.py`에 있다 | Django 5.2, Django Ninja, PostgreSQL, HTMX |
 | [`discord_service/`](discord_service) | 마감 알림과 DM·슬래시 명령, 프로젝트 채널 연결 및 내부 MCP 채널 제어를 제공한다 | httpx, discord.py, SQLite |
-| [`mcp_server/`](mcp_server) | Claude·ChatGPT 등 AI 클라이언트가 태스크를 읽고 고치는 MCP 서버 | mcp, httpx, uvicorn |
+| [`skills/`](skills) | Claude Code 스킬과 `/pm-*` 명령. core API를 직접 부른다 | Python 표준 라이브러리 |
+| [`mcp_server/`](mcp_server) | 선택 확장. claude.ai 웹·모바일 등 셸이 없는 AI 클라이언트용 원격 MCP 커넥터 | mcp, httpx, uvicorn |
 
 ## 문서
 
@@ -78,6 +79,7 @@ uv run python manage.py runserver
 cd core            && uv run pytest -q && uv run ruff check . && uv run ruff format --check .
 cd discord_service && uv run pytest -q && uv run ruff check .
 cd mcp_server      && uv run pytest -q && uv run ruff check .
+python skills/test_pm.py
 ```
 
 Postgres로도 한 번 돌린다(아래 Docker 실행으로 `db`만 띄운 상태에서):
@@ -103,12 +105,12 @@ SITE_URL=http://localhost:8000
 ```
 
 ```bash
-docker compose up -d --build              # db·web·mcp만 뜬다
+docker compose up -d --build              # db·web만 뜬다
 docker compose exec web python manage.py createsuperuser
 ```
 
 - 웹: **http://localhost:8000** (`web`이 `0.0.0.0:8000`에 붙는다)
-- MCP: **http://localhost:8080** · Postgres: `127.0.0.1:5432`
+- MCP(`--profile mcp`일 때): **http://localhost:8080** · Postgres: `127.0.0.1:5432`
 - `web`의 8000번만 **바깥에 열려 있다.** 다른 장비의 리버스 프록시(NginxProxyManager)가 여기로 붙기 때문이다. 방화벽에서 **프록시 장비 IP만** 8000번을 열어 둔다 — 직접 오는 요청은 평문 HTTP다. Cloudflare Tunnel만 쓴다면 `compose.yml`의 `web` 포트를 `"127.0.0.1:8000:8000"`으로 되돌린다.
 - MCP와 Postgres는 루프백만 바인딩한다.
 
@@ -116,6 +118,7 @@ docker compose exec web python manage.py createsuperuser
 기본 `up`에서 뜨지 않고, 필요할 때만 켠다:
 
 ```bash
+docker compose --profile mcp up -d        # 원격 MCP 커넥터(claude.ai 웹·모바일)가 필요할 때
 docker compose --profile discord up -d    # .env.discord를 채운 뒤
 docker compose --profile tunnel up -d     # CLOUDFLARE_TUNNEL_TOKEN을 채운 뒤
 ```
@@ -135,7 +138,7 @@ docker compose exec -T web python manage.py loaddata --format=json - < devdata.j
 2. 저장소를 `/opt/project-manager`에 복사한다(`.venv/`, `db.sqlite3` 제외).
 3. `.env`와 `.env.discord`를 실제 값으로 채운다(포트는 셋 다 루프백이라 그대로 둔다).
 4. Cloudflare Zero Trust에서 터널을 만들고 공개 호스트 **두 개**를 연결한다: `pm.<도메인>` → `web:8000`, `mcp.<도메인>` → `mcp:8080`. Discord 봇은 밖으로 나가는 연결만 쓰므로 공개 경로가 필요 없다.
-5. `docker compose up -d --build db web mcp cloudflared` 후 superuser 생성.
+5. `docker compose --profile mcp up -d --build db web mcp cloudflared` 후 superuser 생성(원격 MCP 커넥터가 필요 없으면 `mcp`를 뺀다).
 6. 팀 생성 → 초대 링크 배포.
 7. Discord Developer Portal에서 봇을 만들어(`[Reset Token]`) 팀 서버에 설치하고, 토큰과 채널 id를 `.env.discord`에 넣는다. 특권 인텐트는 켜지 않는다. 팀원 전원이 서버에 참여하고 '서버 멤버의 DM 허용'을 켠다.
 8. `discord-bot` 계정을 팀 **팀원**으로 넣고(관리자 승격 불필요) `bot` 범위 토큰을 셸로 발급해 `CORE_TOKEN`에 넣는다:

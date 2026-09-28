@@ -1,4 +1,4 @@
-{% extends "base.html" %}{% load static %}{% block title %}API 토큰{% endblock %}
+{% extends "base.html" %}{% block title %}API 토큰{% endblock %}
 {% block main %}
 {% with settings_tab="tokens" %}{% include "settings/_tabs.html" %}{% endwith %}
 {% if new_token %}
@@ -44,30 +44,23 @@
 </section>
 <section class="card">
   <h2>AI 클라이언트 연결</h2>
-  <p class="muted t13">Claude Desktop에서 이 기기에만 연결하려면 아래 확장 파일을 설치하세요. 기존 웹 커넥터는 계정의 다른 기기에도 표시될 수 있습니다.</p>
+  <p class="muted t13">셸이 있는 Claude Code에서는 <b>스킬</b>이 가장 가볍습니다. claude.ai 웹·모바일처럼 셸이 없는 곳은 <b>OAuth</b> 커넥터로 붙습니다.</p>
   <table class="grid">
     <thead><tr><th>클라이언트</th><th>설정</th></tr></thead>
     <tbody>
       <tr>
-        <td>Claude Desktop<br><span class="muted t13">이 기기만</span></td>
-        <td>
-          <a class="btn primary sm" href="{% static 'downloads/sandol-project-manager-local.mcpb' %}" download="sandol-project-manager-local.mcpb">확장 파일 다운로드</a>
-          <ol class="t13">
-            <li>위에서 이 기기용 API 토큰을 발급하고 복사합니다.</li>
-            <li>Claude Desktop → 설정 → 확장 → 고급 설정 → 확장 설치에서 내려받은 파일을 선택합니다.</li>
-            <li>확장 설정의 ProjectManager API token에 토큰을 입력합니다.</li>
-          </ol>
-          <span class="muted t13">토큰은 설치 파일에 포함되지 않습니다. 다른 기기에 표시되지 않게 하려면 기존 ProjectManager 웹 커넥터 연결도 해제하세요.</span>
-        </td>
+        <td>Claude Code<br><span class="muted t13">스킬 · 이 기기만</span></td>
+        <td>저장소의 <code>skills/</code> 폴더(<code>pm</code>, <code>pm-*</code>)를 <code>~/.claude/skills/</code>에 복사하고 <code>pm.py login</code>으로 로그인합니다(브라우저에서 허용 — 토큰을 손으로 옮기지 않습니다).
+          <code>/pm-start</code>, <code>/pm-new</code> 같은 명령이 생깁니다. 자세한 방법은 <code>skills/README.md</code>를 보세요.</td>
       </tr>
       <tr>
-        <td>Claude 웹 커넥터 / claude.ai<br><span class="muted t13">계정 연결 · OAuth</span></td>
+        <td>Claude 앱 / claude.ai<br><span class="muted t13">OAuth</span></td>
         <td>설정 → 커넥터 → 커스텀 커넥터 추가 → URL <code>{{ mcp_url }}/mcp</code>
           <button type="button" class="btn sm" data-copy-text="{{ mcp_url }}/mcp" data-copy-label="주소 복사됨">복사</button><br>
           <span class="muted t13">'연결'을 누르면 이 사이트의 로그인·허용 화면이 뜹니다. 허용하면 토큰이 자동으로 발급돼 아래 목록에 나타납니다 — 위에서 따로 발급하지 않아도 됩니다.</span></td>
       </tr>
       <tr>
-        <td>Claude Code<br><span class="muted t13">헤더</span></td>
+        <td>Claude Code<br><span class="muted t13">MCP · 헤더</span></td>
         <td><code>claude mcp add --transport http sandol {{ mcp_url }}/mcp --header "Authorization: Bearer &lt;TOKEN&gt;"</code>
           <button type="button" class="btn sm" data-copy-text='claude mcp add --transport http sandol {{ mcp_url }}/mcp --header "Authorization: Bearer &lt;TOKEN&gt;"' data-copy-label="명령 복사됨">복사</button></td>
       </tr>

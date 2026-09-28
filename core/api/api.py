@@ -25,6 +25,18 @@ from .routers.docs import doc_out
 from .serialize import project_out, task_out
 
 
+def _docs_auth(view):
+    """Swagger 화면과 명세(JSON)는 로그인한 사람에게, 또는 API 토큰으로. 스킬이 토큰으로 명세를 읽는다."""
+    session_view = login_required(view)
+
+    def wrapped(request, *args, **kwargs):
+        if TokenAuth()(request) is not None:
+            return view(request, *args, **kwargs)
+        return session_view(request, *args, **kwargs)
+
+    return wrapped
+
+
 class UserRateThrottle(AuthRateThrottle):
     """사용자별 처리량 제한.
 
@@ -45,7 +57,7 @@ api = NinjaAPI(
     version="1",
     auth=[BrowserSessionAuth(), TokenAuth()],
     throttle=[UserRateThrottle("60/m")],
-    docs_decorator=login_required,
+    docs_decorator=_docs_auth,
     urls_namespace="api",
 )
 

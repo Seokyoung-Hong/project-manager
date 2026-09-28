@@ -15,14 +15,13 @@ class CoreClient:
         items, offset = [], 0
         while True:
             params = {
-                "org": org_id,
                 "status": "todo,doing,paused,blocked,review",
                 "limit": 200,
                 "offset": offset,
             }
             if due_to:
                 params["due_to"] = due_to
-            r = self.http.get("/api/tasks", params=params)
+            r = self.http.get(f"/api/orgs/{org_id}/tasks", params=params)
             r.raise_for_status()
             data = r.json()
             items.extend(data["items"])
@@ -48,8 +47,8 @@ class CoreClient:
         사건을 만들 수 있다)."""
         items, offset = [], 0
         while True:
-            params = {"org": org_id, "updated_since": since, "limit": 200, "offset": offset}
-            r = self.http.get("/api/tasks", params=params)
+            params = {"updated_since": since, "limit": 200, "offset": offset}
+            r = self.http.get(f"/api/orgs/{org_id}/tasks", params=params)
             r.raise_for_status()
             data = r.json()
             items.extend(data["items"])

@@ -1,5 +1,7 @@
 import json
 
+from django.conf import settings
+from django.db.models import Q
 from ninja import Router
 from ninja.errors import HttpError
 
@@ -23,12 +25,13 @@ from ..schemas import (
     ConflictOut,
     ErrorOut,
     ProjectCreateIn,
+    ProjectDiscordChannelIn,
     ProjectOut,
     ProjectPatchIn,
-    ProjectDiscordChannelIn,
     RepoConnectIn,
+    TaskOut,
 )
-from ..serialize import project_out
+from ..serialize import project_out, task_out
 
 router = Router(tags=["projects"])
 
@@ -170,3 +173,52 @@ def connect_repo(request, project_id: int, payload: RepoConnectIn):
         project=project, url=payload.url, actor=c["actor"], source=c["source"]
     )
     return {"connected": True, "full_name": conn.full_name, "url": conn.url}
+
+
+def _repo_or_error(request, project):
+    """이슈를 읽고 가져오려면 저장소가 이어져 있고 그 사람이 볼 수 있어야 한다."""
+    if not settings.GITHUB_ENABLED:
+        raise HttpError(404, "GitHub 연동이 꺼져 있습니다.")
+    state = gh_services.repo_state(request.auth, project)
+    if state["state"] == "none":
+        raise HttpError(404, "프로젝트에 연결된 저장소가 없습니다.")
+    if state["state"] != "ok":
+        raise HttpError(403, "이 저장소를 볼 권한이 없거나 GitHub 계정이 연결되지 않았습니다.")
+    return state["conn"]
+
+
+@router.get("/{project_id}/issues", response=list[dict])
+def list_issues(request, project_id: int, imported: bool | None = None, q: str = ""):
+    """저장소의 열린 이슈(동기화된 사본). imported=false면 아직 태스크가 없는 것만."""
+    conn = _repo_or_error(request, _project_or_404(request, project_id))
+    qs = conn.issues.filter(state="open").select_related("task").order_by("-number")
+    if imported is True:
+        qs = qs.exclude(task=None)
+    elif imported is False:
+        qs = qs.filter(task=None)
+    if q:
+        qs = qs.filter(Q(title__icontains=q) | Q(body__icontains=q))
+    return [
+        {
+            "number": i.number,
+            "title": i.title,
+            "labels": i.labels,
+            "assignee_login": i.assignee_login,
+            "url": f"https://github.com/{conn.full_name}/issues/{i.number}",
+            "task": {"id": i.task.pk, "number": i.task.number} if i.task else None,
+        }
+        for i in qs[:100]
+    ]
+
+
+@router.post("/{project_id}/issues/{number}/import", response={200: TaskOut, 201: TaskOut})
+def import_issue(request, project_id: int, number: int):
+    """이슈를 내 태스크로 가져온다. 이미 가져온 이슈면 그 태스크를 200으로 돌려준다."""
+    conn = _repo_or_error(request, _project_or_404(request, project_id))
+    issue = conn.issues.filter(number=number).first()
+    if issue is None:
+        raise HttpError(404, "이슈를 찾을 수 없습니다. 저장소 이슈를 새로 고친 뒤 다시 시도하세요.")
+    if issue.task_id is not None:
+        return 200, task_out(issue.task)
+    task = gh_services.import_issue(issue, request.auth, source=ctx(request)["source"])
+    return 201, task_out(task)
