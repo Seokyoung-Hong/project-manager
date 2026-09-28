@@ -10,8 +10,9 @@ from ninja import Body, Router
 from ninja.errors import HttpError
 
 from accounts.services import set_user_settings
+from common.errors import ServiceError
 from orgs.requests import pending_out, request_change
-from orgs.services import orgs_of, set_org_settings
+from orgs.services import ai_denied, orgs_of, set_org_settings
 from orgs.settings import SPECS, Spec, clean, effective, locked_keys, specs_for
 from projects.models import Project
 from projects.services import set_project_settings
@@ -79,6 +80,8 @@ def put_org_settings(request, org_id: int, payload: dict[str, Any] = _BODY):
     # 키 유무가 아니라 교체 전후의 ai.* 값을 비교한다. 바꾸려 하면 요청으로 남기고 허용 링크를 돌려준다.
     # 나머지 설정은 그대로 바꿀 수 있다.
     c = ctx(request)
+    if c["source"] == "mcp" and not effective("ai.enabled", org=org):
+        raise ServiceError({"ai": ai_denied("설정 변경")})  # AI를 끈 조직에서는 AI의 쓰기 전부를 막는다
     if c["source"] == "mcp" and _ai_policy(
         clean("org", payload, allow_locked=True)
     ) != _ai_policy(org.settings or {}):

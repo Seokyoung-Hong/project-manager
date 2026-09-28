@@ -60,7 +60,7 @@ def _display_setting(key: str, value) -> str:
 
 
 @transaction.atomic
-def set_org_settings(org, data: dict, actor) -> Organization:
+def set_org_settings(org, data: dict, actor, *, note: str = "", token=None) -> Organization:
     """조직 설정을 통째로 교체한다(병합이 아니다 — 키 없음 = 기본값이 규칙이기 때문이다).
 
     바뀐 키마다 이력을 남긴다.
@@ -83,6 +83,8 @@ def set_org_settings(org, data: dict, actor) -> Organization:
                 new_value=_display_setting(key, new_v),
                 actor=actor,
                 source="web",
+                note=note,
+                token=token,
             )
     org.settings = cleaned
     org.save(update_fields=["settings"])

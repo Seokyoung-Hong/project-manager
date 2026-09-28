@@ -125,3 +125,66 @@ def test_expired_request_cannot_be_approved(client, org, ai_admin):
     org.refresh_from_db()
     assert org.governance == ""
     assert "만료" in client.get(f"/orgs/{org.pk}/requests/{req.pk}").content.decode()
+
+
+def test_ai_disabled_org_takes_no_requests_or_writes(client, admin, org, ai_admin):
+    set_org_settings(org, {"ai.enabled": False}, admin)
+    assert (
+        _put_settings(
+            client, org, ai_admin, {"ai.enabled": False, "ai.create_task": "deny"}
+        ).status_code
+        == 400
+    )
+    assert (
+        _put_settings(
+            client, org, ai_admin, {"ai.enabled": False, "task.default_priority": 3}
+        ).status_code
+        == 400
+    )
+    assert _put_governance(client, org, ai_admin, "# x").status_code == 400
+    assert not ChangeRequest.objects.exists()
+
+
+def test_governance_same_as_default_is_not_a_change(client, org, ai_admin):
+    """웹에서 기본안을 그대로 저장한 조직에 빈 본문을 보내면 적용되는 글은 같다 — 빈 비교 화면을 만들지 않는다."""
+    from orgs.governance import DEFAULT_GOVERNANCE
+
+    org.governance = DEFAULT_GOVERNANCE.strip()
+    org.save(update_fields=["governance"])
+    assert _put_governance(client, org, ai_admin, "").status_code == 400
+    assert not ChangeRequest.objects.exists()
+
+
+def test_invisible_characters_are_shown(client, org, ai_admin):
+    page = f"/orgs/{org.pk}/requests/{_put_governance(client, org, ai_admin, '# 규칙​').json()['request_id']}"
+    assert "U+200B" in _as_admin(client).get(page).content.decode()
+
+
+def test_other_orgs_admin_cannot_open_the_request(client, org, ai_admin, outsider):
+    from orgs.services import create_org
+
+    other = create_org("다른 조직", "", outsider)
+    req_id = _put_governance(client, org, ai_admin, "# x").json()["request_id"]
+    client.login(username="outsider", password="pw12345678")
+    assert client.get(f"/orgs/{other.pk}/requests/{req_id}").status_code == 404
+    assert (
+        client.post(f"/orgs/{org.pk}/requests/{req_id}", {"action": "approve"}).status_code == 404
+    )
+    assert ChangeRequest.objects.get().status == "pending"
+
+
+def test_approve_needs_csrf(org, ai_admin):
+    from django.test import Client
+
+    c = Client(enforce_csrf_checks=True)
+    req_id = _put_governance(c, org, ai_admin, "# x").json()["request_id"]
+    _as_admin(c)
+    assert c.post(f"/orgs/{org.pk}/requests/{req_id}", {"action": "approve"}).status_code == 403
+    assert ChangeRequest.objects.get().status == "pending"
+
+
+def test_history_links_the_ai_request(client, admin, org, ai_admin):
+    req_id = _put_settings(client, org, ai_admin, {"ai.create_task": "deny"}).json()["request_id"]
+    _as_admin(client).post(f"/orgs/{org.pk}/requests/{req_id}", {"action": "approve"})
+    log = ChangeLog.objects.get(target_type="org", field="ai.create_task")
+    assert log.actor == admin and log.note == f"AI 요청 #{req_id} 허용" and log.token is not None

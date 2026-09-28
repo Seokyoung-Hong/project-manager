@@ -155,7 +155,8 @@ class ChangeRequest(models.Model):
     # 요청 시점의 값. 허용할 때 지금 값과 다르면(그사이 누가 바꿨으면) 반영하지 않고 무효로 만든다.
     base = models.JSONField()
     proposed = models.JSONField()
-    requested_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="+")
+    # 거버넌스 변경은 이력(ChangeLog)이 없어 이 행이 유일한 기록이다. 계정을 지워도 남긴다.
+    requested_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="+")
     token = models.ForeignKey(
         "accounts.ApiToken", on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
     )
