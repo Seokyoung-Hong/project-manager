@@ -138,3 +138,46 @@ class Invite(models.Model):
     @property
     def path(self) -> str:
         return f"/join/{self.token}"
+
+
+class ChangeRequest(models.Model):
+    """AI가 올린 조직 설정·거버넌스 변경 요청. 관리자가 웹에서 허용해야 반영된다.
+
+    AI는 자기 정책(ai.*)과 자기가 따르는 규칙(거버넌스)을 직접 못 바꾼다. 대신 바꿀 내용을 올리고
+    사람이 링크를 열어 전후를 보고 허용한다. 허용은 로그인 세션에서만 된다(토큰으로는 못 한다).
+    """
+
+    KINDS = [("settings", "조직 설정"), ("governance", "개발 거버넌스")]
+    STATUSES = [("pending", "대기"), ("approved", "허용"), ("rejected", "거절"), ("stale", "무효")]
+
+    org = models.ForeignKey(Organization, on_delete=models.CASCADE, related_name="change_requests")
+    kind = models.CharField(max_length=10, choices=KINDS)
+    # 요청 시점의 값. 허용할 때 지금 값과 다르면(그사이 누가 바꿨으면) 반영하지 않고 무효로 만든다.
+    base = models.JSONField()
+    proposed = models.JSONField()
+    requested_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="+")
+    token = models.ForeignKey(
+        "accounts.ApiToken", on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
+    )
+    status = models.CharField(max_length=10, choices=STATUSES, default="pending")
+    reviewed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
+    )
+    reviewed_at = models.DateTimeField(null=True, blank=True)
+    reject_reason = models.CharField("거절 사유", max_length=300, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField(default=_default_expiry)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.org.name} {self.get_kind_display()} #{self.pk} ({self.status})"
+
+    @property
+    def is_open(self) -> bool:
+        return self.status == "pending" and self.expires_at > timezone.now()
+
+    @property
+    def path(self) -> str:
+        return f"/orgs/{self.org_id}/requests/{self.pk}"

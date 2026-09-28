@@ -1,0 +1,10 @@
+{% if pending_requests %}
+<section class="card">
+  <h2>AI의 변경 요청 {{ pending_requests|length }}건</h2>
+  <ul>
+    {% for r in pending_requests %}
+    <li><a href="{{ r.path }}">{{ r.get_kind_display }} #{{ r.pk }}</a> · {{ r.requested_by.display_name|default:r.requested_by.username }} · {{ r.created_at|date:"m-d H:i" }}</li>
+    {% endfor %}
+  </ul>
+</section>
+{% endif %}

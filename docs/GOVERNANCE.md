@@ -21,9 +21,16 @@
 
 ## 앞으로
 
-### 1. 승인 대기 큐 (하고 싶은 것, 아직 없음)
+### 1. 승인 대기 큐 (첫 단계 있음 — 2026-09-28)
 
 AI의 쓰기를 곧바로 반영하지 않고 `pending`으로 쌓아 관리자가 승인하면 반영하는 경로.
+
+**지금 있는 것:** AI용 토큰(`ApiToken.for_ai`)이 조직의 AI 정책(`ai.*`)이나 거버넌스를 바꾸려 하면
+`orgs.ChangeRequest`로 남고 API는 `202 {status: "pending", approve_url}`를 돌려준다. 조직 관리자가
+`/orgs/<id>/requests/<n>`(로그인 세션 전용)에서 전후를 보고 허용·거절한다. 요청 뒤 대상이 바뀌면 무효,
+7일 뒤 만료. 설정·거버넌스 화면에 대기 목록이 뜬다. 코드: `core/orgs/requests.py`.
+
+아래는 그 다음 단계다 — 대상을 태스크 쓰기까지 넓히고 조직이 고르게 한다.
 
 - `PendingChange(org, actor, token, target_type, target_id, payload, status, reviewed_by, reviewed_at)`
 - 어떤 작업을 큐에 보낼지는 **조직이 고른다** — GitHub의 브랜치 보호 규칙처럼.

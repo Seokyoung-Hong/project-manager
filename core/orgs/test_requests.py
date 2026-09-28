@@ -1,0 +1,127 @@
+"""AI의 조직 설정·거버넌스 변경 요청. 올리는 건 AI 토큰, 허용은 관리자의 로그인 세션만."""
+
+from datetime import timedelta
+
+import pytest
+from django.utils import timezone
+
+from accounts.models import ApiToken
+from orgs.models import ChangeRequest
+from orgs.services import set_org_settings
+from tasks.models import ChangeLog
+
+
+def _h(raw):
+    return {"Authorization": f"Bearer {raw}"}
+
+
+@pytest.fixture
+def ai_admin(admin):
+    return ApiToken.issue(admin, "Claude", "write")[1]
+
+
+def _put_settings(client, org, raw, data):
+    return client.put(
+        f"/api/orgs/{org.pk}/settings", data=data, content_type="application/json", headers=_h(raw)
+    )
+
+
+def _put_governance(client, org, raw, text):
+    return client.put(
+        f"/api/orgs/{org.pk}/governance",
+        data={"text": text},
+        content_type="application/json",
+        headers=_h(raw),
+    )
+
+
+def _as_admin(client):
+    client.login(username="admin1", password="pw12345678")
+    return client
+
+
+def test_ai_policy_change_waits_for_a_person(client, admin, org, ai_admin):
+    r = _put_settings(client, org, ai_admin, {"ai.create_task": "deny"})
+    assert r.status_code == 202
+    body = r.json()
+    page = f"/orgs/{org.pk}/requests/{body['request_id']}"
+    assert body["status"] == "pending" and body["approve_url"].endswith(page)
+    org.refresh_from_db()
+    assert org.settings == {}
+
+    # AI가 가진 토큰으로는 허용 화면에 들어오지 못한다.
+    r = client.post(page, {"action": "approve"}, headers=_h(ai_admin))
+    assert r.status_code == 302 and "/login" in r.headers["Location"]
+    org.refresh_from_db()
+    assert org.settings == {}
+
+    _as_admin(client)
+    html = client.get(page).content.decode()
+    assert "AI 정책" in html and "허용하고 반영" in html
+    client.post(page, {"action": "approve"})
+    org.refresh_from_db()
+    assert org.settings == {"ai.create_task": "deny"}
+    req = ChangeRequest.objects.get()
+    assert req.status == "approved" and req.reviewed_by == admin
+    assert ChangeLog.objects.filter(
+        target_type="org", target_id=org.pk, field="ai.create_task"
+    ).exists()
+
+    # 설정 화면에서 대기 목록이 사라지고, 같은 요청을 두 번 허용하지 못한다.
+    assert page not in client.get(f"/orgs/{org.pk}/settings").content.decode()
+    client.post(page, {"action": "reject"})
+    assert ChangeRequest.objects.get().status == "approved"
+
+
+def test_governance_request_can_be_rejected(client, admin, org, ai_admin):
+    r = _put_governance(client, org, ai_admin, "# 새 규칙")
+    assert r.status_code == 202
+    page = f"/orgs/{org.pk}/requests/{r.json()['request_id']}"
+    _as_admin(client)
+    assert page in client.get(f"/orgs/{org.pk}/governance").content.decode()
+    assert "+# 새 규칙" in client.get(page).content.decode()
+    client.post(page, {"action": "reject", "reason": "아직 합의 전"})
+    org.refresh_from_db()
+    assert org.governance == ""
+    req = ChangeRequest.objects.get()
+    assert req.status == "rejected" and req.reject_reason == "아직 합의 전"
+
+
+def test_member_cannot_review(client, org, member, ai_admin):
+    page = f"/orgs/{org.pk}/requests/{_put_governance(client, org, ai_admin, '# x').json()['request_id']}"
+    client.login(username="member1", password="pw12345678")
+    client.post(page, {"action": "approve"})
+    org.refresh_from_db()
+    assert org.governance == "" and ChangeRequest.objects.get().status == "pending"
+
+
+def test_only_an_admins_ai_can_ask(client, org, member):
+    raw = ApiToken.issue(member, "Claude", "write")[1]
+    assert _put_governance(client, org, raw, "# x").status_code == 400
+    assert _put_settings(client, org, raw, {"ai.create_task": "deny"}).status_code == 400
+    assert not ChangeRequest.objects.exists()
+
+
+def test_invalid_or_empty_request_is_refused_at_once(client, org, ai_admin):
+    assert _put_settings(client, org, ai_admin, {"ai.create_task": "maybe"}).status_code == 400
+    assert _put_governance(client, org, ai_admin, "").status_code == 400  # 지금도 기본안이다
+    assert not ChangeRequest.objects.exists()
+
+
+def test_stale_request_does_not_overwrite_a_later_change(client, admin, org, ai_admin):
+    page = f"/orgs/{org.pk}/requests/{_put_settings(client, org, ai_admin, {'ai.create_task': 'deny'}).json()['request_id']}"
+    set_org_settings(org, {"task.default_priority": 3}, admin)  # 요청 뒤에 사람이 먼저 바꿨다
+    _as_admin(client).post(page, {"action": "approve"})
+    org.refresh_from_db()
+    assert org.settings == {"task.default_priority": 3}
+    assert ChangeRequest.objects.get().status == "stale"
+
+
+def test_expired_request_cannot_be_approved(client, org, ai_admin):
+    _put_governance(client, org, ai_admin, "# x")
+    ChangeRequest.objects.update(expires_at=timezone.now() - timedelta(minutes=1))
+    req = ChangeRequest.objects.get()
+    _as_admin(client).post(f"/orgs/{org.pk}/requests/{req.pk}", {"action": "approve"})
+    org.refresh_from_db()
+    assert org.governance == ""
+    assert "만료" in client.get(f"/orgs/{org.pk}/requests/{req.pk}").content.decode()

@@ -851,3 +851,8 @@ details.card.settings-section { padding: 0; gap: 0; }
 @media (max-width: 360px) {
   .setting-options { grid-template-columns: minmax(0, 1fr); }
 }
+
+/* AI 변경 요청의 거버넌스 차이 */
+.change-diff { white-space: pre-wrap; overflow-wrap: anywhere; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 8px; padding: 12px; font-size: 13px; line-height: 20px; max-height: 60vh; overflow: auto; }
+.change-diff .add { color: var(--success); background: var(--success-bg); }
+.change-diff .del { color: var(--danger); background: var(--danger-bg); }

@@ -119,11 +119,22 @@ PM apidoc 12 put openapi.json                         # 프로젝트 API 문서 
 | ✋ 초대 링크 | `POST /api/orgs/{org}/invites` `{"days"}` · 취소 `DELETE /api/orgs/invites/{invite_id}` — 링크를 가진 누구나 조직에 들어온다 |
 | 포트폴리오 초안 | `POST /api/me/portfolio-drafts` · `PATCH /api/me/portfolio-drafts/{id}` `{"version", "title"?, "body_md"?, "source_ids"?}` |
 
+**승인 요청으로만 되는 것** — AI가 직접 바꾸지 못하고, 사람이 링크를 열어 허용해야 반영된다.
+
+| 하려는 일 | 호출 |
+|---|---|
+| ✋ AI 정책(`ai.*`)이 바뀌는 조직 설정 | `PUT /api/orgs/{org}/settings` — `GET …/settings`의 `values` 전체에서 바꿀 값만 고쳐 보낸다(통째 교체) |
+| ✋ 개발 거버넌스 교체 | `PUT /api/orgs/{org}/governance` `{"text"}` — 본문 전체 |
+
+- 응답은 `202 {"status": "pending", "approve_url", "expires_at"}`다. **`approve_url`을 사용자에게 그대로 보여 주고**
+  "조직 관리자가 이 링크에서 허용하면 반영됩니다"라고 알린다. 허용될 때까지 같은 요청을 다시 보내지 않는다.
+- 조직 관리자 계정의 AI만 요청을 올릴 수 있다(아니면 400). 7일 안에 처리하지 않으면 만료되고,
+  그사이 누가 설정·거버넌스를 먼저 바꿨으면 요청은 무효가 된다 — 그때는 다시 읽고 새로 요청한다.
+- 반영됐는지는 `GET …/settings`·`…/governance`를 다시 읽어 확인한다. 허용·거절은 AI가 할 수 없다.
+- `ai.*`를 건드리지 않는 조직 설정 변경은 바로 반영된다(200).
+
 **스킬로 하지 않는 것**
 
-- **조직 설정·거버넌스 바꾸기**(`PUT /api/orgs/{org}/settings` · `/governance`): AI에게 무엇을 허용할지(`ai.*`)를
-  정하는 곳이다. AI가 자기 권한을 고치지 않는다. 사람이 웹 화면에서 바꾸도록 안내한다.
-  서버도 막는다: AI용 토큰(`pm.py login`으로 받은 토큰 포함)은 거버넌스 변경과 `ai.*` 값을 바꾸는 설정 변경이 403이다.
 - **결정 기록 확인·제외**(`…/decisions/{rid}/confirm` · `/reject`): 서버가 웹 세션에서만 받는다(토큰이면 403).
   사람에게 태스크 화면에서 확인해 달라고 안내한다.
 - `/api/integrations/*`: Discord 봇·GitHub 웹훅·외부 서비스용이다. 사람 토큰으로는 부르지 않는다.

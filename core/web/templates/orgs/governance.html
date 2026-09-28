@@ -1,6 +1,7 @@
 {% extends "base.html" %}{% block title %}개발 거버넌스{% endblock %}
 {% block main %}
 {% include "orgs/_tabs.html" %}
+{% include "orgs/_pending_requests.html" %}
 {% if enforced_rows %}
 <section class="card">
   <h2>설정에서 강제 중</h2>

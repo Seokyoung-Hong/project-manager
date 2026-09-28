@@ -1,0 +1,49 @@
+{% extends "base.html" %}{% block title %}AI 변경 요청{% endblock %}
+{% block main %}
+{% include "orgs/_tabs.html" %}
+<section class="card">
+  <div class="card-head">
+    <h2>AI의 {{ req.get_kind_display }} 변경 요청</h2>
+    {% if req.is_open %}<span class="badge primary">대기</span>
+    {% elif req.status == "pending" %}<span class="badge">만료</span>
+    {% elif req.status == "approved" %}<span class="badge ok">허용</span>
+    {% elif req.status == "rejected" %}<span class="badge danger">거절</span>
+    {% else %}<span class="badge">{{ req.get_status_display }}</span>{% endif %}
+  </div>
+  <p class="muted t13">
+    {{ req.requested_by.display_name|default:req.requested_by.username }}의 AI{% if req.token %}({{ req.token.name }}){% endif %}가
+    {{ req.created_at|date:"Y-m-d H:i" }}에 올렸습니다.
+    AI는 이 항목을 직접 바꿀 수 없어 허용을 요청했습니다.
+    {% if req.is_open %}허용하면 아래 내용이 그대로 반영됩니다. {{ req.expires_at|date:"Y-m-d H:i" }}까지 처리하지 않으면 만료됩니다.{% endif %}
+  </p>
+
+  {% if req.kind == "settings" %}
+  <table class="grid">
+    <thead><tr><th>항목</th><th>요청 당시</th><th>요청한 값</th></tr></thead>
+    <tbody>
+    {% for r in rows %}
+    <tr>
+      <td>{{ r.label }}{% if r.ai %} <span class="badge danger">AI 정책</span>{% endif %}</td>
+      <td>{{ r.old }}</td>
+      <td><strong>{{ r.new }}</strong></td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="muted t13">빨간 줄은 지워지고 초록 줄이 더해집니다.</p>
+  <pre class="change-diff" aria-label="거버넌스 변경 내용">{% for line in diff %}<span class="{% if line|slice:':1' == '+' %}add{% elif line|slice:':1' == '-' %}del{% endif %}">{{ line }}</span>
+{% endfor %}</pre>
+  {% endif %}
+
+  {% if req.is_open %}
+  <form method="post" class="row" style="margin-top:12px">{% csrf_token %}
+    <button class="btn primary" name="action" value="approve">허용하고 반영</button>
+    <label class="field grow">거절 사유(선택)<input name="reason" maxlength="300"></label>
+    <button class="btn danger" name="action" value="reject">거절</button>
+  </form>
+  {% elif req.reviewed_by %}
+  <p class="muted t13">{{ req.reviewed_by.display_name|default:req.reviewed_by.username }}님이 {{ req.reviewed_at|date:"Y-m-d H:i" }}에 {{ req.get_status_display }}했습니다.{% if req.reject_reason %} 사유: {{ req.reject_reason }}{% endif %}</p>
+  {% endif %}
+</section>
+{% endblock %}

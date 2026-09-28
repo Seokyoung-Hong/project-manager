@@ -9,9 +9,10 @@ from django.views.decorators.http import require_POST
 
 from common.errors import ServiceError
 from github import writes as gh_writes
+from orgs import requests as creq
 from orgs import services as osv
 from orgs.governance import governance_text
-from orgs.models import Invite, OrgMembership
+from orgs.models import ChangeRequest, Invite, OrgMembership
 from orgs.settings import GROUPS, SPECS, display, effective, enforced, locked_keys, specs_for
 from projects.services import project_stats
 from reports.services import org_status
@@ -256,6 +257,48 @@ def org_governance(request, org_id):
             "error": error,
             "tab": "governance",
             "enforced_rows": enforced(org),
+            "pending_requests": _pending(org, "governance") if is_admin else [],
+        },
+    )
+
+
+def _pending(org, kind):
+    return list(
+        org.change_requests.filter(kind=kind, status="pending", expires_at__gt=timezone.now())
+        .select_related("requested_by")
+    )
+
+
+@login_required
+def change_request(request, org_id, req_id):
+    """AI가 올린 설정·거버넌스 변경 요청을 보고 허용·거절한다. 로그인 세션 전용 — API 토큰으로는 못 온다."""
+    org = org_or_404(request.user, org_id)
+    if resp := not_admin(request, org, "AI 변경 요청"):
+        return resp
+    req = get_object_or_404(
+        ChangeRequest.objects.select_related("requested_by", "token", "reviewed_by"), pk=req_id, org=org
+    )
+    if request.method == "POST":
+        try:
+            if request.POST.get("action") == "approve":
+                creq.approve(req, request.user)
+                messages.success(request, f"{req.get_kind_display()} 변경을 허용해 반영했습니다.")
+            elif request.POST.get("action") == "reject":
+                creq.reject(req, request.user, request.POST.get("reason", ""))
+                messages.success(request, "요청을 거절했습니다.")
+        except ServiceError as e:
+            messages.error(request, " ".join(e.errors.values()))
+        return redirect("change_request", org_id=org.pk, req_id=req.pk)
+    return render(
+        request,
+        "orgs/change_request.html",
+        {
+            "org": org,
+            "is_admin": True,
+            "tab": req.kind,
+            "req": req,
+            "rows": creq.settings_diff(req) if req.kind == "settings" else [],
+            "diff": creq.governance_diff(req) if req.kind == "governance" else [],
         },
     )
 
@@ -351,5 +394,6 @@ def org_settings(request, org_id):
             "groups": groups,
             "history": _org_settings_history(org),
             "tab": "settings",
+            "pending_requests": _pending(org, "settings") if is_admin else [],
         },
     )

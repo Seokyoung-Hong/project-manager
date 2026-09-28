@@ -6,8 +6,8 @@ from ninja.errors import HttpError
 from accounts.models import User
 from orgs.governance import governance_text
 from orgs.models import Invite, OrgMembership, Team
+from orgs.requests import pending_out, request_change
 from orgs.services import (
-    TOKEN_HINT,
     add_team_member,
     create_invite,
     create_team,
@@ -115,12 +115,13 @@ def get_governance(request, org_id: int):
     return {"text": governance_text(org), "is_default": not org.governance.strip()}
 
 
-@router.put("/{org_id}/governance", response={200: GovernanceOut, 400: ErrorOut, 403: ErrorOut})
+@router.put("/{org_id}/governance", response={200: GovernanceOut, 202: dict, 400: ErrorOut, 403: ErrorOut})
 def put_governance(request, org_id: int, payload: GovernanceIn):
     org = org_or_404(request, org_id)
-    # 거버넌스는 AI가 따르는 규칙이라 AI가 고치면 안 된다.
-    if ctx(request)["source"] == "mcp":
-        raise HttpError(403, "조직 거버넌스는 사람이 웹 화면에서 바꿉니다. " + TOKEN_HINT)
+    # 거버넌스는 AI가 따르는 규칙이라 AI가 직접 고치지 않는다. 요청으로 남기고 사람이 허용한다.
+    c = ctx(request)
+    if c["source"] == "mcp":
+        return 202, pending_out(request_change(org, "governance", payload.text, actor=c["actor"], token=c["token"]))
     org = set_governance(org, payload.text, request.auth)
     return {"text": governance_text(org), "is_default": not org.governance.strip()}
 

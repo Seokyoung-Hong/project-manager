@@ -687,8 +687,8 @@ def test_ai_cannot_change_its_own_policy(client, admin, org):
     assert put({"ai.create_task": "deny"}, _h(raw)).status_code == 200
 
     # AI는 ai.* 값을 바꾸지 못한다. 키를 빼서 기본값(allow)으로 되돌리는 것도 같다.
-    assert put({"ai.create_task": "allow"}, ai).status_code == 403
-    assert put({"task.default_priority": 3}, ai).status_code == 403
+    assert put({"ai.create_task": "allow"}, ai).status_code == 202
+    assert put({"task.default_priority": 3}, ai).status_code == 202
     org.refresh_from_db()
     assert org.settings == {"ai.create_task": "deny"}
 
@@ -710,14 +710,14 @@ def test_ai_token_is_ai_without_the_header(client, admin, org, project):
             content_type="application/json",
             headers=h,
         )
-        assert r.status_code == 403 and "사람용" in r.json()["detail"]
+        assert r.status_code == 202 and r.json()["status"] == "pending"
         r = client.put(
             f"/api/orgs/{org.pk}/governance",
             data={"text": "x"},
             content_type="application/json",
             headers=h,
         )
-        assert r.status_code == 403
+        assert r.status_code == 202
     project.is_archived = True
     project.save(update_fields=["is_archived"])
     r = client.delete(f"/api/projects/{project.pk}", headers=_h(raw))
@@ -744,7 +744,7 @@ def test_person_token_can_be_raised_to_ai_by_header(client, admin, org):
     url = f"/api/orgs/{org.pk}/settings"
     body = {"ai.create_task": "deny"}
     r = client.put(url, data=body, content_type="application/json", headers={**_h(raw), "X-Source": "mcp"})
-    assert r.status_code == 403
+    assert r.status_code == 202
     assert client.put(url, data=body, content_type="application/json", headers=_h(raw)).status_code == 200
 
 
@@ -755,7 +755,7 @@ def test_ai_cannot_change_governance(client, admin, org):
     for source in ("ai", "mcp"):
         h = {**_h(raw), "X-Source": source}
         r = client.put(url, data=body, content_type="application/json", headers=h)
-        assert r.status_code == 403
+        assert r.status_code == 202
     r = client.put(url, data=body, content_type="application/json", headers=_h(raw))
     assert r.status_code == 200
     assert r.json()["text"] == "# 규칙"

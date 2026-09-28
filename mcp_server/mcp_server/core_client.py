@@ -30,7 +30,7 @@ class Core:
     def _ok(self, r: httpx.Response):
         if r.status_code == 204:
             return None
-        if r.status_code in (200, 201):
+        if r.status_code in (200, 201, 202):  # 202: 승인 요청으로 남았다(approve_url)
             return r.json()
         if r.status_code == 401:
             raise CoreError("토큰이 유효하지 않습니다. 폐기됐거나 만료됐을 수 있습니다.")
