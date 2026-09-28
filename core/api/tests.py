@@ -684,13 +684,13 @@ def test_ai_cannot_change_its_own_policy(client, admin, org):
     put = lambda data, h: client.put(url, data=data, content_type="application/json", headers=h)  # noqa: E731
 
     # 사람(X-Source 없음)은 AI 정책을 바꾼다.
-    assert put({"ai.delete": "deny"}, _h(raw)).status_code == 200
+    assert put({"ai.create_task": "deny"}, _h(raw)).status_code == 200
 
     # AI는 ai.* 값을 바꾸지 못한다. 키를 빼서 기본값(allow)으로 되돌리는 것도 같다.
-    assert put({"ai.delete": "allow"}, ai).status_code == 403
+    assert put({"ai.create_task": "allow"}, ai).status_code == 403
     assert put({"task.default_priority": 3}, ai).status_code == 403
     org.refresh_from_db()
-    assert org.settings == {"ai.delete": "deny"}
+    assert org.settings == {"ai.create_task": "deny"}
 
     # ai.* 값을 그대로 두면 다른 설정은 바꾼다. GET 값을 그대로 돌려보내는 흐름도 된다.
     values = client.get(url, headers=ai).json()["values"]
