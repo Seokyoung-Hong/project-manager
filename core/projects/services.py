@@ -131,12 +131,10 @@ def create_project(
     name = name.strip()[:100]
     if Project.objects.filter(org=org, name=name).exists():
         raise ServiceError({"name": "같은 이름의 프로젝트가 이미 있습니다."})
-    # dev_tools가 None이면 조직 기본값을 따른다. 조직 기본값과 다를 때만 프로젝트 설정에 남는다.
-    # clean()은 레지스트리 기본값(True)과 같은 값을 지우므로, 조직이 끈 상태에서 켜는 값을
-    # 남기려면 직접 적어야 한다.
+    # dev_tools가 None이면 조직 기본값을 따른다. 조직 값과 다를 때만 프로젝트 설정에 남는다.
     proj_settings = {}
-    if dev_tools is not None and bool(dev_tools) != effective("project.dev_tools", org=org):
-        proj_settings = {"project.dev_tools": bool(dev_tools)}
+    if dev_tools is not None:
+        proj_settings = clean("project", {"project.dev_tools": dev_tools}, org=org)
     project = Project.objects.create(
         org=org,
         name=name,
@@ -301,9 +299,10 @@ def delete_project(project, *, actor, source: str = "web"):
     project.delete()  # 마일스톤·문서·API 스펙·의존성·저장소 연결은 CASCADE
 
 
-def _display_or_default(key: str, value) -> str:
+def _display_or_default(key: str, value, org=None) -> str:
+    """값이 없으면 따르는 값(조직 값, 없으면 기본값)을 보인다."""
     if value is None:
-        value = SPECS[key].default
+        value = effective(key, org=org) if org is not None else SPECS[key].default
     return display(key, value)
 
 
@@ -312,7 +311,7 @@ def set_project_settings(project, data: dict, *, actor, source="web", token=None
     """저장소 규칙 등 프로젝트 설정을 통째로 교체한다. 조직이 잠근 키는 거부한다."""
     require_level(actor, project, effective("project.settings_by", org=project.org), "settings")
     require_ai_enabled(project.org, source, "프로젝트 설정 변경")
-    cleaned = clean("project", data)
+    cleaned = clean("project", data, org=project.org)
     if cleaned.get("project.dev_tools") is False and getattr(project, "repo", None) is not None:
         raise ServiceError(
             {
@@ -332,8 +331,8 @@ def set_project_settings(project, data: dict, *, actor, source="web", token=None
         _log(
             project,
             key,
-            _display_or_default(key, old_v),
-            _display_or_default(key, new_v),
+            _display_or_default(key, old_v, project.org),
+            _display_or_default(key, new_v, project.org),
             actor,
             source,
             token,

@@ -684,11 +684,14 @@ def test_dev_tools_org_default_and_project_override(org, admin, project):
     org.save()
     project = type(project).objects.get(pk=project.pk)
     assert project.dev_tools is False
-    org.settings = {}
-    org.save()
+    # 조직이 끈 값을 프로젝트가 레지스트리 기본값(켬)으로 되돌릴 수 있다.
+    set_project_settings(project, {"project.dev_tools": True}, actor=admin)
+    project = type(project).objects.get(pk=project.pk)
+    assert project.settings == {"project.dev_tools": True} and project.dev_tools is True
+    # 조직 값과 같은 값은 남기지 않는다(조직 값을 따른다).
     set_project_settings(project, {"project.dev_tools": False}, actor=admin)
     project = type(project).objects.get(pk=project.pk)
-    assert project.dev_tools is False
+    assert project.settings == {} and project.dev_tools is False
 
 
 def test_dev_tools_forced_on_with_repo(org, admin, project):
@@ -712,3 +715,21 @@ def test_create_project_saves_dev_tools_only_when_differs(org, admin):
     assert p.settings == {"project.dev_tools": True}
     p = create_project(org=org, name="디자인", actor=admin)
     assert p.settings == {} and p.dev_tools is False
+
+
+def test_project_can_restore_registry_default_over_org(org, admin, project):
+    """조직이 기본값이 아닌 값으로 바꾼 규칙을 프로젝트가 기본값으로 되돌릴 수 있다."""
+    from orgs.settings import effective
+
+    org.settings = {"task.review_required": True, "task.default_priority": 7}
+    org.save()
+    project = type(project).objects.get(pk=project.pk)
+    set_project_settings(
+        project, {"task.review_required": False, "task.default_priority": 5}, actor=admin
+    )
+    project = type(project).objects.get(pk=project.pk)
+    assert effective("task.review_required", project=project) is False
+    assert effective("task.default_priority", project=project) == 5
+    # 이력도 "켬 → 끔"으로 남는다(없던 값의 표시는 조직 값).
+    log = ChangeLog.objects.get(target_type="project", field="task.review_required")
+    assert (log.old_value, log.new_value) == ("켬", "끔")

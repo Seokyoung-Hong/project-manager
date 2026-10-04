@@ -803,8 +803,13 @@ def _same_as_default(spec: Spec, value) -> bool:
     return value == spec.default
 
 
-def clean(scope: str, data: dict, *, allow_locked: bool = False) -> dict:
-    """알 수 없는 키·형·범위는 ServiceError. 기본값과 같은 값은 지운다(키 없음 = 기본값)."""
+def clean(scope: str, data: dict, *, allow_locked: bool = False, org=None) -> dict:
+    """알 수 없는 키·형·범위는 ServiceError. 기본값과 같은 값은 지운다(키 없음 = 기본값).
+
+    프로젝트 층(org를 넘길 때)의 "기본값"은 레지스트리 기본값이 아니라 조직 값이다. 키가 없으면
+    effective()가 조직 값을 쓰므로, 조직이 바꾼 값을 레지스트리 기본값으로 되돌리는 프로젝트 값은
+    남겨야 한다(지우면 조직 값으로 돌아가 버린다).
+    """
     editable = {s.key for s in specs_for(scope)}
     out, errors = {}, {}
     for key, raw in (data or {}).items():
@@ -824,7 +829,12 @@ def clean(scope: str, data: dict, *, allow_locked: bool = False) -> dict:
         if err:
             errors[key] = err
             continue
-        if not _same_as_default(spec, value):
+        if scope == "project" and org is not None:
+            base = effective(key, org=org)
+            same = (list(value) == list(base)) if spec.kind == "set" else value == base
+        else:
+            same = _same_as_default(spec, value)
+        if not same:
             out[key] = value
     if errors:
         raise ServiceError(errors)
