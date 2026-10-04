@@ -13,7 +13,13 @@
 
   // 도구 인자 이름은 mcp_server를 따르고(org_id…), 검색 쿼리 이름만 API에 맞춰 바꾼다.
   // 본문(POST·PATCH)은 필드 이름이 그대로여야 하므로 이 표를 쓰지 않는다.
-  var QUERY_ALIAS = { org_id: "org", project_id: "project", assignee_id: "assignee", query: "q" };
+  var QUERY_ALIAS = {
+    org_id: "org",
+    project_id: "project",
+    assignee_id: "assignee",
+    parent_id: "parent",
+    query: "q",
+  };
 
   // {"이름*": "타입 설명"} → JSON Schema. 이름 끝의 *는 필수, 타입에 쉼표가 있으면 enum, |는 여러 타입.
   function schema(spec) {
@@ -158,6 +164,8 @@
         due_from: "string 기한 시작 YYYY-MM-DD",
         due_to: "string 기한 끝 YYYY-MM-DD",
         query: "string 제목 부분 일치",
+        include_templates: "boolean 템플릿도 포함(기본은 뺀다)",
+        parent_id: "integer 그 계열(원본 id)의 회차·변형만",
         limit: "integer 기본 50",
         offset: "integer 기본 0",
       },
@@ -189,11 +197,11 @@
     },
     {
       name: "get_governance",
-      title: "개발 거버넌스",
+      title: "업무 거버넌스",
       path: "/api/orgs/{org_id}/governance",
       read: true,
       desc:
-        "그 조직의 개발 거버넌스 본문(마크다운). 태스크를 만들거나 기한·담당·중요도·상태를 바꾸기 전에 " +
+        "그 조직의 업무 거버넌스 본문(마크다운). 태스크를 만들거나 기한·담당·중요도·상태를 바꾸기 전에 " +
         "먼저 읽고 그대로 따른다. is_default가 true면 아직 손대지 않은 기본안이다.",
       args: { org_id: "integer 비우면 지금 보고 있는 조직" },
     },
@@ -240,6 +248,24 @@
         done_when: "string 완료 조건",
         next_action: "string 다음 행동",
         notes: "string 진행 메모 전체 교체",
+        reviewer_id: "integer|null 지정 검토자 id. null이면 해제",
+        is_template: "boolean 템플릿으로 두기(시작 전에서만). 템플릿은 상태를 바꾸지 않는다",
+      },
+    },
+    {
+      name: "duplicate_task",
+      title: "복제·회차 만들기",
+      path: "/api/tasks/{task_id}/duplicate",
+      method: "POST",
+      desc:
+        "태스크 복제·회차 만들기. 설명·완료 조건·다음 행동·체크리스트(미완료로)·링크·문서 연결을 복사하고 " +
+        "같은 계열로 묶는다. 반복하는 일은 템플릿에서 이 도구로 회차를 만든다(자동 생성 없음).",
+      args: {
+        "task_id*": "integer 원본 또는 템플릿 태스크 id",
+        title: "string 제목. 비우면 원본 제목",
+        due_date: "string 기한 YYYY-MM-DD",
+        no_due_reason: "string 기한이 없을 때의 이유",
+        assignee_id: "integer 담당자 id. 비우면 원본 담당자",
       },
     },
     {

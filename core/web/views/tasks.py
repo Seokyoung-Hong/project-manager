@@ -5,6 +5,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.http import Http404, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.views.decorators.http import require_POST
 
 from common.dates import today_kst
@@ -20,10 +21,13 @@ from ..forms import LinkForm
 from .common import (
     CONFLICT_MSG,
     can_admin,
+    dialog,
     due_class,
     due_full,
     due_label,
     history_rows,
+    hx_redirect,
+    new_idem,
     project_or_404,
     render_row,
     task_or_404,
@@ -102,6 +106,8 @@ def _panel_ctx(request, task, **extra):
         "desc_rows": max(2, -(-len(task.description) // 40)),
         "stop_draft": task.stop_reason,
         "block_pending": request.GET.get("block") == "1",
+        "reject_pending": "",
+        "series": _series(task),
         "focus_notes": request.GET.get("focus") == "notes",
         "full_page": False,
         "error": None,
@@ -113,6 +119,58 @@ def _panel_ctx(request, task, **extra):
         ctx.update(_git_ctx(request, task))
     ctx.update(extra)
     return ctx
+
+
+def _series(task) -> list:
+    """같은 계열(뿌리 + 회차·변형). 계열이 없으면 빈 목록."""
+    root = task.parent or task
+    children = list(root.children.select_related("assignee").order_by("id"))
+    return [root, *children] if children else []
+
+
+@login_required
+def task_duplicate(request, task_id):
+    """복제·회차 만들기 대화상자. 같은 끝점이 원본·템플릿·완료된 회차를 모두 받는다."""
+    task = task_or_404(request.user, task_id)
+    ctx = {
+        "task": task,
+        "members": task.project.org.members.filter(is_active=True).order_by("display_name"),
+        "title": task.title,
+        "due_date": "",
+        "no_due_reason": "",
+        "assignee_id": task.assignee_id,
+        "error": None,
+    }
+    if request.method == "POST":
+        p = request.POST
+        assignee = task.project.org.members.filter(pk=p.get("assignee") or 0).first()
+        try:
+            due = date.fromisoformat(p["due_date"]) if p.get("due_date") else None
+        except ValueError:
+            due = None
+        try:
+            new = ts.duplicate_task(
+                task,
+                actor=request.user,
+                source="web",
+                title=(p.get("title") or "").strip() or None,
+                due_date=due,
+                no_due_reason=p.get("no_due_reason", ""),
+                assignee=assignee,
+                idempotency_key=p.get("idem") or None,
+            )
+        except ServiceError as e:
+            ctx.update(
+                title=p.get("title", ""),
+                due_date=p.get("due_date", ""),
+                no_due_reason=p.get("no_due_reason", ""),
+                assignee_id=int(p["assignee"]) if (p.get("assignee") or "").isdecimal() else None,
+                error=" ".join(e.errors.values()),
+            )
+        else:
+            return hx_redirect(request, reverse("task_detail", args=[new.pk]))
+    ctx["idem"] = request.POST.get("idem") or new_idem()
+    return dialog(request, "tasks/_duplicate.html", ctx)
 
 
 def _panel(request, task, **extra):
@@ -189,6 +247,17 @@ def task_meta(request, task_id):
         changes["assignee"] = user
     if (reason := request.POST.get("no_due_reason")) is not None:
         changes["no_due_reason"] = reason
+    if (rid := request.POST.get("reviewer")) is not None:
+        reviewer = org.members.filter(pk=rid, is_active=True).first() if rid else None
+        if rid and reviewer is None:
+            return _panel(request, task, error="그 사람을 검토자로 정할 수 없습니다.")
+        changes["reviewer"] = reviewer
+    if (tpl := request.POST.get("is_template")) is not None:
+        try:
+            task = ts.set_template(task, tpl == "1", actor=request.user, source="web")
+        except ServiceError as e:
+            return _panel(request, task, error=" ".join(e.errors.values()))
+        return trigger(_panel(request, task), "task-changed", task)
     if not changes:
         return _panel(request, task)
     try:
@@ -221,6 +290,15 @@ def task_status(request, task_id):
             expected_version=version_of(request),
         )
     except ServiceError as e:
+        if origin == "panel" and "reason" in e.errors and task.status == "review":
+            # 반려 사유가 필요하다 — 막힘 사유와 같은 입력 상자를 연다(_stop.html).
+            return _panel(
+                request,
+                task,
+                reject_pending=request.POST.get("status", ""),
+                stop_draft=request.POST.get("reason", ""),
+                stop_error=e.errors["reason"],
+            )
         return _respond(request, task, origin, error=" ".join(e.errors.values()))
     except ConflictError as e:
         return _respond(request, e.latest, origin, error=CONFLICT_MSG)

@@ -231,7 +231,10 @@ def archive_project(project, *, actor, source="web", token=None, cancel_open=Fal
 
     require_level(actor, project, effective("project.archive_by", org=project.org), "project")
     require_ai_enabled(project.org, source, "프로젝트 보관")
-    open_tasks = list(Task.objects.filter(project=project, status__in=Task.OPEN).order_by("id"))
+    # 템플릿은 진행하지 않으므로 보관을 막지 않고 그대로 남는다.
+    open_tasks = list(
+        Task.objects.filter(project=project, status__in=Task.OPEN, is_template=False).order_by("id")
+    )
     if open_tasks and not cancel_open:
         raise ServiceError({"tasks": ", ".join(t.number for t in open_tasks)})
     for task in open_tasks:
@@ -385,7 +388,7 @@ def project_stats(project) -> dict:
     from tasks.models import Task
 
     today = today_kst()
-    return Task.objects.filter(project=project).aggregate(
+    return Task.objects.filter(project=project, is_template=False).aggregate(
         total=Count("id", filter=~Q(status="cancelled")),
         open=Count("id", filter=Q(status__in=Task.OPEN)),
         overdue=Count("id", filter=Q(status__in=Task.OPEN, due_date__lt=today)),

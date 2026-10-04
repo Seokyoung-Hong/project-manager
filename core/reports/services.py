@@ -10,7 +10,9 @@ from tasks.models import ChangeLog, Task
 
 
 def _open_qs(org):
-    return Task.objects.filter(project__org=org, project__is_archived=False, status__in=Task.OPEN)
+    return Task.objects.filter(
+        project__org=org, project__is_archived=False, status__in=Task.OPEN, is_template=False
+    )
 
 
 def org_status(org) -> dict:

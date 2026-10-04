@@ -18,9 +18,17 @@ from .models import ChangeLog, ChecklistItem, Link, Task, TodayItem
 TEXT_FIELDS = ("title", "description", "done_when", "next_action", "notes")
 TEXT_MAX = {"title": 200, "done_when": 300, "next_action": 200}
 # 낙관적 잠금이 걸리는 팀 데이터
-LOCKED_FIELDS = {"assignee", "priority", "due_date", "no_due_reason", "project", "stop_reason"}
+LOCKED_FIELDS = {
+    "assignee",
+    "priority",
+    "due_date",
+    "no_due_reason",
+    "project",
+    "stop_reason",
+    "reviewer",
+}
 EDITABLE = LOCKED_FIELDS | set(TEXT_FIELDS)
-TRACKED = ("assignee", "due_date", "project", "priority", "stop_reason")
+TRACKED = ("assignee", "due_date", "project", "priority", "stop_reason", "reviewer")
 
 NO_DUE_FOR_DOING = "목표 기한이 없어 진행 중으로 바꿀 수 없습니다. 기한을 먼저 정해 주세요."
 
@@ -116,6 +124,9 @@ def _validate(
     source,
     check_assignee=True,
     check_priority=True,
+    reviewer=None,
+    check_reviewer=False,
+    is_template=False,
 ):
     """check_assignee=False면 담당자가 조직의 활성 멤버인지 보지 않는다.
 
@@ -152,7 +163,7 @@ def _validate(
     if status == "doing" and due_date is None:
         errors["due_date"] = NO_DUE_FOR_DOING
     elif status in Task.OPEN and due_date is None:
-        if effective("task.due_required", org=project.org, project=project):
+        if not is_template and effective("task.due_required", org=project.org, project=project):
             errors["due_date"] = "기한을 반드시 정해야 합니다. 기한 미정 사유로 대신할 수 없습니다."
         elif not (no_due_reason or "").strip():
             errors["no_due_reason"] = "기한이 없으면 사유를 입력하세요."
@@ -161,6 +172,13 @@ def _validate(
         errors["stop_reason"] = "막힘 사유를 입력하세요."
     if status not in Task.STOPPED and reason:
         errors["stop_reason"] = "일시정지·막힘 상태에서만 사유를 둘 수 있습니다."
+    if reviewer is not None:
+        if check_reviewer and (not reviewer.is_active or not is_member(reviewer, project.org)):
+            errors["reviewer"] = "검토자는 이 조직의 활성 멤버여야 합니다."
+        elif reviewer == assignee and not effective(
+            "task.self_review", org=project.org, project=project
+        ):
+            errors["reviewer"] = "본인 검토가 꺼져 있어 담당자를 검토자로 지정할 수 없습니다."
     if errors:
         raise ServiceError(errors)
 
@@ -367,6 +385,9 @@ def update_task(
         source=source,
         check_assignee="assignee" in changes,
         check_priority="priority" in changes,
+        reviewer=new["reviewer"],
+        check_reviewer="reviewer" in changes,
+        is_template=task.is_template,
     )
     old = {f: getattr(task, f) for f in LOCKED_FIELDS}
     fields = {f: v for f, v in new.items() if v != old[f]}
@@ -415,6 +436,8 @@ def transition(
     - 재개·취소 사유 필수, 동시 진행 한도, 검토 대기 필수는 조직 설정이 켜야 걸린다(§4.1).
     """
     _require_member(actor, task.project)
+    if task.is_template:
+        raise ServiceError({"status": "템플릿은 상태를 바꾸지 않습니다. 회차를 만들어 진행하세요."})
     labels = dict(Task.STATUSES)
     if new_status not in labels:
         raise ServiceError({"status": "알 수 없는 상태입니다."})
@@ -442,6 +465,13 @@ def transition(
     if reopening and effective("task.reopen_reason_required", org=org, project=task.project):
         if not reason:
             raise ServiceError({"reason": "재개 사유를 입력하세요."})
+    rejecting = task.status == "review" and new_status in ("todo", "doing")
+    if (
+        rejecting
+        and effective("task.reject_reason_required", org=org, project=task.project)
+        and not reason
+    ):
+        raise ServiceError({"reason": "반려 사유를 입력하세요."})
     if new_status == "doing" and task.due_date is None:
         raise ServiceError({"due_date": NO_DUE_FOR_DOING})
     if new_status == "doing":
@@ -477,6 +507,22 @@ def transition(
         ):
             raise ServiceError(
                 {"status": "본인이 담당한 태스크는 본인이 검토를 완료 처리할 수 없습니다."}
+            )
+        # 지정 검토자가 있으면 그 사람이나 관리자만 완료한다. actor가 None(GitHub 머지)이면
+        # 검토는 PR에서 끝난 것이므로 막지 않는다.
+        if (
+            task.status == "review"
+            and task.reviewer_id
+            and actor is not None
+            and actor.pk != task.reviewer_id
+            and not is_admin(actor, org)
+            and not is_owner(actor, task.project)
+        ):
+            raise ServiceError(
+                {
+                    "status": f"검토자 {task.reviewer.display_name}님 또는 프로젝트 관리자만 "
+                    "완료 처리할 수 있습니다."
+                }
             )
     fields = {"status": new_status}
     if new_status in Task.STOPPED:
@@ -529,6 +575,72 @@ def transition(
             note="상태 변경으로 해제",
             external_actor=external_actor,
         )
+    return task
+
+
+@transaction.atomic
+def duplicate_task(
+    task,
+    *,
+    actor,
+    source,
+    token=None,
+    title=None,
+    due_date=None,
+    no_due_reason="",
+    assignee=None,
+    idempotency_key=None,
+) -> Task:
+    """복제·회차·변형 공통. 설명·완료 조건·다음 행동·중요도·체크리스트(전부 미완료)·링크·문서 연결을
+    복사한다. 첨부 파일은 복사하지 않는다(회차는 새 파일을 만든다). 상태는 todo, 템플릿 아님.
+    parent = task.parent or task (계열은 평평하다). create_task를 부르므로 ai.create_task·담당 규칙이 그대로 걸린다."""
+    new = create_task(
+        project=task.project,
+        title=title or task.title,
+        actor=actor,
+        source=source,
+        token=token,
+        assignee=assignee or task.assignee,
+        description=task.description,
+        done_when=task.done_when,
+        next_action=task.next_action,
+        priority=task.priority,
+        due_date=due_date,
+        no_due_reason=no_due_reason,
+        idempotency_key=idempotency_key,
+    )
+    if new.parent_id is not None:
+        return new  # 같은 Idempotency-Key 재요청 — 이미 복사까지 끝난 회차다
+    root = task.parent or task
+    reviewer = task.reviewer if task.reviewer_id and task.reviewer != new.assignee else None
+    Task.objects.filter(pk=new.pk).update(parent=root, reviewer=reviewer)
+    ChecklistItem.objects.bulk_create(
+        ChecklistItem(task=new, text=i.text, position=i.position) for i in task.checklist.all()
+    )
+    Link.objects.bulk_create(
+        Link(task=new, title=lk.title, url=lk.url, kind=lk.kind, created_by=actor)
+        for lk in task.links.all()
+    )
+    new.docs.set(task.docs.all())
+    new.refresh_from_db()
+    _log(new, "parent", "", root.number, actor, source, token, note=f"{task.number}에서 복제")
+    return new
+
+
+def set_template(task, on: bool, *, actor, source="web", token=None) -> Task:
+    """템플릿으로 두거나 해제한다. 템플릿은 상태를 바꾸지 않고 기한이 없으며 집계에서 빠진다."""
+    _require_member(actor, task.project)
+    _ai_check(task.project.org, "ai.create_task", "템플릿 바꾸기", source, "is_template")
+    on = bool(on)
+    if on == task.is_template:
+        return task
+    if on and task.status != "todo":
+        raise ServiceError({"is_template": "시작 전 상태에서만 템플릿으로 바꿀 수 있습니다."})
+    fields = {"is_template": on}
+    if on:
+        fields.update(due_date=None, no_due_reason="템플릿")
+    _apply(task, task.version, fields)
+    _log(task, "is_template", not on, on, actor, source, token)
     return task
 
 
@@ -800,7 +912,7 @@ def today_view(user, day: date | None = None) -> dict:
         .order_by("position", "id")
     ]
     # 조직에서 빠진 뒤에도 담당으로 남은 태스크가 새는 것을 막는다(다른 읽기 경로와 같은 범위).
-    mine = visible_tasks(user).filter(assignee=user)
+    mine = visible_tasks(user).filter(assignee=user, is_template=False)
     my_open = mine.filter(status__in=Task.OPEN)
     auto = []
     if m["pull_end"] is not None:
@@ -885,7 +997,7 @@ def me_view(
     today = today_kst()
     preds = _due_preds(today)
     completion = status in ("done_today", "done_7d")
-    base = visible_tasks(user).filter(project__is_archived=False)
+    base = visible_tasks(user).filter(project__is_archived=False, is_template=False)
     if member is None:
         base = base.filter(assignee=user)
     elif not isinstance(member, int):
@@ -1001,7 +1113,7 @@ def me_view(
 
 def search(user, q: str, *, include_closed=False, include_archived=False):
     q = (q or "").strip()
-    qs = visible_tasks(user)
+    qs = visible_tasks(user).filter(is_template=False)
     if not include_closed:
         qs = qs.filter(status__in=Task.OPEN)
     if not include_archived:

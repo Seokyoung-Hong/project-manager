@@ -198,6 +198,16 @@ SPECS: dict[str, Spec] = {
             lo=0,
             hi=14,
         ),
+        Spec(
+            "task.reject_reason_required",
+            "bool",
+            False,
+            "org",
+            True,
+            "task",
+            "반려 사유 필수",
+            "켜면 검토 대기에서 시작 전·진행 중으로 되돌릴 때 사유를 입력해야 합니다.",
+        ),
         # --- 4.2 프로젝트 규칙 ---
         Spec(
             "project.create_by",

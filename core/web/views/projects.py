@@ -53,7 +53,7 @@ def board_context(request, project, include_closed: bool) -> dict:
     """보드 부분 렌더 context. 목록 보기와 달리 완료를 항상 실어 온다."""
     labels = dict(Task.STATUSES)
     codes = BOARD_OPEN + ["done"] + (["cancelled"] if include_closed else [])
-    base = project.tasks.select_related("project", "assignee")
+    base = project.tasks.filter(is_template=False).select_related("project", "assignee")
     open_tasks = sorted(base.filter(status__in=Task.OPEN), key=ts.by_due)
     done_tasks = list(base.filter(status="done").order_by("-completed_at", "-id")[:DONE_ON_BOARD])
     extra = list(base.filter(status="cancelled").order_by("-id")) if include_closed else []
@@ -240,10 +240,13 @@ def project_detail(request, project_id, *, link_form=None):
             initial={"assignee": request.user.pk, "priority": 5, "idem": new_idem()},
         ),
     }
+    # 템플릿은 목록·보드에서 빼고 "템플릿 N" 접이 목록으로만 보인다.
+    templates = list(project.tasks.filter(is_template=True).select_related("project", "assignee"))
+    ctx["template_rows"] = rows_for(request.user, templates) if templates else []
     if view == "board":
         ctx.update(board_context(request, project, include_closed))
     else:
-        qs = project.tasks.select_related("project", "assignee")
+        qs = project.tasks.filter(is_template=False).select_related("project", "assignee")
         if not include_closed:
             qs = qs.filter(status__in=Task.OPEN)
         ctx["rows"] = rows_for(request.user, sorted(qs, key=ts.by_due))

@@ -40,6 +40,11 @@
       </form>
     </div>
   </div>
+  {% if template_rows %}
+  <details class="project-templates"><summary><span class="badge primary">템플릿 {{ template_rows|length }}</span></summary>
+    <ul class="tasks">{% for r in template_rows %}{% task_row r %}{% endfor %}</ul>
+  </details>
+  {% endif %}
   {% if view == 'board' %}
   {% include "projects/_board.html" %}
   {% else %}

@@ -39,6 +39,15 @@
           {% if pending_assignee %}<span class="badge">{{ pending_assignee.display_name }}님 수락 대기</span>{% endif %}
           <form>
             <input type="hidden" name="version" value="{{ task.version }}">
+            <select name="reviewer" class="select" aria-label="검토자"
+                    hx-post="{% url 'task_meta' task.pk %}" hx-target="#panel" hx-swap="innerHTML" hx-trigger="change">
+              <option value="">검토자 지정 안 함</option>
+              {% for u in org_members %}<option value="{{ u.pk }}"{% if u.pk == task.reviewer_id %} selected{% endif %}>검토자 {{ u.display_name }}</option>{% endfor %}
+            </select>
+          </form>
+          {% if task.is_template %}<span class="badge primary">템플릿</span>{% else %}
+          <form>
+            <input type="hidden" name="version" value="{{ task.version }}">
             <input type="hidden" name="from" value="panel">
             <select name="status" class="pill sm {{ task.status }}" aria-label="상태"
                     data-status="{{ task.status }}" data-id="{{ task.pk }}" data-panel="{% url 'task_panel' task.pk %}"
@@ -47,6 +56,7 @@
               {% for code, label in task.STATUSES %}<option value="{{ code }}"{% if code == task.status %} selected{% endif %}>{{ label }}</option>{% endfor %}
             </select>
           </form>
+          {% endif %}
           <span class="badge{% if due_class == "overdue" %} danger{% endif %}">{{ due_label }}</span>
           <form class="row" style="gap:4px">
             <input type="hidden" name="version" value="{{ task.version }}">
@@ -59,7 +69,8 @@
         </div>
         <p class="muted t13">{{ task.status_hint }}</p>
       </div>
-      {% if task.is_stopped or block_pending %}{% include "tasks/_stop.html" %}{% endif %}
+      {% if task.is_stopped or block_pending or reject_pending %}{% include "tasks/_stop.html" %}{% endif %}
+      {% if series %}{% include "tasks/_series.html" %}{% endif %}
       <label class="field">설명
         <textarea class="textarea" name="value" rows="{{ desc_rows }}" data-autosave hx-post="{% url 'task_text' task.pk 'description' %}" hx-trigger="change" hx-swap="none">{{ task.description }}</textarea>
       </label>
@@ -100,6 +111,16 @@
       <details><summary>변경 이력 {{ history|length }}</summary>{% include "tasks/_history.html" %}</details>
       <details><summary>더보기</summary>
         <p class="muted t13">일시정지: 개인 사유 또는 다른 작업 · 막힘: 외부 요인으로 진행 불가</p>
+        <div class="row">
+          <button type="button" class="btn sm" hx-get="{% url 'task_duplicate' task.pk %}" hx-target="#dialog" hx-swap="innerHTML">{% if task.is_template %}회차 만들기{% elif task.status == "done" and task.parent_id %}다음 회차 만들기{% else %}복제{% endif %}</button>
+          {% if task.is_template or task.status == "todo" %}
+          <form hx-post="{% url 'task_meta' task.pk %}" hx-target="#panel" hx-swap="innerHTML">
+            <input type="hidden" name="is_template" value="{% if task.is_template %}0{% else %}1{% endif %}">
+            <button class="btn sm">{% if task.is_template %}템플릿 해제{% else %}템플릿으로 두기{% endif %}</button>
+          </form>
+          {% endif %}
+        </div>
+        <p class="muted t13">템플릿은 진행하지 않고 목록·집계에서 빠집니다. 반복하는 일은 템플릿에서 회차를 만드세요.</p>
         {% if is_admin %}
         <form method="post" action="{% url 'task_delete' task.pk %}" onsubmit="return confirm('태스크를 삭제할까요? 체크리스트·링크도 함께 사라지고 되돌릴 수 없습니다.')">{% csrf_token %}<button class="btn link danger">태스크 삭제</button></form>
         {% endif %}

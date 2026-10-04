@@ -21,8 +21,10 @@ from tasks.models import ChangeLog, Task
 from tasks.services import (
     create_task,
     delete_task,
+    duplicate_task,
     extend_due,
     replace_checklist,
+    set_template,
     transition,
     update_task,
     visible_tasks,
@@ -35,6 +37,7 @@ from ..schemas import (
     ErrorOut,
     ExtendIn,
     TaskCreateIn,
+    TaskDuplicateIn,
     TaskListOut,
     TaskOut,
     TaskPatchIn,
@@ -57,10 +60,16 @@ def list_tasks(
     q: str | None = None,
     updated_since: str | None = None,
     include_archived: bool = False,
+    include_templates: bool = False,
+    parent: int | None = None,
     limit: int = 50,
     offset: int = 0,
 ):
     qs = visible_tasks(request.auth)
+    if not include_templates:
+        qs = qs.filter(is_template=False)
+    if parent is not None:
+        qs = qs.filter(parent_id=parent)
     if org is not None:
         qs = qs.filter(project__org_id=org)
     if project is not None:
@@ -270,9 +279,15 @@ def patch_task(request, task_id: int, payload: TaskPatchIn):
     data = payload.dict(exclude_unset=True)
     version = data.pop("version")
     checklist = data.pop("checklist", None)
+    template = data.pop("is_template", None)
     if "assignee_id" in data:
         aid = data.pop("assignee_id")
         data["assignee"] = User.objects.filter(pk=aid).first() if aid else None
+    if "reviewer_id" in data:
+        rid = data.pop("reviewer_id")
+        data["reviewer"] = User.objects.filter(pk=rid).first() if rid else None
+        if rid and data["reviewer"] is None:
+            raise HttpError(400, "검토자를 찾을 수 없습니다.")
     if "project_id" in data:
         pid = data.pop("project_id")
         data["project"] = Project.objects.filter(pk=pid, org__in=orgs_of(request.auth)).first()
@@ -285,7 +300,32 @@ def patch_task(request, task_id: int, payload: TaskPatchIn):
         if not data and task.version != version:
             raise ConflictError(task)
         replace_checklist(task, checklist, actor=c["actor"], source=c["source"])
+    if template is not None:
+        if not data and checklist is None and task.version != version:
+            raise ConflictError(task)
+        task = set_template(task, template, **c)
     return task_out(task)
+
+
+@router.post("/{task_id}/duplicate", response={201: TaskOut, 400: ErrorOut})
+def duplicate_ep(request, task_id: int, payload: TaskDuplicateIn):
+    """복제·회차 만들기. 체크리스트(미완료)·링크·문서 연결을 복사하고 계열(parent_id)로 묶는다."""
+    task = task_or_404(request, task_id)
+    assignee = None
+    if payload.assignee_id:
+        assignee = User.objects.filter(pk=payload.assignee_id).first()
+        if assignee is None:
+            raise HttpError(400, "담당자를 찾을 수 없습니다.")
+    new = duplicate_task(
+        task,
+        title=payload.title,
+        due_date=payload.due_date,
+        no_due_reason=payload.no_due_reason,
+        assignee=assignee,
+        idempotency_key=idem_key(request),
+        **ctx(request),
+    )
+    return 201, task_out(new)
 
 
 @router.post("/{task_id}/transition", response={200: TaskOut, 400: ErrorOut, 409: ConflictOut})

@@ -1,3 +1,17 @@
+{% if reject_pending %}
+<form class="stop-box" hx-post="{% url 'task_status' task.pk %}" hx-target="#panel" hx-swap="innerHTML">
+  <input type="hidden" name="version" value="{{ task.version }}">
+  <input type="hidden" name="from" value="panel">
+  <input type="hidden" name="status" value="{{ reject_pending }}">
+  <div class="label">반려 사유</div>
+  <textarea class="textarea" name="reason" rows="2" data-focus placeholder="무엇을 고쳐야 하나요? (필수)">{{ stop_draft }}</textarea>
+  {% if stop_error %}<div class="error">{{ stop_error }}</div>{% endif %}
+  <div class="row">
+    <button class="btn sm primary">반려</button>
+    <button type="button" class="btn sm" hx-get="{% url 'task_panel' task.pk %}" hx-target="#panel" hx-swap="innerHTML">취소</button>
+  </div>
+</form>
+{% else %}
 <form class="stop-box" hx-post="{% url 'task_stop_reason' task.pk %}" hx-target="#panel" hx-swap="innerHTML">
   <input type="hidden" name="version" value="{{ task.version }}">
   {% if block_pending %}<input type="hidden" name="confirm_block" value="1">{% endif %}
@@ -10,3 +24,4 @@
     {% if block_pending %}<button type="button" class="btn sm" hx-get="{% url 'task_panel' task.pk %}" hx-target="#panel" hx-swap="innerHTML">취소</button>{% endif %}
   </div>
 </form>
+{% endif %}

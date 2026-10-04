@@ -28,5 +28,8 @@ def task_brief(t) -> dict:
         "stopped_at": t.stopped_at.isoformat() if t.stopped_at else None,
         "updated_at": t.updated_at.isoformat() if t.updated_at else None,
         "next_action": t.next_action,
+        # 템플릿은 진행하지 않는다. 회차·변형은 parent_id(계열의 뿌리)로 묶인다.
+        "is_template": t.is_template,
+        "parent_id": t.parent_id,
         "url": f"{settings.SITE_URL}/tasks/{t.pk}",
     }

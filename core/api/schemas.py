@@ -39,6 +39,8 @@ class TaskBriefOut(Schema):
     stopped_at: datetime | None = None
     updated_at: datetime | None = None
     next_action: str
+    is_template: bool = False
+    parent_id: int | None = None
     url: str
 
 
@@ -84,6 +86,9 @@ class TaskOut(TaskBriefOut):
     # 걸린 참고 문서. 본문은 /projects/{project_id}/docs/{id}에서 읽는다.
     docs: list[DocBrief]
     pending_assignee: UserBrief | None = None
+    # 지정 검토자. 있으면 검토 대기 → 완료는 이 사람이나 프로젝트·조직 관리자만 한다.
+    reviewer: UserBrief | None = None
+    children_count: int = 0  # 이 태스크를 뿌리로 하는 회차·변형 수
 
 
 class TaskCreateIn(Schema):
@@ -113,6 +118,17 @@ class TaskPatchIn(Schema):
     no_due_reason: str | None = None
     stop_reason: str | None = None
     checklist: list[ChecklistItemIn] | None = None
+    reviewer_id: int | None = None  # null이면 검토자 해제
+    is_template: bool | None = None
+
+
+class TaskDuplicateIn(Schema):
+    """복제·회차 만들기. 비운 값은 원본을 따른다(기한은 따르지 않는다)."""
+
+    title: str | None = None
+    due_date: date | None = None
+    no_due_reason: str = ""
+    assignee_id: int | None = None
 
 
 class TransitionIn(Schema):

@@ -147,6 +147,7 @@ urlpatterns = [
         name="decision_supersede",
     ),
     path("tasks/<int:task_id>/meta", tasks.task_meta, name="task_meta"),
+    path("tasks/<int:task_id>/duplicate", tasks.task_duplicate, name="task_duplicate"),
     path("tasks/<int:task_id>/row", tasks.task_row, name="task_row"),
     path("tasks/<int:task_id>/status", tasks.task_status, name="task_status"),
     path("tasks/<int:task_id>/text/<str:field>", tasks.task_text, name="task_text"),
