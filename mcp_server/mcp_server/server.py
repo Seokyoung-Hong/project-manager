@@ -917,8 +917,10 @@ def create_request(
     kind: str = "work",
     body: str = "",
     idempotency_key: str | None = None,
+    due_date: str | None = None,
 ) -> dict:
     """팀(team_id) 또는 사람(to_user_id) 중 하나에게 요청을 보낸다. kind는 work(작업)·general(일반).
+    due_date(YYYY-MM-DD, 선택)는 희망 기한이다. 받는 쪽이 수락하면 태스크 기한 기본값이 된다.
     idempotency_key를 주면 같은 값으로 재시도해도 요청이 두 번 가지 않는다."""
     headers = {"Idempotency-Key": idempotency_key} if idempotency_key else None
     return _core().post(
@@ -930,6 +932,7 @@ def create_request(
             "body": body,
             "team_id": team_id,
             "to_user_id": to_user_id,
+            "due_date": due_date,
         },
         headers=headers,
     )

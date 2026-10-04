@@ -1,5 +1,7 @@
 from django import template
 
+from tasks.work_requests import _due_text
+
 register = template.Library()
 
 
@@ -19,6 +21,11 @@ STATUS_MARKS = {
     "done": "✓",
     "cancelled": "✕",
 }
+
+
+@register.filter
+def due_text(due) -> str:
+    return _due_text(due)
 
 
 @register.filter

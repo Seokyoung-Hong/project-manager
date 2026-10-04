@@ -102,6 +102,7 @@ def request_out(r) -> dict:
         "team": {"id": r.team.pk, "name": r.team.name} if r.team_id else None,
         "to_user": user_brief(r.to_user) if r.to_user_id else None,
         "task_id": r.task_id,
+        "due_date": r.due_date,
         "response_note": r.response_note,
         "url": settings.SITE_URL + r.path,
         "created_at": r.created_at,

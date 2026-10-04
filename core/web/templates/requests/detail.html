@@ -1,4 +1,4 @@
-{% extends "base.html" %}{% block title %}{{ req.number }} {{ req.title }}{% endblock %}
+{% extends "base.html" %}{% load rows %}{% block title %}{{ req.number }} {{ req.title }}{% endblock %}
 {% block main %}
 <section class="card">
   <div class="card-head">
@@ -12,6 +12,7 @@
     {{ req.get_kind_display }} · {{ req.requested_by.display_name }}님이 {{ req.created_at|date:"Y-m-d H:i" }}에 보냄 ·
     받는 쪽 {% if req.team %}{{ req.team.name }} 팀{% else %}{{ req.to_user.display_name }}{% endif %}
   </p>
+  {% if req.due_date %}<p class="t13">희망 기한: {{ req.due_date|date:"Y-m-d" }} ({{ req.due_date|due_text }})</p>{% endif %}
   {% if req.body %}<p>{{ req.body|linebreaksbr }}</p>{% endif %}
   {% if req.task %}<p>태스크: <a href="{% url 'task_detail' req.task.pk %}">{{ req.task.number }} {{ req.task.title }}</a></p>{% endif %}
 </section>
@@ -43,7 +44,7 @@
       </select>
     </label>
     {% endif %}
-    <label class="field">기한(선택)<input type="date" name="due_date" class="input"></label>
+    <label class="field">기한(선택)<input type="date" name="due_date" class="input"{% if req.due_date %} value="{{ req.due_date|date:"Y-m-d" }}"{% endif %}></label>
     {% endif %}
     <label class="field">메모(선택)<input name="note" class="input" maxlength="300"></label>
     <button class="btn primary">수락</button>

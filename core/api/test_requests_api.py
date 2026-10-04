@@ -175,3 +175,17 @@ def test_browser_ai_with_session_is_held_to_ai_policy(client, admin, org, member
     assert r.status_code == 400
     r = client.post(f"/api/requests/{req.pk}/accept", {}, content_type="application/json")
     assert r.status_code == 200  # 같은 사람이 직접 하면 된다
+
+
+def test_create_with_due_date_and_past_rejected(api, org, team):
+    from datetime import timedelta
+
+    from common.dates import today_kst
+
+    day = (today_kst() + timedelta(days=3)).isoformat()
+    body = {"org_id": org.pk, "title": "배포", "team_id": team.pk, "due_date": day}
+    r = api.post("/api/requests", body)
+    assert r.status_code == 201 and r.json()["due_date"] == day
+    body["due_date"] = (today_kst() - timedelta(days=1)).isoformat()
+    body["title"] = "배포2"
+    assert api.post("/api/requests", body).status_code == 400

@@ -219,3 +219,37 @@ def test_same_request_within_window_is_not_duplicated(org, member, mate):
     assert Notice.objects.filter(user=mate).count() == 1
     wr.cancel(a, member)
     assert wr.create_request(**kw).pk != a.pk  # 처리된 뒤에는 다시 보낼 수 있다
+
+
+def test_request_due_date_saved_rejected_past_and_default_on_accept(
+    org, project, admin, mate, squad
+):
+    from datetime import timedelta
+
+    from common.dates import today_kst
+
+    day = today_kst() + timedelta(days=5)
+    with pytest.raises(ServiceError) as e:
+        wr.create_request(
+            org=org,
+            kind="work",
+            title="a",
+            actor=admin,
+            source="web",
+            team=squad,
+            due_date=today_kst() - timedelta(days=1),
+        )
+    assert "due_date" in e.value.errors
+    req = wr.create_request(
+        org=org, kind="work", title="a", actor=admin, source="web", team=squad, due_date=day
+    )
+    assert req.due_date == day
+    req = wr.accept(req, mate, source="web", project=project)
+    assert req.task.due_date == day  # 수락 시 기본값
+
+    other = day + timedelta(days=2)
+    req2 = wr.create_request(
+        org=org, kind="work", title="b", actor=admin, source="web", team=squad, due_date=day
+    )
+    req2 = wr.accept(req2, mate, source="web", project=project, due_date=other)
+    assert req2.task.due_date == other  # 수락자가 바꾼다
