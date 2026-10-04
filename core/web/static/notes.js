@@ -273,6 +273,7 @@
         var cb = document.createElement("input");
         cb.type = "checkbox";
         cb.checked = b.checked;
+        cb.disabled = readonly;
         cb.setAttribute("aria-label", b.text);
         cb.addEventListener("change", function (e) { e.stopPropagation(); toggle(i); });
         wrap.appendChild(cb);

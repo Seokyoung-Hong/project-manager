@@ -194,7 +194,7 @@ def backfill_actor(identity):
 # ---------- 저장소 주소 ----------
 
 
-def installation_repos(org) -> list[dict]:
+def installation_repos(org, *, strict=False) -> list[dict]:
     """조직의 GitHub 앱 설치가 접근할 수 있는 저장소 목록. 저장소 연결 화면의 자동완성이 쓴다.
 
     이미 다른 프로젝트에 연결됐는지는 여기서 보지 않는다 — 호출부가 판단한다.
@@ -209,6 +209,8 @@ def installation_repos(org) -> list[dict]:
         token = client.installation_token(inst.installation_id)
         repos = list(client.paginate("/installation/repositories", token, key="repositories"))
     except GitHubError:
+        if strict:
+            raise
         return []
     return [
         {
@@ -830,7 +832,7 @@ def org_issues(org, *, repo_id=None, imported=None, query=""):
     return qs
 
 
-def sync_org_issues(org) -> tuple[int, int]:
+def sync_org_issues(org, *, failures=None) -> tuple[int, int]:
     """조직의 모든 연결 저장소를 한 번에 새로 고친다. 실패한 저장소는 건너뛴다.
 
     조회 화면이 "0건"과 "전부 실패"를 구분해서 말할 수 있도록 실패한 저장소 수도 함께 돌려준다.
@@ -839,8 +841,15 @@ def sync_org_issues(org) -> tuple[int, int]:
     for conn in RepoConnection.objects.filter(project__org=org).select_related("project"):
         try:
             total += sync_issues(conn)
-        except (ServiceError, GitHubError):
+        except (ServiceError, GitHubError) as error:
             failed += 1
+            if failures is not None:
+                failures.append(
+                    {
+                        "repo": conn.full_name,
+                        "status": error.status if isinstance(error, GitHubError) else None,
+                    }
+                )
     return total, failed
 
 

@@ -111,6 +111,7 @@
       {% for m in messages %}<div class="notice{% if m.tags == 'error' %} bad{% endif %}" role="status">
         <span aria-hidden="true">{% if m.tags == 'error' %}⚠{% else %}ⓘ{% endif %}</span>
         <span class="grow">{{ m }}</span>
+        {% if 'integration-help' in m.tags %}<a href="{% url 'integration_help' %}" class="btn sm">해결 절차·질문 복사</a>{% endif %}
         <button type="button" class="btn link" data-action="dismiss" aria-label="닫기">✕</button>
       </div>{% endfor %}
       {% block main %}{% endblock %}

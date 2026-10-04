@@ -20,6 +20,7 @@ from github.models import GitHubIdentity, RepoConnection, RepoIssue, TaskGitLink
 from tasks.models import Task
 
 from .common import can_admin, not_admin, org_or_404, project_or_404, task_or_404
+from .integrations import clear_problem, record_problem
 from .tasks import _panel
 
 
@@ -109,16 +110,28 @@ def github_connect(request):
 @login_required
 def github_callback(request):
     _gh_enabled_or_404()
-    if request.GET.get("state") != request.session.pop("gh_oauth_state", None):
-        raise Http404
+    expected_state = request.session.pop("gh_oauth_state", None)
+    if not expected_state or request.GET.get("state") != expected_state:
+        record_problem(request, "oauth", "콜백 상태 검증 실패")
+        messages.error(
+            request,
+            "GitHub 연결 확인 세션이 만료됐거나 일치하지 않습니다. 프로필에서 연결을 다시 시작하세요.",
+            extra_tags="integration-help",
+        )
+        return redirect("profile")
     code = request.GET.get("code", "")
     try:
         if not code:
             raise GitHubError(400, "코드가 없습니다.")
         data = client.exchange_code(code)
         info = client.request("GET", "/user", data["access_token"])
-    except GitHubError:
-        messages.error(request, "GitHub 연결에 실패했습니다.")
+    except GitHubError as error:
+        record_problem(request, "oauth", "승인 코드 확인" if not code else "계정 인증", error)
+        messages.error(
+            request,
+            "GitHub 계정 연결을 완료하지 못했습니다. 연결을 다시 시작하거나 해결 절차를 확인하세요.",
+            extra_tags="integration-help",
+        )
         return redirect("profile")
     identity, _ = GitHubIdentity.objects.update_or_create(
         user=request.user,
@@ -127,8 +140,15 @@ def github_callback(request):
     gh_services._store_tokens(identity, data)
     try:
         gh_services.sync_repos(identity)
-    except (GitHubError, ServiceError):
-        pass
+    except (GitHubError, ServiceError) as error:
+        record_problem(request, "oauth", "연결 후 저장소 목록 조회", error)
+        messages.warning(
+            request,
+            "GitHub 계정은 연결됐지만 저장소 목록을 확인하지 못했습니다. 프로필에서 접근 가능한 저장소를 다시 확인하세요.",
+            extra_tags="integration-help",
+        )
+    else:
+        clear_problem(request, "oauth")
     gh_services.backfill_actor(identity)
     messages.success(request, "GitHub를 연결했습니다.")
     return redirect("profile")
@@ -143,9 +163,15 @@ def github_refresh(request):
         raise Http404
     try:
         gh_services.sync_repos(identity)
+        clear_problem(request, "oauth")
         messages.success(request, "접근 가능 저장소를 다시 확인했습니다.")
-    except (GitHubError, ServiceError):
-        messages.error(request, "다시 확인하지 못했습니다.")
+    except (GitHubError, ServiceError) as error:
+        record_problem(request, "oauth", "접근 가능한 저장소 다시 확인", error)
+        messages.error(
+            request,
+            "접근 가능한 저장소를 다시 확인하지 못했습니다. 기존 목록은 유지됩니다. 해결 절차를 확인하세요.",
+            extra_tags="integration-help",
+        )
     return redirect("profile")
 
 
@@ -165,12 +191,16 @@ def _repo_teams(conn):
     """설치 토큰으로 저장소 접근 팀을 읽는다. 권한이 없으면 표 대신 안내만 보인다."""
     inst = getattr(conn.project.org, "github", None)
     if inst is None:
-        return None
+        return {"teams": None, "status": "앱 설치 정보 없음"}
     try:
         token = client.installation_token(inst.installation_id)
-        return client.request("GET", f"/repos/{conn.full_name}/teams", token)
-    except GitHubError:
-        return None
+        return {
+            "teams": list(client.paginate(f"/repos/{conn.full_name}/teams", token)),
+            "status": "조회 성공",
+        }
+    except GitHubError as error:
+        status = f"HTTP {error.status}" if error.status else "네트워크 연결 실패"
+        return {"teams": None, "status": status}
 
 
 @login_required
@@ -195,24 +225,55 @@ def project_repo(request, project_id):
         "error": error,
     }
     if state["state"] == "none":
-        ctx["org_repos"] = _pickable_repos(project)
+        if getattr(project.org, "github", None) is None:
+            ctx["repo_choices_status"] = (
+                "이 조직에 GitHub 앱이 설치되지 않았습니다. 조직 관리자에게 설치를 요청하세요."
+            )
+            ctx["org_repos"] = []
+        else:
+            try:
+                ctx["org_repos"] = _pickable_repos(project, strict=True)
+                ctx["repo_choices_status"] = (
+                    "저장소 목록을 확인했습니다."
+                    if ctx["org_repos"]
+                    else "조회는 성공했지만 앱에 보이는 저장소가 없습니다. 설치 대상 저장소를 확인하세요."
+                )
+                clear_problem(request, "repositories")
+            except GitHubError as error:
+                ctx["org_repos"] = []
+                ctx["repo_choices_status"] = (
+                    "저장소 후보 조회에 실패했습니다. 주소를 직접 입력할 수 있지만 연결 시 접근 권한을 다시 확인합니다."
+                )
+                record_problem(
+                    request, "repositories", "저장소 후보 조회", error, target=project.name
+                )
     if state["state"] == "ok":
         conn = state["conn"]
         gh_services.sync_issues_if_stale(conn)
         ctx["issues"] = conn.issues.filter(state="open")[:50]
         ctx["events"] = conn.events.select_related("task")[:50]
-        ctx["repo_teams"] = _repo_teams(conn)
+        team_result = _repo_teams(conn)
+        ctx["repo_teams"] = team_result["teams"]
+        ctx["repo_teams_status"] = team_result["status"]
+        ctx["repo_teams_prompt"] = (
+            f"ProjectManager의 GitHub 접근 팀 조회를 확인해 주세요. 저장소: {conn.full_name}. "
+            f"조회 결과: {team_result['status']}. "
+            "GET /repos/{owner}/{repo}/teams는 Repository Administration 읽기 권한이 필요합니다. "
+            "현재 앱의 권한, 설치 승인 상태, 저장소 선택 범위와 조직 정책을 확인하고, "
+            "권한을 유지할 때의 대안과 읽기 권한을 추가할 때의 절차를 설명해 주세요. "
+            "HTTP 상태만으로 원인을 단정하지 말아 주세요. 토큰이나 개인키는 공유하지 않겠습니다."
+        )
         ctx["open_tasks"] = project.tasks.filter(status__in=Task.OPEN).order_by("-id")[:50]
     return render(request, "projects/repo.html", ctx)
 
 
-def _pickable_repos(project):
+def _pickable_repos(project, *, strict=False):
     """조직 설치가 접근할 수 있는 저장소 + 이미 다른 프로젝트에 연결됐으면 그 표시.
 
     같은 저장소를 두 프로젝트에 붙일지는 connect_repo가 판단한다 — 여기서는 고르지 못하게
     막지 않고 이미 연결됐다는 사실만 보여 준다.
     """
-    repos = gh_services.installation_repos(project.org)
+    repos = gh_services.installation_repos(project.org, strict=strict)
     taken = dict(
         RepoConnection.objects.filter(project__org=project.org)
         .exclude(project=project)
@@ -265,8 +326,13 @@ def repo_issues_sync(request, project_id):
     try:
         n = gh_services.sync_issues(conn)
         messages.success(request, f"열린 이슈 {n}건을 확인했습니다.")
-    except (ServiceError, GitHubError):
-        messages.error(request, "이슈를 가져오지 못했습니다.")
+    except (ServiceError, GitHubError) as error:
+        record_problem(request, "issues", "프로젝트 이슈 동기화", error, target=conn.full_name)
+        messages.error(
+            request,
+            "이슈 동기화에 실패했습니다. 기존 태스크는 유지됩니다. 설치·저장소 범위와 조회 상태를 확인한 뒤 다시 시도하세요.",
+            extra_tags="integration-help",
+        )
     return redirect("project_repo", project_id=project.pk)
 
 
@@ -324,13 +390,30 @@ def org_issues(request, org_id):
 def org_issues_sync(request, org_id):
     _gh_enabled_or_404()
     org = org_or_404(request.user, org_id)
-    n, failed = gh_services.sync_org_issues(org)
+    failures = []
+    n, failed = gh_services.sync_org_issues(org, failures=failures)
+    if failures:
+        names = ", ".join(
+            f"{item['repo']} ({'HTTP ' + str(item['status']) if item['status'] else '설치·연결 상태 확인 필요'})"
+            for item in failures
+        )
+        record_problem(request, "issues", "조직 이슈 동기화 일부 또는 전체 실패", target=names)
+        messages.warning(
+            request,
+            "확인하지 못한 저장소: " + names + ". 해당 프로젝트에서 다시 동기화하세요.",
+            extra_tags="integration-help",
+        )
     if failed:
         total = RepoConnection.objects.filter(project__org=org).count()
         if failed >= total:
-            messages.error(request, f"연결된 저장소 {failed}곳 모두에서 이슈를 확인하지 못했습니다.")
+            messages.error(
+                request, f"연결된 저장소 {failed}곳 모두에서 이슈를 확인하지 못했습니다."
+            )
         else:
-            messages.warning(request, f"일부 저장소만 확인했습니다. 열린 이슈 {n}건을 확인했고, {failed}곳은 확인하지 못했습니다.")
+            messages.warning(
+                request,
+                f"일부 저장소만 확인했습니다. 열린 이슈 {n}건을 확인했고, {failed}곳은 확인하지 못했습니다.",
+            )
     else:
         messages.success(request, f"열린 이슈 {n}건을 확인했습니다.")
     return redirect(f"{reverse('org_issues', args=[org.pk])}?{request.POST.get('back', '')}")
@@ -416,8 +499,13 @@ def project_issues_sync(request, project_id):
     try:
         n = gh_services.sync_issues(conn)
         messages.success(request, f"열린 이슈 {n}건을 확인했습니다.")
-    except (ServiceError, GitHubError):
-        messages.error(request, "이슈를 가져오지 못했습니다.")
+    except (ServiceError, GitHubError) as error:
+        record_problem(request, "issues", "프로젝트 이슈 동기화", error, target=conn.full_name)
+        messages.error(
+            request,
+            "이슈 동기화에 실패했습니다. 기존 태스크는 유지됩니다. 설치·저장소 범위와 조회 상태를 확인한 뒤 다시 시도하세요.",
+            extra_tags="integration-help",
+        )
     back = f"{reverse('project_issues', args=[project.pk])}?{request.POST.get('back', '')}"
     return redirect(back)
 

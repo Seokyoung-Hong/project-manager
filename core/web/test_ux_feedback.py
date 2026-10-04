@@ -109,7 +109,7 @@ def test_issue_sync_reports_complete_partial_and_total_failure(signed, project, 
     other = create_project(org=project.org, name="다른 저장소", actor=member)
     for index, item in enumerate((project, other)):
         RepoConnection.objects.create(project=item, url=f"https://github.com/local/{index}", full_name=f"local/{index}", created_by=member)
-    monkeypatch.setattr("github.services.sync_org_issues", lambda org: (7 if failed < 2 else 0, failed))
+    monkeypatch.setattr("github.services.sync_org_issues", lambda org, **kwargs: (7 if failed < 2 else 0, failed))
     response = signed.post(f"/orgs/{project.org_id}/issues/sync", follow=True)
     body = response.content.decode()
     assert expected in body

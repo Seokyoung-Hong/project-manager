@@ -1,0 +1,22 @@
+{% extends "base.html" %}{% block title %}연동 문제 해결{% endblock %}
+{% block main %}
+<div class="card"><h1>연동 문제 해결</h1><p>증상에 맞는 절차를 확인하고, 필요한 경우 질문 프롬프트를 복사해 관리자에게 문의하세요.</p>
+<nav class="row wrap gap" aria-label="연동 도움말 주제">{% for topic in topics %}<a href="#{{ topic.key }}">{{ topic.title }}</a>{% endfor %}</nav>
+<p class="muted t13">아래 상태는 이 로그인 세션에서 기록한 실패 시점의 정보입니다. 현재 상태를 다시 조회한 결과는 아닙니다. 질문을 공유하기 전에 대상 이름의 공개 범위를 확인하세요.</p></div>
+{% for topic in topics %}<section class="card" id="{{ topic.key }}">
+  <h2>{{ topic.title }}</h2>
+  {% if topic.diagnostic %}<p class="notice bad">{{ topic.diagnostic.stage }} · {{ topic.diagnostic.status }}{% if topic.diagnostic.target %} · {{ topic.diagnostic.target }}{% endif %}</p><p class="muted t13">발생 시각 {{ topic.diagnostic.at }}</p>{% endif %}
+  <ol>{% for step in topic.steps %}<li>{{ step }}</li>{% endfor %}</ol>
+  <p><a href="{{ topic.url }}" target="_blank" rel="noopener">공식 문서 보기</a></p>
+  {% if topic.key == "oauth" %}<a class="btn sm" href="{% url 'profile' %}">프로필에서 연결·접근 목록 확인</a>{% endif %}
+  {% if topic.key == "writes" %}
+    {% for retry in retries %}<div class="card"><p>{{ retry.label }} · {{ retry.target }} · {{ retry.at }}</p>
+      <form method="post" action="{% url 'github_write_retry' retry.id %}">{% csrf_token %}<button class="btn sm" onclick="return confirm('PM 변경은 반복하지 않고, 표시된 GitHub 작업만 현재 계정의 권한으로 다시 시도합니다. 계속할까요?')">GitHub만 다시 반영</button></form>
+    </div>{% empty %}<p class="muted t13">이 세션에 보관된 재시도 작업이 없습니다.</p>{% endfor %}
+  {% endif %}
+  <details class="mt8"><summary>질문 프롬프트 보기·복사</summary>
+    <textarea class="input integration-prompt" readonly rows="6" aria-label="{{ topic.title }} 질문 프롬프트">{{ topic.prompt }}</textarea>
+    <button class="btn sm" type="button" data-copy-text="{{ topic.prompt }}">질문 프롬프트 복사</button>
+  </details>
+</section>{% endfor %}
+{% endblock %}

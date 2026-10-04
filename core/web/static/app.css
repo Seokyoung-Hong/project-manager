@@ -818,6 +818,11 @@ details.card.settings-section { padding: 0; gap: 0; }
 .setting-toggle:focus-within, .setting-option:focus-within { outline: 2px solid var(--primary-bg); }
 .setting-option span { min-width: 0; }
 .setting-readonly { display: inline-flex; align-items: center; min-height: 36px; padding: 6px 10px; border-radius: 7px; background: var(--bg-secondary); }
+.issue-markdown .doc-body { min-height: 0; cursor: default; overflow-wrap: anywhere; }
+.issue-markdown { min-width: 0; min-height: 0; cursor: default; overflow-x: auto; }
+.issue-body { white-space: pre-wrap; overflow-wrap: anywhere; }
+#repo-teams-prompt { min-height: 140px; resize: vertical; }
+.integration-prompt { min-height: 160px; width: 100%; resize: vertical; }
 .setting-override { display: flex; min-width: 0; align-items: center; justify-content: space-between; gap: 8px; }
 .setting-override-label { color: var(--text-secondary); font-size: 12px; line-height: 18px; }
 .setting-fixed { padding-block: 9px; }

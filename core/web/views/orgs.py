@@ -19,6 +19,7 @@ from reports.services import org_status
 
 from ..forms import InviteForm, OrgForm
 from .common import apply_service_error, can_admin, current_org, not_admin, org_or_404
+from .github_retries import attempt
 
 
 @login_required
@@ -179,9 +180,22 @@ def invite_create(request, org_id):
     if settings.GITHUB_ENABLED and form.is_valid() and form.cleaned_data["gh_invite"]:
         login = form.cleaned_data["gh_login"].strip()
         if login:
-            warn = gh_writes.try_write(gh_writes.invite_to_org, org, login, actor=request.user)
+            warn = attempt(
+                request,
+                gh_writes.invite_to_org,
+                org,
+                login,
+                actor=request.user,
+                retry={
+                    "kind": "invite",
+                    "org_id": org.pk,
+                    "invite_id": invite.pk,
+                    "login": login,
+                    "target": f"{org.name} · @{login}",
+                },
+            )
             if warn:
-                messages.warning(request, warn)
+                messages.warning(request, warn, extra_tags="integration-help")
             else:
                 messages.success(request, f"GitHub 조직에도 @{login}님을 초대했습니다.")
     return _member_redirect(request, org.pk)
@@ -228,9 +242,22 @@ def member_remove(request, membership_id):
     if settings.GITHUB_ENABLED and getattr(org, "github", None) is not None:
         login = gh_writes._login_of(user)
         if login:
-            warn = gh_writes.try_write(gh_writes.remove_from_org, org, login, actor=request.user)
+            warn = attempt(
+                request,
+                gh_writes.remove_from_org,
+                org,
+                login,
+                actor=request.user,
+                retry={
+                    "kind": "remove",
+                    "org_id": org.pk,
+                    "user_id": user.pk,
+                    "login": login,
+                    "target": f"{org.name} · @{login}",
+                },
+            )
             if warn:
-                messages.warning(request, warn)
+                messages.warning(request, warn, extra_tags="integration-help")
     return _member_redirect(request, org_id)
 
 
@@ -267,8 +294,9 @@ def org_governance(request, org_id):
 
 def _pending(org, kind):
     return list(
-        org.change_requests.filter(kind=kind, status="pending", expires_at__gt=timezone.now())
-        .select_related("requested_by")
+        org.change_requests.filter(
+            kind=kind, status="pending", expires_at__gt=timezone.now()
+        ).select_related("requested_by")
     )
 
 
@@ -279,7 +307,9 @@ def change_request(request, org_id, req_id):
     if resp := not_admin(request, org, "AI 변경 요청"):
         return resp
     req = get_object_or_404(
-        ChangeRequest.objects.select_related("requested_by", "token", "reviewed_by"), pk=req_id, org=org
+        ChangeRequest.objects.select_related("requested_by", "token", "reviewed_by"),
+        pk=req_id,
+        org=org,
     )
     if request.method == "POST":
         try:

@@ -3,6 +3,7 @@
 {% if project %}{% include "projects/_tabs.html" %}{% else %}{% include "orgs/_tabs.html" %}{% endif %}
 
 <div class="card">
+  <p class="t13"><a href="{% url 'integration_help' %}#issues">이슈 동기화 문제 해결 및 질문 복사</a></p>
   <form class="row wrap gap" method="get">
     {% if not project %}
     <select name="repo" onchange="this.form.submit()">
@@ -13,9 +14,9 @@
     </select>
     {% endif %}
     <select name="state" onchange="this.form.submit()">
-      <option value="todo" {% if state == "todo" %}selected{% endif %}>안 가져온 것</option>
-      <option value="done" {% if state == "done" %}selected{% endif %}>가져온 것</option>
-      <option value="all" {% if state == "all" %}selected{% endif %}>전부</option>
+      <option value="todo" {% if state == "todo" %}selected{% endif %}>아직 가져오지 않은 이슈</option>
+      <option value="done" {% if state == "done" %}selected{% endif %}>태스크로 가져온 이슈</option>
+      <option value="all" {% if state == "all" %}selected{% endif %}>모든 이슈</option>
     </select>
     <input type="search" name="q" value="{{ q }}" placeholder="제목·본문 검색">
     <button class="btn sm">이슈 찾기</button>
@@ -42,7 +43,12 @@
   {% if issue.body %}
   <details class="mt8">
     <summary class="muted t13">본문 보기</summary>
-    <pre class="issue-body">{{ issue.body }}</pre>
+    <div class="doc issue-markdown" data-readonly="1">
+      <div class="doc-body"></div>
+      <textarea class="doc-src input" readonly aria-label="이슈 Markdown 본문">{{ issue.body }}</textarea>
+    </div>
+    <details><summary class="muted t13">Markdown 원문 보기</summary><pre class="issue-body">{{ issue.body }}</pre></details>
+    {% if issue.body|length >= 5000 %}<p class="muted t13">긴 본문은 일부만 동기화될 수 있습니다. 전체 본문은 위 이슈 제목의 GitHub 링크에서 확인하세요.</p>{% endif %}
   </details>
   {% endif %}
   {% if issue.task %}

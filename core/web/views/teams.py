@@ -15,6 +15,8 @@ from orgs.models import Team
 
 from ..forms import TeamForm
 from .common import can_admin, dialog, hx_redirect, not_admin, org_or_404
+from .github_retries import attempt, remember_result
+from .integrations import record_problem
 
 
 def _team_or_404(request, team_id):
@@ -70,9 +72,22 @@ def team_edit(request, team_id):
             return _dialog(request, form, team.org, team)
         link = getattr(team, "github", None)
         if settings.GITHUB_ENABLED and link is not None:
-            warn = gh_writes.try_write(gh_writes.rename_gh_team, link, team, actor=request.user)
+            warn = attempt(
+                request,
+                gh_writes.rename_gh_team,
+                link,
+                team,
+                actor=request.user,
+                retry={
+                    "kind": "rename",
+                    "org_id": team.org_id,
+                    "team_id": team.pk,
+                    "github_team_id": link.github_team_id,
+                    "target": team.name,
+                },
+            )
             if warn:
-                messages.warning(request, warn)
+                messages.warning(request, warn, extra_tags="integration-help")
         return hx_redirect(request, reverse("team_detail", args=[team.pk]))
     return _dialog(request, form, team.org, team)
 
@@ -166,11 +181,27 @@ def _sync_member(request, team, user, *, add: bool):
     login = gh_writes._login_of(user)
     if not login:
         return
-    warn = gh_writes.try_write(
-        gh_writes.set_gh_team_member, link, team.org, login, actor=request.user, add=add
+    warn = attempt(
+        request,
+        gh_writes.set_gh_team_member,
+        link,
+        team.org,
+        login,
+        actor=request.user,
+        add=add,
+        retry={
+            "kind": "member",
+            "org_id": team.org_id,
+            "team_id": team.pk,
+            "github_team_id": link.github_team_id,
+            "user_id": user.pk,
+            "login": login,
+            "add": add,
+            "target": f"{team.name} · @{login} · {'추가' if add else '제거'}",
+        },
     )
     if warn:
-        messages.warning(request, warn)
+        messages.warning(request, warn, extra_tags="integration-help")
 
 
 # ---------- GitHub 팀 연결 ----------
@@ -201,8 +232,12 @@ def team_github_create(request, team_id):
     try:
         data = gh_writes.create_gh_team(team, actor=request.user)
     except (ServiceError, GitHubError) as e:
-        msg = " ".join(e.errors.values()) if isinstance(e, ServiceError) else e.message
-        messages.error(request, msg)
+        record_problem(request, "writes", "GitHub 팀 생성", e, target=team.name)
+        messages.error(
+            request,
+            "GitHub 팀을 만들고 연결하지 못했습니다. 다시 만들기 전에 GitHub에 같은 팀이 이미 생성됐는지 확인하세요.",
+            extra_tags="integration-help",
+        )
         return redirect("team_detail", team_id=team.pk)
     GitHubTeamLink.objects.get_or_create(
         team=team,
@@ -230,11 +265,30 @@ def team_github_unlink(request, team_id):
 @require_POST
 def team_github_reconcile(request, team_id):
     team = _admin_team_or_404(request, team_id)
+
+    def on_result(user, login, warning):
+        link = team.github
+        remember_result(
+            request,
+            team.org,
+            {
+                "kind": "member",
+                "org_id": team.org_id,
+                "team_id": team.pk,
+                "github_team_id": link.github_team_id,
+                "user_id": user.pk,
+                "login": login,
+                "add": True,
+                "target": f"{team.name} · @{login} · 추가",
+            },
+            warning,
+        )
+
     try:
-        done, warns = gh_writes.reconcile_team(team, actor=request.user)
+        done, warns = gh_writes.reconcile_team(team, actor=request.user, on_result=on_result)
         messages.success(request, f"GitHub 팀에 {done}명을 반영했습니다.")
         for w in warns:
-            messages.warning(request, w)
+            messages.warning(request, w, extra_tags="integration-help")
     except ServiceError as e:
         messages.error(request, " ".join(e.errors.values()))
     return redirect("team_detail", team_id=team.pk)

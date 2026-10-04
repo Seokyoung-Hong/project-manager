@@ -9,6 +9,8 @@ from .views import (
     docs,
     events,
     github,
+    github_retries,
+    integrations,
     me,
     notes,
     oauth,
@@ -25,6 +27,12 @@ from .views import (
 )
 
 urlpatterns = [
+    path("help/integrations", integrations.integration_help, name="integration_help"),
+    path(
+        "help/integrations/github/retry/<str:retry_id>",
+        github_retries.retry_write,
+        name="github_write_retry",
+    ),
     path("", auth.root, name="root"),
     path("healthz", ops.healthz, name="healthz"),
     path("events", events.events, name="events"),
@@ -61,7 +69,11 @@ urlpatterns = [
     path("portfolio/prompt", portfolio.portfolio_prompt, name="portfolio_prompt"),
     path("portfolio/drafts", portfolio.portfolio_create, name="portfolio_create"),
     path("portfolio/drafts/<int:draft_id>/save", portfolio.portfolio_save, name="portfolio_save"),
-    path("portfolio/drafts/<int:draft_id>/markdown", portfolio.portfolio_export, name="portfolio_export"),
+    path(
+        "portfolio/drafts/<int:draft_id>/markdown",
+        portfolio.portfolio_export,
+        name="portfolio_export",
+    ),
     path("org", orgs.org_current, name="org"),
     path("orgs", orgs.org_list, name="org_list"),
     path("orgs/new", orgs.org_new, name="org_new"),
@@ -119,9 +131,21 @@ urlpatterns = [
     path("tasks/<int:task_id>/delete", tasks.task_delete, name="task_delete"),
     path("tasks/<int:task_id>/panel", tasks.task_panel, name="task_panel"),
     path("tasks/<int:task_id>/decisions", decisions.task_decisions, name="task_decisions"),
-    path("tasks/<int:task_id>/decisions/<int:record_id>/confirm", decisions.decision_confirm, name="decision_confirm"),
-    path("tasks/<int:task_id>/decisions/<int:record_id>/reject", decisions.decision_reject, name="decision_reject"),
-    path("tasks/<int:task_id>/decisions/<int:record_id>/supersede", decisions.decision_supersede, name="decision_supersede"),
+    path(
+        "tasks/<int:task_id>/decisions/<int:record_id>/confirm",
+        decisions.decision_confirm,
+        name="decision_confirm",
+    ),
+    path(
+        "tasks/<int:task_id>/decisions/<int:record_id>/reject",
+        decisions.decision_reject,
+        name="decision_reject",
+    ),
+    path(
+        "tasks/<int:task_id>/decisions/<int:record_id>/supersede",
+        decisions.decision_supersede,
+        name="decision_supersede",
+    ),
     path("tasks/<int:task_id>/meta", tasks.task_meta, name="task_meta"),
     path("tasks/<int:task_id>/row", tasks.task_row, name="task_row"),
     path("tasks/<int:task_id>/status", tasks.task_status, name="task_status"),
