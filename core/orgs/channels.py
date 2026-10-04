@@ -12,7 +12,7 @@ from django.utils import timezone
 
 from common.errors import ServiceError
 
-from .models import DiscordChannelAlert, OrgMembership, Team
+from .models import DiscordChannelAlert, DiscordMemberPermission, OrgMembership, Team
 
 # VIEW_CHANNEL | SEND_MESSAGES | READ_MESSAGE_HISTORY | MANAGE_CHANNELS | MANAGE_ROLES. 봇은 가진 권한만
 # 덮어쓰기로 줄 수 있어 기록 읽기도 둔다. 자동 관리가 멤버 덮어쓰기를 넣으려면 Manage Roles가 필요하다.
@@ -81,14 +81,38 @@ def target_by_channel(org, channel_id: str):
     return None
 
 
-def clear_alerts(channel_id: str):
-    """채널 연결을 끊거나 바꾸면 그 채널의 경고·허용 기록을 지운다."""
-    if channel_id:
+def linked_elsewhere(channel_id: str, kind: str, pk: int):
+    """그 채널을 이미 연결한 다른 팀·프로젝트(kind, obj). 없으면 None. 한 채널은 한 대상에만 연결한다."""
+    from projects.models import Project
+
+    other = (
+        Team.objects.filter(discord_channel_id=channel_id)
+        .exclude(pk=pk if kind == "team" else None)
+        .first()
+    )
+    if other:
+        return "team", other
+    other = (
+        Project.objects.filter(discord_channel_id=channel_id)
+        .exclude(pk=pk if kind == "project" else None)
+        .first()
+    )
+    return ("project", other) if other else None
+
+
+def clear_alerts(channel_id: str, kind: str = "", pk: int | None = None):
+    """채널 연결을 끊거나 바꾸면 그 채널의 경고·허용 기록을 지운다.
+
+    옛 데이터에 같은 채널을 쓰는 다른 대상이 남아 있으면 그쪽의 허용 목록이므로 지우지 않는다.
+    """
+    if channel_id and not (kind and linked_elsewhere(channel_id, kind, pk)):
         DiscordChannelAlert.objects.filter(channel_id=channel_id).delete()
 
 
 @transaction.atomic
-def connect(kind, obj, channel_id, actor, *, viewers, allow_outsiders, managed, created) -> dict:
+def connect(
+    kind, obj, channel_id, actor, *, viewers, allow_outsiders, managed, created, guild_id
+) -> dict:
     """봇이 채널 연결 전에 부른다. 권한 밖 인원이 있거나 확인할 수 없으면(viewers=None) 허용 옵션 없이는 연결하지 않는다."""
     from projects.services import set_project_channel
 
@@ -98,6 +122,12 @@ def connect(kind, obj, channel_id, actor, *, viewers, allow_outsiders, managed, 
     channel_id = str(channel_id or "").strip()
     if not channel_id.isdecimal():
         raise ServiceError({"channel_id": "채널을 확인하지 못했습니다."})
+    # 채널이 이 조직의 연결 길드 것이어야 한다(다른 서버의 채널 id로 연결하는 것을 막는다)
+    if not obj.org.discord_guild_id or str(guild_id) != obj.org.discord_guild_id:
+        raise ServiceError({"guild_id": "이 조직에 연결된 Discord 서버의 채널이 아닙니다."})
+    # 한 채널은 한 대상에만 연결한다 — 두 대상이 허용 집합을 다르게 보면 경고·조정이 서로 엇갈린다
+    if (other := linked_elsewhere(channel_id, kind, obj.pk)) is not None:
+        raise ServiceError({"channel_id": f"이미 {label(*other)}에 연결된 채널입니다."})
     unknown = viewers is None and not created
     found = []
     if viewers is not None and not created:
@@ -162,7 +192,11 @@ def sync_alerts(org, channel_id: str, current: list[dict], missing: list[dict] |
             row.status = "gone"
             row.save(update_fields=["status"])
     if missing is not None:  # 자동 관리가 꺼진 채널의 "Discord 미접근 팀원" 안내. 알림은 없다
-        want = {m["id"]: m for m in missing if m["id"] not in now_ids and m["id"] not in rows}
+        want = {
+            m["id"]: m
+            for m in missing
+            if m["id"] not in now_ids and (m["id"] not in rows or rows[m["id"]].status == "missing")
+        }
         DiscordChannelAlert.objects.filter(channel_id=channel_id, status="missing").exclude(
             discord_user_id__in=want
         ).delete()
@@ -181,6 +215,7 @@ def resolve(org, alert_id: int, action: str, actor):
     from .services import require_admin
 
     require_admin(actor, org)
+    require_discord(actor, org, "managed")
     row = DiscordChannelAlert.objects.filter(pk=alert_id, org=org).first()
     if row is None:
         raise ServiceError({"alert": "경고를 찾을 수 없습니다."})
@@ -191,20 +226,79 @@ def resolve(org, alert_id: int, action: str, actor):
         row.delete()
 
 
+# 기능별 필요 Discord 서버 권한(비트). 웹·REST 동작은 봇이 보고한 값으로, 슬래시·MCP는 봇이 직접 확인한다.
+MANAGE_CHANNELS, MANAGE_ROLES, MANAGE_GUILD, ADMINISTRATOR = 1 << 4, 1 << 28, 1 << 5, 1 << 3
+NEEDS = {
+    "channel": MANAGE_CHANNELS,  # 채널 연결 해제(REST)
+    "managed": MANAGE_CHANNELS | MANAGE_ROLES,  # 자동 관리 켜기·끄기, 권한 밖 인원 허용·철회
+    "unlink_guild": MANAGE_GUILD,  # 웹의 Discord 서버 연결 해제
+}
+NEED_NAMES = {MANAGE_CHANNELS: "채널 관리", MANAGE_ROLES: "역할 관리", MANAGE_GUILD: "서버 관리"}
+PERMISSION_STALE = timedelta(minutes=15)
+
+
+def require_discord(user, org, feature: str):
+    """PM 관리자 확인에 더해 그 사용자의 Discord 서버 권한을 확인한다. 확인할 수 없으면 거절한다(fail closed)."""
+    if not (user.discord_user_id and user.discord_linked_at):
+        raise ServiceError(
+            {"discord": "Discord 계정 연결이 필요합니다. 설정 → 프로필에서 연결해 주세요."}
+        )
+    row = DiscordMemberPermission.objects.filter(org=org, user=user).first()
+    if row is None:
+        raise ServiceError(
+            {
+                "discord": "Discord 권한 확인 정보가 없습니다. 서버 멤버 인텐트가 꺼져 있으면 "
+                "웹에서는 할 수 없으니 Discord에서 명령으로 해 주세요."
+            }
+        )
+    if timezone.now() - row.reported_at > PERMISSION_STALE:
+        raise ServiceError(
+            {"discord": "권한 확인 정보가 오래됐습니다. 잠시 뒤 다시 시도해 주세요."}
+        )
+    need = NEEDS[feature]
+    if not (row.permissions & ADMINISTRATOR) and (row.permissions & need) != need:
+        names = ", ".join(n for bit, n in NEED_NAMES.items() if need & bit)
+        raise ServiceError({"discord": f"Discord 서버에서 {names} 권한이 필요합니다."})
+
+
+def record_member_permissions(org, members: list[dict]):
+    """봇이 올린 (Discord id → 권한 비트). 이 조직의 멤버로 연결된 계정만 받는다."""
+    from accounts.models import User
+
+    by_did = {
+        u.discord_user_id: u
+        for u in User.objects.filter(org_memberships__org=org, discord_user_id__isnull=False)
+        if u.discord_linked_at
+    }
+    now = timezone.now()
+    for m in members:
+        user = by_did.get(str(m["discord_user_id"]))
+        if user is not None:
+            DiscordMemberPermission.objects.update_or_create(
+                org=org, user=user, defaults={"permissions": m["permissions"], "reported_at": now}
+            )
+
+
 def set_managed(org, kind: str, target_id: int, managed: bool, actor):
     from projects.models import Project
 
     from .services import require_admin
 
     require_admin(actor, org)
+    require_discord(actor, org, "managed")
     model = Team if kind == "team" else Project
-    if model.objects.filter(pk=target_id, org=org).update(discord_channel_managed=managed) == 0:
+    obj = model.objects.filter(pk=target_id, org=org).first()
+    if obj is None:
         raise ServiceError({"target": "대상을 찾을 수 없습니다."})
+    if managed and not obj.discord_channel_id:
+        raise ServiceError({"target": "채널이 연결된 대상만 자동 관리를 켤 수 있습니다."})
+    model.objects.filter(pk=obj.pk).update(discord_channel_managed=managed)
 
 
-def record_guild_report(org, permissions: int | None, watching: bool):
+def record_guild_report(org, permissions: int | None, watching: bool, intent_denied: bool = False):
     org.discord_bot_permissions = permissions
-    fields = ["discord_bot_permissions"]
+    org.discord_intent_denied = intent_denied
+    fields = ["discord_bot_permissions", "discord_intent_denied"]
     if watching:
         org.discord_watch_at = timezone.now()
         fields.append("discord_watch_at")

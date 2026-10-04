@@ -179,13 +179,21 @@ def test_channel_save_is_admin_only(post, team, project, org, member, admin):
     assert (team.discord_channel_id, project.discord_channel_id) == ("", "")
 
     OrgMembership.objects.filter(org=org, user=member).update(role="admin")
+    org.discord_guild_id = "9001"
+    org.save(update_fields=["discord_guild_id"])
     # 관리자여도 이 경로로는 새 채널을 못 적는다(권한 밖 확인 우회 방지). 같은 값 쓰기·해제만 된다
     r = post(f"/teams/{team.pk}/channel", {"channel_id": "5551"})
     assert r.status_code == 400
     assert post(f"/teams/{team.pk}/channel", {}).json()["discord_channel_id"] == ""
     r = post(
         "/channel-check",
-        {"kind": "team", "target_id": team.pk, "channel_id": "5551", "created": True},
+        {
+            "kind": "team",
+            "guild_id": "9001",
+            "target_id": team.pk,
+            "channel_id": "5551",
+            "created": True,
+        },
     )
     assert r.json()["linked"] is True
     r = post(f"/teams/{team.pk}/channel", {"channel_id": "5551"})

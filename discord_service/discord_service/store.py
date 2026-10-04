@@ -214,6 +214,10 @@ class Store:
             )
             return {r["discord_user_id"] for r in rows}
 
+    def grant_channels(self) -> set[str]:
+        with self._conn() as c:
+            return {r["channel_id"] for r in c.execute("SELECT DISTINCT channel_id FROM grants")}
+
     def add_grant(self, channel_id: str, discord_user_id: str):
         with self._conn() as c:
             c.execute(

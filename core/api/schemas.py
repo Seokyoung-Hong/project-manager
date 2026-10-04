@@ -375,6 +375,7 @@ class DiscordChannelCheckIn(Schema):
     """채널 연결 전 확인. viewers=None이면 봇이 채널을 보는 사람을 알 수 없다(멤버 인텐트 꺼짐)."""
 
     discord_user_id: str
+    guild_id: str  # 채널이 속한 서버. 조직의 연결 서버와 같아야 한다
     kind: str  # team | project
     target_id: int
     channel_id: str
@@ -399,6 +400,14 @@ class DiscordGuildReportIn(Schema):
     guild_id: str
     permissions: int | None = None
     watching: bool = False
+    intent_denied: bool = False  # 포털에서 멤버 인텐트가 꺼져 인텐트 없이 접속했다
+
+
+class DiscordMemberPermissionsIn(Schema):
+    """Discord를 연결한 PM 사용자들의 서버 권한 비트. 웹 관리 동작의 판정 근거다."""
+
+    guild_id: str
+    members: list[dict]  # {"discord_user_id": str, "permissions": int}
 
 
 class ProjectDiscordChannelIn(Schema):

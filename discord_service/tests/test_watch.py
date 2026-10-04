@@ -10,7 +10,7 @@ from aiohttp.test_utils import TestClient, TestServer
 from conftest import FakeCore, make_core
 
 from discord_service import control
-from discord_service.channels import NOT_A_MANAGER, connect_existing
+from discord_service.channels import NOT_A_MANAGER, NOT_A_ROLE_MANAGER, connect_existing
 from discord_service.config import Config
 from discord_service.store import Store
 from discord_service.watch import GRANT, Watcher, reconcile
@@ -23,8 +23,9 @@ def run(coro):
 
 
 class M:
-    def __init__(self, uid, name="멤버", bot=False):
+    def __init__(self, uid, name="멤버", bot=False, perms=0):
         self.id, self.display_name, self.bot = uid, name, bot
+        self.guild_permissions = discord.Permissions(perms)
 
 
 class FakeText(discord.TextChannel):
@@ -76,7 +77,8 @@ def granted():
 
 
 def manager(ok=True):
-    return SimpleNamespace(id=int(DID), guild_permissions=discord.Permissions(manage_channels=ok))
+    perms = discord.Permissions(manage_channels=ok, manage_roles=True)
+    return SimpleNamespace(id=int(DID), guild_permissions=perms)
 
 
 def connect(fake, guild, ch, **kw):
@@ -201,7 +203,9 @@ def test_scan_reports_outsiders_without_bots_or_allowed_and_missing_members(tmp_
     [ch] = report["channels"]
     assert ch["outsiders"] == [{"id": "222", "name": "외부인"}]  # 봇·허용된 사람 제외
     assert ch["missing"] == [{"id": "111", "name": "멤버"}, {"id": "444", "name": "접근없음"}]
-    assert fake.guild_reports == [{"guild_id": "1", "permissions": 268504080, "watching": True}]
+    assert fake.guild_reports == [
+        {"guild_id": "1", "permissions": 268504080, "watching": True, "intent_denied": False}
+    ]
     assert res["added"] == 0
 
 
@@ -212,7 +216,9 @@ def test_scan_with_intent_off_only_reports_permissions(tmp_path):
     fake.targets = [target()]
     run(watcher(fake, tmp_path, intent=False, guild=g).scan())
     assert fake.alert_reports == []  # 감시·조정 건너뜀
-    assert fake.guild_reports == [{"guild_id": "1", "permissions": 3088, "watching": False}]
+    assert fake.guild_reports == [
+        {"guild_id": "1", "permissions": 3088, "watching": False, "intent_denied": False}
+    ]
 
 
 def test_scan_reconciles_managed_channels_only(tmp_path):
@@ -274,6 +280,8 @@ def core_handler(me_did="111", admin=True, linked=None):
             unknown = viewers is None and not created
             ok = created or (not (outs or unknown)) or body.get("allow_outsiders")
             return httpx.Response(200, json={"linked": ok, "unknown": unknown, "outsiders": outs})
+        if path == "/api/integrations/discord/projects/1/channel":
+            return httpx.Response(200, json={"id": 1, "discord_channel_id": ""})
         if path == "/api/integrations/discord/channels":
             return httpx.Response(200, json=[{"kind": "project", "id": 1, "grant_ids": ["111"]}])
         return httpx.Response(404)
@@ -309,8 +317,9 @@ def call(guild, path, body, *, me_did="111", intent=True, admin=True):
     return status, text, calls
 
 
-def with_manage(ok):
-    return SimpleNamespace(id=111, guild_permissions=discord.Permissions(manage_channels=ok))
+def with_manage(ok, roles=True):
+    perms = discord.Permissions(manage_channels=ok, manage_roles=roles)
+    return SimpleNamespace(id=111, guild_permissions=perms)
 
 
 def test_control_refuses_without_manage_channels_and_changes_nothing():
@@ -367,3 +376,229 @@ def test_control_create_makes_a_private_channel_for_the_allowed_set():
     assert {getattr(k, "id", None) for k in ow} == {None, 9, 111}
     sent = next(json.loads(b) for m, p, b in calls if p.endswith("/channel-check"))
     assert sent["created"] is True
+
+
+# ---------- 결함 수정 ----------
+
+
+def test_connect_sends_the_guild_id_and_managed_needs_manage_roles():
+    g = FakeGuild([M(111)])
+    ch = g.add(FakeText(10, g, viewers=[111]))
+    fake = FakeCore([])
+    connect(fake, g, ch)
+    assert fake.calls[-1][1]["guild_id"] == "1"
+    no_roles = SimpleNamespace(
+        id=111, guild_permissions=discord.Permissions(manage_channels=True, manage_roles=False)
+    )
+    reply = run(
+        connect_existing(
+            g, no_roles, make_core(fake), DID, "team", 1, ch, managed=True, members_intent=True
+        )
+    )
+    assert reply == NOT_A_ROLE_MANAGER
+    n = len(fake.calls)
+    # 자동 관리 없이 연결하는 것은 Manage Roles가 없어도 된다
+    run(connect_existing(g, no_roles, make_core(fake), DID, "team", 1, ch, members_intent=True))
+    assert len(fake.calls) > n
+
+
+def test_scan_merges_duplicate_channels_once(tmp_path):
+    g = FakeGuild([M(111), M(222, "외부인"), M(333, "프로젝트팀")])
+    ch = g.add(FakeText(10, g, viewers=[222, 333]))
+    fake = FakeCore([])
+    fake.targets = [
+        target("10", managed=True, allowed=("111",), grant=("111",)),
+        {**target("10", managed=False, allowed=("333",), grant=("333",)), "kind": "project"},
+    ]
+    run(watcher(fake, tmp_path, guild=g).scan())
+    [report] = fake.alert_reports
+    [entry] = report["channels"]  # 채널 단위로 한 번만
+    assert entry["outsiders"] == [{"id": "222", "name": "외부인"}]  # 333은 합집합 덕에 권한 안
+    assert {e[0] for e in ch.edits} == {111, 333}  # 두 대상의 계정이 한 번의 조정에 모인다
+
+
+def test_unlinked_channel_loses_only_the_bots_overwrites(tmp_path):
+    store = Store(str(tmp_path / "s.sqlite"))
+    g = FakeGuild([M(111), M(222)])
+    old = g.add(FakeText(10, g))
+    new = g.add(FakeText(11, g))
+    run(reconcile(g, old, ["111"], store))
+    old.ow[222] = discord.PermissionOverwrite(view_channel=True)  # 사람이 넣은 것
+    fake = FakeCore([])
+    fake.targets = [target("11", managed=True)]  # 팀이 다른 채널로 바뀌었다
+    w = Watcher(SimpleNamespace(get_guild=lambda gid: g), make_core(fake), store, True)
+    run(w.scan())
+    assert 111 not in old.ow and 222 in old.ow  # 봇이 넣은 것만 지운다
+    assert store.grants("10") == set() and 111 in new.ow
+
+
+def test_overwrites_given_at_creation_are_recorded(tmp_path):
+    from test_channels import FakeGuild as CreateGuild
+    from test_channels import member as manager_member
+
+    from discord_service.channels import link_channel
+
+    store = Store(str(tmp_path / "s.sqlite"))
+    g = CreateGuild()
+    fake = FakeCore([])
+    run(
+        link_channel(
+            g, manager_member(), make_core(fake), DID, "team", 1, None, "산돌이", store=store
+        )
+    )
+    [created] = g.created
+    assert store.grants(str(created.id)) == {"111"}  # 봇·@everyone은 기록하지 않는다
+
+
+def test_create_requires_manage_roles():
+    from test_channels import FakeGuild as CreateGuild
+    from test_channels import member as manager_member
+
+    from discord_service.channels import link_channel
+
+    g = CreateGuild()
+    fake = FakeCore([])
+    user = manager_member()
+    user.guild_permissions = discord.Permissions(manage_channels=True, manage_roles=False)
+    reply = run(link_channel(g, user, make_core(fake), DID, "team", 1, None, "산돌이"))
+    assert reply == NOT_A_ROLE_MANAGER and fake.calls == [] and g.created == []
+
+
+def test_control_requires_manage_roles_for_create_and_managed_assign():
+    g = CtlGuild([M(111)], fetch=with_manage(True, roles=False))
+    ch = g.add(FakeText(10, g, viewers=[111]))
+    status, _, _ = call(g, "/orgs/1/projects/1/channels", {"org_id": 1, "channel_name": "x"})
+    assert status == 403
+    status, _, _ = call(g, "/projects/1/assign", {"org_id": 1, "channel_id": "10", "managed": True})
+    assert status == 403
+    status, text, calls = call(g, "/projects/1/assign", {"org_id": 1, "channel_id": "10"})
+    assert status == 200 and json.loads(text)["linked"] is True
+    sent = next(json.loads(b) for m, p, b in calls if p.endswith("/channel-check"))
+    assert sent["guild_id"] == "1" and ch.edits == []
+
+
+def test_watcher_reports_a_denied_intent(tmp_path):
+    g = FakeGuild([M(111)])
+    fake = FakeCore([])
+    fake.targets = [target()]
+    store = Store(str(tmp_path / "w.sqlite"))
+    client = SimpleNamespace(get_guild=lambda gid: g)
+    run(Watcher(client, make_core(fake), store, False, intent_denied=True).scan())
+    assert fake.guild_reports[0]["intent_denied"] is True
+
+
+def test_listener_retries_without_members_intent_when_the_portal_denies_it(monkeypatch):
+    from dataclasses import replace
+
+    from discord_service import listener
+
+    cfg = Config(
+        core_url="c", core_token="t", bot_token="b", tz=None, llm_provider="", db_path="x",
+        site_name="s", members_intent=True,
+    )  # fmt: skip
+    calls = []
+
+    def fake_run(c, core, intent_denied=False):
+        calls.append((c.members_intent, intent_denied))
+        if c.members_intent:
+            raise discord.PrivilegedIntentsRequired(None)
+
+    monkeypatch.setattr(listener, "_run", fake_run)
+    listener.run(cfg, None)
+    assert calls == [(True, False), (False, True)]
+    calls.clear()
+    listener.run(replace(cfg, members_intent=False), None)  # 꺼 둔 것은 그대로 한 번만
+    assert calls == [(False, False)]
+
+
+# ---------- 모든 Discord 관리 기능은 실행자의 서버 권한을 확인한다 ----------
+
+
+def test_can_manage_table_and_fail_closed():
+    from discord_service.channels import NEEDS, can_manage
+
+    assert NEEDS["channel"] == ("manage_channels",)
+    assert NEEDS["managed"] == ("manage_channels", "manage_roles")
+    both = SimpleNamespace(
+        guild_permissions=discord.Permissions(manage_channels=True, manage_roles=True)
+    )
+    only_ch = SimpleNamespace(guild_permissions=discord.Permissions(manage_channels=True))
+    assert can_manage(both, "managed") and can_manage(only_ch, "channel")
+    assert not can_manage(only_ch, "managed")
+    assert not can_manage(SimpleNamespace(), "channel")  # 권한을 못 알아내면 거절
+
+
+def test_turning_automanage_on_or_off_needs_manage_roles_but_plain_connect_does_not():
+    g = FakeGuild([M(111)])
+    ch = g.add(FakeText(10, g, viewers=[111]))
+    fake = FakeCore([])
+    no_roles = SimpleNamespace(
+        id=111, guild_permissions=discord.Permissions(manage_channels=True, manage_roles=False)
+    )
+    for managed in (True, False):  # 끄기도 같은 권한
+        reply = run(
+            connect_existing(
+                g,
+                no_roles,
+                make_core(fake),
+                DID,
+                "team",
+                1,
+                ch,
+                managed=managed,
+                members_intent=True,
+            )
+        )
+        assert reply == NOT_A_ROLE_MANAGER
+    assert fake.calls == []
+
+
+def test_scan_reports_linked_members_server_permissions(tmp_path):
+    admin_bits = (1 << 4) | (1 << 28)
+    g = FakeGuild([M(111, perms=admin_bits), M(222, perms=1 << 4), M(333)])
+    g.add(FakeText(10, g))
+    fake = FakeCore([])
+    fake.orgs_data = [
+        {"org_id": 1, "name": "산돌이", "guild_id": "1", "channel_id": "", "settings": {}}
+    ]
+    fake.org_members_data[1] = [
+        {"discord_user_id": "111"},
+        {"discord_user_id": "222"},
+        {"discord_user_id": None},  # 연결 안 한 사람
+        {"discord_user_id": "999"},  # 서버에 없다
+    ]
+    fake.targets = [target()]
+    run(watcher(fake, tmp_path, guild=g).scan())
+    [(_, body)] = [c for c in fake.calls if c[0] == "member-permissions"]
+    assert body["guild_id"] == "1"
+    assert body["members"] == [
+        {"discord_user_id": "111", "permissions": admin_bits},
+        {"discord_user_id": "222", "permissions": 1 << 4},
+    ]
+
+
+def test_orgs_without_targets_still_report_and_intent_off_reports_nothing(tmp_path):
+    g = FakeGuild([M(111, perms=1 << 5)])
+    fake = FakeCore([])
+    fake.orgs_data = [
+        {"org_id": 1, "name": "산돌이", "guild_id": "1", "channel_id": "", "settings": {}}
+    ]
+    fake.org_members_data[1] = [{"discord_user_id": "111"}]
+    fake.targets = []  # 팀·프로젝트가 아직 없다
+    run(watcher(fake, tmp_path, guild=g).scan())
+    assert [c for c in fake.calls if c[0] == "member-permissions"]
+    fake.calls.clear()
+    run(watcher(fake, tmp_path, intent=False, guild=g).scan())
+    assert not [c for c in fake.calls if c[0] == "member-permissions"]  # 인텐트 꺼짐 = 보고 없음
+
+
+def test_control_unlink_needs_manage_channels_and_goes_through_the_bot_api():
+    g = CtlGuild([M(111)], fetch=with_manage(False))
+    status, _, calls = call(g, "/projects/1/assign", {"org_id": 1, "channel_id": ""})
+    assert status == 403 and not any("/channel" in p for _, p, _ in calls)
+    g = CtlGuild([M(111)], fetch=with_manage(True, roles=False))
+    status, _, calls = call(g, "/projects/1/assign", {"org_id": 1, "channel_id": ""})
+    assert status == 200
+    [(method, path, body)] = [c for c in calls if c[1].endswith("/projects/1/channel")]
+    assert method == "POST" and json.loads(body) == {"discord_user_id": "111", "channel_id": ""}
+    assert not any(m == "PUT" for m, _, _ in calls)  # 사용자 토큰의 REST 해제 경로를 쓰지 않는다

@@ -8,7 +8,14 @@ import discord
 import httpx
 from aiohttp import web
 
-from .channels import can_manage_channels, outsiders_reply, private_overwrites
+from .channels import (
+    NOT_A_ROLE_MANAGER,
+    can_manage_channels,
+    can_manage_roles,
+    outsiders_reply,
+    private_overwrites,
+    record_grants,
+)
 from .watch import viewers_of
 
 
@@ -40,7 +47,9 @@ async def _org(request: web.Request, org_id: int, token: str) -> dict:
     return data
 
 
-async def _manager(request: web.Request, guild: discord.Guild, token: str) -> str:
+async def _manager(
+    request: web.Request, guild: discord.Guild, token: str, roles: bool = False
+) -> str:
     """토큰 주인의 Discord 계정이 이 서버에서 Manage Channels를 가졌는지 본다. 모르면 거절한다(fail closed).
 
     이 검사가 없으면 PM 관리자이지만 Discord 권한은 없는 사람이 MCP(AI)를 통해 봇의 권한을 빌려 쓴다.
@@ -57,6 +66,8 @@ async def _manager(request: web.Request, guild: discord.Guild, token: str) -> st
         raise web.HTTPForbidden(text="Discord 서버에서 사용자의 권한을 확인할 수 없습니다.") from None
     if not can_manage_channels(member):
         raise web.HTTPForbidden(text="Discord 서버에서 채널 관리 권한이 있어야 합니다.")
+    if roles and not can_manage_roles(member):  # 멤버 덮어쓰기를 넣는 일(비공개 생성·자동 관리)
+        raise web.HTTPForbidden(text=NOT_A_ROLE_MANAGER)
     return str(did)
 
 
@@ -127,15 +138,16 @@ async def assign_channel(request: web.Request) -> web.Response:
     org = await _org(request, int(body["org_id"]), token)
     project = _project(org, int(request.match_info["project_id"]))
     guild = _guild(request, org["discord_guild_id"])
-    did = await _manager(request, guild, token)
+    did = await _manager(request, guild, token, roles=body.get("managed") is not None)
     channel_id = str(body.get("channel_id", "")).strip()
-    if not channel_id:  # 연결 해제는 확인할 것이 없다
-        async with _http(request) as http:
-            response = await http.put(
-                f"/api/projects/{project['id']}/discord-channel",
-                json={"channel_id": ""},
-                headers={"Authorization": f"Bearer {token}", "X-Source": "mcp"},
-            )
+    if not channel_id:
+        # 연결 해제: 위에서 서버 권한을 확인했으니 봇 API로 그 사람의 이름으로 해제한다
+        # (사용자 토큰의 REST 경로는 봇 보고값으로 판정해 멤버 인텐트가 꺼지면 거절된다)
+        response = await _bot_post(
+            request,
+            f"/projects/{project['id']}/channel",
+            {"discord_user_id": did, "channel_id": ""},
+        )
         if response.status_code >= 400:
             raise web.HTTPBadRequest(text=response.text[:1000])
         return web.json_response(response.json())
@@ -149,6 +161,7 @@ async def assign_channel(request: web.Request) -> web.Response:
         "/channel-check",
         {
             "discord_user_id": did,
+            "guild_id": str(guild.id),
             "kind": "project",
             "target_id": project["id"],
             "channel_id": str(channel.id),
@@ -179,7 +192,7 @@ async def create_project_channel(request: web.Request) -> web.Response:
     org = await _org(request, int(body["org_id"]), token)
     project = _project(org, int(request.match_info["project_id"]))
     guild = _guild(request, org["discord_guild_id"])
-    did = await _manager(request, guild, token)
+    did = await _manager(request, guild, token, roles=True)
     name = str(body.get("channel_name", "")).strip()
     if not name or len(name) > 100:
         raise web.HTTPBadRequest(text="채널 이름은 1~100자여야 합니다.")
@@ -214,11 +227,12 @@ async def create_project_channel(request: web.Request) -> web.Response:
         mine = next(
             (t for t in listing.json() if t["kind"] == "project" and t["id"] == project["id"]), None
         )
+        overwrites = await private_overwrites(guild, mine["grant_ids"] if mine else [])
         channel = await guild.create_text_channel(
             name,
             category=category,
             topic=f"ProjectManager · {project['name']}",
-            overwrites=await private_overwrites(guild, mine["grant_ids"] if mine else []),
+            overwrites=overwrites,
             reason="ProjectManager 프로젝트 채널(비공개)",
         )
     except httpx.HTTPError:
@@ -241,6 +255,7 @@ async def create_project_channel(request: web.Request) -> web.Response:
         "/channel-check",
         {
             "discord_user_id": did,
+            "guild_id": str(guild.id),
             "kind": "project",
             "target_id": project["id"],
             "channel_id": str(channel.id),
@@ -252,6 +267,7 @@ async def create_project_channel(request: web.Request) -> web.Response:
         if created_category and not created_category.channels:
             await created_category.delete(reason="연결 실패로 빈 카테고리 되돌림")
         raise web.HTTPBadRequest(text=response.text[:1000])
+    record_grants(request.app.get("store"), guild, channel, overwrites)
     return web.json_response(
         {
             "id": project["id"],
@@ -271,6 +287,7 @@ def make_app(
     core_token: str = "",
     members_intent: bool = False,
     transport=None,
+    store=None,
 ) -> web.Application:
     app = web.Application(client_max_size=16 * 1024)
     app["client"] = client
@@ -278,6 +295,7 @@ def make_app(
     app["core_token"] = core_token  # 연결 확인(봇 전용 API)에만 쓴다. 호출자 토큰과 섞지 않는다
     app["members_intent"] = members_intent
     app["transport"] = transport  # 테스트용
+    app["store"] = store  # 생성 때 넣은 멤버 덮어쓰기를 기록한다(grants)
     app.router.add_get("/orgs/{org_id}/channels", list_channels)
     app.router.add_post("/projects/{project_id}/assign", assign_channel)
     app.router.add_post("/orgs/{org_id}/projects/{project_id}/channels", create_project_channel)
@@ -291,8 +309,11 @@ async def start_control_server(
     *,
     core_token: str = "",
     members_intent: bool = False,
+    store=None,
 ) -> web.AppRunner:
-    app = make_app(client, core_url, core_token=core_token, members_intent=members_intent)
+    app = make_app(
+        client, core_url, core_token=core_token, members_intent=members_intent, store=store
+    )
     runner = web.AppRunner(app, access_log=None)
 
     await runner.setup()

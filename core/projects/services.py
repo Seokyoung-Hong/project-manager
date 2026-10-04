@@ -340,7 +340,7 @@ def set_project_channel(project, channel_id: str, actor, *, checked: bool = Fals
     if new != project.discord_channel_id:
         if new and not checked:
             raise ServiceError({"channel_id": CHECK_REQUIRED})
-        clear_alerts(project.discord_channel_id)
+        clear_alerts(project.discord_channel_id, "project", project.pk)
         fields["discord_channel_managed"] = bool(managed)
     elif managed is not None:
         fields["discord_channel_managed"] = managed

@@ -43,6 +43,7 @@ from ..schemas import (
     DiscordExtendIn,
     DiscordGuildReportIn,
     DiscordLinkIn,
+    DiscordMemberPermissionsIn,
     DiscordNoteIn,
     DiscordNoticeAckIn,
     DiscordOrgChannelIn,
@@ -404,6 +405,7 @@ def channel_check(request, payload: DiscordChannelCheckIn):
         allow_outsiders=payload.allow_outsiders,
         managed=payload.managed,
         created=payload.created,
+        guild_id=payload.guild_id,
     )
 
 
@@ -429,7 +431,19 @@ def guild_report(request, payload: DiscordGuildReportIn):
     org = org_discord.org_by_guild(payload.guild_id)
     if org is None:
         raise HttpError(404, "이 서버는 조직에 연결되지 않았습니다.")
-    org_channels.record_guild_report(org, payload.permissions, payload.watching)
+    org_channels.record_guild_report(
+        org, payload.permissions, payload.watching, payload.intent_denied
+    )
+    return {"ok": True}
+
+
+@router.post("/member-permissions", response=dict)
+def member_permissions(request, payload: DiscordMemberPermissionsIn):
+    """연결한 PM 사용자들의 서버 권한 비트. 웹의 Discord 관리 동작이 이 값으로 사용자 권한을 판정한다."""
+    org = org_discord.org_by_guild(payload.guild_id)
+    if org is None:
+        raise HttpError(404, "이 서버는 조직에 연결되지 않았습니다.")
+    org_channels.record_member_permissions(org, payload.members)
     return {"ok": True}
 
 

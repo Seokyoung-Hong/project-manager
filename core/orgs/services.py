@@ -320,7 +320,7 @@ def set_team_channel(team, channel_id: str, actor, *, checked: bool = False, man
     if new != team.discord_channel_id:
         if new and not checked:
             raise ServiceError({"channel_id": CHECK_REQUIRED})
-        clear_alerts(team.discord_channel_id)
+        clear_alerts(team.discord_channel_id, "team", team.pk)
         team.discord_channel_managed = bool(managed)
     elif managed is not None:
         team.discord_channel_managed = managed

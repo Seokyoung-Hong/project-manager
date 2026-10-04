@@ -50,6 +50,7 @@ def org_discord(request, org_id):
             "tab": "discord",
             "rows": channels.overview(org),
             "watching": channels.watching(org),
+            "intent_denied": org.discord_intent_denied,
             "reauthorize": channels.needs_reauthorization(org),
         },
     )

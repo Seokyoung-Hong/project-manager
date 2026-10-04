@@ -263,6 +263,8 @@ class FakeCore:
         if cmd == "channel-alerts":
             self.alert_reports.append(body)
             return httpx.Response(200, json={"ok": True})
+        if cmd == "member-permissions":
+            return httpx.Response(200, json={"ok": True})
         if cmd == "guild-report":
             self.guild_reports.append(body)
             return httpx.Response(200, json={"ok": True})

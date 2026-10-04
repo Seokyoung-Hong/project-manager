@@ -171,7 +171,7 @@ def request_label(r: dict) -> str:
     return f"{r['number']} {r['title']}"
 
 
-def register(tree: app_commands.CommandTree, guild, cfg, core: CoreClient, seen: dict):
+def register(tree: app_commands.CommandTree, guild, cfg, core: CoreClient, seen: dict, store=None):
     """명령을 길드 범위로 등록한다. 동기화(tree.sync)는 listener의 setup_hook이 한다."""
     cache: Cache = {}
 
@@ -431,6 +431,7 @@ def register(tree: app_commands.CommandTree, guild, cfg, core: CoreClient, seen:
                 category,
                 cfg.site_name,
                 create_category,
+                store,
             )
         await send(interaction, reply)
 

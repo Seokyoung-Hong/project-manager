@@ -52,6 +52,7 @@ def bot(client, bot_token):
 def check(bot, team, viewers, **kw):
     body = {
         "discord_user_id": "100",
+        "guild_id": "9001",
         "kind": "team",
         "target_id": team.pk,
         "channel_id": "555",
@@ -59,6 +60,13 @@ def check(bot, team, viewers, **kw):
         **kw,
     }
     return bot("/channel-check", body).json()
+
+
+CHANNELS, ROLES, GUILD, ADMINISTRATOR = 1 << 4, 1 << 28, 1 << 5, 1 << 3
+
+
+def perm(did, bits):
+    return {"discord_user_id": did, "permissions": bits}
 
 
 def v(i, name="x"):
@@ -120,7 +128,13 @@ def test_created_channel_links_managed(linked_org, team, bot):
 
 
 def test_check_requires_org_admin(linked_org, team, bot):
-    body = {"discord_user_id": "111", "kind": "team", "target_id": team.pk, "channel_id": "555"}
+    body = {
+        "discord_user_id": "111",
+        "guild_id": "9001",
+        "kind": "team",
+        "target_id": team.pk,
+        "channel_id": "555",
+    }
     r = bot("/channel-check", {**body, "viewers": []})
     assert r.status_code == 400
     team.refresh_from_db()
@@ -152,6 +166,13 @@ def status_of(uid):
 
 
 @pytest.fixture
+def granted(bot, linked_org, admin):
+    """봇이 admin(Discord 100)의 서버 권한을 보고했다: 채널 관리 + 역할 관리."""
+    bot("/member-permissions", {"guild_id": "9001", "members": [perm("100", CHANNELS | ROLES)]})
+    admin.refresh_from_db()
+
+
+@pytest.fixture
 def linked_team(linked_org, team, bot):
     check(bot, team, [v(111)])
     return team
@@ -176,7 +197,7 @@ def test_open_gone_then_reappear_warns_again(linked_team, bot):
     assert Notice.objects.count() == 2
 
 
-def test_allowed_stays_and_revoke_warns_again(linked_team, bot, admin, linked_org):
+def test_allowed_stays_and_revoke_warns_again(linked_team, bot, admin, linked_org, granted):
     alerts(bot, [v(777)])
     row = DiscordChannelAlert.objects.get(discord_user_id="777")
     ch.resolve(linked_org, row.pk, "allow", admin)
@@ -210,7 +231,7 @@ def test_missing_members_shown_only_when_unmanaged(linked_org, linked_team, bot,
     row = next(r for r in ch.overview(linked_org) if r["kind"] == "team")
     assert [m.display_name for m in row["missing"]] == ["팀원"]
     assert Notice.objects.count() == 0  # 알림은 없다
-    ch.set_managed(linked_org, "team", linked_team.pk, True, admin)
+    type(linked_team).objects.filter(pk=linked_team.pk).update(discord_channel_managed=True)
     row = next(r for r in ch.overview(linked_org) if r["kind"] == "team")
     assert row["missing"] == []
 
@@ -241,7 +262,7 @@ def test_guild_report_marks_reauthorization_and_watching(linked_org, bot):
 # ---------- 웹 ----------
 
 
-def test_web_status_allow_revoke_and_toggle(linked_team, bot, client, admin, linked_org):
+def test_web_status_allow_revoke_and_toggle(linked_team, bot, client, admin, linked_org, granted):
     alerts(bot, [v(777, "외부인")])
     client.force_login(admin)
     url = f"/orgs/{linked_org.pk}/discord"
@@ -255,6 +276,9 @@ def test_web_status_allow_revoke_and_toggle(linked_team, bot, client, admin, lin
     client.post(f"{url}/managed", {"kind": "team", "id": linked_team.pk, "managed": "1"})
     linked_team.refresh_from_db()
     assert linked_team.discord_channel_managed is True
+    client.post(f"{url}/managed", {"kind": "team", "id": linked_team.pk, "managed": "0"})
+    linked_team.refresh_from_db()
+    assert linked_team.discord_channel_managed is False
 
 
 def test_web_is_admin_only_and_install_link_has_new_permissions(
@@ -271,3 +295,149 @@ def test_web_is_admin_only_and_install_link_has_new_permissions(
     )
     ch.record_guild_report(linked_org, 3088, True)
     assert "권한 갱신 필요" in client.get(f"/orgs/{linked_org.pk}/discord").content.decode()
+
+
+# ---------- 결함 수정: 한 채널은 한 대상에만, 깜빡임, 길드 검증, 자동 관리 확인 ----------
+
+
+def test_one_channel_links_to_one_target_only(linked_org, team, project, bot, admin):
+    check(bot, team, [v(111)])
+    body = {
+        "discord_user_id": "100",
+        "guild_id": "9001",
+        "kind": "project",
+        "target_id": project.pk,
+        "channel_id": "555",
+        "created": True,
+    }
+    r = bot("/channel-check", body)
+    assert r.status_code == 400 and "팀 백엔드" in str(r.json())
+    project.refresh_from_db()
+    assert project.discord_channel_id == ""
+
+
+def test_clearing_one_of_legacy_duplicates_keeps_the_others_allowed_list(
+    linked_team, project, linked_org, bot
+):
+    type(project).objects.filter(pk=project.pk).update(discord_channel_id="555")  # 옛 중복 데이터
+    alerts(bot, [v(777)])
+    ch.clear_alerts("555", "project", project.pk)  # 팀이 아직 쓰고 있다
+    assert DiscordChannelAlert.objects.filter(channel_id="555").count() == 1
+    type(project).objects.filter(pk=project.pk).update(discord_channel_id="")
+    ch.clear_alerts("555", "team", linked_team.pk)
+    assert DiscordChannelAlert.objects.count() == 0
+
+
+def test_missing_rows_do_not_flicker(linked_team, bot):
+    alerts(bot, [], missing=[v(111, "팀원")])
+    first = DiscordChannelAlert.objects.get(discord_user_id="111")
+    alerts(bot, [], missing=[v(111, "팀원")])
+    assert DiscordChannelAlert.objects.get(discord_user_id="111").pk == first.pk
+    alerts(bot, [], missing=[])  # 접근을 얻으면 사라진다
+    assert DiscordChannelAlert.objects.count() == 0
+
+
+def test_channel_check_rejects_a_channel_from_another_guild(linked_org, team, bot):
+    r = check(bot, team, [v(111)], guild_id="777")
+    assert r.get("linked") is None  # 400 본문
+    team.refresh_from_db()
+    assert team.discord_channel_id == ""
+
+
+def test_web_discord_actions_check_the_users_server_permissions(
+    linked_team, bot, client, admin, linked_org, member
+):
+    """자동 관리 켜기·끄기, 허용·철회, 서버 연결 해제: PM 관리자 + Discord 서버 권한(fail closed)."""
+    from datetime import timedelta
+
+    from orgs.models import DiscordMemberPermission
+
+    admin.refresh_from_db()
+    alerts(bot, [v(777)])
+    row = DiscordChannelAlert.objects.get(discord_user_id="777")
+
+    def attempts():
+        def toggle():
+            ch.set_managed(linked_org, "team", linked_team.pk, True, admin)
+
+        def allow():
+            ch.resolve(linked_org, row.pk, "allow", admin)
+
+        def unlink():
+            dc.unlink_guild(linked_org, actor=admin)
+
+        return {"managed": toggle, "managed ": allow, "unlink_guild": unlink}
+
+    def refused(fn, text):
+        with pytest.raises(ServiceError) as e:
+            fn()
+        assert text in " ".join(e.value.errors.values())
+
+    # 확인 불가: 보고 없음(멤버 인텐트 꺼짐) → 거절하고 Discord 명령 안내
+    for fn in attempts().values():
+        refused(fn, "명령으로 해 주세요")
+    # Discord 미연결
+    User.objects.filter(pk=admin.pk).update(discord_user_id=None)
+    admin.refresh_from_db()
+    refused(attempts()["managed"], "Discord 계정 연결이 필요")
+    User.objects.filter(pk=admin.pk).update(discord_user_id="100")
+    admin.refresh_from_db()
+    # 권한 부족: 채널 관리만 있으면 자동 관리·허용은 거절(역할 관리도 필요), 서버 관리 없으면 연결 해제 거절
+    bot("/member-permissions", {"guild_id": "9001", "members": [perm("100", CHANNELS)]})
+    refused(attempts()["managed"], "채널 관리, 역할 관리 권한이 필요")
+    refused(attempts()["managed "], "역할 관리")
+    refused(attempts()["unlink_guild"], "서버 관리 권한이 필요")
+    # 오래된 보고
+    DiscordMemberPermission.objects.update(reported_at=timezone.now() - timedelta(minutes=16))
+    refused(attempts()["managed"], "오래됐습니다")
+    # 정상: 채널 관리 + 역할 관리 / 관리자 비트는 전부 통과
+    bot("/member-permissions", {"guild_id": "9001", "members": [perm("100", CHANNELS | ROLES)]})
+    attempts()["managed"]()
+    attempts()["managed "]()
+    assert status_of("777") == "allowed"
+    refused(attempts()["unlink_guild"], "서버 관리 권한이 필요")
+    bot("/member-permissions", {"guild_id": "9001", "members": [perm("100", ADMINISTRATOR)]})
+    attempts()["unlink_guild"]()
+    linked_org.refresh_from_db()
+    assert linked_org.discord_guild_id is None
+
+
+def test_member_permissions_only_for_linked_org_members(linked_org, bot, outsider):
+    User.objects.filter(pk=outsider.pk).update(
+        discord_user_id="999", discord_linked_at=timezone.now()
+    )
+    r = bot(
+        "/member-permissions",
+        {"guild_id": "9001", "members": [perm("999", ADMINISTRATOR), perm("100", ROLES)]},
+    )
+    assert r.status_code == 200
+    from orgs.models import DiscordMemberPermission
+
+    assert [p.permissions for p in DiscordMemberPermission.objects.all()] == [ROLES]
+    assert bot("/member-permissions", {"guild_id": "1", "members": []}).status_code == 404
+
+
+def test_rest_unlink_needs_the_users_discord_permission(
+    linked_team, client, admin, linked_org, project, bot
+):
+    _, raw = ApiToken.issue(admin, "w2", "write")
+    type(project).objects.filter(pk=project.pk).update(discord_channel_id="777")
+
+    def put():
+        return client.put(
+            f"/api/projects/{project.pk}/discord-channel",
+            data={"channel_id": ""},
+            content_type="application/json",
+            headers={"Authorization": f"Bearer {raw}"},
+        )
+
+    r = put()
+    assert r.status_code == 400 and "명령으로" in str(r.json())
+    bot("/member-permissions", {"guild_id": "9001", "members": [perm("100", CHANNELS)]})
+    assert put().status_code == 200
+
+
+def test_guild_report_shows_denied_intent(linked_org, bot, client, admin):
+    bot("/guild-report", {"guild_id": "9001", "permissions": 268504080, "intent_denied": True})
+    client.force_login(admin)
+    assert "서버 멤버 인텐트 꺼짐" in client.get(f"/orgs/{linked_org.pk}/discord").content.decode()

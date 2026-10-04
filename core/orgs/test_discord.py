@@ -64,7 +64,17 @@ def test_changing_guild_drops_the_old_channel(org, admin):
 
 
 def test_unlink_clears_everything(org, admin):
+    from datetime import timedelta  # noqa: F401
+
+    from orgs.models import DiscordMemberPermission
+
     dc.link_guild(org, "9001", actor=admin)
+    User.objects.filter(pk=admin.pk).update(discord_user_id="100", discord_linked_at=timezone.now())
+    admin.refresh_from_db()
+    # 웹의 서버 연결 해제는 사용자의 Discord 서버 권한(서버 관리)을 봇 보고값으로 확인한다
+    DiscordMemberPermission.objects.create(
+        org=org, user=admin, permissions=1 << 5, reported_at=timezone.now()
+    )
     dc.unlink_guild(org, actor=admin)
     org.refresh_from_db()
     assert org.discord_guild_id is None

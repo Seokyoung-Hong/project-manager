@@ -15,7 +15,8 @@ DID = "111"
 def member(manage_channels=True):
     """길드 인터랙션의 user: 역할 권한이 실린 Member (guilds 인텐트만으로 온다)."""
     return SimpleNamespace(
-        id=int(DID), guild_permissions=discord.Permissions(manage_channels=manage_channels)
+        id=int(DID),
+        guild_permissions=discord.Permissions(manage_channels=manage_channels, manage_roles=True),
     )
 
 

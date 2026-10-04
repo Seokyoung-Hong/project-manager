@@ -179,6 +179,7 @@ class CoreClient:
         allow_outsiders: bool = False,
         managed: bool | None = None,
         created: bool = False,
+        guild_id: str = "",
     ) -> dict:
         """채널 연결의 유일한 문. `viewers=None`은 보는 사람을 알 수 없다는 뜻(확인 불가).
         `{"linked": bool, "unknown": bool, "outsiders": [{"id","name"}]}`."""
@@ -193,17 +194,30 @@ class CoreClient:
                 "allow_outsiders": allow_outsiders,
                 "managed": managed,
                 "created": created,
+                "guild_id": guild_id,
             },
         )
 
     def channel_alerts(self, guild_id: str, channels: list[dict]) -> dict:
         return self._bot("/channel-alerts", {"guild_id": guild_id, "channels": channels})
 
-    def guild_report(self, guild_id: str, permissions: int | None, watching: bool) -> dict:
+    def guild_report(
+        self, guild_id: str, permissions: int | None, watching: bool, intent_denied: bool = False
+    ) -> dict:
         return self._bot(
             "/guild-report",
-            {"guild_id": guild_id, "permissions": permissions, "watching": watching},
+            {
+                "guild_id": guild_id,
+                "permissions": permissions,
+                "watching": watching,
+                "intent_denied": intent_denied,
+            },
         )
+
+    def member_permissions(self, guild_id: str, members: list[dict]) -> dict:
+        """Discord를 연결한 PM 사용자들의 서버 권한 비트(`{"discord_user_id", "permissions"}`).
+        core가 웹의 Discord 관리 동작을 판정하는 근거다(15분이 지나면 못 쓴다)."""
+        return self._bot("/member-permissions", {"guild_id": guild_id, "members": members})
 
     # --- 요청(팀·사람에게 보내는 일). 행위자는 연결된 사람 ---
 

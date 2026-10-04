@@ -39,6 +39,8 @@ class Organization(models.Model):
     # 감시 시각이 오래되면 "감시 꺼짐"으로 보인다.
     discord_bot_permissions = models.BigIntegerField(null=True, blank=True)
     discord_watch_at = models.DateTimeField(null=True, blank=True)
+    # 포털에서 Server Members 인텐트가 꺼져 봇이 인텐트 없이 다시 접속했다(감시 꺼짐의 원인).
+    discord_intent_denied = models.BooleanField(default=False)
     discord_linked_by = models.ForeignKey(
         settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
     )
@@ -219,4 +221,22 @@ class DiscordChannelAlert(models.Model):
             models.UniqueConstraint(
                 fields=["channel_id", "discord_user_id"], name="dcalert_channel_user"
             ),
+        ]
+
+
+class DiscordMemberPermission(models.Model):
+    """봇이 보고한 PM 사용자의 Discord 서버 권한 비트(`member.guild_permissions.value`).
+
+    core는 Discord를 부르지 않으므로 웹의 Discord 관리 동작은 이 보고값으로 사용자의 서버 권한을 판정한다.
+    보고가 15분보다 오래됐으면 쓰지 않는다.
+    """
+
+    org = models.ForeignKey(Organization, on_delete=models.CASCADE, related_name="+")
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="+")
+    permissions = models.BigIntegerField()
+    reported_at = models.DateTimeField()
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["org", "user"], name="dcmemberperm_org_user"),
         ]

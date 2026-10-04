@@ -25,7 +25,8 @@
   <p class="row"><strong>권한 갱신 필요</strong> · 봇에 채널 자동 관리에 필요한 권한(역할 관리)이 없습니다.
     <a href="{% url 'discord_connect' org.pk %}">봇 다시 설치(권한 갱신)</a></p>
   {% endif %}
-  {% if not watching %}<p class="muted t13">봇이 채널을 감시하지 않고 있습니다. 서버 멤버 인텐트가 켜졌는지 확인해 주세요(감시 꺼짐).</p>{% endif %}
+  {% if intent_denied %}<p class="row"><strong>서버 멤버 인텐트 꺼짐</strong> · Discord 개발자 포털에서 Server Members Intent를 켜야 감시와 자동 관리가 동작합니다.</p>
+  {% elif not watching %}<p class="muted t13">봇이 채널을 감시하지 않고 있습니다. 서버 멤버 인텐트가 켜졌는지 확인해 주세요(감시 꺼짐). 이 경우 웹에서 자동 관리·허용·철회는 할 수 없고 Discord에서 명령으로 해야 합니다.</p>{% endif %}
   <p class="muted t13">연결과 새 채널 만들기는 이 화면에서 하지 않습니다. Discord에서 <code>/팀채널</code>·<code>/프로젝트채널</code>로 합니다.
     새 채널은 비공개로 만들어지고, 권한 밖 인원이 보이면 조직 관리자에게 DM으로 알립니다.</p>
   <table class="grid">

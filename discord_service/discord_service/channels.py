@@ -22,6 +22,7 @@ log = logging.getLogger(__name__)
 
 NO_PERMISSION = "봇에게 채널 관리 권한이 없습니다. 서버 설정에서 Manage Channels를 주세요."
 NOT_A_MANAGER = "Discord 서버에서 채널 관리 권한이 있어야 합니다."
+NOT_A_ROLE_MANAGER = "비공개 채널 생성과 자동 관리에는 Discord 서버에서 역할 관리(Manage Roles) 권한도 있어야 합니다."
 KIND = {
     "team": ("팀", "teams", "set_team_channel"),
     "project": ("프로젝트", "projects", "set_project_channel"),
@@ -63,6 +64,15 @@ async def private_overwrites(guild, grant_ids) -> dict:
     return ow
 
 
+def record_grants(store, guild, channel, overwrites: dict) -> None:
+    """생성 때 넣은 멤버 덮어쓰기를 봇이 넣은 것으로 기록한다(허용 집합에서 빠지면 조정이 그것만 지운다)."""
+    if store is None:
+        return
+    for target in overwrites:
+        if target is not guild.default_role and target is not guild.me:
+            store.add_grant(str(channel.id), str(target.id))
+
+
 async def connect_existing(
     guild,
     user,
@@ -79,6 +89,8 @@ async def connect_existing(
     """기존 채널을 연결한다. 권한 밖 인원이 있거나 확인 불가면 허용 옵션 없이는 거절한다."""
     if not can_manage_channels(user):
         return NOT_A_MANAGER
+    if managed is not None and not can_manage(user, "managed"):  # 켜기·끄기 모두
+        return NOT_A_ROLE_MANAGER
     if channel.guild.id != guild.id:
         return "현재 Discord 서버의 채널만 연결할 수 있습니다."
     label, list_method, _ = KIND[kind]
@@ -103,6 +115,8 @@ async def connect_existing(
             viewers,
             allow_outsiders,
             managed,
+            False,
+            str(guild.id),
         )
     except httpx.HTTPStatusError as e:
         return _error_reply(e.response)
@@ -117,6 +131,30 @@ async def connect_existing(
     elif res["unknown"]:
         reply += " 채널을 보는 사람은 확인하지 못했습니다."
     return reply
+
+
+# 기능별 필요 Discord 서버 권한. 슬래시는 interaction.user, MCP는 fetch_member로 조회한 멤버로 판정한다
+# (웹은 core의 orgs.channels.NEEDS와 같은 기준을 봇 보고값으로 판정한다). 모르면 거절(fail closed).
+NEEDS = {
+    "channel": ("manage_channels",),  # 채널 연결·생성·해제, /알림채널
+    "managed": ("manage_channels", "manage_roles"),  # 자동 관리 켜기·끄기. 비공개 생성도 멤버 덮어쓰기라 같다
+}
+
+
+def can_manage(user, feature: str) -> bool:
+    try:
+        perms = user.guild_permissions
+        return all(getattr(perms, name) for name in NEEDS[feature])
+    except AttributeError:
+        return False
+
+
+def can_manage_roles(user) -> bool:
+    """멤버 덮어쓰기를 넣는 일(비공개 생성·자동 관리)은 Manage Roles가 있어야 한다. 모르면 False."""
+    try:
+        return bool(user.guild_permissions.manage_roles)
+    except AttributeError:
+        return False
 
 
 def can_manage_channels(user) -> bool:
@@ -140,12 +178,15 @@ async def link_channel(
     category_name,
     site_name: str,
     create_category: bool = False,
+    store=None,
 ) -> str:
     # 가장 먼저, core를 부르기 전에 본다. 이 검사가 없으면 봇이 권한을 대신 빌려주는 꼴이 된다 —
     # Discord에서 채널을 못 만드는 PM 관리자가 봇을 통해 만들게 되고, 봇은 그 사람이 이미 가진
     # Discord 권한보다 더 주면 안 된다.
     if not can_manage_channels(user):
         return NOT_A_MANAGER
+    if not can_manage_roles(user):  # 비공개 채널의 멤버 덮어쓰기는 Manage Roles가 필요하다
+        return NOT_A_ROLE_MANAGER
     label, list_method, set_method = KIND[kind]
     listing = getattr(core, list_method)
     save = getattr(core, set_method)
@@ -218,7 +259,16 @@ async def link_channel(
 
     try:
         await asyncio.to_thread(
-            core.channel_check, uid, kind, item_id, str(channel.id), None, False, True, True
+            core.channel_check,
+            uid,
+            kind,
+            item_id,
+            str(channel.id),
+            None,
+            False,
+            True,
+            True,
+            str(guild.id),
         )
     except Exception as e:  # noqa: BLE001
         log.warning("채널 되적기 실패, 되돌린다: %s", e)
@@ -232,4 +282,5 @@ async def link_channel(
             return f"{reply} 만든 <#{channel.id}> 채널을 지우지도 못했습니다 — 직접 지워 주세요."
         return f"{reply} 만든 채널은 되돌렸습니다."
 
+    record_grants(store, guild, channel, overwrites)
     return f"<#{channel.id}> 비공개 채널을 만들고 {item['name']} {label}에 연결했습니다."
