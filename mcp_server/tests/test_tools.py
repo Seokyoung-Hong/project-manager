@@ -198,6 +198,18 @@ def test_create_task_idempotency_header(fake_core, with_token):
     assert json.loads(content)["priority"] == 5
 
 
+def test_create_team_and_project_forward_new_options(fake_core, with_token):
+    fn("create_team")(1, "마케팅", dev_tools=False, is_private=True)
+    assert last_body(fake_core) == {
+        "name": "마케팅",
+        "purpose": "",
+        "dev_tools": False,
+        "is_private": True,
+    }
+    fn("create_project")(1, "가을 홍보", visibility="teams")
+    assert last_body(fake_core)["visibility"] == "teams"
+
+
 def test_request_tools(fake_core, with_token):
     fn("list_requests")(status="pending")
     assert "box=received" in fake_core.calls[-1][1] and "status=pending" in fake_core.calls[-1][1]

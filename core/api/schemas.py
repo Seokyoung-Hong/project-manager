@@ -32,6 +32,7 @@ class TaskBriefOut(Schema):
     title: str
     project: ProjectBrief
     assignee: UserBrief
+    reviewer: UserBrief | None = None
     status: Status
     priority: int
     due_date: date | None
@@ -453,6 +454,7 @@ class DiscordRequestIn(Schema):
     channel_id: str = ""
     team_id: int | None = None
     to_user_id: int | None = None
+    due_date: date | None = None  # 희망 기한(/요청 기한)
 
 
 class DiscordRequestAnswerIn(Schema):

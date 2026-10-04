@@ -135,7 +135,7 @@ def deadline_alerts(org, today: date) -> list[tuple]:
             assignee__isnull=False,
             due_date__lte=today + timedelta(days=3),
         )
-        .select_related("project", "assignee")
+        .select_related("project", "assignee", "reviewer")
         .order_by("due_date", "id")
     )
     from projects.services import can_view_project

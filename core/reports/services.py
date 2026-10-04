@@ -184,12 +184,12 @@ def weekly(org, week_start: date, *, viewer=None) -> dict:
     def briefs(ids):
         qs = (
             Task.objects.filter(pk__in=ids)
-            .select_related("project", "assignee")
+            .select_related("project", "assignee", "reviewer")
             .order_by("project__name", "id")
         )
         return [task_brief(t) for t in qs]
 
-    open_qs = _open_qs(org, viewer).select_related("project", "assignee")
+    open_qs = _open_qs(org, viewer).select_related("project", "assignee", "reviewer")
     due_this_week = [
         task_brief(t)
         for t in open_qs.filter(due_date__gte=this_monday, due_date__lte=this_sunday).order_by(
@@ -201,19 +201,30 @@ def weekly(org, week_start: date, *, viewer=None) -> dict:
     overdue = [task_brief(t) for t in open_qs.filter(is_overdue).order_by("due_date", "id")]
     blocked = [task_brief(t) for t in open_qs.filter(status="blocked").order_by("id")]
 
-    by_project = []
-    for p in shown:
-        p_ids = set(Task.objects.filter(project=p).values_list("id", flat=True))
-        by_project.append(
-            {
-                "project": {"id": p.pk, "name": p.name, "status": p.status},
-                "completed": len(completed_ids & p_ids),
-                "reopened": len(reopened_ids & p_ids),
-                "open": open_qs.filter(project=p).count(),
-                "overdue": open_qs.filter(is_overdue, project=p).count(),
-                "blocked": open_qs.filter(project=p, status="blocked").count(),
-            }
+    # 프로젝트 수와 무관하게 쿼리 두 번: 바뀐 태스크의 프로젝트, 미완료 집계.
+    project_of = dict(
+        Task.objects.filter(pk__in=completed_ids | reopened_ids).values_list("id", "project_id")
+    )
+    open_by = {
+        r["project_id"]: r
+        for r in open_qs.order_by()
+        .values("project_id")
+        .annotate(
+            open=Count("id"),
+            overdue=Count("id", filter=is_overdue),
+            blocked=Count("id", filter=Q(status="blocked")),
         )
+    }
+    empty = {"open": 0, "overdue": 0, "blocked": 0}
+    by_project = [
+        {
+            "project": {"id": p.pk, "name": p.name, "status": p.status},
+            "completed": sum(1 for i in completed_ids if project_of.get(i) == p.pk),
+            "reopened": sum(1 for i in reopened_ids if project_of.get(i) == p.pk),
+            **{k: open_by.get(p.pk, empty)[k] for k in empty},
+        }
+        for p in shown
+    ]
 
     return {
         "org": {"id": org.pk, "name": org.name},

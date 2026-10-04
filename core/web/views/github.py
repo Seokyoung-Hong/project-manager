@@ -7,7 +7,6 @@ from urllib.parse import urlencode
 
 from django.conf import settings
 from django.contrib import messages
-from django.contrib.auth import login
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
 from django.http import Http404
@@ -16,6 +15,7 @@ from django.urls import reverse
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_POST
 
+from accounts.auth import login_user
 from common.errors import ServiceError
 from github import client
 from github import services as gh_services
@@ -160,7 +160,7 @@ def _finish_login(request, data: dict, info: dict):
         gh_services.sync_repos(identity)
     except (GitHubError, ServiceError):
         pass  # 저장소 목록은 프로필에서 다시 확인할 수 있다. 로그인은 막지 않는다.
-    login(request, identity.user, backend="django.contrib.auth.backends.ModelBackend")
+    login_user(request, identity.user, "github")
     nxt = request.session.pop("gh_login_next", "")
     if created:
         messages.info(request, "가입되었습니다. 조직을 만들거나 초대 링크로 참여하세요.")
@@ -349,18 +349,20 @@ def project_repo(request, project_id):
         gh_services.sync_issues_if_stale(conn)
         ctx["issues"] = conn.issues.filter(state="open")[:50]
         ctx["events"] = conn.events.select_related("task")[:50]
-        team_result = _repo_teams(conn)
-        ctx["repo_teams"] = team_result["teams"]
-        ctx["repo_teams_status"] = team_result["status"]
-        ctx["repo_teams_prompt"] = (
-            f"ProjectManager의 GitHub 접근 팀 조회를 확인해 주세요. 저장소: {conn.full_name}. "
-            f"조회 결과: {team_result['status']}. "
-            "GET /repos/{owner}/{repo}/teams는 Repository Administration 읽기 권한이 필요합니다. "
-            "현재 앱의 권한, 설치 승인 상태, 저장소 선택 범위와 조직 정책을 확인하고, "
-            "권한을 유지할 때의 대안과 읽기 권한을 추가할 때의 절차를 설명해 주세요. "
-            "HTTP 상태만으로 원인을 단정하지 말아 주세요. 토큰이나 개인키는 공유하지 않겠습니다."
-        )
         ctx["open_tasks"] = project.tasks.filter(status__in=Task.OPEN).order_by("-id")[:50]
+        # 개인 계정 저장소에는 팀이 없다. 조회하지 않고 화면에서도 접근 팀 칸을 숨긴다.
+        if not ctx["user_install"]:
+            team_result = _repo_teams(conn)
+            ctx["repo_teams"] = team_result["teams"]
+            ctx["repo_teams_status"] = team_result["status"]
+            ctx["repo_teams_prompt"] = (
+                f"ProjectManager의 GitHub 접근 팀 조회를 확인해 주세요. 저장소: {conn.full_name}. "
+                f"조회 결과: {team_result['status']}. "
+                "GET /repos/{owner}/{repo}/teams는 Repository Administration 읽기 권한이 필요합니다. "
+                "현재 앱의 권한, 설치 승인 상태, 저장소 선택 범위와 조직 정책을 확인하고, "
+                "권한을 유지할 때의 대안과 읽기 권한을 추가할 때의 절차를 설명해 주세요. "
+                "HTTP 상태만으로 원인을 단정하지 말아 주세요. 토큰이나 개인키는 공유하지 않겠습니다."
+            )
     return render(request, "projects/repo.html", ctx)
 
 
@@ -551,8 +553,10 @@ def repo_event_link(request, project_id, event_id):
     if task is None:
         messages.error(request, "연결할 태스크를 고르세요.")
     else:
-        event.task = task
-        event.save(update_fields=["task"])
+        try:
+            gh_services.link_event(event, task, actor=request.user)
+        except ServiceError as e:
+            messages.error(request, " ".join(e.errors.values()))
     return redirect("project_repo", project_id=project.pk)
 
 

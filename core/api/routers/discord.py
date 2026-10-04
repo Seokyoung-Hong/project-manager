@@ -510,6 +510,7 @@ def create_request(request, payload: DiscordRequestIn):
         team=team,
         to_user=to_user,
         posted_in=payload.channel_id,
+        due_date=payload.due_date,
     )
     out = request_out(req)
     # 명령을 친 채널이 받는 팀의 채널일 때만 봇이 거기 공개로 알린다(다른 채널에 새지 않게).

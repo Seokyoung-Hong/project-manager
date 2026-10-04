@@ -808,3 +808,114 @@ def test_org_install_confirms_before_connecting_shared_repo(
         f"/projects/{p2.pk}/repo", {"url": "https://github.com/o/r", "confirm_shared": "1"}
     )
     assert r.status_code == 302 and RepoConnection.objects.filter(project=p2).exists()
+
+
+# ---------- 라운드 7 J: 마무리 ----------
+
+
+def test_connect_repo_turns_dev_tools_on_and_keeps_it_after_disconnect(gh, project, admin):
+    project.settings = {"project.dev_tools": False}
+    project.save(update_fields=["settings"])
+    GitHubIdentity.objects.create(user=admin, github_id=5, login="a", repos=["o/r"])
+    admin.refresh_from_db()
+    ghs.connect_repo(project=project, url="https://github.com/o/r.git", actor=admin)
+    ghs.disconnect_repo(project=project, actor=admin)
+    project.refresh_from_db()
+    assert project.settings["project.dev_tools"] is True and project.dev_tools is True
+
+
+def test_github_login_resolves_identity_and_keeps_inactive_message(gh, member):
+    GitHubIdentity.objects.create(user=member, github_id=5, login="old")
+    identity, created = ghs.login_with_github({"id": 5, "login": "new"}, {})
+    assert identity.user == member and not created and identity.login == "new"
+    member.is_active = False
+    member.save(update_fields=["is_active"])
+    with pytest.raises(ServiceError) as e:
+        ghs.login_with_github({"id": 5, "login": "new"}, {})
+    assert "비활성" in e.value.errors["github"]
+    assert GitHubIdentity.objects.count() == 1  # 비활성 사람 대신 새 계정을 만들지 않는다
+    _, created = ghs.login_with_github({"id": 6, "login": "newbie"}, {})
+    assert created
+
+
+def test_github_finish_login_records_auth_method(gh, member, monkeypatch):
+    from django.contrib.auth.models import AnonymousUser
+    from django.contrib.messages.storage.fallback import FallbackStorage
+    from django.contrib.sessions.backends.db import SessionStore
+    from django.test import RequestFactory
+
+    from web.views.github import _finish_login
+
+    GitHubIdentity.objects.create(user=member, github_id=5, login="m")
+    monkeypatch.setattr(ghs, "sync_repos", lambda identity: None)
+    request = RequestFactory().get("/")
+    request.session, request.user = SessionStore(), AnonymousUser()
+    request._messages = FallbackStorage(request)
+    _finish_login(request, {}, {"id": 5, "login": "m"})
+    assert request.session["auth_method"] == "github" and request.user == member
+
+
+def _org_conn(org, admin, project):
+    GitHubInstallation.objects.create(
+        org=org,
+        installation_id=7,
+        account_login="o",
+        account_type="Organization",
+        installed_by=admin,
+    )
+    GitHubIdentity.objects.create(
+        user=admin, github_id=5, login="a", repos=["o/r"], repos_checked_at=timezone.now()
+    )
+    return RepoConnection.objects.create(
+        project=project, url="https://github.com/o/r", full_name="o/r", created_by=admin
+    )
+
+
+def test_org_install_can_toggle_auto_import_on_web(gh, client, org, admin, project, monkeypatch):
+    conn = _org_conn(org, admin, project)
+    monkeypatch.setattr("web.views.github._repo_teams", lambda c: {"teams": [], "status": "ok"})
+    monkeypatch.setattr(ghs, "sync_issues_if_stale", lambda c: None)
+    body = _login(client).get(f"/projects/{project.pk}/repo").content.decode()
+    assert 'name="auto_import"' in body and "접근 팀" in body
+    client.post(f"/projects/{project.pk}/repo/settings", {"auto_import": "on"})
+    conn.refresh_from_db()
+    assert conn.auto_import is True
+    client.post(f"/projects/{project.pk}/repo/settings", {})
+    conn.refresh_from_db()
+    assert conn.auto_import is False
+
+
+def test_user_install_repo_tab_hides_team_table(gh, client, org, admin, project, fake_user_github):
+    _user_install(org, admin)
+    admin.github.repos = ["solo-dev/app"]
+    admin.github.save(update_fields=["repos"])
+    RepoConnection.objects.create(
+        project=project,
+        url="https://github.com/solo-dev/app",
+        full_name="solo-dev/app",
+        created_by=admin,
+    )
+    body = _login(client).get(f"/projects/{project.pk}/repo").content.decode()
+    assert "접근 팀" not in body and "Collaborators" in body
+    assert not [p for _, p in fake_user_github if p.endswith("/teams")]  # 조회도 하지 않는다
+
+
+def test_repo_event_link_needs_settings_level(
+    gh, client, org, admin, member, project, task, monkeypatch
+):
+    conn = _org_conn(org, admin, project)
+    monkeypatch.setattr(ghs, "sync_issues_if_stale", lambda c: None)
+    GitHubIdentity.objects.create(
+        user=member, github_id=6, login="m", repos=["o/r"], repos_checked_at=timezone.now()
+    )
+    event = GitEvent.objects.create(
+        connection=conn, delivery_id="d1", occurred_at=timezone.now(), kind="push", summary="c"
+    )
+    url = f"/projects/{project.pk}/repo/events/{event.pk}/link"
+    client.login(username="member1", password="pw12345678")
+    client.post(url, {"task_id": task.pk})
+    event.refresh_from_db()
+    assert event.task_id is None  # 프로젝트 관리자가 아니다(project.settings_by = owner)
+    _login(client).post(url, {"task_id": task.pk})
+    event.refresh_from_db()
+    assert event.task_id == task.pk

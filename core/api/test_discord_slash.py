@@ -239,6 +239,23 @@ def test_request_in_team_channel_goes_to_that_team(post, client, bot_token, team
     assert r.json()["task"]["assignee"]["id"] == r.json()["request"]["requested_by"]["id"]
 
 
+def test_request_due_date_is_saved(post, team):
+    team.discord_channel_id = "555"
+    team.save()
+    due = (today_kst() + timedelta(days=7)).isoformat()
+    r = post("/requests", {"title": "시안", "channel_id": "555", "due_date": due})
+    assert r.status_code == 200 and str(r.json()["request"]["due_date"]) == due
+
+
+def test_open_tasks_list_carries_reviewer(client, org, task, admin):
+    task.reviewer = admin
+    task.save(update_fields=["reviewer"])
+    _, raw = ApiToken.issue(admin, "t", "read", for_ai=False)
+    h = {"Authorization": f"Bearer {raw}"}
+    items = client.get(f"/api/orgs/{org.pk}/tasks", headers=h).json()["items"]
+    assert items[0]["reviewer"]["id"] == admin.pk  # 검토 독촉이 검토자에게 먼저 보낸다
+
+
 def test_request_without_team_channel_is_400(post, member):
     assert post("/requests", {"title": "x", "channel_id": "nope"}).status_code == 400
 

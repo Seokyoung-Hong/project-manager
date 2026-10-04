@@ -306,10 +306,12 @@ def create_project(
     team_ids: list[int] | None = None,
     status: str = "preparing",
     dev_tools: bool | None = None,
+    visibility: str = "org",
 ) -> dict:
     """프로젝트를 만든다. 조직·관리자·팀 id는 목록에서 확인한다.
     dev_tools는 개발 도구(GitHub·API 문서) 사용 여부다. 비우면 조직 기본값을 따르고,
-    홍보·디자인처럼 코드가 없는 프로젝트는 false로 만든다."""
+    홍보·디자인처럼 코드가 없는 프로젝트는 false로 만든다.
+    visibility: org(조직 전체, 기본) | teams(관리자·담당 팀만 봄, 조직 관리자만 지정)."""
     return _core().post(
         "/api/projects",
         {
@@ -320,6 +322,7 @@ def create_project(
             "team_ids": team_ids or [],
             "status": status,
             "dev_tools": dev_tools,
+            "visibility": visibility,
         },
     )
 
@@ -976,9 +979,15 @@ def list_teams(org_id: int) -> list[dict]:
 
 
 @mcp.tool()
-def create_team(org_id: int, name: str, purpose: str = "") -> dict:
-    """팀을 만든다. 조직 관리자 토큰만 가능. 팀은 가시성 경계가 아니라 사람 묶음이다."""
-    return _core().post(f"/api/orgs/{org_id}/teams", {"name": name, "purpose": purpose})
+def create_team(
+    org_id: int, name: str, purpose: str = "", dev_tools: bool = True, is_private: bool = False
+) -> dict:
+    """팀을 만든다. 조직 관리자 토큰만 가능.
+    dev_tools=false는 비개발 팀(GitHub 연동 화면을 숨김). is_private=true면 팀 화면을 팀원·관리자만 본다."""
+    return _core().post(
+        f"/api/orgs/{org_id}/teams",
+        {"name": name, "purpose": purpose, "dev_tools": dev_tools, "is_private": is_private},
+    )
 
 
 @mcp.tool()

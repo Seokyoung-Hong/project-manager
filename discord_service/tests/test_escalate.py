@@ -86,6 +86,19 @@ def test_review_nudge_uses_its_own_threshold(store, fake_bot, bot):
     assert "검토 대기" in fake_bot.dm("555")[0]
 
 
+def test_review_nudge_goes_to_reviewer_first_then_owners_for_the_rest(store, fake_bot, bot):
+    reviewed = task(1, "2026-09-01", status="review", stopped_at="2026-09-01")
+    reviewed["reviewer"] = member(7, "777", "검토자")
+    plain = task(2, "2026-09-01", status="review", stopped_at="2026-09-01")
+    fake = FakeCore([reviewed, plain])
+    fake.project_owners_data[1] = [OWNER]
+    r = run_escalations(make_core(fake), bot, store, 1, TODAY, review_days=5)
+    assert r["sent"] == 2
+    to_reviewer, to_owner = fake_bot.dm("777"), fake_bot.dm("555")
+    assert "TASK-1" in to_reviewer[0] and "TASK-2" not in to_reviewer[0]
+    assert "TASK-2" in to_owner[0] and "TASK-1" not in to_owner[0]
+
+
 def test_escalation_message_has_title_due_status_link(store, fake_bot, bot):
     fake = FakeCore(
         [task(1, "2026-09-12", status="blocked", stop_reason="서류 대기", stopped_at="2026-09-01")]

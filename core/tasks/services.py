@@ -208,7 +208,7 @@ def _apply(task, expected_version: int, fields: dict):
 def visible_tasks(user):
     """user가 볼 수 있는 태스크 queryset (볼 수 있는 프로젝트 범위)."""
     return Task.objects.filter(project__in=visible_projects(user)).select_related(
-        "project", "project__org", "assignee"
+        "project", "project__org", "assignee", "reviewer"
     )
 
 
@@ -928,7 +928,7 @@ def today_view(user, day: date | None = None) -> dict:
         i.task
         for i in today_items(user, day)
         .filter(excluded=False)
-        .select_related("task__project__org", "task__assignee")
+        .select_related("task__project__org", "task__assignee", "task__reviewer")
         .order_by("position", "id")
     ]
     # 조직에서 빠진 뒤에도 담당으로 남은 태스크가 새는 것을 막는다(다른 읽기 경로와 같은 범위).

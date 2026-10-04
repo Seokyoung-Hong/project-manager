@@ -134,6 +134,17 @@ def test_request_to_a_person_stays_private():
     assert [e for _, e in i.sent] == [True]
 
 
+def test_request_due_goes_to_core_and_bad_date_is_refused():
+    core = ReqCore()
+    i = FakeInteraction()
+    run(_cmd(_tree(core), "요청").callback(i, title="시안", due="2026-10-20"))
+    assert core.created["due_date"] == "2026-10-20"
+    core.created = None
+    j = FakeInteraction()
+    run(_cmd(_tree(core), "요청").callback(j, title="시안", due="다음주"))
+    assert core.created is None and "날짜" in j.reply
+
+
 def test_accept_autocompletes_only_pending_and_projects_by_typed_number():
     core = ReqCore()
     tree = _tree(core)
