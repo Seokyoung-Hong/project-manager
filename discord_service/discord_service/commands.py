@@ -128,17 +128,23 @@ def extend_reply(core: CoreClient, did: str, num: int, due: date, reason: str) -
     return f"{_head(t)} — 목표일을 {t['due_date']}로 미뤘습니다."
 
 
+def _pending(t: dict) -> str:
+    """팀원이 남에게 맡긴 태스크는 받는 사람이 수락해야 바뀐다."""
+    p = t.get("pending_assignee")
+    return f"\n{p['display_name']}님 수락 대기" if p else ""
+
+
 def create_reply(core: CoreClient, did: str, fields: dict) -> str:
     t = core.create_task(did, fields)["task"]
     due = t["due_date"] or "기한 미정"
-    return f"{_head(t)} 을(를) 만들었습니다 — {t['project']['name']} · {due}\n{t['url']}"
+    return f"{_head(t)} 을(를) 만들었습니다 — {t['project']['name']} · {due}\n{t['url']}{_pending(t)}"
 
 
 def update_reply(core: CoreClient, did: str, num: int, changes: dict) -> str:
     if not changes:
         return "바꿀 항목을 하나 이상 넣어 주세요."
     t = core.update_task(did, num, changes)["task"]
-    return f"{_head(t)} — 수정했습니다.\n{t['url']}"
+    return f"{_head(t)} — 수정했습니다.\n{t['url']}{_pending(t)}"
 
 
 def set_org_channel_reply(core: CoreClient, did: str, guild_id: str, channel_id: str) -> str:
@@ -156,6 +162,54 @@ def status_reply(core: CoreClient, did: str, num: int, status: str, reason: str)
     r = core.status(did, num, status, reason)
     label = STATUS.get(status, status)
     return f"{_head(r['task'])} — {r['was']} → {label}(으)로 바꿨습니다."
+
+
+# --- 요청. 번호는 REQ-N이고 core 경로는 id다 ---
+
+
+def _rhead(r: dict) -> str:
+    return f"**{r['number']}** {r['title']}"
+
+
+def request_reply(core: CoreClient, did: str, fields: dict) -> tuple[str, str | None]:
+    """(요청자에게 보이는 답, 팀 채널에 공개할 안내). 사람에게 보낸 요청은 공개하지 않는다."""
+    r = core.create_request(did, fields)
+    to = r["to_user"]["display_name"] if r["to_user"] else r["team"]["name"]
+    private = f"{_rhead(r)} 요청을 {to}에게 보냈습니다.\n{r['url']}"
+    if r["to_user"] or not r["team"]:
+        return private, None
+    public = (
+        f"📨 {_rhead(r)} — {r['kind_label']} 요청 · 요청자 {r['requested_by']['display_name']}"
+        f" → {r['team']['name']} 팀\n받을 수 있는 분은 `/요청수락` 에서 {r['number']} 을(를) 골라 주세요."
+    )
+    return private, public
+
+
+def accept_request_reply(core: CoreClient, did: str, rid: int, fields: dict) -> str:
+    out = core.accept_request(did, rid, fields)
+    r, t = out["request"], out.get("task")
+    tail = f"\n{_head(t)}\n{t['url']}{_pending(t)}" if t else ""
+    return f"{_rhead(r)} 요청을 수락했습니다.{tail}"
+
+
+def decline_request_reply(core: CoreClient, did: str, rid: int, note: str) -> str:
+    return f"{_rhead(core.decline_request(did, rid, note))} 요청을 거절했습니다."
+
+
+def done_request_reply(core: CoreClient, did: str, rid: int, note: str) -> str:
+    return f"{_rhead(core.done_request(did, rid, note))} 요청을 완료로 처리했습니다."
+
+
+def request_list_reply(core: CoreClient, did: str) -> str:
+    mine = core.my_requests(did)
+    if not (mine["received"] or mine["sent"]):
+        return "대기 중인 요청이 없습니다."
+    parts = []
+    for title, rows in (("받은 요청", mine["received"]), ("보낸 요청", mine["sent"])):
+        if rows:
+            lines = [f"• {_rhead(r)} — {r['status_label']}\n  {r['url']}" for r in rows[:15]]
+            parts.append(f"{title} {len(rows)}건\n" + "\n".join(lines))
+    return "\n\n".join(parts)
 
 
 def _error_reply(r: httpx.Response) -> str:

@@ -176,6 +176,30 @@ def _run_channels_job(core, bot, store, org, day, since, results):
         log.exception("channels_post job failed (org=%s)", org_id)
 
 
+def deliver_notices(core: CoreClient, bot: Bot) -> int:
+    """core 발송함의 알림을 보낸다. 실패해도 ack한다 — 안 하면 같은 알림이 매 틱 되풀이된다."""
+    try:
+        notices = core.notices()
+    except Exception:  # noqa: BLE001
+        log.warning("알림 발송함을 못 읽었다, 이번 틱은 건너뛴다")
+        return 0
+    for n in notices:
+        try:
+            if n.get("discord_user_id"):
+                bot.send_dm(n["discord_user_id"], n["text"])
+            elif n.get("channel_id"):
+                bot.send_channel(n["text"], n["channel_id"])
+            # 둘 다 없으면 받을 사람이 그새 연결을 끊었다. 기본 채널로 새면 안 되므로 버린다.
+        except Exception:  # noqa: BLE001
+            log.exception("알림 발송 실패(id=%s), ack하고 넘어간다", n.get("id"))
+    if notices:
+        try:
+            core.ack_notices([n["id"] for n in notices])
+        except Exception:  # noqa: BLE001
+            log.exception("알림 ack 실패, 다음 틱에 다시 보낸다")
+    return len(notices)
+
+
 def tick(
     cfg: Config,
     core: CoreClient,
@@ -193,6 +217,7 @@ def tick(
     # channels_post의 폴링 창. 60초 틱에 여유를 조금 둬 경계에서 사건을 놓치지 않는다.
     since = (now - timedelta(seconds=90)).isoformat()
 
+    deliver_notices(core, bot)  # 조직 목록이 안 읽혀도 요청 알림은 나간다
     try:
         orgs = cache.orgs(core)
     except Exception:  # noqa: BLE001

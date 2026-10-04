@@ -24,13 +24,18 @@ from .channels import NOT_A_MANAGER, can_manage_channels, link_channel
 from .commands import (
     BAD_DATE,
     TOO_FAST,
+    accept_request_reply,
     create_reply,
+    decline_request_reply,
     done_reply,
+    done_request_reply,
     extend_reply,
     guarded,
     link_reply,
     note_reply,
     parse_date,
+    request_list_reply,
+    request_reply,
     set_org_channel_reply,
     status_reply,
     today_reply,
@@ -58,14 +63,18 @@ Cache = dict[tuple[str, str], tuple[float, list[dict]]]
 
 
 async def cached(core: CoreClient, cache: Cache, uid: str, kind: str) -> list[dict]:
-    """kind = projects | teams | members | mytasks. 실패는 전부 빈 목록 — 오류를 목록에 넣지 않는다."""
+    """kind = projects | teams | members | mytasks | received_requests | request_projects:<요청 id>.
+
+    실패는 전부 빈 목록 — 오류를 목록에 넣지 않는다."""
+    name, *args = kind.split(":")
+    args = [int(a) for a in args]
     now = time.monotonic()
     hit = cache.get((uid, kind))
     if hit and hit[0] > now:
         return hit[1]
     try:
         items = await asyncio.wait_for(
-            asyncio.to_thread(getattr(core, kind), uid), timeout=AUTOCOMPLETE_TIMEOUT
+            asyncio.to_thread(getattr(core, name), uid, *args), timeout=AUTOCOMPLETE_TIMEOUT
         )
     except httpx.HTTPStatusError:
         items = []  # 미연결(404)·비멤버. 같은 사람이 계속 타자해도 30초에 한 번만 묻는다
@@ -135,6 +144,33 @@ def _update(core, uid, number, title, due, priority, assignee, next_action):
     return update_reply(core, uid, number, changes)
 
 
+def _request(core, uid, title, body, kind, team, to_user, channel_id):
+    fields = {"title": title, "body": body, "kind": kind, "channel_id": channel_id}
+    if team is not None:
+        fields["team_id"] = team
+    if to_user is not None:
+        fields["to_user_id"] = to_user
+    return request_reply(core, uid, fields)
+
+
+def _accept(core, uid, rid, project, assignee, due, note):
+    fields = {"note": note}
+    if project is not None:
+        fields["project_id"] = project
+    if assignee is not None:
+        fields["assignee_id"] = assignee
+    if due is not None:
+        d = parse_date(due)
+        if d is None:
+            return BAD_DATE
+        fields["due_date"] = d.isoformat()
+    return accept_request_reply(core, uid, rid, fields)
+
+
+def request_label(r: dict) -> str:
+    return f"{r['number']} {r['title']}"
+
+
 def register(tree: app_commands.CommandTree, guild, cfg, core: CoreClient, seen: dict):
     """명령을 길드 범위로 등록한다. 동기화(tree.sync)는 listener의 setup_hook이 한다."""
     cache: Cache = {}
@@ -169,6 +205,24 @@ def register(tree: app_commands.CommandTree, guild, cfg, core: CoreClient, seen:
     async def ac_member(interaction: discord.Interaction, current: str):
         items = await cached(core, cache, str(interaction.user.id), "members")
         return choices(items, current, lambda m: m["display_name"])
+
+    async def ac_received(interaction: discord.Interaction, current: str, status: str):
+        items = await cached(core, cache, str(interaction.user.id), "received_requests")
+        return choices([r for r in items if r["status"] == status], current, request_label)
+
+    async def ac_request_pending(interaction: discord.Interaction, current: str):
+        return await ac_received(interaction, current, "pending")
+
+    async def ac_request_accepted(interaction: discord.Interaction, current: str):
+        return await ac_received(interaction, current, "accepted")
+
+    async def ac_request_project(interaction: discord.Interaction, current: str):
+        rid = getattr(interaction.namespace, "number", None)  # 앞에서 고른 요청 id
+        if not isinstance(rid, int):
+            return []
+        kind = f"request_projects:{rid}"
+        items = await cached(core, cache, str(interaction.user.id), kind)
+        return choices(items, current, lambda p: p["name"])
 
     # --- A단계: 기존 DM 명령의 이식 ---
 
@@ -272,6 +326,80 @@ def register(tree: app_commands.CommandTree, guild, cfg, core: CoreClient, seen:
         interaction: discord.Interaction, number: int, status: Choice[str], reason: str = ""
     ):
         await respond(interaction, status_reply, number, status.value, reason)
+
+    # --- 요청: 팀·사람에게 일을 부탁한다 ---
+
+    @tree.command(name="요청", description="팀이나 사람에게 일을 요청합니다", guild=guild)
+    @app_commands.rename(title="제목", body="내용", kind="종류", team="팀", to_user="대상")
+    @app_commands.describe(
+        body="요청 내용",
+        kind="작업(태스크가 됩니다) 또는 일반 (기본 작업)",
+        team="받을 팀 (생략하면 이 채널의 팀)",
+        to_user="특정 사람에게 보낼 때",
+    )
+    @app_commands.choices(
+        kind=[Choice(name="작업", value="work"), Choice(name="일반", value="general")]
+    )
+    @app_commands.autocomplete(team=ac_team, to_user=ac_member)
+    async def request(
+        interaction: discord.Interaction,
+        title: str,
+        body: str = "",
+        kind: Choice[str] | None = None,
+        team: int | None = None,
+        to_user: int | None = None,
+    ):
+        await interaction.response.defer(ephemeral=True)
+        uid = str(interaction.user.id)
+        if too_fast(seen, uid, time.monotonic()):
+            await send(interaction, TOO_FAST)
+            return
+        channel_id = str(interaction.channel.id) if interaction.channel else ""
+        out = await asyncio.to_thread(
+            guarded, _request, core, uid, title, body, kind.value if kind else "work",
+            team, to_user, channel_id,
+        )
+        private, public = (out, None) if isinstance(out, str) else out
+        await send(interaction, private)
+        if public:  # 팀이 보도록 채널에 공개한다. 첫 followup은 위 비공개 답이 차지한다
+            await interaction.followup.send(public, allowed_mentions=NO_MENTION)
+
+    @tree.command(name="요청수락", description="받은 요청을 수락합니다", guild=guild)
+    @app_commands.rename(number="번호", project="프로젝트", assignee="담당자", due="기한", note="메모")
+    @app_commands.describe(
+        number="요청 (입력하면 대기 중인 목록이 뜹니다)",
+        project="작업 요청은 필수 (번호를 먼저 고르세요)",
+        assignee="담당자 (생략하면 나)",
+        due="YYYY-MM-DD",
+    )
+    @app_commands.autocomplete(
+        number=ac_request_pending, project=ac_request_project, assignee=ac_member
+    )
+    async def accept(
+        interaction: discord.Interaction,
+        number: int,
+        project: int | None = None,
+        assignee: int | None = None,
+        due: str | None = None,
+        note: str = "",
+    ):
+        await respond(interaction, _accept, number, project, assignee, due, note)
+
+    @tree.command(name="요청거절", description="받은 요청을 거절합니다", guild=guild)
+    @app_commands.rename(number="번호", note="사유")
+    @app_commands.autocomplete(number=ac_request_pending)
+    async def decline(interaction: discord.Interaction, number: int, note: str):
+        await respond(interaction, decline_request_reply, number, note)
+
+    @tree.command(name="요청완료", description="수락한 일반 요청을 완료합니다", guild=guild)
+    @app_commands.rename(number="번호", note="메모")
+    @app_commands.autocomplete(number=ac_request_accepted)
+    async def finish(interaction: discord.Interaction, number: int, note: str = ""):
+        await respond(interaction, done_request_reply, number, note)
+
+    @tree.command(name="요청목록", description="대기 중인 받은·보낸 요청 (나에게만 보입니다)", guild=guild)
+    async def request_list(interaction: discord.Interaction):
+        await respond(interaction, request_list_reply)
 
     # --- C단계: 채널 생성 (조직 관리자) ---
 

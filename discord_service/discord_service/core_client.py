@@ -160,6 +160,44 @@ class CoreClient:
             {"discord_user_id": did, "channel_id": channel_id},
         )
 
+    # --- 요청(팀·사람에게 보내는 일). 행위자는 연결된 사람 ---
+
+    def create_request(self, did: str, fields: dict) -> dict:
+        return self._bot("/requests", {"discord_user_id": did, **fields})["request"]
+
+    def my_requests(self, did: str) -> dict:
+        """`{"received": [...], "sent": [...]}`. received = 내가 답할 대기 + 내가 끝낼 수락한 일반 요청."""
+        return self._bot("/requests/mine", {"discord_user_id": did})
+
+    def received_requests(self, did: str) -> list[dict]:
+        return self.my_requests(did)["received"]
+
+    def request_projects(self, did: str, request_id: int) -> list[dict]:
+        return self._bot(f"/requests/{request_id}/projects", {"discord_user_id": did})
+
+    def accept_request(self, did: str, request_id: int, fields: dict) -> dict:
+        return self._bot(f"/requests/{request_id}/accept", {"discord_user_id": did, **fields})
+
+    def decline_request(self, did: str, request_id: int, note: str) -> dict:
+        return self._bot(f"/requests/{request_id}/decline", {"discord_user_id": did, "note": note})[
+            "request"
+        ]
+
+    def done_request(self, did: str, request_id: int, note: str) -> dict:
+        return self._bot(f"/requests/{request_id}/done", {"discord_user_id": did, "note": note})[
+            "request"
+        ]
+
+    # --- 알림 발송함. 행위자 없이 봇 토큰으로 ---
+
+    def notices(self) -> list[dict]:
+        r = self.http.get("/api/integrations/discord/notices")
+        r.raise_for_status()
+        return r.json()
+
+    def ack_notices(self, ids: list[int]) -> dict:
+        return self._bot("/notices/ack", {"ids": ids})
+
     def report_status(self, ok: bool, detail: dict):
         try:
             self.http.post("/api/integrations/discord/status", json={"ok": ok, "detail": detail})
