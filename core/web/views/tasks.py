@@ -80,7 +80,7 @@ def _panel_ctx(request, task, **extra):
         "checklist": checklist,
         "checklist_done": sum(1 for i in checklist if i.is_done),
         "links": task.links.all(),
-        "link_form": LinkForm(),
+        "link_form": LinkForm(dev_tools=task.project.dev_tools),
         "notes": task.meeting_notes.all(),
         "org_notes": task.project.org.notes.all(),
         # _refs.html은 패널 최초 렌더(_panel_ctx)와 조각 갱신(_refs) 양쪽에서 쓰인다.
@@ -109,7 +109,8 @@ def _panel_ctx(request, task, **extra):
         "extend_error": None,
         "extend_open": False,
     }
-    ctx.update(_git_ctx(request, task))
+    if task.project.dev_tools:  # 비개발 프로젝트는 GitHub 조회(repo_state)를 하지 않는다
+        ctx.update(_git_ctx(request, task))
     ctx.update(extra)
     return ctx
 
@@ -380,7 +381,9 @@ def _refs(request, task, error=None, link_form=None):
         {
             "task": task,
             "links": task.links.all(),
-            "link_form": link_form if link_form is not None else LinkForm(),
+            "link_form": link_form
+            if link_form is not None
+            else LinkForm(dev_tools=task.project.dev_tools),
             "notes": task.meeting_notes.all(),
             "org_notes": task.project.org.notes.all(),
             "docs": task.docs.all(),
@@ -396,7 +399,7 @@ def _refs(request, task, error=None, link_form=None):
 @require_POST
 def link_add(request, task_id):
     task = task_or_404(request.user, task_id)
-    form = LinkForm(request.POST)
+    form = LinkForm(request.POST, dev_tools=task.project.dev_tools)
     if not form.is_valid():
         return _refs(request, task, error="표시된 입력 오류를 고쳐 주세요.", link_form=form)
     d = form.cleaned_data

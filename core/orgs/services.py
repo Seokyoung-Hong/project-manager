@@ -357,7 +357,7 @@ def set_team_channel(team, channel_id: str, actor, *, checked: bool = False, man
 
 
 def set_governance(org, text: str, actor) -> Organization:
-    """조직의 개발 거버넌스 본문 교체. 비우면 기본안으로 되돌아간다."""
+    """조직의 업무 거버넌스 본문 교체. 비우면 기본안으로 되돌아간다."""
     require_admin(actor, org)
     text = (text or "").strip()
     if len(text) > 20000:

@@ -86,6 +86,9 @@ class ProjectForm(forms.Form):
     )
     status = forms.ChoiceField(label="상태", choices=Project.STATUSES, initial="preparing")
     version = forms.IntegerField(widget=forms.HiddenInput, required=False)
+    # 생성 대화상자에서만 그린다. 수정은 설정 탭(project.dev_tools)과 GitHub 탭이 맡는다.
+    dev_tools = forms.BooleanField(label="개발 도구 사용", required=False)
+    repo_url = forms.CharField(label="GitHub 저장소", max_length=300, required=False)
 
     def __init__(self, *args, org, **kwargs):
         super().__init__(*args, **kwargs)
@@ -101,15 +104,20 @@ class TaskInlineForm(forms.Form):
     priority = forms.TypedChoiceField(choices=PRIORITY_CHOICES, coerce=int, initial=5)
     due_date = forms.DateField(required=False, widget=forms.DateInput(attrs={"type": "date"}))
     no_due_reason = forms.CharField(max_length=200, required=False)
+    # 필수 여부는 services.create_task가 task.require_done_when으로 판단한다. 폼은 칸만 연다.
+    done_when = forms.CharField(label="완료 조건", max_length=300, required=False)
     # IdempotencyKey.key는 varchar(100)이다. 클라이언트가 보내는 값이므로 폼에서 막는다.
     idem = forms.CharField(widget=forms.HiddenInput, required=False, max_length=100)
 
     def __init__(self, *args, org, project=None, **kwargs):
+        from orgs.settings import effective
+
         super().__init__(*args, **kwargs)
         self.fields["assignee"].queryset = org.members.filter(is_active=True).order_by(
             "display_name"
         )
         self.suggested_due_date = suggested_due_date(org=org, project=project)
+        self.require_done_when = effective("task.require_done_when", org=org, project=project)
 
 
 class QuickTaskForm(forms.Form):
@@ -120,6 +128,7 @@ class QuickTaskForm(forms.Form):
     priority = forms.TypedChoiceField(choices=PRIORITY_CHOICES, coerce=int, initial=5)
     due_date = forms.DateField(required=False, widget=forms.DateInput(attrs={"type": "date"}))
     no_due_reason = forms.CharField(max_length=200, required=False)
+    done_when = forms.CharField(label="완료 조건", max_length=300, required=False)
     # IdempotencyKey.key는 varchar(100)이다. 클라이언트가 보내는 값이므로 폼에서 막는다.
     idem = forms.CharField(widget=forms.HiddenInput, required=False, max_length=100)
 
@@ -133,18 +142,30 @@ class QuickTaskForm(forms.Form):
             .order_by("org__name", "name")
         )
         # 선택한 프로젝트의 설정에 맞는 제안을 제공한다. 날짜 입력은 사용자가 결정한다.
+        from orgs.settings import effective
+
+        self.require_done_when = False
         for project in self.fields["project"].queryset:
             project.suggested_due_date = suggested_due_date(org=project.org, project=project)
+            # ponytail: 프로젝트별로 칸을 켜고 끄지 않고, 하나라도 요구하면 칸을 연다.
+            if effective("task.require_done_when", org=project.org, project=project):
+                self.require_done_when = True
 
 
 class LinkForm(forms.Form):
     title = forms.CharField(label="제목", max_length=100)
     url = forms.URLField(label="URL", max_length=500)
-    kind = forms.ChoiceField(
-        label="종류",
-        choices=[(c, label) for c, label in Link.KINDS if c in ("doc", "issue", "dash", "other")],
-        initial="doc",
-    )
+    kind = forms.ChoiceField(label="종류", initial="doc")
+
+    def __init__(self, *args, dev_tools: bool = True, **kwargs):
+        super().__init__(*args, **kwargs)
+        # 비개발 프로젝트에는 "이슈" 종류를 보이지 않는다. PR·저장소는 GitHub 연결이 붙인다.
+        kinds = (
+            ("doc", "out", "issue", "dash", "other")
+            if dev_tools
+            else ("doc", "out", "dash", "other")
+        )
+        self.fields["kind"].choices = [(c, label) for c, label in Link.KINDS if c in kinds]
 
 
 class ProfileForm(forms.Form):

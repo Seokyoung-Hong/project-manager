@@ -8,6 +8,7 @@
     <label class="field">목표일<input class="input" type="date" name="due_date" value="{{ form.due_date.value|default:'' }}">{% if form.suggested_due_date %}<span class="muted t13">설정에 따른 제안: {{ form.suggested_due_date }} (월~금 기준)</span><button type="button" class="btn sm" onclick="this.closest('label').querySelector('input').value='{{ form.suggested_due_date }}'">제안한 목표일 사용</button>{% endif %}</label>
   </div>
   <label class="field">목표일 미정 사유 (목표일이 없을 때만)<input class="input" name="no_due_reason" value="{{ form.no_due_reason.value|default:'' }}"></label>
+  {% if form.require_done_when %}<label class="field">완료 조건 (필수)<input class="input" name="done_when" maxlength="300" value="{{ form.done_when.value|default:'' }}" placeholder="무엇을 보면 끝났다고 할 수 있나요?" required></label>{% endif %}
   {% for e in form.non_field_errors %}<div class="error">{{ e }}</div>{% endfor %}
   {% for f in form %}{% for e in f.errors %}<div class="error">{{ f.label }}: {{ e }}</div>{% endfor %}{% endfor %}
   <div class="row">

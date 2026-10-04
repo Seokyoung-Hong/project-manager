@@ -5,8 +5,8 @@
 <nav class="tabs" aria-label="프로젝트 메뉴">
   <a href="{% url 'project_detail' project.pk %}" {% if tab == "tasks" %}aria-current="page"{% endif %}>태스크</a>
   <a href="{% url 'project_docs' project.pk %}" {% if tab == "docs" %}aria-current="page"{% endif %}>문서</a>
-  <a href="{% url 'project_api' project.pk %}" {% if tab == "api" %}aria-current="page"{% endif %}>API 문서</a>
+  {% if project.dev_tools %}<a href="{% url 'project_api' project.pk %}" {% if tab == "api" %}aria-current="page"{% endif %}>API 문서</a>{% endif %}
   {% if github_enabled and project.repo %}<a href="{% url 'project_issues' project.pk %}" {% if tab == "issues" %}aria-current="page"{% endif %}>이슈</a>{% endif %}
-  {% if github_enabled %}<a href="{% url 'project_repo' project.pk %}" {% if tab == "repo" %}aria-current="page"{% endif %}>GitHub</a>{% endif %}
+  {% if github_enabled and project.dev_tools %}<a href="{% url 'project_repo' project.pk %}" {% if tab == "repo" %}aria-current="page"{% endif %}>GitHub</a>{% endif %}
   <a href="{% url 'project_settings' project.pk %}" {% if tab == "settings" %}aria-current="page"{% endif %}>설정</a>
 </nav>

@@ -44,5 +44,5 @@
     <button class="btn sm primary">외부 링크 추가</button>
   </form>
   {% if error %}<div class="error">{{ error }}</div>{% endif %}
-  <p class="muted t13">PR·커밋은 저장소 연결이 자동으로 붙입니다. 여기에는 이 프로젝트의 문서, 조직의 회의록, 앱이 모르는 외부 주소를 연결합니다.</p>
+  <p class="muted t13">{% if task.project.dev_tools %}PR·커밋은 저장소 연결이 자동으로 붙입니다. {% endif %}여기에는 이 프로젝트의 문서, 조직의 회의록, 앱이 모르는 외부 주소를 연결합니다.</p>
 </div>

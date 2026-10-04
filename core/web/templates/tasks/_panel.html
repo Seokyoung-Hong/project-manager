@@ -95,7 +95,7 @@
                   hx-post="{% url 'task_text' task.pk 'notes' %}" hx-trigger="change, keyup changed delay:600ms" hx-swap="none">{{ task.notes }}</textarea>
         <span class="muted t13">진행 메모는 입력을 멈춘 뒤 0.6초 후 또는 다른 칸으로 이동할 때 자동 저장됩니다. 저장 완료 표시를 확인하세요.</span>
       </label>
-      {% if github_enabled %}<details class="git-fold"><summary>GitHub · {{ gh_summary }}</summary>{% include "tasks/_git.html" %}</details>{% endif %}
+      {% if github_enabled and task.project.dev_tools %}<details class="git-fold"><summary>GitHub · {{ gh_summary }}</summary>{% include "tasks/_git.html" %}</details>{% endif %}
       <div id="refs">{% include "tasks/_refs.html" %}</div>
       <details><summary>변경 이력 {{ history|length }}</summary>{% include "tasks/_history.html" %}</details>
       <details><summary>더보기</summary>

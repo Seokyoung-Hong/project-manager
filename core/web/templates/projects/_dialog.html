@@ -16,6 +16,14 @@
     <legend>상태</legend>
     <div class="radios">{% for code, label, desc in status_options %}<label class="radio-card"><input type="radio" name="status" value="{{ code }}"{% if code == status_value %} checked{% endif %}><b>{{ label }}</b><span>{{ desc }}</span></label>{% endfor %}</div>
   </fieldset>
+  {% if not project %}
+  <label class="row"><input type="checkbox" name="dev_tools"{% if form.dev_tools.value %} checked{% endif %}> 개발 도구 사용 <span class="muted t13">끄면 GitHub·API 문서 탭을 숨깁니다.</span></label>
+  {% if repo_input %}
+  <label class="field">GitHub 저장소(선택)<input class="input" name="repo_url" value="{{ form.repo_url.value|default:'' }}" placeholder="https://github.com/owner/repo.git"{% if org_repos %} list="new-project-repos"{% endif %}></label>
+  {% if org_repos %}<datalist id="new-project-repos">{% for r in org_repos %}<option value="{{ r.clone_url }}">{{ r.full_name }}</option>{% endfor %}</datalist>{% endif %}
+  <p class="muted t13">저장소를 입력하면 개발 도구가 켜집니다.</p>
+  {% endif %}
+  {% endif %}
   {% for e in form.non_field_errors %}<div class="error">{{ e }}</div>{% endfor %}
   {% for f in form %}{% for e in f.errors %}<div class="error">{{ f.label }}: {{ e }}</div>{% endfor %}{% endfor %}
   <div class="row">

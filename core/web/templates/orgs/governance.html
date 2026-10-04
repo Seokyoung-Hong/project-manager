@@ -1,4 +1,4 @@
-{% extends "base.html" %}{% block title %}개발 거버넌스{% endblock %}
+{% extends "base.html" %}{% block title %}업무 거버넌스{% endblock %}
 {% block main %}
 {% include "orgs/_tabs.html" %}
 {% include "orgs/_pending_requests.html" %}
@@ -16,7 +16,7 @@
 {% endif %}
 <section class="card">
   <div class="card-head">
-    <h2>개발 거버넌스</h2>
+    <h2>업무 거버넌스</h2>
     <span class="badge{% if is_default %}{% else %} primary{% endif %}">{% if is_default %}기본안{% else %}우리 조직 규칙{% endif %}</span>
   </div>
   <p class="muted t13">

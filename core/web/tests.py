@@ -1211,7 +1211,7 @@ def test_panel_survives_changelog_without_actor(logged, task):
 def test_governance_page(client, org, admin, member):
     client.force_login(admin)
     r = client.get(f"/orgs/{org.pk}/governance")
-    assert r.status_code == 200 and "개발 거버넌스" in r.content.decode()
+    assert r.status_code == 200 and "업무 거버넌스" in r.content.decode()
     assert client.post(f"/orgs/{org.pk}/governance", {"text": "# 우리 규칙"}).status_code == 302
     org.refresh_from_db()
     assert org.governance == "# 우리 규칙"
@@ -1795,3 +1795,167 @@ def test_ops_lists_and_releases_locks(client, member, admin):
     assert "admin1" not in client.get("/ops").content.decode()
     client.post("/logout")
     assert _login(client, username="admin1").status_code == 302
+
+
+# ---------- 비개발 프로젝트(project.dev_tools) — IMPL-PLAN-7 F1·F2 ----------
+
+
+@pytest.fixture
+def gh_on(settings, monkeypatch):
+    """GitHub 기능을 켜고 repo_state가 몇 번 불렸는지 센다(실제 GitHub는 부르지 않는다)."""
+    settings.GITHUB_ENABLED = True
+    calls = []
+
+    def fake_repo_state(user, project):
+        calls.append(project.pk)
+        return {"state": "none"}
+
+    monkeypatch.setattr("web.views.tasks.repo_state", fake_repo_state)
+    return calls
+
+
+def _dev_off(project):
+    project.settings = {"project.dev_tools": False}
+    project.save()
+
+
+def test_dev_tools_off_hides_github_and_api(logged, project, task, gh_on):
+    _dev_off(project)
+    body = logged.get(f"/projects/{project.pk}").content.decode()
+    assert f"/projects/{project.pk}/repo" not in body
+    assert f"/projects/{project.pk}/api" not in body
+    assert '<option value="issue"' not in body and '<option value="out"' in body
+    panel = logged.get(f"/tasks/{task.pk}/panel", headers=HX).content.decode()
+    assert "git-fold" not in panel
+    assert "PR·커밋은 저장소 연결이" not in panel
+    assert gh_on == []  # 비개발 프로젝트 패널은 GitHub 상태를 조회하지 않는다
+
+
+def test_dev_tools_on_shows_github(logged, project, task, gh_on):
+    body = logged.get(f"/projects/{project.pk}").content.decode()
+    assert f"/projects/{project.pk}/repo" in body
+    assert f"/projects/{project.pk}/api" in body
+    panel = logged.get(f"/tasks/{task.pk}/panel", headers=HX).content.decode()
+    assert "git-fold" in panel
+    assert gh_on == [project.pk]
+
+
+def test_repo_forces_dev_tools_tabs(logged, project, task, gh_on):
+    from github.models import RepoConnection
+
+    _dev_off(project)
+    RepoConnection.objects.create(
+        project=project,
+        url="https://github.com/o/r.git",
+        full_name="o/r",
+        created_by=project.created_by,
+    )
+    body = logged.get(f"/projects/{project.pk}").content.decode()
+    assert f"/projects/{project.pk}/repo" in body
+
+
+def test_project_dialog_dev_tools_checkbox(client, org, admin):
+    client.force_login(admin)
+    body = client.get(f"/projects/new?org={org.pk}", headers=HX).content.decode()
+    assert 'name="dev_tools" checked' in body  # 조직 기본값(켬)
+    assert 'name="repo_url"' not in body  # GitHub 꺼짐·계정 미연결이면 저장소 입력 없음
+    r = client.post(
+        "/projects/new", {"org": org.pk, "name": "홍보", "status": "active"}, headers=HX
+    )
+    assert r.status_code == 204
+    from projects.models import Project
+
+    assert Project.objects.get(name="홍보").dev_tools is False
+    r = client.post(
+        "/projects/new",
+        {"org": org.pk, "name": "앱", "status": "active", "dev_tools": "on"},
+        headers=HX,
+    )
+    assert Project.objects.get(name="앱").settings == {}
+
+
+def test_project_new_with_repo_url(client, org, admin, settings, monkeypatch):
+    from common.errors import ServiceError
+    from projects.models import Project
+
+    settings.GITHUB_ENABLED = True
+    seen = []
+
+    def ok(**kw):
+        seen.append(kw)
+
+    monkeypatch.setattr("web.views.projects.gh_services.connect_repo", ok)
+    client.force_login(admin)
+    r = client.post(
+        "/projects/new",
+        {"org": org.pk, "name": "서버", "status": "active", "repo_url": "https://github.com/o/r"},
+        headers=HX,
+    )
+    p = Project.objects.get(name="서버")
+    assert r.headers["HX-Redirect"] == f"/projects/{p.pk}"
+    assert seen[0]["url"] == "https://github.com/o/r" and seen[0]["confirm_shared"] is False
+    assert p.settings == {}  # 저장소를 입력하면 체크하지 않아도 개발 도구가 켜진다
+
+    def fail(**kw):
+        raise ServiceError({"url": "그 저장소에 접근할 수 없습니다."})
+
+    monkeypatch.setattr("web.views.projects.gh_services.connect_repo", fail)
+    r = client.post(
+        "/projects/new",
+        {"org": org.pk, "name": "서버2", "status": "active", "repo_url": "https://github.com/o/x"},
+        headers=HX,
+    )
+    p = Project.objects.get(name="서버2")  # 프로젝트는 만들어진다
+    assert r.headers["HX-Redirect"] == f"/projects/{p.pk}/repo"
+
+
+def test_task_link_out_kind(logged, task):
+    r = logged.post(
+        f"/tasks/{task.pk}/links",
+        {"kind": "out", "title": "게시물", "url": "https://instagram.com/p/1"},
+        headers=HX,
+    )
+    assert r.status_code == 200
+    assert task.links.get().kind == "out"
+
+
+def test_governance_default_is_generic(client, org, admin):
+    client.force_login(admin)
+    body = client.get(f"/orgs/{org.pk}/governance").content.decode()
+    assert "업무 거버넌스" in body and "비개발 프로젝트" in body
+
+
+# ---------- 완료 조건 필수일 때 웹 생성 폼(SPEC-FUNCTIONAL 부록 A) ----------
+
+
+def _require_done_when(org):
+    org.settings = {"task.require_done_when": True}
+    org.save()
+
+
+def test_inline_task_form_done_when_required(logged, org, project, member):
+    assert 'name="done_when"' not in logged.get(f"/projects/{project.pk}").content.decode()
+    _require_done_when(org)
+    assert 'name="done_when"' in logged.get(f"/projects/{project.pk}").content.decode()
+    data = {
+        "title": "카드뉴스",
+        "assignee": member.pk,
+        "priority": 5,
+        "no_due_reason": "미정",
+    }
+    r = logged.post(f"/projects/{project.pk}/tasks", data, headers=HX)
+    assert r.status_code == 200 and "완료 조건을 입력해야 합니다" in r.content.decode()
+    r = logged.post(f"/projects/{project.pk}/tasks", {**data, "done_when": "게시 링크"}, headers=HX)
+    assert r.status_code == 204
+    assert Task.objects.get(title="카드뉴스").done_when == "게시 링크"
+
+
+def test_quick_add_done_when_required(logged, org, project, member):
+    _require_done_when(org)
+    assert 'name="done_when"' in logged.get("/today").content.decode()
+    data = {"title": "빠른 카드뉴스", "project": project.pk, "priority": 5, "no_due_reason": "미정"}
+    r = logged.post("/today/quick", data, headers=HX)
+    assert r.status_code == 200 and "완료 조건을 입력해야 합니다" in r.content.decode()
+    r = logged.post("/today/quick", {**data, "done_when": "게시 링크"}, headers=HX)
+    assert r.status_code == 204
+    assert Task.objects.get(title="빠른 카드뉴스").done_when == "게시 링크"

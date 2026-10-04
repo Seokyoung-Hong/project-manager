@@ -108,6 +108,7 @@ def create_project_ep(request, payload: ProjectCreateIn):
         owners=_owners(payload.owner_ids),
         teams=_teams(payload.team_ids),
         status=payload.status,
+        dev_tools=payload.dev_tools,
         **ctx(request),
     )
     return 201, project_out(p)
