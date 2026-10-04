@@ -1,3 +1,5 @@
+from datetime import date, timedelta
+
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
@@ -5,6 +7,7 @@ from django.shortcuts import redirect, render
 from django.urls import reverse
 from django.views.decorators.http import require_POST
 
+from common.dates import today_kst
 from common.errors import ConflictError, ServiceError
 from github import services as gh_services
 from github.client import GitHubError
@@ -42,6 +45,7 @@ from .common import (
     org_or_404,
     project_or_404,
     rows_for,
+    week_days,
 )
 
 BOARD_OPEN = ["todo", "doing", "review", "blocked", "paused"]
@@ -211,12 +215,57 @@ def project_edit(request, project_id):
     return _dialog(request, form, project.org, project)
 
 
+def calendar_context(request, project) -> dict:
+    """월간 달력. ?month=YYYY-MM. 태스크 기한(완료·취소는 흐리게) + 마일스톤 목표일."""
+    raw = request.GET.get("month", "")
+    try:
+        month = date.fromisoformat(f"{raw}-01") if raw else today_kst().replace(day=1)
+    except ValueError:
+        month = today_kst().replace(day=1)
+    cells = week_days(month)
+    last = cells[-1]
+    tasks, miles = {}, {}
+    for t in project.tasks.filter(due_date__range=(month, last)).select_related("assignee"):
+        tasks.setdefault(t.due_date, []).append(t)
+    for m in project.milestones.filter(target_date__range=(month, last)):
+        miles.setdefault(m.target_date, []).append(m)
+    for v in tasks.values():
+        v.sort(key=lambda t: (t.status not in Task.OPEN, t.priority, t.pk))
+    while len(cells) % 7:
+        cells.append(None)
+    prev_m = (month - timedelta(days=1)).replace(day=1)
+    next_m = (last + timedelta(days=1)).replace(day=1) if last < date.max else month
+    this_m = today_kst().replace(day=1)
+    return {
+        "cal_title": f"{month.year}년 {month.month}월",
+        "cal_prev": f"{prev_m:%Y-%m}",
+        "cal_next": f"{next_m:%Y-%m}",
+        "cal_this": f"{this_m:%Y-%m}" if month != this_m else "",
+        "cal_today": today_kst(),
+        "open_statuses": Task.OPEN,
+        "cal_cells": [
+            {"d": d, "tasks": tasks.get(d, []), "miles": miles.get(d, [])} if d else None
+            for d in cells
+        ],
+    }
+
+
+@login_required
+def project_calendar(request, project_id):
+    """달력 조각(HTMX 월 이동)."""
+    project = project_or_404(request.user, project_id)
+    ctx = {"project": project, "view": "calendar", **calendar_context(request, project)}
+    return render(request, "projects/calendar.html", ctx)
+
+
 @login_required
 def project_detail(request, project_id, *, link_form=None):
     project = project_or_404(request.user, project_id)
     request.session["org_id"] = project.org_id
     request.session["project_id"] = project.pk
-    view = "board" if request.GET.get("view") == "board" else "list"
+    view = request.GET.get("view")
+    if view not in ("list", "board", "calendar"):
+        view = effective("project.default_view", org=project.org, project=project)
     include_closed = request.GET.get("include_closed") == "1"
     if request.GET.get("part") == "board":
         return render(
@@ -242,6 +291,8 @@ def project_detail(request, project_id, *, link_form=None):
     }
     if view == "board":
         ctx.update(board_context(request, project, include_closed))
+    elif view == "calendar":
+        ctx.update(calendar_context(request, project))
     else:
         qs = project.tasks.select_related("project", "assignee")
         if not include_closed:

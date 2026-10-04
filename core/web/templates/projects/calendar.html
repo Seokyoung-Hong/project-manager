@@ -1,0 +1,22 @@
+<div id="project-calendar" class="pcal">
+  <div class="row schedule-actions" style="gap:4px;margin-bottom:8px">
+    <a class="btn sm icon" href="?view=calendar&amp;month={{ cal_prev }}" hx-get="{% url 'project_calendar' project.pk %}?month={{ cal_prev }}" hx-target="#project-calendar" hx-swap="outerHTML" hx-push-url="?view=calendar&amp;month={{ cal_prev }}" aria-label="이전 달" title="이전 달">‹</a>
+    <span class="t13" style="min-width:96px;text-align:center;font-weight:600">{{ cal_title }}</span>
+    <a class="btn sm icon" href="?view=calendar&amp;month={{ cal_next }}" hx-get="{% url 'project_calendar' project.pk %}?month={{ cal_next }}" hx-target="#project-calendar" hx-swap="outerHTML" hx-push-url="?view=calendar&amp;month={{ cal_next }}" aria-label="다음 달" title="다음 달">›</a>
+    {% if cal_this %}<a class="btn sm" href="?view=calendar" hx-get="{% url 'project_calendar' project.pk %}" hx-target="#project-calendar" hx-swap="outerHTML" hx-push-url="?view=calendar">이번 달</a>{% endif %}
+  </div>
+  <div class="pcal-grid">
+    {% for w in "월화수목금토일" %}<span class="muted t12 pcal-dow">{{ w }}</span>{% endfor %}
+    {% for c in cal_cells %}
+      {% if c %}
+      <div class="pcal-cell{% if c.d == cal_today %} today{% endif %}{% if not c.tasks and not c.miles %} empty{% endif %}">
+        <span class="pcal-day t12">{{ c.d.day }}<span class="pcal-wd">일</span></span>
+        {% for m in c.miles %}<span class="pcal-ms t12" title="마일스톤 · {{ m.status_label }}">◆ {{ m.name }}</span>{% endfor %}
+        {% for t in c.tasks %}
+        <button type="button" class="pcal-task t12{% if t.status not in open_statuses %} closed{% endif %}" hx-get="{% url 'task_panel' t.pk %}" hx-target="#panel" hx-swap="innerHTML" hx-push-url="{% url 'task_detail' t.pk %}" title="{{ t.title }}"><span class="badge">{{ t.status_label }}</span> {{ t.title }}</button>
+        {% endfor %}
+      </div>
+      {% else %}<span class="pcal-blank"></span>{% endif %}
+    {% endfor %}
+  </div>
+</div>

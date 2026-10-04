@@ -962,3 +962,22 @@ ul.tasks > .task-row:only-child { border-radius: 8px; }
 @media (prefers-reduced-motion: reduce) {
   .task-row, .task-row [data-copy], .caret, .filter-chevron { transition: none; }
 }
+
+/* 프로젝트 달력 */
+.pcal-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
+.pcal-dow { text-align: center; }
+.pcal-cell { min-height: 96px; padding: 4px; border: 1px solid var(--border); border-radius: 6px; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.pcal-cell.today { border-color: var(--primary); background: var(--primary-bg); }
+.pcal-day { color: var(--text-secondary); }
+.pcal-wd { display: none; }
+.pcal-ms { color: var(--primary); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pcal-task { all: unset; box-sizing: border-box; cursor: pointer; padding: 2px 4px; border-radius: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pcal-task:hover, .pcal-task:focus-visible { background: var(--bg-secondary); outline: 1px solid var(--primary); }
+.pcal-task.closed { opacity: .5; text-decoration: line-through; }
+@media (max-width: 720px) {
+  .pcal-grid { display: flex; flex-direction: column; }
+  .pcal-dow, .pcal-blank, .pcal-cell.empty { display: none; }
+  .pcal-cell { min-height: 0; }
+  .pcal-wd { display: inline; }
+  .pcal-task, .pcal-ms { white-space: normal; }
+}

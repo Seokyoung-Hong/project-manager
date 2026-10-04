@@ -33,14 +33,17 @@
     <div class="row" role="group" aria-label="보기">
       <a class="btn sm" href="?view=list{% if include_closed %}&include_closed=1{% endif %}" aria-pressed="{% if view == 'list' %}true{% else %}false{% endif %}">목록</a>
       <a class="btn sm" href="?view=board{% if include_closed %}&include_closed=1{% endif %}" aria-pressed="{% if view == 'board' %}true{% else %}false{% endif %}">보드</a>
+      <a class="btn sm" href="?view=calendar" aria-pressed="{% if view == 'calendar' %}true{% else %}false{% endif %}">달력</a>
     </div>
-    <div class="row">
+    {% if view != 'calendar' %}<div class="row">
       <form method="get" class="row"><input type="hidden" name="view" value="{{ view }}">
         <label class="check muted t13"><input type="checkbox" name="include_closed" value="1"{% if include_closed %} checked{% endif %} onchange="this.form.requestSubmit()"> 완료·취소 포함</label>
       </form>
-    </div>
+    </div>{% endif %}
   </div>
-  {% if view == 'board' %}
+  {% if view == 'calendar' %}
+  {% include "projects/calendar.html" %}
+  {% elif view == 'board' %}
   {% include "projects/_board.html" %}
   {% else %}
   <ul class="tasks">{% for r in rows %}{% task_row r %}{% empty %}<li class="muted">태스크가 없습니다.</li>{% endfor %}</ul>
