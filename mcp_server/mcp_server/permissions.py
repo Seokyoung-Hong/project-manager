@@ -34,6 +34,7 @@ NEEDS: dict[str, str] = {
     "export_portfolio_markdown": "read",
     "get_task_github": "read",
     "get_task_history": "read",
+    "list_attachments": "read",
     "create_task": "write",
     "duplicate_task": "write",
     "update_task": "write",
