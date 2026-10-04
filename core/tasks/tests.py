@@ -914,10 +914,10 @@ def test_cancel_reason_required(task, member, org):
 def test_assignee_change_reason_required(task, member, admin, org):
     _set(org, **{"task.assignee_change_reason": True})
     with pytest.raises(ServiceError) as e:
-        update_task(task, {"assignee": admin}, actor=member, source="web", expected_version=1)
+        update_task(task, {"assignee": admin}, actor=admin, source="web", expected_version=1)
     assert "reason" in e.value.errors
     t = update_task(
-        task, {"assignee": admin}, actor=member, source="web", reason="휴가", expected_version=1
+        task, {"assignee": admin}, actor=admin, source="web", reason="휴가", expected_version=1
     )
     assert t.assignee == admin
     assert _logs(t, "assignee").last().note == "휴가"
@@ -984,7 +984,7 @@ def test_ai_change_assignee_deny(task, member, admin, org):
     _set(org, **{"ai.change_assignee": "deny"})
     with pytest.raises(ServiceError):
         update_task(task, {"assignee": admin}, actor=member, source="mcp", expected_version=1)
-    t = update_task(task, {"assignee": admin}, actor=member, source="web", expected_version=1)
+    t = update_task(task, {"assignee": admin}, actor=admin, source="web", expected_version=1)
     assert t.assignee == admin
 
 
@@ -1128,5 +1128,5 @@ def test_default_settings_regression_full_lifecycle(project, member, admin):
     assert t.status == "done"
     t = transition(t, "todo", actor=member, source="web", expected_version=t.version)
     assert t.status == "todo"
-    t = update_task(t, {"assignee": admin}, actor=member, source="web", expected_version=t.version)
+    t = update_task(t, {"assignee": admin}, actor=admin, source="web", expected_version=t.version)
     assert t.assignee == admin

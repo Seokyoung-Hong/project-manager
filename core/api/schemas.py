@@ -83,6 +83,7 @@ class TaskOut(TaskBriefOut):
     links: list[LinkOut]
     # 걸린 참고 문서. 본문은 /projects/{project_id}/docs/{id}에서 읽는다.
     docs: list[DocBrief]
+    pending_assignee: UserBrief | None = None
 
 
 class TaskCreateIn(Schema):

@@ -1,0 +1,168 @@
+import pytest
+from django.utils import timezone
+
+from accounts.models import User
+from common.errors import ServiceError
+from orgs.models import OrgMembership
+from orgs.services import add_team_member, create_team, set_team_lead
+from tasks import work_requests as wr
+from tasks.models import Notice, WorkRequest
+from tasks.services import create_task, update_task
+
+
+@pytest.fixture
+def mate(org):
+    """디스코드를 연결한 두 번째 팀원."""
+    u = User.objects.create_user(
+        "mate",
+        password="pw12345678",
+        display_name="동료",
+        discord_user_id="222",
+        discord_linked_at=timezone.now(),
+    )
+    OrgMembership.objects.create(org=org, user=u, role="member")
+    return u
+
+
+@pytest.fixture
+def squad(org, admin, member, mate):
+    t = create_team(org=org, name="프론트", actor=admin)
+    add_team_member(t, member, admin)
+    add_team_member(t, mate, admin)
+    return t
+
+
+def _task(project, actor, assignee=None):
+    return create_task(
+        project=project,
+        title="화면 고치기",
+        actor=actor,
+        assignee=assignee,
+        source="web",
+        no_due_reason="미정",
+    )
+
+
+def test_member_assigning_someone_else_becomes_request(project, member, mate):
+    t = _task(project, member, assignee=mate)
+    assert t.assignee == member  # 수락 전까지는 만든 사람이 맡는다
+    req = WorkRequest.objects.get(kind="assign", task=t)
+    assert (req.to_user, req.status) == (mate, "pending")
+    assert Notice.objects.filter(user=mate).count() == 1
+
+    wr.accept(req, mate, source="web")
+    t.refresh_from_db()
+    assert t.assignee == mate
+    assert Notice.objects.filter(user=member).exists()  # 요청자에게 결과 알림
+
+
+def test_decline_keeps_assignee(project, member, mate):
+    t = _task(project, member)
+    update_task(t, {"assignee": mate}, actor=member, source="web", expected_version=t.version)
+    req = WorkRequest.objects.get(kind="assign", task=t)
+    with pytest.raises(ServiceError):
+        wr.accept(req, member, source="web")  # 받는 사람만 답한다
+    wr.decline(req, mate, "이번 주는 어렵습니다")
+    t.refresh_from_db()
+    assert t.assignee == member
+    assert WorkRequest.objects.get(pk=req.pk).status == "declined"
+
+
+def test_team_lead_and_admin_assign_directly(project, admin, member, mate, squad):
+    set_team_lead(squad, member, True, admin)
+    t = _task(project, member, assignee=mate)
+    assert t.assignee == mate
+    assert not WorkRequest.objects.exists()
+    assert Notice.objects.filter(user=mate, text__contains="담당자로 지정").exists()
+
+    t2 = _task(project, admin, assignee=member)
+    assert t2.assignee == member
+
+
+def test_lead_bypass_only_for_own_team(project, org, admin, member, mate, squad):
+    other = User.objects.create_user("x", password="pw12345678", display_name="다른팀")
+    OrgMembership.objects.create(org=org, user=other, role="member")
+    set_team_lead(squad, member, True, admin)
+    t = _task(project, member, assignee=other)
+    assert t.assignee == member
+    assert WorkRequest.objects.filter(to_user=other, kind="assign").exists()
+
+
+def test_team_work_request_accept_creates_task(org, project, admin, member, mate, squad):
+    req = wr.create_request(
+        org=org,
+        kind="work",
+        title="로그인 화면 다크모드",
+        body="디자인 링크 참고",
+        actor=admin,
+        source="web",
+        team=squad,
+    )
+    # 팀 채널이 없으면 팀원에게 DM. member·mate 둘 다 연결돼 있다.
+    assert Notice.objects.filter(user__in=[member, mate]).count() == 2
+    with pytest.raises(ServiceError):
+        wr.accept(req, mate, source="web")  # 프로젝트 필수
+    req = wr.accept(req, mate, source="web", project=project)
+    assert req.task.assignee == mate
+    assert "REQ-" in req.task.description
+    assert req.status == "accepted"
+
+
+def test_team_request_goes_to_channel(org, admin, squad):
+    squad.discord_channel_id = "999"
+    squad.save()
+    wr.create_request(org=org, kind="work", title="x", actor=admin, source="web", team=squad)
+    assert Notice.objects.get().channel_id == "999"
+    # Discord에서 만든 요청은 봇이 이미 그 채널에 답했다.
+    wr.create_request(org=org, kind="work", title="y", actor=admin, source="dc", team=squad)
+    assert Notice.objects.count() == 1
+
+
+def test_non_lead_accepting_for_teammate_sends_assign_request(
+    org, project, admin, member, mate, squad
+):
+    req = wr.create_request(org=org, kind="work", title="x", actor=admin, source="web", team=squad)
+    req = wr.accept(req, member, source="web", project=project, assignee=mate)
+    assert req.task.assignee == member
+    assert WorkRequest.objects.filter(kind="assign", to_user=mate, task=req.task).exists()
+
+
+def test_general_request_lifecycle_and_visibility(org, admin, member, mate, outsider):
+    req = wr.create_request(
+        org=org, kind="general", title="PR 리뷰 부탁", actor=member, source="web", to_user=mate
+    )
+    assert wr.get_visible_request(mate, req.pk)
+    assert wr.get_visible_request(admin, req.pk)  # 조직 관리자
+    assert wr.get_visible_request(outsider, req.pk) is None
+    with pytest.raises(ServiceError):
+        wr.complete(req, mate)  # 수락 전
+    wr.accept(req, mate, source="web")
+    req = wr.complete(req, mate, "머지했습니다")
+    assert req.status == "done"
+    with pytest.raises(ServiceError):
+        wr.cancel(req, member)
+
+
+def test_create_request_validation(org, member, outsider, squad):
+    with pytest.raises(ServiceError):
+        wr.create_request(org=org, kind="work", title="x", actor=outsider, source="web", team=squad)
+    with pytest.raises(ServiceError):
+        wr.create_request(org=org, kind="work", title="x", actor=member, source="web")
+    with pytest.raises(ServiceError):
+        wr.create_request(
+            org=org, kind="work", title="x", actor=member, source="web", to_user=member
+        )
+    with pytest.raises(ServiceError):
+        wr.create_request(org=org, kind="assign", title="x", actor=member, source="web", team=squad)
+
+
+def test_notice_skipped_without_discord(org, admin, member):
+    wr.create_request(org=org, kind="general", title="x", actor=member, source="web", to_user=admin)
+    assert not Notice.objects.exists()  # admin은 Discord 미연결
+
+
+def test_pending_and_mark_sent(project, member, mate):
+    _task(project, member, assignee=mate)
+    ids = [n.pk for n in wr.pending_notices()]
+    assert wr.mark_sent(ids) == 1
+    assert wr.pending_notices() == []

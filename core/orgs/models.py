@@ -107,6 +107,8 @@ class TeamMembership(models.Model):
         settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="team_memberships"
     )
     joined_at = models.DateTimeField(auto_now_add=True)
+    # 팀장은 승인 없이 팀원에게 태스크를 맡길 수 있다. 팀장이 없는 팀도 있다.
+    is_lead = models.BooleanField("팀장", default=False)
 
     class Meta:
         constraints = [

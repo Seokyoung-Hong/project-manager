@@ -130,7 +130,9 @@ def test_update_task_changes_only_what_was_sent(post, task, admin):
     r = post(f"/tasks/{task.pk}/update", {"priority": 8, "assignee_id": admin.pk, "제목": "무시"})
     assert r.status_code == 200
     t = r.json()["task"]
-    assert (t["priority"], t["assignee"]["id"], t["title"]) == (8, admin.pk, task.title)
+    # 팀원이 남에게 넘기면 바로 바뀌지 않고 받는 사람의 수락을 기다린다.
+    assert (t["priority"], t["assignee"]["id"], t["title"]) == (8, task.assignee_id, task.title)
+    assert t["pending_assignee"]["id"] == admin.pk
     assert t["version"] == 2
     r = post(f"/tasks/{task.pk}/update", {"title": "새 제목", "next_action": "다음"})
     assert (r.json()["task"]["title"], r.json()["task"]["version"]) == ("새 제목", 2)

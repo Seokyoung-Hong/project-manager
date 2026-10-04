@@ -393,3 +393,97 @@ class ChangeLog(models.Model):
             models.Index(fields=["target_type", "target_id"]),
             models.Index(fields=["created_at"]),
         ]
+
+
+class WorkRequest(models.Model):
+    """팀이나 사람에게 보내는 요청. GitHub 이슈와 달리 조직 밖에는 보이지 않는다.
+
+    - work: 일을 맡아 달라는 요청. 받는 쪽이 프로젝트를 골라 수락하면 태스크가 생긴다.
+    - assign: 이미 있는 태스크의 담당을 넘겨받아 달라는 요청. 수락해야 담당자가 바뀐다.
+    - general: 태스크로 만들 일은 아닌 부탁(검토·확인 등). 수락한 뒤 완료로 닫는다.
+    """
+
+    KINDS = [("work", "작업 요청"), ("assign", "담당 요청"), ("general", "일반 요청")]
+    STATUSES = [
+        ("pending", "대기"),
+        ("accepted", "수락"),
+        ("declined", "거절"),
+        ("cancelled", "취소"),
+        ("done", "완료"),
+    ]
+
+    org = models.ForeignKey("orgs.Organization", on_delete=models.CASCADE, related_name="+")
+    kind = models.CharField(max_length=7, choices=KINDS)
+    title = models.CharField("제목", max_length=200)
+    body = models.TextField("내용", blank=True)
+    requested_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="+"
+    )
+    # 받는 쪽은 팀 하나 또는 사람 한 명이다.
+    team = models.ForeignKey(
+        "orgs.Team", on_delete=models.CASCADE, null=True, blank=True, related_name="requests"
+    )
+    to_user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="received_requests",
+    )
+    # assign은 넘길 태스크, work는 수락해서 생긴 태스크
+    task = models.ForeignKey(
+        Task, on_delete=models.SET_NULL, null=True, blank=True, related_name="requests"
+    )
+    status = models.CharField(max_length=9, choices=STATUSES, default="pending")
+    responded_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
+    )
+    responded_at = models.DateTimeField(null=True, blank=True)
+    response_note = models.CharField("답변", max_length=300, blank=True)
+    source = models.CharField(max_length=4, choices=ChangeLog.SOURCES, default="web")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at", "-id"]
+        constraints = [
+            models.CheckConstraint(
+                condition=Q(team__isnull=True) ^ Q(to_user__isnull=True),
+                name="workrequest_one_target",
+            ),
+        ]
+        indexes = [models.Index(fields=["status", "to_user"])]
+
+    def __str__(self):
+        return f"{self.number} {self.title}"
+
+    @property
+    def number(self) -> str:
+        return f"REQ-{self.pk}"
+
+    @property
+    def is_open(self) -> bool:
+        return self.status == "pending"
+
+    @property
+    def path(self) -> str:
+        return f"/requests/{self.pk}"
+
+
+class Notice(models.Model):
+    """Discord로 보낼 알림. core는 Discord에 직접 보내지 않으므로(GUIDE-00) 여기 쌓고 봇이 가져간다.
+
+    받는 곳은 사람(DM) 또는 채널 하나다. 보낼 수 없는 알림(Discord 미연결)은 애초에 만들지 않는다.
+    """
+
+    org = models.ForeignKey("orgs.Organization", on_delete=models.CASCADE, related_name="+")
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, null=True, blank=True, related_name="+"
+    )
+    channel_id = models.CharField(max_length=32, blank=True)
+    text = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    sent_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["id"]
+        indexes = [models.Index(fields=["sent_at"])]

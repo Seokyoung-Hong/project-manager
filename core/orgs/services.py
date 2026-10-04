@@ -298,6 +298,16 @@ def remove_team_member(team, user, actor, source: str = ""):
     TeamMembership.objects.filter(team=team, user=user).delete()
 
 
+def set_team_lead(team, user, is_lead: bool, actor) -> TeamMembership:
+    require_admin(actor, team.org)
+    membership = TeamMembership.objects.filter(team=team, user=user).first()
+    if membership is None:
+        raise ServiceError({"user": "팀원만 팀장으로 정할 수 있습니다."})
+    membership.is_lead = is_lead
+    membership.save(update_fields=["is_lead"])
+    return membership
+
+
 def set_team_channel(team, channel_id: str, actor) -> Team:
     """봇이 만든 채널 id를 적는다. 빈 문자열이면 연결을 끊는다(Discord에서 지워졌을 때)."""
     require_admin(actor, team.org)

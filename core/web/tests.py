@@ -189,7 +189,9 @@ def test_panel_edits_project_and_assignee_inline(logged, task, admin, org):
     )
     assert r.status_code == 200
     task.refresh_from_db()
-    assert task.assignee == admin
+    # 팀원이 남에게 넘기면 받는 사람이 수락할 때까지 담당자는 그대로다.
+    assert task.assignee != admin
+    assert task.requests.get(kind="assign").to_user == admin
 
 
 def test_panel_meta_rejects_outside_org(logged, task, outsider):

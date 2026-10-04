@@ -2,6 +2,7 @@ from django.conf import settings
 
 from projects.services import project_stats
 from tasks.brief import task_brief, user_brief
+from tasks.work_requests import pending_assignee
 
 
 def link_out(link) -> dict:
@@ -45,6 +46,8 @@ def task_out(t) -> dict:
             "links": [link_out(link) for link in t.links.all()],
             # 참고 문서는 제목과 id만. 본문은 /projects/{id}/docs/{doc_id}에서 읽는다.
             "docs": [{"id": d.pk, "title": d.title} for d in t.docs.all()],
+            # 담당 요청을 받은 사람이 아직 수락하지 않았다. 수락 전까지 assignee는 그대로다.
+            "pending_assignee": user_brief(pending) if (pending := pending_assignee(t)) else None,
         }
     )
     return d
