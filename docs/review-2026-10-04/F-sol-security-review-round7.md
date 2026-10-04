@@ -1,0 +1,8 @@
+- **판정: 반려.** 현재 HEAD `ffd944e`. `core && uv run pytest -q`: **1251 passed**(198.57초). 코드·git 변경 없음. 추가 재현은 별도 메모리 SQLite DB와 Django Client로 수행했다.
+- **상 — 권한 회수 후 idempotency 우회** (`core/tasks/services.py:252`, `core/api/routers/tasks.py:237`): 비공개 프로젝트에서 생성한 키를 기억한 사용자의 팀·관리자 권한을 회수한 뒤, 공개 프로젝트로 `POST /api/tasks`하면서 같은 `Idempotency-Key`를 보내면 **201과 기존 비공개 태스크 전체 응답**이 반환된다. `can_view_project=False`도 확인했다. 기존 결과 조회와 충돌 복구 경로 모두 현재 가시성·요청 대상 프로젝트를 검사해야 한다.
+- **중 — 계열 제목 노출** (`core/web/views/tasks.py:130`): 공개 원본을 복제한 회차를 비공개 프로젝트로 옮기면, 비권한자의 원본 상세 **200 응답에 SECRET-CHILD 제목**이 남는다. 뿌리·회차 각각 `visible_tasks(user)`로 제한하고 API `children_count`도 동일하게 계산한다.
+- **중 — 연결 문서 제목 노출** (`core/api/serialize.py:51`, `core/web/views/tasks.py:94`, `core/web/views/tasks.py:470`): 비공개 프로젝트 문서를 연결한 태스크를 공개 프로젝트로 이동하면 문서 연결이 남아 **API 200 응답에 SECRET-DOC의 id·제목**이 반환된다. 이동 시 연결 규칙을 재검증하고 모든 문서 출력에 현재 가시성 필터를 적용한다.
+- **중 — 비공개 팀 세부 노출** (`core/api/serialize.py:75`, `core/api/serialize.py:76`): 비공개 팀을 공개 프로젝트 담당으로 지정하면 팀 밖 멤버의 `GET /api/projects/{id}`에 팀 목적·실제 인원수가 반환된다(재현: `member_count=1`). `visible_teams(viewer)` 밖의 팀은 이름만 반환하고 나머지는 null 처리한다.
+- **중 — 첨부 할당량 경쟁** (`core/tasks/attachments.py:91`): 1MB 할당량에서 700KB 두 요청의 검사→저장 순서를 교차시키면 **1,433,600 bytes**가 저장된다. 조직 행 잠금 아래 검사·저장을 직렬화하고 개수 제한도 대상 행 잠금으로 보호한다.
+- **중 — 버전 체인 분기** (`core/tasks/attachments.py:102`, `core/tasks/models.py:542`): 같은 v1에서 두 요청이 새 버전 존재 검사를 통과하면 **v2 두 개**가 저장된다. 교차 실행으로 확인했다. 원본 행 잠금과 `replaces`의 조건부 유니크 제약을 추가한다.
+- **확인 불가:** 운영 프록시·방화벽의 X-Forwarded-For 신뢰 경계, PostgreSQL 실제 병렬 실행. 경쟁 재현은 SQLite 단일 스레드의 결정적 교차 실행이며 실제 병렬 부하 시험은 아니다. 일반 HTTP 업로드의 크기는 Django가 측정하므로 가짜 `upload.size` 객체만으로 원격 크기 우회라고 판단하지 않았다. API/OAuth 토큰의 로그인 잠금 제외는 설계 §4.3의 명시적 결정이다.
