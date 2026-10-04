@@ -10,6 +10,7 @@ from django.views.decorators.http import require_POST
 from common.errors import ConflictError, ServiceError
 from orgs.services import is_admin
 from projects import docs as ts_docs
+from tasks.attachments import attachments_of
 
 from .common import CONFLICT_MSG, project_or_404, task_or_404, trigger, version_of
 
@@ -41,6 +42,8 @@ def project_docs(request, project_id):
             # 서비스 규칙(작성자 또는 조직 관리자)과 같은 조건이어야 버튼과 결과가 어긋나지 않는다
             "can_delete": doc is not None
             and (doc.created_by_id == request.user.pk or is_admin(request.user, project.org)),
+            "attachments": attachments_of(project),
+            "is_admin": is_admin(request.user, project.org),
         },
     )
 
@@ -134,7 +137,7 @@ def task_doc_link(request, task_id):
     except (TypeError, ValueError):
         return _refs(request, task, error="문서를 선택하세요.")
     try:
-        ts_docs.link_task(doc, task, request.user)
+        ts_docs.link_task(doc, task, request.user, as_output=request.POST.get("as_output") == "1")
     except ServiceError as e:
         return _refs(request, task, error=" ".join(e.errors.values()))
     return _refs(request, task)

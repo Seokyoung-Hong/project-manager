@@ -60,6 +60,7 @@ def test_needs_table_covers_every_tool():
         "export_portfolio_markdown",
         "get_task_github",
         "get_task_history",
+        "list_attachments",
         "create_task",
         "duplicate_task",
         "update_task",

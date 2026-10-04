@@ -21,6 +21,9 @@ services:
     env_file: .env               # 봇 토큰·CORE_TOKEN은 여기 없다(.env.discord에만 있다)
     environment:
       DATABASE_URL: postgres://pm:${POSTGRES_PASSWORD:-pm}@db:5432/pm
+      MEDIA_ROOT: /data/media      # 첨부 파일. 백업(scripts/backup.sh)이 이 볼륨도 담는다
+    volumes:
+      - media_data:/data/media
     depends_on:
       db:
         condition: service_healthy
@@ -103,5 +106,6 @@ services:
 
 volumes:
   pgdata:
+  media_data:
   discord_data:
   discord_bot_data:

@@ -1,6 +1,7 @@
 from django.urls import path
 
 from .views import (
+    attachments,
     auth,
     decisions,
     discord,
@@ -162,6 +163,26 @@ urlpatterns = [
         name="checklist_action",
     ),
     path("tasks/<int:task_id>/links", tasks.link_add, name="task_link_add"),
+    path(
+        "tasks/<int:task_id>/attachments",
+        attachments.task_attachment_add,
+        name="task_attachment_add",
+    ),
+    path(
+        "projects/<int:project_id>/attachments",
+        attachments.project_attachment_add,
+        name="project_attachment_add",
+    ),
+    path(
+        "attachments/<int:att_id>/delete",
+        attachments.attachment_delete,
+        name="attachment_delete",
+    ),
+    path(
+        "attachments/<int:att_id>/<str:name>",
+        attachments.attachment_download,
+        name="attachment_download",
+    ),
     path("tasks/links/<int:link_id>/delete", tasks.link_delete, name="link_delete"),
     path("search", search.search, name="search"),
     path("settings/profile", settings.profile, name="profile"),

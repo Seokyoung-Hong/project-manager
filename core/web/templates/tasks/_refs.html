@@ -1,3 +1,11 @@
+<div class="section outputs">
+  <span class="label">산출물</span>
+  <ul class="links">
+    {% for a in attachments %}{% if a.kind != "file" %}<li class="row"><span class="badge primary">{{ a.get_kind_display }}</span><a href="{% url 'attachment_download' a.pk a.name %}" target="_blank" rel="noopener">{{ a.name }}</a><span class="muted t13">파일 v{{ a.version }}</span></li>{% endif %}{% endfor %}
+    {% for l in links %}{% if l.kind == "out" %}<li class="row"><span class="badge primary">산출물</span><a href="{{ l.url }}" target="_blank" rel="noopener">{{ l.title }}</a><span class="muted t13">링크</span></li>{% endif %}{% endfor %}
+  </ul>
+  <p class="muted t13">산출물은 파일(종류 "산출물"·"증빙"), 내부 문서(아래 [문서 연결]에서 "산출물로" 체크), 링크(종류 "산출물") 중 무엇이든 됩니다.</p>
+</div>
 <div class="section">
   <span class="label">참고 자료</span>
   <ul class="links">
@@ -22,6 +30,7 @@
       <option value="">프로젝트 문서에서 고르기…</option>
       {% for d in project_docs %}<option value="{{ d.pk }}">{{ d.title }}</option>{% endfor %}
     </select>
+    <label class="check t13"><input type="checkbox" name="as_output" value="1"> 산출물로</label>
     <button class="btn sm">문서 연결</button>
   </form>
   {% endif %}
@@ -46,3 +55,4 @@
   {% if error %}<div class="error">{{ error }}</div>{% endif %}
   <p class="muted t13">{% if task.project.dev_tools %}PR·커밋은 저장소 연결이 자동으로 붙입니다. {% endif %}여기에는 이 프로젝트의 문서, 조직의 회의록, 앱이 모르는 외부 주소를 연결합니다.</p>
 </div>
+{% url 'task_attachment_add' task.pk as upload_url %}{% include "tasks/_attachments.html" with hx=True upload_url=upload_url %}

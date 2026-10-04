@@ -108,7 +108,7 @@ def delete_doc(doc, actor):
     doc.delete()
 
 
-def link_task(doc, task, actor):
+def link_task(doc, task, actor, *, as_output=False):
     """문서를 태스크의 참고 자료로 건다.
 
     문서는 프로젝트에 매여 있으므로 같은 프로젝트의 태스크만 건다. 조직 전체를 도는 글은
@@ -119,6 +119,19 @@ def link_task(doc, task, actor):
     if task.project_id != doc.project_id:
         raise ServiceError({"task": "같은 프로젝트의 태스크여야 합니다."})
     doc.tasks.add(task)
+    if as_output:
+        # 내부 문서를 산출물로: "산출물" 링크 하나로 남겨 파일·외부 링크와 같은 목록에 보인다.
+        from django.conf import settings
+
+        from tasks.services import add_link
+
+        add_link(
+            actor=actor,
+            task=task,
+            title=doc.title,
+            url=f"{settings.SITE_URL}/projects/{doc.project_id}/docs?doc={doc.pk}",
+            kind="out",
+        )
 
 
 def unlink_task(doc, task, actor):

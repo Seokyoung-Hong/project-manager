@@ -15,6 +15,7 @@ from common.errors import ServiceError
 from orgs.models import Organization
 from orgs.services import is_admin, is_member, orgs_of
 from projects.models import Project
+from projects.services import can_view_project
 from tasks.models import Task
 from tasks.services import get_visible_task, today_flag, today_membership
 
@@ -54,7 +55,7 @@ def project_or_404(user, project_id):
         .prefetch_related("owners")
         .first()
     )
-    if p is None or not is_member(user, p.org):
+    if p is None or not can_view_project(user, p):
         raise Http404
     return p
 

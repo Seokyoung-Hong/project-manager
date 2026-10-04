@@ -343,6 +343,18 @@ SPECS: dict[str, Spec] = {
             "팀 자율 참여",
             "켜면 멤버가 스스로 팀에 들어가고 나갈 수 있습니다.",
         ),
+        Spec(
+            "org.attachment_quota_mb",
+            "int",
+            2048,
+            "org",
+            False,
+            "org",
+            "첨부 파일 용량(MB)",
+            "조직 전체 첨부 파일의 합계 상한입니다. 0이면 업로드를 막습니다.",
+            lo=0,
+            hi=102400,
+        ),
         # --- 4.4 AI 정책 (source == "mcp" 에만) ---
         Spec(
             "ai.enabled",

@@ -39,6 +39,7 @@ TOOL_NAMES = {
     "export_portfolio_markdown",
     "get_task_github",
     "get_task_history",
+    "list_attachments",
     "create_task",
     "duplicate_task",
     "update_task",
@@ -256,7 +257,7 @@ async def test_tool_names_registered(fake_core):
     finally:
         current_token.reset(tok)
     assert {t.name for t in tools} == TOOL_NAMES
-    assert len(TOOL_NAMES) == 72
+    assert len(TOOL_NAMES) == 73
 
 
 def test_governance_tool(fake_core, with_token):
@@ -332,3 +333,10 @@ def test_task_series_tools_shape(fake_core, with_token):
 def test_create_request_passes_due_date(fake_core, with_token):
     fn("create_request")(1, "로그 확인", to_user_id=3, due_date="2030-01-02")
     assert last_body(fake_core)["due_date"] == "2030-01-02"
+
+
+def test_list_attachments_is_read_only_call(fake_core, with_token):
+    with pytest.raises(CoreError):  # 가짜 core에는 이 끝점이 없다 — 보낸 요청 모양만 본다
+        fn("list_attachments")(1, all_versions=True)
+    method, path, _, _ = fake_core.calls[-1]
+    assert (method, path) == ("GET", "/api/tasks/1/attachments?all=true")

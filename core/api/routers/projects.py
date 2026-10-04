@@ -11,6 +11,7 @@ from orgs.models import Team
 from orgs.services import orgs_of
 from projects.models import Project
 from projects.services import (
+    can_view_project,
     create_project,
     delete_project,
     parse_spec,
@@ -46,7 +47,7 @@ def _visible(request):
 
 def _project_or_404(request, project_id: int) -> Project:
     p = _visible(request).filter(pk=project_id).first()
-    if p is None:
+    if p is None or not can_view_project(request.auth, p):
         raise HttpError(404, "프로젝트를 찾을 수 없습니다.")
     return p
 

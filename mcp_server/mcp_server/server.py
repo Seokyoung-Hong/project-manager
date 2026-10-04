@@ -627,6 +627,14 @@ def update_task(
 
 
 @mcp.tool()
+def list_attachments(task_id: int, all_versions: bool = False) -> dict:
+    """태스크에 붙은 첨부 파일·산출물 목록(이름·크기·종류 file|out|proof·버전·메모·url). 읽기 전용이다.
+    기본은 최신 버전만, all_versions면 이전 버전까지(replaces_id로 잇는다). 파일 내용은 url을 사람이 연다.
+    업로드는 이 도구에 없다 — 웹 패널이나 API(multipart)를 쓴다."""
+    return {"items": _core().get(f"/api/tasks/{task_id}/attachments", all=all_versions or None)}
+
+
+@mcp.tool()
 def duplicate_task(
     task_id: int,
     title: str | None = None,

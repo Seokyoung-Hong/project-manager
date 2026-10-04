@@ -1,6 +1,7 @@
 from django.conf import settings
 
 from projects.services import project_stats
+from tasks.attachments import attachments_of
 from tasks.brief import task_brief, user_brief
 from tasks.work_requests import pending_assignee
 
@@ -50,6 +51,7 @@ def task_out(t) -> dict:
             "pending_assignee": user_brief(pending) if (pending := pending_assignee(t)) else None,
             "reviewer": user_brief(t.reviewer),
             "children_count": t.children.count(),
+            "attachments": [attachment_out(a) for a in attachments_of(t)],  # 최신 버전만
         }
     )
     return d
@@ -106,4 +108,21 @@ def request_out(r) -> dict:
         "response_note": r.response_note,
         "url": settings.SITE_URL + r.path,
         "created_at": r.created_at,
+    }
+
+
+def attachment_out(a) -> dict:
+    """url은 토큰 인증 다운로드 끝점이다. 브라우저 링크는 /attachments/{id}/{name}."""
+    return {
+        "id": a.pk,
+        "name": a.name,
+        "size": a.size,
+        "kind": a.kind,
+        "content_type": a.content_type,
+        "version": a.version,
+        "replaces_id": a.replaces_id,
+        "note": a.note,
+        "url": f"{settings.SITE_URL}/api/attachments/{a.pk}/download",
+        "created_by": user_brief(a.created_by),
+        "created_at": a.created_at,
     }
