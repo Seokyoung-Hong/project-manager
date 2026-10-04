@@ -18,8 +18,8 @@ from orgs.models import OrgMembership, Team
 from orgs.services import orgs_of, set_team_channel
 from projects.models import Project
 from projects.services import set_project_channel
-from tasks.brief import task_brief
 from tasks import work_requests as wr
+from tasks.brief import task_brief
 from tasks.models import Task
 from tasks.services import (
     by_due,
