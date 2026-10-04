@@ -41,6 +41,9 @@
     <form method="post" action="{% url 'repo_disconnect' project.pk %}" onsubmit="return confirm('저장소 연결을 해제할까요? GitHub 저장소는 유지됩니다.')">{% csrf_token %}<button class="btn sm danger">저장소 연결 해제</button></form>
   </div>
 
+  {% if user_install %}
+  <p class="muted t13">개인 계정 저장소에는 팀이 없습니다. 누가 접근할 수 있는지는 GitHub 저장소 설정의 Collaborators에서 확인하세요.</p>
+  {% else %}
   <h3 class="t15">접근 팀</h3>
   {% if repo_teams %}
   <table class="grid">
@@ -69,6 +72,7 @@
     <textarea id="repo-teams-prompt" class="input" rows="5" readonly aria-label="접근 팀 조회 질문 프롬프트">{{ repo_teams_prompt }}</textarea>
     <button type="button" class="btn sm" data-copy-text="{{ repo_teams_prompt }}">질문 프롬프트 복사</button>
   </details>
+  {% endif %}
   <div class="row"><a class="btn sm" target="_blank" rel="noopener" href="https://github.com/{{ state.conn.full_name }}/settings/access">GitHub에서 접근 권한 확인</a></div>
 
   <h3 class="t15">이슈 가져오기</h3>
@@ -121,7 +125,7 @@
     <tr>
       <td class="t13">{{ e.occurred_at|date:"n/j H:i" }}</td>
       <td class="t13">{{ e.summary }}</td>
-      <td>{% if e.task %}<a href="{% url 'task_detail' e.task_id %}">{{ e.task.number }}</a>{% else %}
+      <td>{% if e.task %}<a href="{% url 'task_detail' e.task_id %}">{{ e.task.number }}</a>{% elif can_settings %}
         <details class="link-fold">
           <summary class="btn sm">연결할 태스크 선택</summary>
           <form method="post" action="{% url 'repo_event_link' project.pk e.pk %}" class="row">{% csrf_token %}

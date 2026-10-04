@@ -277,14 +277,16 @@ def login_with_github(info: dict, token_data: dict) -> tuple:
     같은 이메일·아이디의 기존 PM 계정에 자동으로 붙이지 않는다 — 남의 계정을 가로챌 수 있다.
     기존 계정을 쓰던 사람은 로그인한 뒤 프로필에서 GitHub를 연결하면 된다.
     """
+    from accounts.identity import resolve
     from accounts.models import User
 
     github_id, login = info["id"], (info.get("login") or "")[:100]
-    identity = GitHubIdentity.objects.select_related("user").filter(github_id=github_id).first()
+    user = resolve("github", str(github_id))  # 비활성 사용자는 None
+    if user is None and GitHubIdentity.objects.filter(github_id=github_id).exists():
+        raise ServiceError({"github": "비활성화된 계정입니다. 조직 관리자에게 문의해 주세요."})
+    identity = user.github if user else None
     created = identity is None
     if not created:
-        if not identity.user.is_active:
-            raise ServiceError({"github": "비활성화된 계정입니다. 조직 관리자에게 문의해 주세요."})
         if identity.login != login:
             identity.login = login
             identity.save(update_fields=["login"])
@@ -413,6 +415,10 @@ def connect_repo(
         project=project,
         defaults={"url": url.strip()[:300], "full_name": full_name, "created_by": actor},
     )
+    # 저장소를 이으면 개발 도구가 기본이다(사용자 결정). 연결을 끊어도 켜진 채로 남도록 설정에 적는다.
+    if (project.settings or {}).get("project.dev_tools") is not True:
+        project.settings = {**(project.settings or {}), "project.dev_tools": True}
+        project.save(update_fields=["settings"])
     try:
         sync_issues_if_stale(conn)
     except Exception:
@@ -449,6 +455,16 @@ def update_repo_settings(conn, changes: dict, *, actor, source: str = "web", tok
     if changed:
         conn.save(update_fields=changed)
     return conn
+
+
+def link_event(event, task, *, actor, source: str = "web") -> None:
+    """미매칭 이벤트(예: 번호 없는 커밋)를 손으로 태스크에 잇는다. 저장소 설정과 같은 등급이다."""
+    project = event.connection.project
+    require_level(actor, project, effective("project.settings_by", org=project.org), "task_id")
+    if task.project_id != project.pk:
+        raise ServiceError({"task_id": "이 프로젝트의 태스크만 연결할 수 있습니다."})
+    event.task = task
+    event.save(update_fields=["task"])
 
 
 def disconnect_repo(*, project, actor, source: str = "web") -> bool:
