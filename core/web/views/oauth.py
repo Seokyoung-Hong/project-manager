@@ -10,16 +10,21 @@ MCP 클라이언트는 사전 등록이 불가능하므로 동적 등록(RFC 759
 """
 
 import json
+from datetime import timedelta
 from urllib.parse import urlencode, urlparse
 
 from django.conf import settings
 from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import render
+from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 
 from accounts.models import ApiToken, OAuthClient, OAuthCode
+
+# 커넥터 토큰 수명. 만료되면 커넥터에서 다시 '연결'한다(refresh_token은 두지 않는다).
+TOKEN_TTL = timedelta(days=90)
 
 SCOPES = ["read", "write"]
 
@@ -177,7 +182,19 @@ def token(request):
     )
     if code is None:
         return _error("invalid_grant", "코드가 만료됐거나 이미 쓰였거나 맞지 않습니다.")
-    _, raw = ApiToken.issue(code.user, code.client.name or "MCP 커넥터", scope=code.scope)
-    r = JsonResponse({"access_token": raw, "token_type": "Bearer", "scope": code.scope})
+    _, raw = ApiToken.issue(
+        code.user,
+        code.client.name or "MCP 커넥터",
+        scope=code.scope,
+        expires_at=timezone.now() + TOKEN_TTL,
+    )
+    r = JsonResponse(
+        {
+            "access_token": raw,
+            "token_type": "Bearer",
+            "scope": code.scope,
+            "expires_in": int(TOKEN_TTL.total_seconds()),
+        }
+    )
     r["Cache-Control"] = "no-store"
     return r

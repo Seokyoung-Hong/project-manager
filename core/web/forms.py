@@ -1,7 +1,7 @@
 from datetime import timedelta
 
 from django import forms
-from django.contrib.auth.forms import AuthenticationForm, UserCreationForm
+from django.contrib.auth.forms import UserCreationForm
 
 from accounts.models import User
 from orgs.models import Team
@@ -27,12 +27,22 @@ def suggested_due_date(*, org, project=None):
     return day.isoformat()
 
 
-class LoginForm(AuthenticationForm):
-    """기본 폼의 라벨은 '사용자 이름'이다 — 가입 화면과 같은 말로 부른다."""
+class LoginForm(forms.Form):
+    """입력만 받는다. AuthenticationForm은 clean에서 먼저 인증해 버려 잠금 확인 순서를 어긴다.
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.fields["username"].label = "아이디"
+    인증은 뷰가 accounts.auth.authenticate_password로 한다.
+    """
+
+    username = forms.CharField(
+        label="아이디",
+        max_length=150,
+        widget=forms.TextInput(attrs={"autofocus": True, "autocomplete": "username"}),
+    )
+    password = forms.CharField(
+        label="비밀번호",
+        strip=False,
+        widget=forms.PasswordInput(attrs={"autocomplete": "current-password"}),
+    )
 
 
 class SignupForm(UserCreationForm):

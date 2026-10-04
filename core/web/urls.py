@@ -1,7 +1,5 @@
-from django.contrib.auth import views as auth_views
 from django.urls import path
 
-from .forms import LoginForm
 from .views import (
     auth,
     decisions,
@@ -37,16 +35,8 @@ urlpatterns = [
     path("", auth.root, name="root"),
     path("healthz", ops.healthz, name="healthz"),
     path("events", events.events, name="events"),
-    path(
-        "login",
-        auth_views.LoginView.as_view(
-            template_name="auth/login.html",
-            redirect_authenticated_user=True,
-            authentication_form=LoginForm,
-        ),
-        name="login",
-    ),
-    path("logout", auth_views.LogoutView.as_view(), name="logout"),
+    path("login", auth.login_view, name="login"),
+    path("logout", auth.logout_view, name="logout"),
     # ---- MCP 커넥터용 OAuth 2.1 (web/views/oauth.py 맨 위 설명) ----
     path(
         ".well-known/oauth-authorization-server",
@@ -179,6 +169,7 @@ urlpatterns = [
     path("settings/tokens", settings.tokens, name="tokens"),
     path("settings/tokens/<int:token_id>/revoke", settings.token_revoke, name="token_revoke"),
     path("ops", ops.ops, name="ops"),
+    path("ops/unlock", ops.unlock_login, name="ops_unlock"),
     path("ops/export.json", ops.export_json, name="export_json"),
     # ---- V2-04: 부하 현황 · 로드맵 (아래는 이 단계에서 추가) ----
     path("orgs/<int:org_id>/capacity", roadmap.capacity, name="org_capacity"),
