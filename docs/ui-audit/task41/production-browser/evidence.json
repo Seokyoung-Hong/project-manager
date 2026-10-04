@@ -1,0 +1,88 @@
+[
+  {
+    "width": 1280,
+    "url": "https://project.sio2.kr/login",
+    "status": 200,
+    "title": "로그인",
+    "text": "산돌이 태스크\n로그인\n아이디\n비밀번호\n로그인\n\n계정이 없으면 가입하세요.",
+    "overflow": {
+      "scroll": 1280,
+      "viewport": 1280
+    },
+    "errors": [],
+    "assets": [
+      "https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css",
+      "https://project.sio2.kr/static/app.css",
+      "https://project.sio2.kr/static/vendor/htmx.min.js",
+      "https://project.sio2.kr/static/app.js",
+      "https://project.sio2.kr/static/notes.js"
+    ]
+  },
+  {
+    "width": 390,
+    "url": "https://project.sio2.kr/login",
+    "status": 200,
+    "title": "로그인",
+    "text": "산돌이 태스크\n로그인\n아이디\n비밀번호\n로그인\n\n계정이 없으면 가입하세요.",
+    "overflow": {
+      "scroll": 390,
+      "viewport": 390
+    },
+    "errors": [],
+    "assets": [
+      "https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css",
+      "https://project.sio2.kr/static/app.css",
+      "https://project.sio2.kr/static/vendor/htmx.min.js",
+      "https://project.sio2.kr/static/app.js",
+      "https://project.sio2.kr/static/notes.js"
+    ]
+  },
+  {
+    "name": "healthz",
+    "url": "https://project.sio2.kr/healthz",
+    "status": 200,
+    "body": "{\"ok\": true}"
+  },
+  {
+    "name": "app.css",
+    "url": "https://project.sio2.kr/static/app.css",
+    "status": 200,
+    "length": 65117,
+    "checks": {
+      "panelWiden": false,
+      "copyText": false,
+      "falseResult": false,
+      "status204": false,
+      "versionHeader": false,
+      "redirected": false
+    }
+  },
+  {
+    "name": "app.js",
+    "url": "https://project.sio2.kr/static/app.js",
+    "status": 200,
+    "length": 16869,
+    "checks": {
+      "panelWiden": true,
+      "copyText": true,
+      "falseResult": true,
+      "status204": false,
+      "versionHeader": false,
+      "redirected": false
+    }
+  },
+  {
+    "name": "notes.js",
+    "url": "https://project.sio2.kr/static/notes.js",
+    "status": 200,
+    "length": 29260,
+    "checks": {
+      "panelWiden": false,
+      "copyText": false,
+      "falseResult": true,
+      "status204": true,
+      "versionHeader": true,
+      "redirected": true
+    }
+  }
+]
