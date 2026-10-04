@@ -35,6 +35,7 @@
               {% for u in org_members %}<option value="{{ u.pk }}"{% if u.pk == task.assignee_id %} selected{% endif %}>{{ u.display_name }}</option>{% endfor %}
             </select>
           </form>
+          {% if pending_assignee %}<span class="badge">{{ pending_assignee.display_name }}님 수락 대기</span>{% endif %}
           <form>
             <input type="hidden" name="version" value="{{ task.version }}">
             <input type="hidden" name="from" value="panel">

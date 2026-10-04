@@ -3,6 +3,7 @@ from django.db.models import Count, Q
 
 from orgs.services import orgs_of
 from tasks.models import Task
+from tasks.work_requests import received
 
 from .views.common import current_org
 
@@ -33,6 +34,9 @@ NAV_BY_URL = {
     "org_issues": "org",
     "org_github": "org",
     "search": "search",
+    "request_index": "request",
+    "request_new": "request",
+    "request_detail": "request",
 }
 
 
@@ -62,6 +66,7 @@ def shell(request):
         "my_orgs": my_orgs,
         "nav_projects": projects,  # 프로젝트 영역이 아니면 빈 목록이라 레일이 렌더되지 않는다
         "nav": nav,
+        "request_badge": received(request.user).filter(status="pending").count(),
         "current_project_id": match.kwargs.get("project_id") if match else None,
         "page_url": request.get_full_path(),
         "github_enabled": settings.GITHUB_ENABLED,

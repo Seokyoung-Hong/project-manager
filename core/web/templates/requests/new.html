@@ -1,0 +1,34 @@
+{% extends "base.html" %}{% block title %}새 요청{% endblock %}
+{% block main %}
+<div class="card">
+  <h1 class="t24">새 요청</h1>
+  {% if my_orgs|length > 1 %}
+  <p class="row t13">조직:
+    {% for o in my_orgs %}<a href="{% url 'request_new' %}?org={{ o.pk }}"{% if o.pk == org.pk %} aria-current="true"{% endif %}>{{ o.name }}</a>{% endfor %}
+  </p>
+  {% endif %}
+  <form method="post" class="stack">{% csrf_token %}
+    <input type="hidden" name="org" value="{{ org.pk }}">
+    {% for e in errors.values %}<div class="error">{{ e }}</div>{% endfor %}
+    <label class="field">종류
+      <select name="kind" class="select">
+        {% for code, label in kinds %}<option value="{{ code }}"{% if values.kind == code %} selected{% endif %}>{{ label }}</option>{% endfor %}
+      </select>
+    </label>
+    <fieldset class="stack">
+      <legend class="t13">받는 쪽</legend>
+      <label class="row"><input type="radio" name="target" value="team"{% if values.target != "user" %} checked{% endif %}> 팀
+        <select name="team" class="select auto"><option value="">팀 선택</option>
+          {% for t in teams %}<option value="{{ t.pk }}"{% if values.team == t.pk|stringformat:"s" %} selected{% endif %}>{{ t.name }}</option>{% endfor %}
+        </select></label>
+      <label class="row"><input type="radio" name="target" value="user"{% if values.target == "user" %} checked{% endif %}> 사람
+        <select name="user" class="select auto"><option value="">사람 선택</option>
+          {% for u in people %}<option value="{{ u.pk }}"{% if values.user == u.pk|stringformat:"s" %} selected{% endif %}>{{ u.display_name }}</option>{% endfor %}
+        </select></label>
+    </fieldset>
+    <label class="field">제목<input name="title" class="input" maxlength="200" value="{{ values.title }}" required></label>
+    <label class="field">내용<textarea name="body" class="textarea" rows="6">{{ values.body }}</textarea></label>
+    <button class="btn primary">요청 보내기</button>
+  </form>
+</div>
+{% endblock %}

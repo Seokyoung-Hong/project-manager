@@ -43,9 +43,9 @@
     <tbody>
     {% for u in members %}
     <tr>
-      <td>{{ u.display_name }}</td>
+      <td>{{ u.display_name }}{% if u.pk in lead_ids %} <span class="badge ok">팀장</span>{% endif %}</td>
       <td>{% if u.github %}@{{ u.github.login }}{% else %}<span class="badge">GitHub 미연결</span>{% endif %}</td>
-      <td><form method="post" action="{% url 'team_member_remove' team.pk u.pk %}">{% csrf_token %}<button class="btn sm danger">제거</button></form></td>
+      <td class="row">{% if is_admin %}<form method="post" action="{% url 'team_lead' team.pk u.pk %}">{% csrf_token %}<input type="hidden" name="lead" value="{% if u.pk in lead_ids %}0{% else %}1{% endif %}"><button class="btn sm">{% if u.pk in lead_ids %}팀장 해제{% else %}팀장 지정{% endif %}</button></form>{% endif %}<form method="post" action="{% url 'team_member_remove' team.pk u.pk %}">{% csrf_token %}<button class="btn sm danger">제거</button></form></td>
     </tr>
     {% empty %}<tr><td colspan="3" class="muted">멤버가 없습니다.</td></tr>{% endfor %}
     </tbody>

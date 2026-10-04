@@ -115,6 +115,9 @@ def team_detail(request, team_id):
             "org": team.org,
             "team": team,
             "members": members,
+            "lead_ids": set(
+                team.memberships.filter(is_lead=True).values_list("user_id", flat=True)
+            ),
             "candidates": candidates,
             "projects": team.projects.filter(is_archived=False).order_by("name"),
             "is_admin": can_admin(request.user, team.org),
@@ -235,6 +238,20 @@ def team_github_reconcile(request, team_id):
         messages.success(request, f"GitHub 팀에 {done}명을 반영했습니다.")
         for w in warns:
             messages.warning(request, w)
+    except ServiceError as e:
+        messages.error(request, " ".join(e.errors.values()))
+    return redirect("team_detail", team_id=team.pk)
+
+
+@login_required
+@require_POST
+def team_lead(request, team_id, user_id):
+    team = _admin_team_or_404(request, team_id)
+    user = team.members.filter(pk=user_id).first()
+    if user is None:
+        raise Http404
+    try:
+        osv.set_team_lead(team, user, request.POST.get("lead") == "1", request.user)
     except ServiceError as e:
         messages.error(request, " ".join(e.errors.values()))
     return redirect("team_detail", team_id=team.pk)
