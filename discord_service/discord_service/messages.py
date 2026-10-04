@@ -87,11 +87,11 @@ def _link_text(t: dict) -> str:
     return f"[{t['number']} {title}](<{t['url']}>)"
 
 
-def alert_line(t: dict, today: str, *, who: bool = False, reason: bool = True) -> str:
+def alert_line(t: dict, today: str, *, who=None, reason: bool = True) -> str:
     """알림 한 줄: 번호·제목(웹 링크) · 기한(D-n/초과 n일) · 상태(사유) [· 담당자].
 
-    완료·취소된 태스크는 기한을 적지 않는다. `who`는 채널 게시용(누구 일인지 보여야 한다).
-    `reason=False`면 막힘 사유를 뺀다(공유 채널에 사유를 올리지 않는다).
+    완료·취소된 태스크는 기한을 적지 않는다. `who`는 담당자를 적는 함수(채널 게시는 누구 일인지
+    보여야 한다). `reason=False`면 막힘 사유를 뺀다(공유 채널에는 사유를 올리지 않는다).
     """
     status = STATUS.get(t["status"], t["status"])
     if reason and t.get("stop_reason"):
@@ -101,8 +101,13 @@ def alert_line(t: dict, today: str, *, who: bool = False, reason: bool = True) -
         parts.append(due_label(t.get("due_date"), today))
     parts.append(status)
     if who:
-        parts.append(mention(t.get("assignee") or {}))
+        parts.append(who(t.get("assignee") or {}))
     return "• " + " · ".join(parts)
+
+
+def display_name(assignee: dict) -> str:
+    """멘션 없이 이름만. 채널 게시용."""
+    return assignee.get("display_name") or "담당자 없음"
 
 
 def by_project(tasks: list[dict], today: str, **line_kw) -> str:

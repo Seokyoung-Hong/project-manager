@@ -188,6 +188,8 @@ def weekly(org, week_start: date) -> dict:
         "org": {"id": org.pk, "name": org.name},
         "period_start": week_start.isoformat(),
         "period_end": period_end.isoformat(),
+        # 보고를 만든 날. 봇이 항목마다 D-n·초과 n일을 이 날 기준으로 적는다.
+        "today": today_kst().isoformat(),
         "completed": briefs(completed_ids),
         "reopened": briefs(reopened_ids),
         "due_this_week": due_this_week,

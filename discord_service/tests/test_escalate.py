@@ -86,6 +86,18 @@ def test_review_nudge_uses_its_own_threshold(store, fake_bot, bot):
     assert "검토 대기" in fake_bot.dm("555")[0]
 
 
+def test_escalation_message_has_title_due_status_link(store, fake_bot, bot):
+    fake = FakeCore(
+        [task(1, "2026-09-12", status="blocked", stop_reason="서류 대기", stopped_at="2026-09-01")]
+    )
+    fake.project_owners_data[1] = [OWNER]
+    run_escalations(make_core(fake), bot, store, 1, TODAY, blocked_days=3)
+    assert fake_bot.dm("555")[0].splitlines() == [
+        "⏰ **학식 API** · 막힘 1건이 오래 머물러 있습니다. 확인해 주세요.",
+        "• [TASK-1 할 일 1](<http://pm/tasks/1>) · D-3 (9월 12일) · 막힘(서류 대기) · 팀원 · 8일째",
+    ]
+
+
 def test_two_orgs_do_not_share_the_daily_claim(store, fake_bot):
     """조직 둘이 같은 store를 쓰더라도 에스컬레이션 자리는 섞이지 않는다(§8.4)."""
     dm_bot = make_bot(fake_bot, store)

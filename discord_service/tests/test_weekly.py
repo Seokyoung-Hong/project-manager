@@ -13,7 +13,7 @@ KST = timezone(timedelta(hours=9))
 
 def test_fixed_summary_quiet():
     data = weekly_data()
-    assert "특이 사항 없음" in fixed_summary(data)
+    assert "특이 사항이 없습니다. 미완료는 2건입니다." in fixed_summary(data)
 
 
 def test_fixed_summary_sections():
@@ -23,6 +23,22 @@ def test_fixed_summary_sections():
     assert "기한 초과" in text
     assert "TASK-1" in text and "TASK-2" in text
     assert "<@111>" in text
+
+
+def test_fixed_summary_lines_have_title_project_due_status_link():
+    done = task(1, "2026-09-02", status="done")
+    late = task(2, "2026-09-01", status="blocked", stop_reason="개인 사정")
+    data = weekly_data(completed=[done], overdue=[late])
+    data["today"] = "2026-09-07"
+    lines = fixed_summary(data).splitlines()
+    i = lines.index("__**기한 초과**__ (1)")
+    assert lines[i + 1 : i + 3] == [
+        "**학식 API**",
+        "• [TASK-2 할 일 2](<http://pm/tasks/2>) · 6일 초과 (9월 1일) · 막힘 · <@111>",
+    ]
+    # 완료한 일은 기한을 적지 않는다. 공유 채널이라 막힘 사유는 올리지 않는다.
+    assert "• [TASK-1 할 일 1](<http://pm/tasks/1>) · 완료 · <@111>" in lines
+    assert "개인 사정" not in "\n".join(lines)
 
 
 def test_summarize_falls_back_when_provider_fails():

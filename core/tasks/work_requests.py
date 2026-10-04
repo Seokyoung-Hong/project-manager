@@ -12,6 +12,7 @@ from django.db import transaction
 from django.db.models import Q
 from django.utils import timezone
 
+from common.dates import fmt_md, today_kst
 from common.errors import ServiceError
 from orgs.models import Team, TeamMembership
 from orgs.services import is_admin, is_member, orgs_of
@@ -56,13 +57,26 @@ def _link(path: str) -> str:
     return settings.SITE_URL + path
 
 
+def _due_text(due) -> str:
+    """'9월 12일(D-3)' · '9월 9일(오늘 마감)' · '9월 7일(2일 초과)' · '기한 없음'. 봇 알림과 같은 표기."""
+    if due is None:
+        return "기한 없음"
+    delta = (due - today_kst()).days
+    tag = f"D-{delta}" if delta > 0 else "오늘 마감" if delta == 0 else f"{-delta}일 초과"
+    return f"{fmt_md(due)}({tag})"
+
+
 def notify_assigned(task, actor):
-    """승인 없이 남에게 맡겼을 때 받은 사람에게 알린다."""
+    """승인 없이 남에게 맡겼을 때 받은 사람에게 알린다. 번호만으로는 무슨 일인지 모르니
+    제목·프로젝트·기한·상태·웹 링크를 함께 보낸다."""
     who = actor.display_name if actor else "GitHub"
+    title = task.title.replace("[", "\\[").replace("]", "\\]")
     notify(
         task.project.org,
-        f"📌 {who}님이 **{task.number}** {task.title} 담당자로 지정했습니다.\n"
-        + _link(f"/tasks/{task.pk}"),
+        f"📌 {who}님이 담당자로 지정했습니다.\n"
+        f"**{task.project.name}**\n"
+        f"• [{task.number} {title}](<{_link(f'/tasks/{task.pk}')}>) · {_due_text(task.due_date)}"
+        f" · {task.get_status_display()}",
         user=task.assignee,
     )
 

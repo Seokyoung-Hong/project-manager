@@ -1,4 +1,4 @@
-from .messages import mention
+from .messages import by_project, mention
 
 
 def fixed_summary(data: dict) -> str:
@@ -16,26 +16,23 @@ def fixed_summary(data: dict) -> str:
         and c["due_this_week"] == 0
     )
     if quiet:
-        return head + "\n특이 사항 없음. 미완료 " + str(c["open"]) + "건."
+        return head + f"\n특이 사항이 없습니다. 미완료는 {c['open']}건입니다."
 
-    def section(title, items, extra=None):
+    today = data.get("today") or data["period_end"]
+
+    def section(title, items):
         if not items:
             return ""
-        lines = [f"**{title}** ({len(items)})"]
-        for t in items:
-            s = f"• {t['number']} {t['title']} — {t['project']['name']} — {mention(t['assignee'])}"
-            if extra:
-                s += extra(t)
-            lines.append(s)
-        return "\n".join(lines) + "\n"
+        body = by_project(items, today, who=mention, reason=False)
+        return f"__**{title}**__ ({len(items)})\n{body}\n"
 
     body = [
         head,
         "",
         section("지난주 완료", data["completed"]),
         section("지난주 재개", data["reopened"]),
-        section("이번 주 마감", data["due_this_week"], lambda t: f" — {t['due_date']}"),
-        section("기한 초과", data["overdue"], lambda t: f" — 기한 {t['due_date']}"),
+        section("이번 주 마감", data["due_this_week"]),
+        section("기한 초과", data["overdue"]),
         section("막힘", data["blocked"]),
     ]
     proj = [
@@ -50,7 +47,9 @@ def fixed_summary(data: dict) -> str:
     unlinked = [m["display_name"] for m in data.get("members", []) if not m.get("discord_user_id")]
     if unlinked:
         body.append(
-            "⚠️ Discord 미연결: " + ", ".join(unlinked) + " — 개인 DM 마감 알림을 못 받습니다."
+            "⚠️ Discord 미연결: "
+            + ", ".join(unlinked)
+            + " — 개인 DM 마감 알림을 받을 수 없습니다. 웹 설정에서 Discord를 연결해 주세요."
         )
     return "\n".join(b for b in body if b is not None)
 
@@ -69,5 +68,6 @@ def summarize(data: dict, provider: str) -> tuple[str, str]:
 
 
 def _llm(data: dict, provider: str) -> str:
-    # ponytail: 제공업체 미정. 정해지면 여기 분기 하나만 추가한다. 다른 파일은 손대지 않는다.
+    # ponytail: 제공업체 미정(미구현). LLM_PROVIDER를 넣어도 고정 형식으로 돌아간다(README 참고).
+    # 정해지면 여기 분기 하나만 추가한다. 다른 파일은 손대지 않는다.
     raise NotImplementedError(f"LLM provider not configured: {provider}")
