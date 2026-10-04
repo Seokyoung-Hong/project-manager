@@ -1,6 +1,6 @@
 import logging
 from collections import defaultdict
-from datetime import date, timedelta
+from datetime import date
 
 from .core_client import CoreClient
 from .discord import Bot, ChannelOpenFailed, DmBlocked, RetryExhausted, UnknownResult
@@ -12,21 +12,16 @@ OPEN = ("todo", "doing", "paused", "blocked", "review")
 KINDS = ("d3", "d1", "d0", "overdue")
 
 
-def classify(task: dict, today: date) -> str | None:
-    """오늘 기준 이 태스크에 보낼 알림 종류. 없으면 None."""
-    if not task.get("due_date") or task["status"] not in OPEN:
-        return None
-    due = date.fromisoformat(task["due_date"])
-    delta = (due - today).days
-    if delta == 3:
-        return "d3"
-    if delta == 1:
-        return "d1"
-    if delta == 0:
-        return "d0"
-    if delta < 0:
-        return "overdue"
-    return None
+def _still_due(fresh: dict, listed: dict) -> bool:
+    """발송 직전 재확인. 목록을 받은 뒤 완료·기한 변경·담당 변경이 있었으면 보내지 않는다.
+
+    종류(d3·d1·d0·overdue)는 core가 알림 설정을 적용해 정한 값이라 여기서 다시 계산하지 않는다.
+    """
+    return (
+        fresh["status"] in OPEN
+        and fresh.get("due_date") == listed.get("due_date")
+        and (fresh.get("assignee") or {}).get("id") == (listed.get("assignee") or {}).get("id")
+    )
 
 
 def run_deadlines(
@@ -57,10 +52,8 @@ def run_deadlines(
     `notify_dm=False`인 사람은 자리를 잡지 않고 건너뛰되 실패가 아니라 `opted_out`으로 센다
     — 본인이 끈 것이라 /ops를 빨갛게 만들 일이 아니다.
 
-    # ponytail: notify.deadline_kinds(조직이 끈 종류)·overdue_repeat·quiet_weekend·
-    # overdue_grace_days는 여기서 다시 걸러내지 않는다. core가 candidates 목록을 만들 때
-    # 이미 반영했다고 믿는다(§4.5 유예는 core 몫). discord_service가 직접 걸러야 하는 게
-    # 밝혀지면 이 함수에 파라미터를 하나 더 받는 선에서 끝난다 — 구조는 이미 그 모양이다.
+    조직·개인 알림 종류, 초과 반복, 주말 쉬기, 초과 유예는 core가 `deadlines` 목록을 만들 때
+    적용한다(거르는 곳은 core 한 곳이다). 여기서는 사람별·시각별로 나눠 보내기만 한다.
     """
     notify = notify or {}
     today_s = today.isoformat()
@@ -77,12 +70,12 @@ def run_deadlines(
         "send_retry": 0,  # 429·5xx 3회 실패. 그날 영구 누락되지 않게 놓아준다
     }
     unlinked_names: list[str] = []
-    candidates = core.open_tasks(org_id, due_to=(today + timedelta(days=3)).isoformat())
+    candidates = core.deadlines(org_id, today_s)
 
     # (종류, 담당자) 로 묶는다. 담당자는 태스크당 한 명이다.
     grouped: dict[tuple[str, int], list[dict]] = defaultdict(list)
     for t in candidates:
-        kind = classify(t, today)
+        kind = t.get("alert_kind")
         assignee = t.get("assignee") or {}
         if kind and assignee.get("id"):
             grouped[(kind, assignee["id"])].append(t)
@@ -120,7 +113,7 @@ def run_deadlines(
                 result["recheck_failed"] += 1
                 log.warning("재확인 실패, 이 틱 뒤에 다시 훑는다: %s: %s", key, e)
                 continue
-            live = [f for f in fresh if f and classify(f, today) == kind]
+            live = [f for f, t in zip(fresh, tasks, strict=True) if f and _still_due(f, t)]
             if not live:
                 store.release(0, key, today_s)
                 result["skipped"] += 1

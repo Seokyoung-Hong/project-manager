@@ -3,6 +3,7 @@
 import json
 import urllib.error
 import urllib.parse
+from datetime import date, timedelta
 
 import pytest
 from django.core.cache import cache
@@ -316,3 +317,97 @@ def test_tasks_updated_since_ignores_status(client, org, admin, task, write_toke
         headers={"Authorization": f"Bearer {write_token}"},
     )
     assert later.json()["total"] == 0
+
+
+# ---------- 마감 DM 대상(F1): 알림 설정을 core 한 곳에서 적용 ----------
+
+MON = date(2026, 9, 7)  # 월요일
+
+
+def _due(project, member, title, due):
+    from tasks.models import Task
+    from tasks.services import create_task
+
+    t = create_task(project=project, title=title, actor=member, source="web", due_date=due)
+    Task.objects.filter(pk=t.pk).update(due_date=due, assignee=member)
+    return t
+
+
+def _kinds(org, today):
+    return {t.title: kind for t, kind in dc.deadline_alerts(org, today)}
+
+
+def _org_set(org, **values):
+    org.settings = {**(org.settings or {}), **values}
+    org.save(update_fields=["settings"])
+
+
+@pytest.fixture
+def dues(project, member):
+    for title, days in (("d3", 3), ("d2", 2), ("d1", 1), ("d0", 0), ("over1", -1), ("over8", -8)):
+        _due(project, member, title, MON + timedelta(days=days))
+
+
+def test_deadline_alerts_default_kinds(org, dues):
+    assert _kinds(org, MON) == {
+        "d3": "d3",
+        "d1": "d1",
+        "d0": "d0",
+        "over1": "overdue",
+        "over8": "overdue",
+    }
+
+
+def test_deadline_alerts_org_and_user_kinds_intersect(org, dues, member):
+    _org_set(org, **{"notify.deadline_kinds": ["d3", "d1", "overdue"]})
+    member.settings = {"user.notify_kinds": ["d1", "d0", "overdue"]}
+    member.save(update_fields=["settings"])
+    assert _kinds(org, MON) == {"d1": "d1", "over1": "overdue", "over8": "overdue"}
+
+
+def test_deadline_alerts_grace_days_match_the_web(org, dues):
+    """유예 3일: 1일 지난 것은 웹에서도 초과가 아니라 DM도 없다. 8일 지난 것만 초과다."""
+    _org_set(org, **{"task.overdue_grace_days": 3})
+    got = _kinds(org, MON)
+    assert "over1" not in got
+    assert got["over8"] == "overdue"
+
+
+def test_deadline_alerts_quiet_weekend(org, dues):
+    _org_set(org, **{"notify.quiet_weekend": True})
+    assert _kinds(org, MON - timedelta(days=1)) == {}  # 일요일
+    assert _kinds(org, MON) != {}
+
+
+def test_deadline_alerts_overdue_repeat(org, project, member):
+    _due(project, member, "late", MON - timedelta(days=1))  # 월요일에 초과 1일째
+    _org_set(org, **{"notify.overdue_repeat": "never"})
+    assert _kinds(org, MON) == {"late": "overdue"}
+    assert _kinds(org, MON + timedelta(days=1)) == {}
+    _org_set(org, **{"notify.overdue_repeat": "weekly"})
+    assert _kinds(org, MON + timedelta(days=1)) == {}
+    assert _kinds(org, MON + timedelta(days=7)) == {"late": "overdue"}
+    _org_set(org, **{"notify.overdue_repeat": "weekdays"})
+    assert _kinds(org, MON + timedelta(days=4)) == {"late": "overdue"}  # 금요일
+    assert _kinds(org, MON + timedelta(days=5)) == {}  # 토요일
+
+
+def test_bot_deadlines_endpoint(client, org, dues, bot_token):
+    r = client.get(
+        f"{DC}/orgs/{org.pk}/deadlines?date={MON.isoformat()}",
+        headers={"Authorization": f"Bearer {bot_token}"},
+    )
+    assert r.status_code == 200
+    rows = {row["title"]: row for row in r.json()}
+    assert rows["d1"]["alert_kind"] == "d1"
+    assert rows["d1"]["project"]["name"] == "학식 API"
+    assert rows["d1"]["url"].endswith(f"/tasks/{rows['d1']['id']}")
+    assert "d2" not in rows
+
+
+def test_unbuilt_notify_settings_are_hidden():
+    from .settings import SPECS, specs_for
+
+    keys = {s.key for s in specs_for("org")}
+    assert "notify.team_channel_weekly" not in keys
+    assert "milestone_due" not in dict(SPECS["notify.project_channel_events"].choices)

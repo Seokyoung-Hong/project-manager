@@ -1,3 +1,5 @@
+from datetime import date
+
 STATUS = {
     "todo": "시작 전",
     "doing": "진행 중",
@@ -56,13 +58,65 @@ def team_task_line(t: dict) -> str:
     )
 
 
+OPEN = ("todo", "doing", "paused", "blocked", "review")
+KIND_LEAD = {
+    "d3": "기한이 3일 남았습니다.",
+    "d1": "기한이 내일입니다.",
+    "d0": "기한이 오늘입니다.",
+    "overdue": "기한이 지났습니다.",
+}
+
+
+def due_label(due: str | None, today: str) -> str:
+    """'D-3 (9월 12일)' · '오늘 마감 (9월 9일)' · '2일 초과 (9월 7일)' · '기한 없음'."""
+    if not due:
+        return "기한 없음"
+    d, t = date.fromisoformat(due), date.fromisoformat(today)
+    delta = (d - t).days
+    when = f"{d.month}월 {d.day}일"
+    if delta > 0:
+        return f"D-{delta} ({when})"
+    if delta == 0:
+        return f"오늘 마감 ({when})"
+    return f"{-delta}일 초과 ({when})"
+
+
+def _link_text(t: dict) -> str:
+    """`[TASK-12 제목](<url>)`. `<>`로 감싸 링크 미리보기(embed)가 붙지 않게 한다."""
+    title = t["title"].replace("[", "\\[").replace("]", "\\]")
+    return f"[{t['number']} {title}](<{t['url']}>)"
+
+
+def alert_line(t: dict, today: str, *, who: bool = False, reason: bool = True) -> str:
+    """알림 한 줄: 번호·제목(웹 링크) · 기한(D-n/초과 n일) · 상태(사유) [· 담당자].
+
+    완료·취소된 태스크는 기한을 적지 않는다. `who`는 채널 게시용(누구 일인지 보여야 한다).
+    `reason=False`면 막힘 사유를 뺀다(공유 채널에 사유를 올리지 않는다).
+    """
+    status = STATUS.get(t["status"], t["status"])
+    if reason and t.get("stop_reason"):
+        status += f"({t['stop_reason']})"
+    parts = [_link_text(t)]
+    if t["status"] in OPEN:
+        parts.append(due_label(t.get("due_date"), today))
+    parts.append(status)
+    if who:
+        parts.append(mention(t.get("assignee") or {}))
+    return "• " + " · ".join(parts)
+
+
+def by_project(tasks: list[dict], today: str, **line_kw) -> str:
+    """프로젝트별로 묶은 본문. 프로젝트 순서는 처음 나온 순서(보통 기한 순)를 따른다."""
+    groups: dict[str, list[str]] = {}
+    for t in tasks:
+        groups.setdefault(t["project"]["name"], []).append(alert_line(t, today, **line_kw))
+    return "\n".join(f"**{name}**\n" + "\n".join(lines) for name, lines in groups.items())
+
+
 def deadline_message(kind: str, tasks: list[dict], today: str) -> str:
-    head = f"📌 마감 알림 · {KIND_TITLE[kind]} · {today}"
-    lines = [
-        task_line(t) + (f"  (기한 {t['due_date']})" if kind == "overdue" else "") for t in tasks
-    ]
+    head = f"📌 마감 알림 · {KIND_TITLE[kind]} · {today}\n담당하신 태스크 {len(tasks)}건의 {KIND_LEAD[kind]}"
     tail = "\n답장으로 처리할 수 있습니다: `완료 12` · `연장 12 2026-09-20 사유` · `도움`"
-    return head + "\n" + "\n".join(lines) + tail
+    return head + "\n" + by_project(tasks, today) + tail
 
 
 def dm_blocked_message(assignee: dict) -> str:

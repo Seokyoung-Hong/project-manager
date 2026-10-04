@@ -7,6 +7,8 @@
 라우터 인증이 `BotTokenAuth` 하나라서 세션 쿠키·읽기·쓰기 토큰은 이 경로에 들어오지 못한다.
 """
 
+from datetime import date
+
 from ninja import Router
 from ninja.errors import HttpError
 
@@ -15,7 +17,7 @@ from accounts.services import link_discord, unlink_discord_by_id, user_by_discor
 from orgs import channels as org_channels
 from orgs import discord as org_discord
 from orgs import settings as org_settings
-from orgs.models import OrgMembership, Team
+from orgs.models import Organization, OrgMembership, Team
 from orgs.services import orgs_of, set_team_channel
 from projects.models import Project
 from projects.services import set_project_channel
@@ -203,6 +205,20 @@ def _people(users) -> list[dict]:
     return [
         {"id": u.pk, "display_name": u.display_name, "discord_user_id": u.discord_user_id}
         for u in users
+    ]
+
+
+@router.get("/orgs/{int:org_id}/deadlines", response=list[dict])
+def org_deadlines(request, org_id: int, date: date):
+    """그날 보낼 마감 DM 대상. 알림 설정(종류·반복·주말·유예)은 core가 이미 적용했다.
+
+    항목은 태스크 요약에 `alert_kind`(d3·d1·d0·overdue)를 더한 것이다.
+    """
+    org = Organization.objects.filter(pk=org_id).first()
+    if org is None:
+        raise HttpError(404, "조직을 찾을 수 없습니다.")
+    return [
+        {**task_brief(t), "alert_kind": kind} for t, kind in org_discord.deadline_alerts(org, date)
     ]
 
 

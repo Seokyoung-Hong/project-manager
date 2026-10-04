@@ -13,6 +13,7 @@ import json
 import urllib.error
 import urllib.parse
 import urllib.request
+from datetime import date, timedelta
 
 from django.conf import settings
 from django.db import transaction
@@ -74,6 +75,71 @@ def guild_from_code(code: str, redirect_uri: str) -> str:
     if not guild_id:
         raise ServiceError({"guild_id": "Discord에서 설치를 확인하지 못했습니다."})
     return guild_id
+
+
+# ---------- 마감 DM 대상 ----------
+
+DUE_KINDS = {3: "d3", 1: "d1", 0: "d0"}
+
+
+def _overdue_due_today(n: int, repeat: str, today: date) -> bool:
+    """유예를 지나 n일째(1부터) 초과인 태스크에 오늘 초과 알림을 보내는가(`notify.overdue_repeat`).
+
+    # ponytail: '한 번만'·'주 1회'는 초과 1일째(그 뒤 7일마다)에 보낸다. 그날 봇이 꺼져 있으면
+    # 그 회차는 건너뛴다 — 보낸 기록을 core에 두면 정확해지지만 지금은 날짜 계산으로 충분하다.
+    """
+    if repeat == "never":
+        return n == 1
+    if repeat == "weekly":
+        return (n - 1) % 7 == 0
+    if repeat == "weekdays":
+        return today.weekday() < 5
+    return True
+
+
+def deadline_alerts(org, today: date) -> list[tuple]:
+    """오늘 보낼 마감 알림 `[(태스크, 종류)]`. 종류는 d3·d1·d0·overdue.
+
+    알림 설정은 **여기 한 곳**에서 거른다 — 봇은 이 목록을 사람별·시각별로 나눠 보내기만 한다.
+    조직 `notify.deadline_kinds` ∩ 담당자 `user.notify_kinds`, `notify.quiet_weekend`(토·일 없음),
+    `notify.overdue_repeat`, 초과 유예 `task.overdue_grace_days`(화면 배지와 같은 기준).
+    DM 수신 여부(`user.notify_dm`)와 시각은 봇이 멤버 설정으로 가른다.
+    """
+    from tasks.models import Task
+
+    from .settings import effective
+
+    if effective("notify.quiet_weekend", org=org) and today.weekday() >= 5:
+        return []
+    org_kinds = set(effective("notify.deadline_kinds", org=org))
+    if not org_kinds:
+        return []
+    repeat = effective("notify.overdue_repeat", org=org)
+    overdue_before = today - timedelta(days=effective("task.overdue_grace_days", org=org))
+    qs = (
+        Task.objects.filter(
+            project__org=org,
+            project__is_archived=False,
+            status__in=Task.OPEN,
+            assignee__isnull=False,
+            due_date__lte=today + timedelta(days=3),
+        )
+        .select_related("project", "assignee")
+        .order_by("due_date", "id")
+    )
+    out = []
+    for t in qs:
+        delta = (t.due_date - today).days
+        if delta < 0:
+            if t.due_date >= overdue_before:
+                continue  # 유예 안이다. 웹에서도 초과가 아니다
+            n = (overdue_before - t.due_date).days
+            kind = "overdue" if _overdue_due_today(n, repeat, today) else None
+        else:
+            kind = DUE_KINDS.get(delta)
+        if kind and kind in org_kinds and kind in effective("user.notify_kinds", user=t.assignee):
+            out.append((t, kind))
+    return out
 
 
 def org_by_guild(guild_id: str):

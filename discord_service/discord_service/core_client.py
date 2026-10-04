@@ -29,6 +29,15 @@ class CoreClient:
             if offset >= data["total"]:
                 return items
 
+    def deadlines(self, org_id: int, day: str) -> list[dict]:
+        """그날 보낼 마감 DM 대상. 항목은 태스크 요약 + `alert_kind`(d3·d1·d0·overdue).
+        알림 설정(종류·반복·주말·유예)은 core가 이미 적용했다."""
+        r = self.http.get(
+            f"/api/integrations/discord/orgs/{org_id}/deadlines", params={"date": day}
+        )
+        r.raise_for_status()
+        return r.json()
+
     def task(self, task_id: int) -> dict | None:
         r = self.http.get(f"/api/tasks/{task_id}")
         if r.status_code == 404:

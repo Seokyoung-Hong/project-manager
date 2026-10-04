@@ -1,5 +1,6 @@
 import json
 import re
+from datetime import date
 
 import httpx
 import pytest
@@ -104,6 +105,14 @@ def weekly_data(
     }
 
 
+def classify(t: dict, today: str) -> str | None:
+    """core `deadline_alerts`의 기본 설정 동작 흉내(유예 0·전 종류·매일). 설정별 거르기는 core 테스트 몫이다."""
+    if not t.get("due_date") or t["status"] not in OPEN or not (t.get("assignee") or {}).get("id"):
+        return None
+    delta = (date.fromisoformat(t["due_date"]) - date.fromisoformat(today)).days
+    return {3: "d3", 1: "d1", 0: "d0"}.get(delta) or ("overdue" if delta < 0 else None)
+
+
 class FakeCore:
     """core API 흉내. tasks dict를 바꾸면 응답이 바뀐다.
 
@@ -159,6 +168,8 @@ class FakeCore:
             },
         ]
         self.alert_reports: list[dict] = []
+        # 마감 DM 대상에서 core가 뺀 것처럼 흉내 낼 태스크 id(조직·개인 알림 설정으로 걸러진 것).
+        self.filtered_out: set[int] = set()
         self.guild_reports: list[dict] = []
 
     # --- 조회 도움말 ---
@@ -190,6 +201,17 @@ class FakeCore:
             org_param = int(request.url.params.get("org", 0))
             data = self.weekly_by_org.get(org_param, self.weekly_data)
             return httpx.Response(200, json=data)
+        m = re.fullmatch(r"/api/integrations/discord/orgs/(\d+)/deadlines", path)
+        if m:
+            day = request.url.params["date"]
+            rows = [
+                {**t, "alert_kind": kind}
+                for t in self.tasks.values()
+                if t["project"].get("org_id") == int(m.group(1))
+                and t["id"] not in self.filtered_out
+                and (kind := classify(t, day))
+            ]
+            return httpx.Response(200, json=rows)
         if path == "/api/integrations/discord/orgs":
             return httpx.Response(200, json=self.orgs_data)
         m = re.fullmatch(r"/api/integrations/discord/orgs/(\d+)/members", path)
