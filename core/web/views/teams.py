@@ -12,6 +12,7 @@ from github.client import GitHubError
 from github.models import GitHubTeamLink
 from orgs import services as osv
 from orgs.models import Team
+from projects.services import set_team_private_projects, visible_projects
 
 from ..forms import TeamForm
 from .common import can_admin, dialog, hx_redirect, not_admin, org_or_404
@@ -145,7 +146,9 @@ def _member_team_detail(request, team):
                 team.memberships.filter(is_lead=True).values_list("user_id", flat=True)
             ),
             "is_mine": team.memberships.filter(user=request.user).exists(),
-            "projects": team.projects.filter(is_archived=False).order_by("name"),
+            "projects": visible_projects(request.user, team.org)
+            .filter(teams=team, is_archived=False)
+            .order_by("name"),
             "tab": "teams",
         },
     )
@@ -188,6 +191,13 @@ def team_detail(request, team_id):
             ),
             "candidates": candidates,
             "projects": team.projects.filter(is_archived=False).order_by("name"),
+            # 관리자 전용: 이 팀이 볼 수 있는 비공개 프로젝트를 고른다(IMPL-PLAN-7 F)
+            "private_projects": team.org.projects.filter(
+                visibility="teams", is_archived=False
+            ).order_by("name"),
+            "private_ids": set(
+                team.projects.filter(visibility="teams").values_list("pk", flat=True)
+            ),
             "is_admin": can_admin(request.user, team.org),
             "gh_link": gh_link,
             "gh_install": gh_install is not None and not gh_user,
@@ -196,6 +206,23 @@ def team_detail(request, team_id):
             "tab": "teams",
         },
     )
+
+
+@login_required
+@require_POST
+def team_visible_projects(request, team_id):
+    """팀 화면의 "이 팀이 볼 수 있는 비공개 프로젝트" 저장."""
+    team = _admin_team_or_404(request, team_id)
+    try:
+        set_team_private_projects(
+            team,
+            [x for x in request.POST.getlist("projects") if x.isdecimal()],
+            actor=request.user,
+            source="web",
+        )
+    except ServiceError as e:
+        messages.error(request, " ".join(e.errors.values()))
+    return redirect("team_detail", team_id=team.pk)
 
 
 @login_required

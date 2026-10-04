@@ -27,8 +27,10 @@ from projects.services import (
     set_api_spec,
     set_governance_extra,
     set_project_settings,
+    set_visibility,
     spec_view,
     update_project,
+    visible_projects,
 )
 from tasks import services as ts
 from tasks.models import Task
@@ -78,9 +80,11 @@ def project_index(request):
     pid = request.session.get("project_id")
     project = None
     if pid:
-        project = Project.objects.filter(pk=pid, org=org, is_archived=False).first()
+        project = visible_projects(request.user, org).filter(pk=pid, is_archived=False).first()
     if project is None:
-        project = org.projects.filter(is_archived=False).order_by("name").first()
+        project = (
+            visible_projects(request.user, org).filter(is_archived=False).order_by("name").first()
+        )
     if project is None:
         return render(
             request,
@@ -125,6 +129,9 @@ def _dialog(request, form, org, project=None):
                 (code, label, Project.STATUS_DESC[code]) for code, label in Project.STATUSES
             ],
             "status_value": form["status"].value() or "preparing",
+            "can_set_visibility": can_admin(request.user, org),
+            "visibility_options": Project.VISIBILITIES,
+            "visibility_value": form["visibility"].value() or "org",
             "repo_input": repo_input,
             "org_repos": gh_services.installation_repos(org, request.user) if repo_input else [],
         },
@@ -152,6 +159,7 @@ def project_new(request):
                 status=d["status"],
                 # 저장소를 입력했으면 개발 도구를 켠다(저장소가 있으면 끌 수 없다).
                 dev_tools=d["dev_tools"] or bool(repo_url),
+                visibility=d["visibility"] or "org",
                 actor=request.user,
                 source="web",
             )
@@ -187,6 +195,7 @@ def project_edit(request, project_id):
         "status": project.status,
         "owners": list(project.owners.all()),
         "teams": list(project.teams.all()),
+        "visibility": project.visibility,
         "version": project.version,
     }
     form = ProjectForm(request.POST or None, org=project.org, initial=initial)
@@ -207,6 +216,8 @@ def project_edit(request, project_id):
                 source="web",
                 expected_version=d["version"] or 0,
             )
+            if d["visibility"] and d["visibility"] != project.visibility:
+                set_visibility(project, d["visibility"], actor=request.user, source="web")
             return hx_redirect(request, reverse("project_detail", args=[project.pk]))
         except ServiceError as e:
             apply_service_error(form, e)

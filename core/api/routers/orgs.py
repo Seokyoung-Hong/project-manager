@@ -20,6 +20,7 @@ from orgs.services import (
     set_governance,
     visible_teams,
 )
+from projects.services import visible_projects
 from reports.services import org_status
 from tasks.brief import user_brief
 
@@ -57,7 +58,11 @@ def discord_control_check(request, org_id: int):
 def get_org(request, org_id: int):
     org = org_or_404(request, org_id)
     role = OrgMembership.objects.get(org=org, user=request.auth).role
-    projects = org.projects.filter(is_archived=False).prefetch_related("owners", "teams")
+    projects = (
+        visible_projects(request.auth, org)
+        .filter(is_archived=False)
+        .prefetch_related("owners", "teams")
+    )
     return {
         "id": org.pk,
         "name": org.name,
@@ -237,7 +242,7 @@ def org_tasks(
     빠뜨릴 수 없고, 다른 조직의 프로젝트를 넘기면 빈 목록이 아니라 404로 알린다.
     """
     org = org_or_404(request, org_id)
-    if project is not None and not org.projects.filter(pk=project).exists():
+    if project is not None and not visible_projects(request.auth, org).filter(pk=project).exists():
         raise HttpError(404, "이 조직의 프로젝트가 아닙니다.")
     return list_tasks(
         request,

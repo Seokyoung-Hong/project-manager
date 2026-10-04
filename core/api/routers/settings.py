@@ -12,10 +12,10 @@ from ninja.errors import HttpError
 from accounts.services import set_user_settings
 from common.errors import ServiceError
 from orgs.requests import pending_out, request_change
-from orgs.services import ai_denied, orgs_of, set_org_settings
+from orgs.services import ai_denied, set_org_settings
 from orgs.settings import SPECS, Spec, clean, effective, locked_keys, specs_for
 from projects.models import Project
-from projects.services import set_project_settings
+from projects.services import set_project_settings, visible_projects
 
 from ..context import ctx, org_or_404
 from ..schemas import ErrorOut
@@ -25,11 +25,7 @@ _BODY = Body(...)  # PUT 바디는 임의의 설정 키/값 dict다. 스키마�
 
 
 def _project_or_404(request, project_id: int) -> Project:
-    p = (
-        Project.objects.filter(pk=project_id, org__in=orgs_of(request.auth))
-        .select_related("org")
-        .first()
-    )
+    p = visible_projects(request.auth).filter(pk=project_id).select_related("org").first()
     if p is None:
         raise HttpError(404, "프로젝트를 찾을 수 없습니다.")
     return p

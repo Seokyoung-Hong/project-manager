@@ -7,12 +7,19 @@ from urllib.parse import urlparse
 from urllib.request import HTTPRedirectHandler, Request, build_opener
 
 from django.db import transaction
-from django.db.models import Count, F, Q
+from django.db.models import Count, Exists, F, OuterRef, Q
 from django.utils import timezone
 
 from common.dates import fmt_md, today_kst
 from common.errors import ConflictError, ServiceError
-from orgs.services import ai_denied, is_admin, is_member, require_admin, require_ai_enabled
+from orgs.services import (
+    ai_denied,
+    is_admin,
+    is_member,
+    orgs_of,
+    require_admin,
+    require_ai_enabled,
+)
 from orgs.settings import SPECS, clean, display, effective, locked_keys
 
 from .models import ApiSpec, Milestone, Project, ProjectDependency
@@ -63,12 +70,46 @@ def is_owner(user, project) -> bool:
     return project.owners.filter(pk=user.pk).exists()
 
 
-def can_view_project(user, project) -> bool:
-    """이 사람이 프로젝트(와 그 태스크·문서·첨부)를 볼 수 있는가. 접근 검사는 여기 한 곳이다.
+def visible_projects(user, org=None):
+    """user가 볼 수 있는 프로젝트. 보관 여부는 거르지 않는다(호출자가 거른다).
+    Exists 서브쿼리로 쓴다 — M2M 조인 + distinct는 annotate·count와 어긋난다.
 
-    지금은 조직 멤버면 본다. 프로젝트 공개 범위(IMPL-PLAN-7 F)가 생기면 이 함수만 좁힌다.
+    공개 범위가 "teams"면 조직 관리자·프로젝트 관리자·담당 팀 멤버만 본다(IMPL-PLAN-7 F).
     """
-    return is_member(user, project.org)
+    from orgs.models import OrgMembership, TeamMembership
+
+    if not getattr(user, "is_authenticated", False):
+        return Project.objects.none()
+    qs = Project.objects.filter(org__in=orgs_of(user))
+    if org is not None:
+        qs = qs.filter(org=org)
+    admin = OrgMembership.objects.filter(user=user, role="admin", org_id=OuterRef("org_id"))
+    owner = Project.owners.through.objects.filter(project_id=OuterRef("pk"), user_id=user.pk)
+    member = TeamMembership.objects.filter(user=user, team__projects=OuterRef("pk"))
+    return qs.filter(Q(visibility="org") | Exists(admin) | Exists(owner) | Exists(member))
+
+
+def can_view_project(user, project) -> bool:
+    """이 사람이 프로젝트(와 그 태스크·문서·첨부)를 볼 수 있는가. 접근 검사는 여기 한 곳이다."""
+    return visible_projects(user, project.org).filter(pk=project.pk).exists()
+
+
+@transaction.atomic
+def set_visibility(project, visibility: str, *, actor, source="web", token=None) -> Project:
+    """공개 범위 바꾸기. 조직 관리자만."""
+    require_admin(actor, project.org)
+    require_ai_enabled(project.org, source, "공개 범위 바꾸기")
+    if visibility not in dict(Project.VISIBILITIES):
+        raise ServiceError({"visibility": "알 수 없는 공개 범위입니다."})
+    if visibility == project.visibility:
+        return project
+    old = project.visibility
+    Project.objects.filter(pk=project.pk).update(
+        visibility=visibility, version=F("version") + 1, updated_at=timezone.now()
+    )
+    project.refresh_from_db()
+    _log(project, "visibility", old, visibility, actor, source, token)
+    return project
 
 
 def require_level(actor, project, level: str, key: str):
@@ -120,9 +161,14 @@ def create_project(
     status="preparing",
     teams=(),
     dev_tools: bool | None = None,
+    visibility: str = "org",
 ):
     if not is_member(actor, org):
         raise ServiceError({"org": "이 조직의 멤버가 아닙니다."})
+    if visibility not in dict(Project.VISIBILITIES):
+        raise ServiceError({"visibility": "알 수 없는 공개 범위입니다."})
+    if visibility != "org":
+        require_admin(actor, org)
     if effective("project.create_by", org=org) == "admin" and not is_admin(actor, org):
         raise ServiceError({"org": "프로젝트 생성은 조직 관리자만 할 수 있습니다."})
     owners = list(owners)
@@ -150,6 +196,7 @@ def create_project(
         status=status,
         created_by=actor,
         settings=proj_settings,
+        visibility=visibility,
     )
     project.owners.set(owners)
     project.teams.set(teams)
@@ -167,6 +214,9 @@ def update_project(
     unknown = set(changes) - EDITABLE
     if unknown:
         raise ServiceError({k: "수정할 수 없는 항목입니다." for k in sorted(unknown)})
+    if "teams" in changes and project.visibility != "org":
+        # 비공개 프로젝트의 담당 팀 = 보는 팀이라 담당 팀 편집이 곧 View 권한 편집이다.
+        require_admin(actor, project.org)
     if {"name", "purpose", "teams"} & set(changes):
         require_level(actor, project, effective("project.edit_by", org=project.org), "name")
     if "owners" in changes:
@@ -224,6 +274,25 @@ def update_project(
     if "status" in fields:
         _log(project, "status", old["status"], fields["status"], actor, source, token)
     return project
+
+
+@transaction.atomic
+def set_team_private_projects(team, project_ids, *, actor, source="web", token=None):
+    """팀 화면에서 "이 팀이 볼 수 있는 비공개 프로젝트"를 정한다. 조직 관리자만.
+
+    고른 비공개 프로젝트에는 이 팀을 담당 팀으로 넣고, 고르지 않은 것에서는 뺀다(update_project).
+    """
+    require_admin(actor, team.org)
+    wanted = {int(pk) for pk in project_ids}
+    for p in team.org.projects.filter(visibility="teams", is_archived=False):
+        teams = list(p.teams.all())
+        has = any(t.pk == team.pk for t in teams)
+        if (p.pk in wanted) == has:
+            continue
+        new = [t for t in teams if t.pk != team.pk] + ([team] if p.pk in wanted else [])
+        update_project(
+            p, {"teams": new}, actor=actor, source=source, token=token, expected_version=p.version
+        )
 
 
 @transaction.atomic
@@ -434,7 +503,7 @@ def _validate_milestone(name, target_date, start_date, status) -> dict:
 
 
 def create_milestone(*, project, name, target_date, actor, start_date=None, status="planned"):
-    if not is_member(actor, project.org):
+    if not can_view_project(actor, project):
         raise ServiceError({"org": "이 조직의 멤버가 아닙니다."})
     require_level(actor, project, effective("project.roadmap_by", org=project.org), "roadmap")
     errors = _validate_milestone(name, target_date, start_date, status)
@@ -452,7 +521,7 @@ def create_milestone(*, project, name, target_date, actor, start_date=None, stat
 
 def update_milestone(ms, changes: dict, *, actor):
     """마일스톤에는 version이 없다(동시 편집이 문제가 될 만큼 자주 고치지 않는다)."""
-    if not is_member(actor, ms.project.org):
+    if not can_view_project(actor, ms.project):
         raise ServiceError({"org": "이 조직의 멤버가 아닙니다."})
     require_level(actor, ms.project, effective("project.roadmap_by", org=ms.project.org), "roadmap")
     name = changes.get("name", ms.name)
@@ -471,14 +540,14 @@ def update_milestone(ms, changes: dict, *, actor):
 
 
 def delete_milestone(ms, actor):
-    if not is_member(actor, ms.project.org):
+    if not can_view_project(actor, ms.project):
         raise ServiceError({"org": "이 조직의 멤버가 아닙니다."})
     require_level(actor, ms.project, effective("project.roadmap_by", org=ms.project.org), "roadmap")
     ms.delete()
 
 
 def create_dependency(*, from_project, to_project, actor, note="", is_blocking=False):
-    if not is_member(actor, from_project.org):
+    if not (can_view_project(actor, from_project) and can_view_project(actor, to_project)):
         raise ServiceError({"org": "이 조직의 멤버가 아닙니다."})
     require_level(
         actor, from_project, effective("project.roadmap_by", org=from_project.org), "roadmap"
@@ -501,7 +570,7 @@ def create_dependency(*, from_project, to_project, actor, note="", is_blocking=F
 
 
 def delete_dependency(dep, actor):
-    if not is_member(actor, dep.from_project.org):
+    if not (can_view_project(actor, dep.from_project) and can_view_project(actor, dep.to_project)):
         raise ServiceError({"org": "이 조직의 멤버가 아닙니다."})
     require_level(
         actor,
@@ -512,15 +581,23 @@ def delete_dependency(dep, actor):
     dep.delete()
 
 
-def roadmap(org, today=None) -> dict:
-    """3개월 창(이번 달 1일부터). 막대는 창에 잘라 맞춘 left/width %."""
+def roadmap(org, today=None, *, viewer=None) -> dict:
+    """3개월 창(이번 달 1일부터). 막대는 창에 잘라 맞춘 left/width %.
+
+    viewer가 볼 수 있는 프로젝트의 마일스톤·의존성만. None이면 공개 프로젝트만(보고서와 같은 규칙).
+    """
+    shown = (
+        visible_projects(viewer, org)
+        if viewer is not None
+        else org.projects.filter(visibility="org")
+    )
     today = today or today_kst()
     start = today.replace(day=1)
     end = _add_month(start, 3)
     span = (end - start).days
     months = [_add_month(start, i) for i in range(3)]
 
-    qs = Milestone.objects.filter(project__org=org, project__is_archived=False).select_related(
+    qs = Milestone.objects.filter(project__in=shown, project__is_archived=False).select_related(
         "project"
     )
     rows, hidden = [], 0
@@ -543,9 +620,9 @@ def roadmap(org, today=None) -> dict:
         )
     rows.sort(key=lambda r: (r["ms"].target_date, r["ms"].pk))
     deps = list(
-        ProjectDependency.objects.filter(from_project__org=org).select_related(
-            "from_project", "to_project"
-        )
+        ProjectDependency.objects.filter(
+            from_project__in=shown, to_project__in=shown
+        ).select_related("from_project", "to_project")
     )
     # 오늘이 창의 어디쯤인지 — 막대만 있으면 "지금 늦었는지"를 읽을 수 없다
     return {

@@ -8,9 +8,9 @@ AI도 만들고 고칠 수 있다. 다만 지우는 일은 화면에서 사람�
 from ninja import Router, Schema
 from ninja.errors import HttpError
 
-from orgs.services import orgs_of
 from projects.docs import create_doc, update_doc
-from projects.models import Project, ProjectDoc
+from projects.models import ProjectDoc
+from projects.services import visible_projects
 
 from ..context import clamp_page, ctx
 from ..schemas import ErrorOut
@@ -19,7 +19,7 @@ router = Router(tags=["docs"])
 
 
 def _visible(request):
-    return ProjectDoc.objects.filter(project__org__in=orgs_of(request.auth))
+    return ProjectDoc.objects.filter(project__in=visible_projects(request.auth))
 
 
 def doc_out(d, *, body: bool) -> dict:
@@ -107,11 +107,7 @@ class DocPatchIn(Schema):
 @router.post("", response={201: dict, 400: ErrorOut})
 def create_doc_ep(request, payload: DocCreateIn):
     """문서를 새로 만든다. 배경·결정·절차를 글로 남길 때 쓴다."""
-    p = (
-        Project.objects.filter(pk=payload.project_id, org__in=orgs_of(request.auth))
-        .select_related("org")
-        .first()
-    )
+    p = visible_projects(request.auth).filter(pk=payload.project_id).select_related("org").first()
     if p is None:
         raise HttpError(404, "프로젝트를 찾을 수 없습니다.")
     d = create_doc(

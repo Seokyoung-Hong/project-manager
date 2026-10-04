@@ -16,6 +16,12 @@
     <legend>상태</legend>
     <div class="radios">{% for code, label, desc in status_options %}<label class="radio-card"><input type="radio" name="status" value="{{ code }}"{% if code == status_value %} checked{% endif %}><b>{{ label }}</b><span>{{ desc }}</span></label>{% endfor %}</div>
   </fieldset>
+  {% if can_set_visibility %}
+  <fieldset class="choice-fieldset">
+    <legend>공개 범위</legend>
+    <div class="radios">{% for code, label in visibility_options %}<label class="radio-card"><input type="radio" name="visibility" value="{{ code }}"{% if code == visibility_value %} checked{% endif %}><b>{% if code == "teams" %}🔒 {% endif %}{{ label }}</b><span>{% if code == "teams" %}조직 관리자·프로젝트 관리자·담당 팀 멤버만 봅니다.{% else %}조직 멤버 모두가 봅니다.{% endif %}</span></label>{% endfor %}</div>
+  </fieldset>
+  {% endif %}
   {% if not project %}
   <label class="row"><input type="checkbox" name="dev_tools"{% if form.dev_tools.value %} checked{% endif %}> 개발 도구 사용 <span class="muted t13">끄면 GitHub·API 문서 탭을 숨깁니다.</span></label>
   {% if repo_input %}

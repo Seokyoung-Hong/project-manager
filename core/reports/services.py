@@ -6,13 +6,24 @@ from django.db.models import Count, Q
 from common.dates import kst_week_range, overdue_before, today_kst, week_bounds
 from orgs.models import Team, TeamMembership
 from orgs.services import visible_teams
+from projects.services import visible_projects
 from tasks.brief import task_brief, user_brief
 from tasks.models import ChangeLog, Task
 
 
-def _open_qs(org):
+def _projects(org, viewer):
+    """viewer가 None(봇·조직 채널 게시)이면 비공개("teams") 프로젝트를 뺀다."""
+    if viewer is None:
+        return org.projects.filter(visibility="org")
+    return visible_projects(viewer, org)
+
+
+def _open_qs(org, viewer=None):
     return Task.objects.filter(
-        project__org=org, project__is_archived=False, status__in=Task.OPEN, is_template=False
+        project__in=_projects(org, viewer),
+        project__is_archived=False,
+        status__in=Task.OPEN,
+        is_template=False,
     )
 
 
@@ -20,13 +31,15 @@ def org_status(org, *, viewer=None) -> dict:
     """조직 지표. 키: counts, by_project, by_assignee, capacity, projects_without_owner
 
     capacity의 팀 소속은 viewer가 볼 수 있는 팀만 담는다(`visible_teams`). viewer가 None(봇·
-    조직 채널 게시 등)이면 비공개 팀을 뺀다.
+    조직 채널 게시 등)이면 비공개 팀과 비공개 프로젝트를 뺀다. 프로젝트·태스크 집계도
+    viewer가 볼 수 있는 프로젝트만 센다(`visible_projects`).
     """
+    shown_projects = _projects(org, viewer)
     today = today_kst()
     # 초과 판정만 유예(task.overdue_grace_days)를 본다. 화면 배지·알림과 같은 기준이다.
     overdue_day = overdue_before(org)
     monday, sunday = week_bounds(today)
-    open_qs = _open_qs(org)
+    open_qs = _open_qs(org, viewer)
     counts = {
         "open": open_qs.count(),
         "doing": open_qs.filter(status="doing").count(),
@@ -36,12 +49,12 @@ def org_status(org, *, viewer=None) -> dict:
         "due_this_week": open_qs.filter(due_date__gte=monday, due_date__lte=sunday).count(),
         "no_due": open_qs.filter(due_date__isnull=True).count(),
         "done": Task.objects.filter(
-            project__org=org, project__is_archived=False, status="done"
+            project__in=shown_projects, project__is_archived=False, status="done"
         ).count(),
     }
 
     projects = (
-        org.projects.filter(is_archived=False)
+        shown_projects.filter(is_archived=False)
         .prefetch_related("owners", "teams")
         .annotate(
             open_count=Count("tasks", filter=Q(tasks__status__in=Task.OPEN)),
@@ -126,7 +139,7 @@ def org_status(org, *, viewer=None) -> dict:
     )
 
     projects_without_owner = list(
-        org.projects.filter(is_archived=False, owners__isnull=True).values("id", "name")
+        shown_projects.filter(is_archived=False, owners__isnull=True).values("id", "name")
     )
     return {
         "counts": counts,
@@ -137,15 +150,19 @@ def org_status(org, *, viewer=None) -> dict:
     }
 
 
-def weekly(org, week_start: date) -> dict:
-    """주간 집계. week_start는 월요일이어야 한다."""
+def weekly(org, week_start: date, *, viewer=None) -> dict:
+    """주간 집계. week_start는 월요일이어야 한다.
+
+    viewer가 None(봇 토큰·조직 채널 게시)이면 비공개 프로젝트를 뺀다. 사람은 viewer=user.
+    """
     if week_start.weekday() != 0:
         raise ValueError("week_start must be a Monday")
     start, end = kst_week_range(week_start)
     period_end = week_start + timedelta(days=7)
     this_monday, this_sunday = week_bounds(period_end)
 
-    org_task_ids = Task.objects.filter(project__org=org).values("id")
+    shown_projects = _projects(org, viewer)
+    org_task_ids = Task.objects.filter(project__in=shown_projects).values("id")
     logs = ChangeLog.objects.filter(
         target_type="task",
         field="status",
@@ -168,7 +185,7 @@ def weekly(org, week_start: date) -> dict:
         )
         return [task_brief(t) for t in qs]
 
-    open_qs = _open_qs(org).select_related("project", "assignee")
+    open_qs = _open_qs(org, viewer).select_related("project", "assignee")
     due_this_week = [
         task_brief(t)
         for t in open_qs.filter(due_date__gte=this_monday, due_date__lte=this_sunday).order_by(
@@ -182,7 +199,7 @@ def weekly(org, week_start: date) -> dict:
     blocked = [task_brief(t) for t in open_qs.filter(status="blocked").order_by("id")]
 
     by_project = []
-    for p in org.projects.filter(is_archived=False).order_by("name"):
+    for p in shown_projects.filter(is_archived=False).order_by("name"):
         p_ids = set(Task.objects.filter(project=p).values_list("id", flat=True))
         by_project.append(
             {

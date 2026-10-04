@@ -2,7 +2,7 @@
 
 회의록(notes.services)과 규칙을 일부러 맞춰 두었다 — 한 번에 한 항목, 버전이 다르면
 ConflictError, 본문 상한 256KB. 편집기가 같으므로 규칙까지 달라지면 사용자가 두 벌을 배운다.
-읽기·쓰기는 조직 멤버, 삭제는 작성자나 조직 관리자다(회의록과 같다).
+읽기·쓰기는 그 프로젝트를 볼 수 있는 사람(`can_view_project`), 삭제는 작성자나 조직 관리자다(회의록과 같다).
 """
 
 import re
@@ -11,9 +11,10 @@ from django.db import transaction
 from django.utils import timezone
 
 from common.errors import ConflictError, ServiceError
-from orgs.services import is_admin, is_member, require_ai_enabled
+from orgs.services import is_admin, require_ai_enabled
 
 from .models import ProjectDoc
+from .services import can_view_project
 
 EDITABLE = {"title", "body_md"}
 MAX_BODY = 256 * 1024  # 회의록과 같은 상한
@@ -24,20 +25,20 @@ def visible_docs(project):
 
 
 def get_visible_doc(user, doc_id: int):
-    """내가 속한 조직의 문서만. 아니면 None."""
+    """내가 볼 수 있는 프로젝트의 문서만. 아니면 None."""
     doc = (
         ProjectDoc.objects.select_related("project", "project__org", "created_by")
         .filter(pk=doc_id)
         .first()
     )
-    if doc is None or not is_member(user, doc.project.org):
+    if doc is None or not can_view_project(user, doc.project):
         return None
     return doc
 
 
 def create_doc(*, project, actor, title="제목 없는 문서", body_md="", source="web"):
-    if not is_member(actor, project.org):
-        raise ServiceError({"project": "이 조직의 멤버가 아닙니다."})
+    if not can_view_project(actor, project):
+        raise ServiceError({"project": "볼 수 없는 프로젝트입니다."})
     require_ai_enabled(project.org, source, "문서 만들기")
     if len((body_md or "").encode()) > MAX_BODY:
         raise ServiceError({"body_md": "본문이 너무 깁니다 (256KB 상한)."})
@@ -57,8 +58,8 @@ def update_doc(doc, field: str, value, *, actor, expected_version: int, source="
 
     source는 누가 고쳤는지 남기려는 것이다 — AI(mcp)도 문서를 고치므로 사람이 구별할 수 있어야 한다.
     """
-    if not is_member(actor, doc.project.org):
-        raise ServiceError({"project": "이 조직의 멤버가 아닙니다."})
+    if not can_view_project(actor, doc.project):
+        raise ServiceError({"project": "볼 수 없는 프로젝트입니다."})
     require_ai_enabled(doc.project.org, source, "문서 고치기")
     if field not in EDITABLE:
         raise ServiceError({field: "수정할 수 없는 항목입니다."})
@@ -114,8 +115,8 @@ def link_task(doc, task, actor, *, as_output=False):
     문서는 프로젝트에 매여 있으므로 같은 프로젝트의 태스크만 건다. 조직 전체를 도는 글은
     회의록(notes)의 몫이다 — 그쪽은 프로젝트 없이도 존재한다.
     """
-    if not is_member(actor, doc.project.org):
-        raise ServiceError({"project": "이 조직의 멤버가 아닙니다."})
+    if not can_view_project(actor, doc.project):
+        raise ServiceError({"project": "볼 수 없는 프로젝트입니다."})
     if task.project_id != doc.project_id:
         raise ServiceError({"task": "같은 프로젝트의 태스크여야 합니다."})
     doc.tasks.add(task)
@@ -135,6 +136,6 @@ def link_task(doc, task, actor, *, as_output=False):
 
 
 def unlink_task(doc, task, actor):
-    if not is_member(actor, doc.project.org):
-        raise ServiceError({"project": "이 조직의 멤버가 아닙니다."})
+    if not can_view_project(actor, doc.project):
+        raise ServiceError({"project": "볼 수 없는 프로젝트입니다."})
     doc.tasks.remove(task)

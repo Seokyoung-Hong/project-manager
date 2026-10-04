@@ -8,20 +8,21 @@ from django.views.decorators.http import require_POST
 
 from common.errors import ServiceError
 from orgs import services as osv
-from projects.models import Milestone, Project, ProjectDependency
+from projects.models import Milestone, ProjectDependency
 from projects.services import (
     create_dependency,
     create_milestone,
     delete_dependency,
     delete_milestone,
     update_milestone,
+    visible_projects,
 )
 from projects.services import (
     roadmap as roadmap_data,
 )
 from reports.services import org_status
 
-from .common import can_admin, dialog, hx_redirect, org_or_404
+from .common import can_admin, dialog, hx_redirect, org_or_404, project_or_404
 
 
 @login_required
@@ -68,7 +69,7 @@ def capacity(request, org_id):
 @login_required
 def roadmap(request, org_id):
     org = org_or_404(request.user, org_id)
-    data = roadmap_data(org)
+    data = roadmap_data(org, viewer=request.user)
     return render(
         request,
         "orgs/roadmap.html",
@@ -81,7 +82,9 @@ def roadmap(request, org_id):
             "rows": data["rows"],
             "deps": data["deps"],
             "hidden": data["hidden"],
-            "projects": org.projects.filter(is_archived=False).order_by("name"),
+            "projects": visible_projects(request.user, org)
+            .filter(is_archived=False)
+            .order_by("name"),
         },
     )
 
@@ -124,7 +127,9 @@ def _milestone_dialog(request, org, ms=None, errors=None):
         {
             "org": org,
             "ms": ms,
-            "projects": org.projects.filter(is_archived=False).order_by("name"),
+            "projects": visible_projects(request.user, org)
+            .filter(is_archived=False)
+            .order_by("name"),
             "statuses": Milestone.STATUSES,
             "values": values,
             "errors": errors or {},
@@ -136,7 +141,9 @@ def _milestone_dialog(request, org, ms=None, errors=None):
 def milestone_new(request, org_id):
     org = org_or_404(request.user, org_id)
     if request.method == "POST":
-        project = get_object_or_404(Project, pk=request.POST.get("project") or 0, org=org)
+        project = get_object_or_404(
+            visible_projects(request.user, org), pk=request.POST.get("project") or 0
+        )
         try:
             create_milestone(
                 project=project,
@@ -157,6 +164,7 @@ def milestone_new(request, org_id):
 def milestone_edit(request, milestone_id):
     ms = get_object_or_404(Milestone.objects.select_related("project__org"), pk=milestone_id)
     org = org_or_404(request.user, ms.project.org_id)
+    project_or_404(request.user, ms.project_id)
     if request.method == "POST":
         try:
             update_milestone(
@@ -180,7 +188,7 @@ def milestone_edit(request, milestone_id):
 def milestone_delete(request, milestone_id):
     ms = get_object_or_404(Milestone.objects.select_related("project__org"), pk=milestone_id)
     org_id = ms.project.org_id
-    org_or_404(request.user, org_id)
+    project_or_404(request.user, ms.project_id)
     delete_milestone(ms, request.user)
     return hx_redirect(request, reverse("org_roadmap", args=[org_id]))
 
@@ -189,8 +197,12 @@ def milestone_delete(request, milestone_id):
 @require_POST
 def dependency_add(request, org_id):
     org = org_or_404(request.user, org_id)
-    from_project = get_object_or_404(Project, pk=request.POST.get("from_project") or 0, org=org)
-    to_project = get_object_or_404(Project, pk=request.POST.get("to_project") or 0, org=org)
+    from_project = get_object_or_404(
+        visible_projects(request.user, org), pk=request.POST.get("from_project") or 0
+    )
+    to_project = get_object_or_404(
+        visible_projects(request.user, org), pk=request.POST.get("to_project") or 0
+    )
     try:
         create_dependency(
             from_project=from_project,
@@ -211,6 +223,7 @@ def dependency_delete(request, dependency_id):
         ProjectDependency.objects.select_related("from_project__org"), pk=dependency_id
     )
     org_id = dep.from_project.org_id
-    org_or_404(request.user, org_id)
+    project_or_404(request.user, dep.from_project_id)
+    project_or_404(request.user, dep.to_project_id)
     delete_dependency(dep, request.user)
     return redirect("org_roadmap", org_id=org_id)

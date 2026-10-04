@@ -8,16 +8,16 @@ from ninja.errors import HttpError
 from accounts.models import User
 from github import services as gh_services
 from orgs.models import Team
-from orgs.services import orgs_of
 from projects.models import Project
 from projects.services import (
-    can_view_project,
     create_project,
     delete_project,
     parse_spec,
     set_api_spec,
     set_project_channel,
+    set_visibility,
     update_project,
+    visible_projects,
 )
 
 from ..context import ctx, org_or_404
@@ -38,16 +38,12 @@ router = Router(tags=["projects"])
 
 
 def _visible(request):
-    return (
-        Project.objects.filter(org__in=orgs_of(request.auth))
-        .select_related("org")
-        .prefetch_related("owners", "teams")
-    )
+    return visible_projects(request.auth).select_related("org").prefetch_related("owners", "teams")
 
 
 def _project_or_404(request, project_id: int) -> Project:
     p = _visible(request).filter(pk=project_id).first()
-    if p is None or not can_view_project(request.auth, p):
+    if p is None:
         raise HttpError(404, "프로젝트를 찾을 수 없습니다.")
     return p
 
@@ -110,6 +106,7 @@ def create_project_ep(request, payload: ProjectCreateIn):
         teams=_teams(payload.team_ids),
         status=payload.status,
         dev_tools=payload.dev_tools,
+        visibility=payload.visibility,
         **ctx(request),
     )
     return 201, project_out(p)
@@ -124,7 +121,10 @@ def patch_project(request, project_id: int, payload: ProjectPatchIn):
         data["owners"] = _owners(data.pop("owner_ids") or [])
     if "team_ids" in data:
         data["teams"] = _teams(data.pop("team_ids") or [])
+    visibility = data.pop("visibility", None)
     p = update_project(p, data, expected_version=version, **ctx(request))
+    if visibility is not None:
+        p = set_visibility(p, visibility, **ctx(request))
     return project_out(p)
 
 

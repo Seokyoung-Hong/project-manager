@@ -21,7 +21,8 @@ def test_choice_groups_use_fieldset_and_legend():
         encoding="utf-8"
     )
 
-    assert project_dialog.count('<fieldset class="choice-fieldset">') == 3
+    assert project_dialog.count('<fieldset class="choice-fieldset">') == 4
+    assert "<legend>공개 범위</legend>" in project_dialog
     assert "<legend>관리자 (여러 명 가능)</legend>" in project_dialog
     assert "<legend>담당 팀</legend>" in project_dialog
     assert "<legend>상태</legend>" in project_dialog

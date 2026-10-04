@@ -7,9 +7,9 @@ from django.utils import timezone
 from accounts.models import IdempotencyKey, User
 from common.dates import kst_day_range, overdue_before, today_kst, week_bounds
 from common.errors import ConflictError, ServiceError
-from orgs.services import ai_denied, is_admin, is_member, orgs_of, require_admin
+from orgs.services import ai_denied, is_admin, is_member, require_admin
 from orgs.settings import effective
-from projects.services import is_owner, project_stats
+from projects.services import can_view_project, is_owner, project_stats, visible_projects
 
 from . import work_requests as wr
 from .models import ChangeLog, ChecklistItem, Link, Task, TodayItem
@@ -100,6 +100,17 @@ def _require_member(actor, project):
         return
     if not is_member(actor, project.org):
         raise ServiceError({"project": "이 조직의 멤버가 아닙니다."})
+    if not can_view_project(actor, project):
+        raise ServiceError({"project": "볼 수 없는 프로젝트입니다."})
+
+
+ASSIGNEE_CANT_SEE = "담당자가 볼 수 없는 프로젝트입니다. 담당 팀에 넣거나 공개 범위를 바꾸세요."
+
+
+def _require_viewer(assignee, project):
+    """비공개 프로젝트(IMPL-PLAN-7 F)의 담당자는 그 프로젝트를 볼 수 있어야 한다."""
+    if project.visibility != "org" and not can_view_project(assignee, project):
+        raise ServiceError({"assignee": ASSIGNEE_CANT_SEE})
 
 
 def _ai_check(org, key: str, action: str, source: str, field: str):
@@ -195,8 +206,8 @@ def _apply(task, expected_version: int, fields: dict):
 
 
 def visible_tasks(user):
-    """user가 볼 수 있는 태스크 queryset (내 조직 범위)."""
-    return Task.objects.filter(project__org__in=orgs_of(user)).select_related(
+    """user가 볼 수 있는 태스크 queryset (볼 수 있는 프로젝트 범위)."""
+    return Task.objects.filter(project__in=visible_projects(user)).select_related(
         "project", "project__org", "assignee"
     )
 
@@ -243,6 +254,7 @@ def create_task(
                 return existing
             hit.delete()  # 대상이 지워진 키는 새로 만든다
     assignee = assignee or actor
+    _require_viewer(assignee, project)
     # 남에게 맡길 권한이 없으면 일단 만든 사람이 맡고, 받을 사람에게 담당 요청을 보낸다.
     ask = None
     if not wr.can_assign_directly(actor, assignee, project.org, source):
@@ -358,6 +370,9 @@ def update_task(
     if "priority" in changes:
         _ai_check(task.project.org, "ai.change_priority", "중요도 바꾸기", source, "priority")
     ask = None
+    if changes.get("assignee") is not None and changes["assignee"] != task.assignee:
+        # 담당 요청으로 돌기 전에 막는다 — 못 보는 사람에게 요청 알림이 가면 안 된다.
+        _require_viewer(changes["assignee"], changes.get("project", task.project))
     if (
         "assignee" in changes
         and changes["assignee"] != task.assignee
@@ -370,6 +385,8 @@ def update_task(
         _require_member(actor, new["project"])
         if new["project"].org_id != task.project.org_id:
             raise ServiceError({"project": "다른 조직의 프로젝트로 옮길 수 없습니다."})
+        if new["assignee"] is not None:
+            _require_viewer(new["assignee"], new["project"])
     new["no_due_reason"] = (new["no_due_reason"] or "").strip()[:200]
     new["stop_reason"] = (new["stop_reason"] or "").strip()[:300]
     _validate(
@@ -811,7 +828,7 @@ def today_items(user, day: date):
     TodayItem은 태스크를 담은 시점의 기록이라, 그 뒤 조직에서 빠지면 남아 있을 수 있다.
     담기·읽기 두 경로가 같은 범위를 쓰도록 여기 한 곳에서 거른다.
     """
-    return TodayItem.objects.filter(user=user, date=day, task__project__org__in=orgs_of(user))
+    return TodayItem.objects.filter(user=user, date=day, task__project__in=visible_projects(user))
 
 
 def today_membership(user, day: date | None = None) -> dict:

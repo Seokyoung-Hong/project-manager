@@ -78,7 +78,7 @@
       {% for p in nav_projects %}
       <a href="{% url 'project_detail' p.pk %}"{% if p.pk == current_project_id %} aria-current="page"{% endif %}>
         <span class="initial">{{ p.name|initial }}</span>
-        <span class="label">{{ p.name }}</span>
+        <span class="label">{% if p.visibility == "teams" %}🔒 {% endif %}{{ p.name }}</span>
         <span class="count t12 muted">미완료 {{ p.open_count }}</span>
       </a>
       {% empty %}<span class="muted t13 project-picker-empty">프로젝트가 없습니다.</span>{% endfor %}
@@ -98,7 +98,7 @@
       <a href="{% url 'project_detail' p.pk %}" title="{{ p.name }}"
          {% if p.pk == current_project_id %}aria-current="page"{% endif %}>
         <span class="initial">{{ p.name|initial }}</span>
-        <span class="label">{{ p.name }}</span>
+        <span class="label">{% if p.visibility == "teams" %}🔒 {% endif %}{{ p.name }}</span>
         <span class="count t12 muted">{{ p.open_count }}</span>
       </a>
       {% empty %}<span class="muted t13 rail-only" style="padding:0 10px">프로젝트 없음</span>{% endfor %}

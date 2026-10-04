@@ -1,11 +1,13 @@
 import re
 
 from django.db import transaction
+from django.db.models import Q
 from django.utils import timezone
 
 from common.dates import now_kst
 from common.errors import ConflictError, ServiceError
 from orgs.services import is_admin, is_member, orgs_of
+from projects.services import can_view_project, visible_projects
 
 from .models import MeetingNote
 
@@ -25,7 +27,10 @@ def _clean_tags(tags) -> list[str]:
 
 
 def visible_notes(user):
-    return MeetingNote.objects.filter(org__in=orgs_of(user))
+    """프로젝트 회의록은 그 프로젝트를 볼 수 있을 때만(IMPL-PLAN-7 F)."""
+    return MeetingNote.objects.filter(org__in=orgs_of(user)).filter(
+        Q(project__isnull=True) | Q(project__in=visible_projects(user))
+    )
 
 
 def get_visible_note(user, note_id: int):
@@ -37,9 +42,11 @@ def get_visible_note(user, note_id: int):
     )
 
 
-def _check_project(org, project):
+def _check_project(org, project, actor):
     if project is not None and project.org_id != org.pk:
         raise ServiceError({"project": "같은 조직의 프로젝트여야 합니다."})
+    if project is not None and not can_view_project(actor, project):
+        raise ServiceError({"project": "볼 수 없는 프로젝트입니다."})
 
 
 def create_note(
@@ -47,7 +54,7 @@ def create_note(
 ):
     if not is_member(actor, org):
         raise ServiceError({"org": "이 조직의 멤버가 아닙니다."})
-    _check_project(org, project)
+    _check_project(org, project, actor)
     return MeetingNote.objects.create(
         org=org,
         project=project,
@@ -74,7 +81,7 @@ def update_note(note, field: str, value, *, actor, expected_version: int) -> Mee
         if len(value.encode()) > MAX_BODY:
             raise ServiceError({"body_md": "본문이 너무 깁니다 (256KB 상한)."})
     elif field == "project":
-        _check_project(note.org, value)
+        _check_project(note.org, value, actor)
     elif field == "tags":
         value = _clean_tags(value)
     # created_on(회의 일시)은 비워 둘 수 있다 — 작성 시각(created_at)과 별개다.

@@ -16,7 +16,7 @@ from common.dates import fmt_md, today_kst
 from common.errors import ServiceError
 from orgs.models import Team, TeamMembership
 from orgs.services import is_admin, is_member, orgs_of
-from projects.models import Project
+from projects.services import visible_projects
 
 from . import services as ts
 from .models import Notice, WorkRequest
@@ -377,9 +377,9 @@ def team_by_channel(channel_id: str):
     return Team.objects.filter(discord_channel_id=channel_id).select_related("org").first()
 
 
-def projects_for(req):
-    """수락할 때 고를 프로젝트. 받는 팀이 맡은 프로젝트를 앞에 둔다."""
-    qs = Project.objects.filter(org=req.org, is_archived=False)
+def projects_for(req, user):
+    """수락할 때 고를 프로젝트(user가 볼 수 있는 것만). 받는 팀이 맡은 프로젝트를 앞에 둔다."""
+    qs = visible_projects(user, req.org).filter(is_archived=False)
     if req.team_id:
         mine = list(qs.filter(teams=req.team))
         return mine + [p for p in qs.exclude(teams=req.team)]
