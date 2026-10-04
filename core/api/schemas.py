@@ -158,7 +158,9 @@ class TeamOut(Schema):  # 새 의미: 조직 안의 사람 묶음
     id: int
     name: str
     purpose: str
-    member_count: int
+    member_count: int | None  # 볼 수 없는 비공개 팀이면 null
+    dev_tools: bool = True
+    is_private: bool = False
 
 
 class ProjectOut(Schema):
@@ -324,6 +326,8 @@ class GovernanceIn(Schema):
 class TeamCreateIn(Schema):
     name: str
     purpose: str = ""
+    dev_tools: bool = True
+    is_private: bool = False
 
 
 class TeamMemberIn(Schema):

@@ -32,6 +32,14 @@ def _admin_team_or_404(request, team_id):
     return team
 
 
+def _dev_team_or_404(request, team_id):
+    """GitHub 팀 끝점용. 개발 도구를 끈(비개발) 팀에는 GitHub 기능이 없다."""
+    team = _admin_team_or_404(request, team_id)
+    if not team.dev_tools:
+        raise Http404
+    return team
+
+
 def _apply_errors(form, exc: ServiceError):
     for field, msg in exc.errors.items():
         form.add_error(field if field in form.fields else None, msg)
@@ -50,7 +58,14 @@ def team_new(request, org_id):
     if request.method == "POST" and form.is_valid():
         d = form.cleaned_data
         try:
-            osv.create_team(org=org, name=d["name"], purpose=d["purpose"], actor=request.user)
+            osv.create_team(
+                org=org,
+                name=d["name"],
+                purpose=d["purpose"],
+                dev_tools=d["dev_tools"],
+                is_private=d["is_private"],
+                actor=request.user,
+            )
             return hx_redirect(request, reverse("org_teams", args=[org.pk]))
         except ServiceError as e:
             _apply_errors(form, e)
@@ -62,16 +77,29 @@ def team_edit(request, team_id):
     team = _team_or_404(request, team_id)
     if denied := not_admin(request, team.org, "팀 관리"):
         return denied
-    form = TeamForm(request.POST or None, initial={"name": team.name, "purpose": team.purpose})
+    initial = {
+        "name": team.name,
+        "purpose": team.purpose,
+        "dev_tools": team.dev_tools,
+        "is_private": team.is_private,
+    }
+    form = TeamForm(request.POST or None, initial=initial)
     if request.method == "POST" and form.is_valid():
         d = form.cleaned_data
         try:
-            osv.update_team(team, name=d["name"], purpose=d["purpose"], actor=request.user)
+            osv.update_team(
+                team,
+                name=d["name"],
+                purpose=d["purpose"],
+                dev_tools=d["dev_tools"],
+                is_private=d["is_private"],
+                actor=request.user,
+            )
         except ServiceError as e:
             _apply_errors(form, e)
             return _dialog(request, form, team.org, team)
         link = getattr(team, "github", None)
-        if settings.GITHUB_ENABLED and link is not None:
+        if settings.GITHUB_ENABLED and link is not None and team.dev_tools:
             warn = attempt(
                 request,
                 gh_writes.rename_gh_team,
@@ -127,6 +155,9 @@ def _member_team_detail(request, team):
 def team_detail(request, team_id):
     team = _team_or_404(request, team_id)
     if not can_admin(request.user, team.org):
+        # 비공개 팀은 팀원이 아니면 존재를 드러내지 않는다(목록에는 이름만 보인다).
+        if not osv.can_view_team(request.user, team):
+            raise Http404
         return _member_team_detail(request, team)
     members = team.members.order_by("display_name")
     candidates = (
@@ -135,7 +166,8 @@ def team_detail(request, team_id):
         .order_by("display_name")
     )
     gh_link = getattr(team, "github", None)
-    gh_install = getattr(team.org, "github", None)
+    # 비개발 팀에는 GitHub 섹션을 그리지 않는다(설치가 없는 것과 같게 다룬다).
+    gh_install = getattr(team.org, "github", None) if team.dev_tools else None
     gh_teams = []
     # 개인 계정 설치에는 GitHub 팀이 없다 — 목록을 묻지도, 연결 UI를 그리지도 않는다.
     gh_user = gh_install is not None and gh_install.account_type == "User"
@@ -201,7 +233,7 @@ def team_member_remove(request, team_id, user_id):
 def _sync_member(request, team, user, *, add: bool):
     """연결된 GitHub 팀에 멤버 추가·제거를 반영한다. GitHub 미연결 사용자는 PM에만 넣는다."""
     link = getattr(team, "github", None)
-    if not settings.GITHUB_ENABLED or link is None:
+    if not settings.GITHUB_ENABLED or link is None or not team.dev_tools:
         return
     login = gh_writes._login_of(user)
     if not login:
@@ -236,7 +268,7 @@ def _sync_member(request, team, user, *, add: bool):
 @require_POST
 def team_github_link(request, team_id):
     """이미 있는 GitHub 팀을 고른다. GitHub는 부르지 않고 PM 연결만 만든다."""
-    team = _admin_team_or_404(request, team_id)
+    team = _dev_team_or_404(request, team_id)
     raw = request.POST.get("gh_team", "")
     gid, _, rest = raw.partition(":")
     slug, _, name = rest.partition(":")
@@ -255,7 +287,7 @@ def team_github_link(request, team_id):
 @require_POST
 def team_github_create(request, team_id):
     """GitHub에 같은 이름의 새 팀을 만들고 곧바로 연결한다."""
-    team = _admin_team_or_404(request, team_id)
+    team = _dev_team_or_404(request, team_id)
     try:
         data = gh_writes.create_gh_team(team, actor=request.user)
     except (ServiceError, GitHubError) as e:
@@ -282,7 +314,7 @@ def team_github_create(request, team_id):
 @require_POST
 def team_github_unlink(request, team_id):
     """PM 연결만 끊는다. GitHub 팀은 그대로 둔다."""
-    team = _admin_team_or_404(request, team_id)
+    team = _dev_team_or_404(request, team_id)
     GitHubTeamLink.objects.filter(team=team).delete()
     messages.success(request, "GitHub 연결을 해제했습니다.")
     return redirect("team_detail", team_id=team.pk)
@@ -291,7 +323,7 @@ def team_github_unlink(request, team_id):
 @login_required
 @require_POST
 def team_github_reconcile(request, team_id):
-    team = _admin_team_or_404(request, team_id)
+    team = _dev_team_or_404(request, team_id)
 
     def on_result(user, login, warning):
         link = team.github

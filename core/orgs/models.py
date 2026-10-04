@@ -80,8 +80,9 @@ class OrgMembership(models.Model):
 class Team(models.Model):
     """조직 안의 사람 묶음(백엔드·프론트엔드 등).
 
-    가시성을 제한하지 않는다. 부하 현황 필터, 프로젝트 담당 표시, GitHub 팀 연결에 쓴다.
-    한 사람이 여러 팀에 속할 수 있다.
+    부하 현황 필터, 프로젝트 담당 표시, GitHub 팀 연결에 쓴다. 한 사람이 여러 팀에 속할 수 있다.
+    `is_private`이면 세부(멤버·팀장·채널)는 팀원·조직 관리자만 본다 — 이름은 누구나 본다
+    (`services.visible_teams`).
     """
 
     org = models.ForeignKey(Organization, on_delete=models.CASCADE, related_name="teams")
@@ -91,6 +92,9 @@ class Team(models.Model):
     discord_channel_id = models.CharField("Discord 채널", max_length=32, blank=True)
     # 봇이 허용 집합의 멤버 덮어쓰기를 맞춰 주는 채널인가(IMPL-PLAN-5 B, 사용자 결정 3).
     discord_channel_managed = models.BooleanField("채널 자동 관리", default=False)
+    # 끄면 GitHub Teams 기능(연결·생성·동기화·이름 변경 반영·멤버 GitHub 열)을 쓰지 않는 비개발 팀.
+    dev_tools = models.BooleanField("개발 도구", default=True)
+    is_private = models.BooleanField("팀 화면 비공개", default=False)
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="+"
     )

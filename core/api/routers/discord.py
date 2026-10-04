@@ -18,7 +18,7 @@ from orgs import channels as org_channels
 from orgs import discord as org_discord
 from orgs import settings as org_settings
 from orgs.models import Organization, OrgMembership, Team
-from orgs.services import orgs_of, set_team_channel
+from orgs.services import orgs_of, set_team_channel, visible_teams
 from projects.models import Project
 from projects.services import set_project_channel
 from tasks import work_requests as wr
@@ -265,8 +265,15 @@ def projects(request, payload: DiscordActorIn):
 def teams(request, payload: DiscordActorIn):
     actor = _actor(payload.discord_user_id)
     qs = Team.objects.filter(org__in=orgs_of(actor))
+    # 비공개 팀은 이름만(요청 보내기 자동완성). 채널은 볼 수 있는 사람에게만 준다.
+    visible = set(visible_teams(actor).values_list("pk", flat=True))
     return [
-        {"id": t.pk, "name": t.name, "org_id": t.org_id, "discord_channel_id": t.discord_channel_id}
+        {
+            "id": t.pk,
+            "name": t.name,
+            "org_id": t.org_id,
+            "discord_channel_id": t.discord_channel_id if t.pk in visible else "",
+        }
         for t in qs
     ]
 

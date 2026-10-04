@@ -123,6 +123,8 @@ def set_gh_team_member(link, org, login: str, *, actor, add: bool):
 
 def reconcile_team(team, *, actor, on_result=None) -> tuple[int, list[str]]:
     """PM 팀 멤버를 GitHub 팀에 맞춘다. 뺄 사람은 건드리지 않는다."""
+    if not team.dev_tools:
+        raise ServiceError({"team": "개발 도구를 끈 팀입니다."})
     link = getattr(team, "github", None)
     if link is None:
         raise ServiceError({"github": "연결된 GitHub 팀이 없습니다."})

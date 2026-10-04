@@ -9,6 +9,7 @@ from orgs.models import Invite, OrgMembership, Team
 from orgs.requests import pending_out, request_change
 from orgs.services import (
     add_team_member,
+    can_view_team,
     create_invite,
     create_team,
     delete_team,
@@ -17,6 +18,7 @@ from orgs.services import (
     require_ai_enabled,
     revoke_invite,
     set_governance,
+    visible_teams,
 )
 from reports.services import org_status
 from tasks.brief import user_brief
@@ -56,7 +58,6 @@ def get_org(request, org_id: int):
     org = org_or_404(request, org_id)
     role = OrgMembership.objects.get(org=org, user=request.auth).role
     projects = org.projects.filter(is_archived=False).prefetch_related("owners", "teams")
-    teams = org.teams.all()
     return {
         "id": org.pk,
         "name": org.name,
@@ -64,15 +65,7 @@ def get_org(request, org_id: int):
         "role": role,
         "discord_guild_id": org.discord_guild_id,
         "projects": [project_out(p) for p in projects],
-        "teams": [
-            {
-                "id": t.pk,
-                "name": t.name,
-                "purpose": t.purpose,
-                "member_count": t.members.count(),
-            }
-            for t in teams
-        ],
+        "teams": _teams_out(org, request.auth),
     }
 
 
@@ -84,21 +77,12 @@ def members(request, org_id: int):
 
 @router.get("/{org_id}/teams", response=list[TeamOut])
 def teams(request, org_id: int):
-    org = org_or_404(request, org_id)
-    return [
-        {
-            "id": t.pk,
-            "name": t.name,
-            "purpose": t.purpose,
-            "member_count": t.members.count(),
-        }
-        for t in org.teams.all()
-    ]
+    return _teams_out(org_or_404(request, org_id), request.auth)
 
 
 @router.get("/{org_id}/status", response=dict)
 def status(request, org_id: int):
-    return org_status(org_or_404(request, org_id))
+    return org_status(org_or_404(request, org_id), viewer=request.auth)
 
 
 @router.post("/{org_id}/invites", response={201: InviteOut, 400: ErrorOut})
@@ -148,8 +132,21 @@ def put_governance(request, org_id: int, payload: GovernanceIn, reason: str = ""
 # ---- 팀 쓰기 ----
 
 
-def _team_out(t: Team) -> dict:
-    return {"id": t.pk, "name": t.name, "purpose": t.purpose, "member_count": t.members.count()}
+def _team_out(t: Team, visible: bool = True) -> dict:
+    return {
+        "id": t.pk,
+        "name": t.name,
+        "purpose": t.purpose,
+        "member_count": t.members.count() if visible else None,
+        "dev_tools": t.dev_tools,
+        "is_private": t.is_private,
+    }
+
+
+def _teams_out(org, user) -> list[dict]:
+    """팀 목록. 볼 수 없는 비공개 팀은 이름만 — 인원은 null(`visible_teams`)."""
+    visible = set(visible_teams(user, org).values_list("pk", flat=True))
+    return [_team_out(t, t.pk in visible) for t in org.teams.all()]
 
 
 def _team_or_404(request, team_id: int) -> Team:
@@ -165,7 +162,13 @@ def create_team_ep(request, org_id: int, payload: TeamCreateIn):
     org = org_or_404(request, org_id)
     c = ctx(request)
     team = create_team(
-        org=org, name=payload.name, purpose=payload.purpose, actor=c["actor"], source=c["source"]
+        org=org,
+        name=payload.name,
+        purpose=payload.purpose,
+        dev_tools=payload.dev_tools,
+        is_private=payload.is_private,
+        actor=c["actor"],
+        source=c["source"],
     )
     return 201, _team_out(team)
 
@@ -187,7 +190,7 @@ def add_team_member_ep(request, team_id: int, payload: TeamMemberIn):
         raise HttpError(404, "사용자를 찾을 수 없습니다.")
     c = ctx(request)
     add_team_member(team, user, c["actor"], source=c["source"])
-    return _team_out(team)
+    return _team_out(team, can_view_team(c["actor"], team))
 
 
 @router.delete("/teams/{team_id}/members/{user_id}", response={200: TeamOut, 400: ErrorOut})
@@ -198,7 +201,7 @@ def remove_team_member_ep(request, team_id: int, user_id: int):
         raise HttpError(404, "사용자를 찾을 수 없습니다.")
     c = ctx(request)
     remove_team_member(team, user, c["actor"], source=c["source"])
-    return _team_out(team)
+    return _team_out(team, can_view_team(c["actor"], team))
 
 
 @router.get("/{org_id}/repos", response=list[dict])

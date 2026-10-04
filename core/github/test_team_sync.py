@@ -85,7 +85,9 @@ def test_invite_to_org_when_checked(installed, admin, as_admin, calls):
 def test_team_create_syncs_when_linked(installed, admin, team, as_admin, calls):
     """연결된 팀만 이름 변경이 GitHub에 반영된다."""
     GitHubTeamLink.objects.create(team=team, github_team_id=1, slug="backend")
-    r = as_admin.post(f"/teams/{team.pk}/edit", {"name": "백엔드팀", "purpose": ""}, headers=HX)
+    r = as_admin.post(
+        f"/teams/{team.pk}/edit", {"name": "백엔드팀", "purpose": "", "dev_tools": "1"}, headers=HX
+    )
     assert r.status_code == 204
     assert calls and calls[0]["method"] == "PATCH"
     assert calls[0]["path"].endswith("/teams/backend")

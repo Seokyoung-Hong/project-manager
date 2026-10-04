@@ -68,6 +68,8 @@ class TeamForm(forms.Form):
     # 빈 이름 검사는 services.create_team/update_team이 한다(업무 규칙은 services에만).
     name = forms.CharField(label="이름", max_length=100, required=False)
     purpose = forms.CharField(label="목적", max_length=200, required=False)
+    dev_tools = forms.BooleanField(label="개발 도구(GitHub 팀)", required=False, initial=True)
+    is_private = forms.BooleanField(label="팀 화면 비공개", required=False)
 
 
 class ProjectForm(forms.Form):
