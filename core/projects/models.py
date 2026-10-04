@@ -17,9 +17,9 @@ class Project(models.Model):
         "preparing": "기획/기초 구상 중",
         "on_hold": "기능 추가 예정이나 우선순위 낮아 대기 중",
         "waiting": "착수 예정이지만 아직 명확하지 않음",
-        "active": "개발 또는 구현 진행 중",
+        "active": "작업 진행 중",
         "paused": "외부 사유나 리소스 부족으로 잠시 멈춤",
-        "done": "유지보수 외 별도 작업 없음",
+        "done": "계획한 작업을 모두 마침(유지 작업만 남음)",
         "stopped": "모든 작업이 완료되어 현재 상태로 종료 가능하지만, 다른 프로젝트와의 연계 가능성이 높아 추후 재개될 여지가 많은 상태",
         "eol": "프로젝트가 더 이상 필요하지 않거나 대체되어, 유지보수·재개 가능성 모두 없는 상태",
     }
@@ -64,6 +64,15 @@ class Project(models.Model):
     @property
     def status_desc(self) -> str:
         return self.STATUS_DESC[self.status]
+
+    @property
+    def dev_tools(self) -> bool:
+        """개발 화면을 보일지. 저장소가 연결돼 있으면 설정과 무관하게 켬(데이터 숨김 방지)."""
+        from orgs.settings import effective
+
+        if getattr(self, "repo", None) is not None:
+            return True
+        return effective("project.dev_tools", org=self.org, project=self)
 
 
 class Milestone(models.Model):

@@ -6,6 +6,8 @@ from django.urls import reverse
 from django.views.decorators.http import require_POST
 
 from common.errors import ConflictError, ServiceError
+from github import services as gh_services
+from github.client import GitHubError
 from orgs.settings import GROUPS, effective, locked_keys, specs_for
 from orgs.settings import display as org_display
 from projects.models import Project
@@ -98,6 +100,12 @@ def _checked_ids(form, field: str) -> set[int]:
 
 def _dialog(request, form, org, project=None):
     """프로젝트 생성·수정 모달 부분 템플릿."""
+    # 저장소 입력은 생성 대화상자에서, 내 GitHub 계정이 연결돼 있을 때만 보인다.
+    repo_input = (
+        project is None
+        and settings.GITHUB_ENABLED
+        and getattr(request.user, "github", None) is not None
+    )
     return dialog(
         request,
         "projects/_dialog.html",
@@ -113,6 +121,8 @@ def _dialog(request, form, org, project=None):
                 (code, label, Project.STATUS_DESC[code]) for code, label in Project.STATUSES
             ],
             "status_value": form["status"].value() or "preparing",
+            "repo_input": repo_input,
+            "org_repos": gh_services.installation_repos(org) if repo_input else [],
         },
     )
 
@@ -120,9 +130,14 @@ def _dialog(request, form, org, project=None):
 @login_required
 def project_new(request):
     org = org_or_404(request.user, request.GET.get("org") or request.POST.get("org"))
-    form = ProjectForm(request.POST or None, org=org)
+    form = ProjectForm(
+        request.POST or None,
+        org=org,
+        initial={"dev_tools": effective("project.dev_tools", org=org)},
+    )
     if request.method == "POST" and form.is_valid():
         d = form.cleaned_data
+        repo_url = d["repo_url"].strip() if settings.GITHUB_ENABLED else ""
         try:
             p = create_project(
                 org=org,
@@ -131,10 +146,28 @@ def project_new(request):
                 owners=list(d["owners"]),
                 teams=list(d["teams"]),
                 status=d["status"],
+                # 저장소를 입력했으면 개발 도구를 켠다(저장소가 있으면 끌 수 없다).
+                dev_tools=d["dev_tools"] or bool(repo_url),
                 actor=request.user,
                 source="web",
             )
             request.session["org_id"] = org.pk
+            if repo_url:
+                try:
+                    gh_services.connect_repo(
+                        project=p,
+                        url=repo_url,
+                        actor=request.user,
+                        source="web",
+                        confirm_shared=False,
+                    )
+                except (ServiceError, GitHubError) as e:
+                    # 프로젝트는 이미 만들어졌다. 저장소 탭에서 다시 연결하게 한다.
+                    detail = " ".join(e.errors.values()) if isinstance(e, ServiceError) else str(e)
+                    messages.warning(
+                        request, f"프로젝트를 만들었지만 저장소는 연결하지 못했습니다: {detail}"
+                    )
+                    return hx_redirect(request, reverse("project_repo", args=[p.pk]))
             return hx_redirect(request, reverse("project_detail", args=[p.pk]))
         except ServiceError as e:
             apply_service_error(form, e)
@@ -198,7 +231,7 @@ def project_detail(request, project_id, *, link_form=None):
         "include_closed": include_closed,
         "form_open": request.GET.get("new") == "1",
         "is_admin": can_admin(request.user, project.org),
-        "link_form": link_form if link_form is not None else LinkForm(),
+        "link_form": link_form if link_form is not None else LinkForm(dev_tools=project.dev_tools),
         "link_open": link_form is not None,
         "tab": "tasks",
         "form": TaskInlineForm(
@@ -235,6 +268,7 @@ def task_create(request, project_id):
                 priority=d["priority"],
                 due_date=d["due_date"],
                 no_due_reason=d["no_due_reason"],
+                done_when=d["done_when"],
                 idempotency_key=d["idem"] or None,
             )
             return hx_redirect(
@@ -303,7 +337,7 @@ def project_delete(request, project_id):
 @require_POST
 def link_add(request, project_id):
     project = project_or_404(request.user, project_id)
-    form = LinkForm(request.POST)
+    form = LinkForm(request.POST, dev_tools=project.dev_tools)
     if form.is_valid():
         d = form.cleaned_data
         try:

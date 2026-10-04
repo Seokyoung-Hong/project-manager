@@ -188,6 +188,7 @@ def quick_add(request):
                 priority=d["priority"],
                 due_date=d["due_date"],
                 no_due_reason=d["no_due_reason"],
+                done_when=d["done_when"],
                 idempotency_key=d["idem"] or None,
             )
             ts.today_add(request.user, task)

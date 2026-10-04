@@ -172,6 +172,7 @@ class ProjectOut(Schema):
     status: ProjectStatus
     status_label: str
     is_archived: bool
+    dev_tools: bool  # false면 비개발 프로젝트 — GitHub·브랜치·PR 안내를 건너뛴다
     version: int
     stats: ProjectStats
     links: list[LinkOut]
@@ -185,6 +186,7 @@ class ProjectCreateIn(Schema):
     owner_ids: list[int] = []
     team_ids: list[int] = []
     status: ProjectStatus = "preparing"
+    dev_tools: bool | None = None  # 비우면 조직 기본값(project.dev_tools)
 
 
 class ProjectPatchIn(Schema):

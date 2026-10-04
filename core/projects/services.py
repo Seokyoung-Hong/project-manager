@@ -111,6 +111,7 @@ def create_project(
     owners=(),
     status="preparing",
     teams=(),
+    dev_tools: bool | None = None,
 ):
     if not is_member(actor, org):
         raise ServiceError({"org": "이 조직의 멤버가 아닙니다."})
@@ -130,12 +131,19 @@ def create_project(
     name = name.strip()[:100]
     if Project.objects.filter(org=org, name=name).exists():
         raise ServiceError({"name": "같은 이름의 프로젝트가 이미 있습니다."})
+    # dev_tools가 None이면 조직 기본값을 따른다. 조직 기본값과 다를 때만 프로젝트 설정에 남는다.
+    # clean()은 레지스트리 기본값(True)과 같은 값을 지우므로, 조직이 끈 상태에서 켜는 값을
+    # 남기려면 직접 적어야 한다.
+    proj_settings = {}
+    if dev_tools is not None and bool(dev_tools) != effective("project.dev_tools", org=org):
+        proj_settings = {"project.dev_tools": bool(dev_tools)}
     project = Project.objects.create(
         org=org,
         name=name,
         purpose=purpose.strip()[:200],
         status=status,
         created_by=actor,
+        settings=proj_settings,
     )
     project.owners.set(owners)
     project.teams.set(teams)
@@ -305,6 +313,13 @@ def set_project_settings(project, data: dict, *, actor, source="web", token=None
     require_level(actor, project, effective("project.settings_by", org=project.org), "settings")
     require_ai_enabled(project.org, source, "프로젝트 설정 변경")
     cleaned = clean("project", data)
+    if cleaned.get("project.dev_tools") is False and getattr(project, "repo", None) is not None:
+        raise ServiceError(
+            {
+                "project.dev_tools": "저장소가 연결된 프로젝트는 개발 도구를 끌 수 없습니다. "
+                "먼저 저장소 연결을 해제하세요."
+            }
+        )
     locked = locked_keys(project.org)
     bad = {k: "조직에서 잠근 설정입니다." for k in cleaned if k in locked}
     if bad:

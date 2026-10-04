@@ -662,3 +662,53 @@ def test_archive_can_cancel_leftover_tasks(org, project, admin, member):
     assert project.is_archived
     assert task.status == "cancelled"
     assert Task.objects.filter(pk=task.pk).exists()  # 지우지 않았다
+
+
+# ---------- 비개발 프로젝트(project.dev_tools) — IMPL-PLAN-7 F1 ----------
+
+
+def _connect(project):
+    from github.models import RepoConnection
+
+    return RepoConnection.objects.create(
+        project=project,
+        url="https://github.com/o/r.git",
+        full_name="o/r",
+        created_by=project.created_by,
+    )
+
+
+def test_dev_tools_org_default_and_project_override(org, admin, project):
+    assert project.dev_tools is True
+    org.settings = {"project.dev_tools": False}
+    org.save()
+    project = type(project).objects.get(pk=project.pk)
+    assert project.dev_tools is False
+    org.settings = {}
+    org.save()
+    set_project_settings(project, {"project.dev_tools": False}, actor=admin)
+    project = type(project).objects.get(pk=project.pk)
+    assert project.dev_tools is False
+
+
+def test_dev_tools_forced_on_with_repo(org, admin, project):
+    set_project_settings(project, {"project.dev_tools": False}, actor=admin)
+    _connect(project)
+    project = type(project).objects.get(pk=project.pk)
+    assert project.dev_tools is True  # 설정은 끔이지만 저장소가 있으면 보인다
+    with pytest.raises(ServiceError) as e:
+        set_project_settings(project, {"project.dev_tools": False}, actor=admin)
+    assert "project.dev_tools" in e.value.errors
+
+
+def test_create_project_saves_dev_tools_only_when_differs(org, admin):
+    p = create_project(org=org, name="홍보", actor=admin, dev_tools=False)
+    assert p.settings == {"project.dev_tools": False} and p.dev_tools is False
+    p = create_project(org=org, name="앱", actor=admin, dev_tools=True)
+    assert p.settings == {}  # 조직 기본값과 같으면 남기지 않는다
+    org.settings = {"project.dev_tools": False}
+    org.save()
+    p = create_project(org=org, name="서버", actor=admin, dev_tools=True)
+    assert p.settings == {"project.dev_tools": True}
+    p = create_project(org=org, name="디자인", actor=admin)
+    assert p.settings == {} and p.dev_tools is False

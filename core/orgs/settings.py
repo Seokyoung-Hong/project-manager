@@ -283,6 +283,16 @@ SPECS: dict[str, Spec] = {
             "",
             choices=(("list", "목록"), ("board", "보드")),
         ),
+        Spec(
+            "project.dev_tools",
+            "bool",
+            True,
+            "org",
+            True,
+            "project",
+            "개발 도구 사용",
+            "끄면 GitHub·API 문서 탭과 태스크의 GitHub 블록을 숨깁니다. 저장소가 연결된 프로젝트는 끌 수 없습니다.",
+        ),
         # --- 4.3 조직 운영 ---
         Spec(
             "org.invite_days", "int", 7, "org", False, "org", "초대 링크 만료(일)", "", lo=1, hi=90

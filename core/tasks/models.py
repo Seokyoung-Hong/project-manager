@@ -323,6 +323,7 @@ class TodayItem(models.Model):
 class Link(models.Model):
     KINDS = [
         ("doc", "문서"),
+        ("out", "산출물"),
         ("issue", "이슈"),
         ("dash", "대시보드"),
         ("other", "기타"),
