@@ -327,3 +327,8 @@ def test_task_series_tools_shape(fake_core, with_token):
     fn("list_tasks")(include_templates=True, parent_id=7)
     assert "include_templates=true" in fake_core.calls[-1][1]
     assert "parent=7" in fake_core.calls[-1][1]
+
+
+def test_create_request_passes_due_date(fake_core, with_token):
+    fn("create_request")(1, "로그 확인", to_user_id=3, due_date="2030-01-02")
+    assert last_body(fake_core)["due_date"] == "2030-01-02"

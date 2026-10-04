@@ -27,6 +27,7 @@ class RequestCreateIn(Schema):
     body: str = ""
     team_id: int | None = None
     to_user_id: int | None = None
+    due_date: date | None = None
 
 
 class RequestAcceptIn(Schema):
@@ -134,6 +135,7 @@ def create_request_ep(request, payload: RequestCreateIn):
             body=payload.body,
             team=team,
             to_user=to_user,
+            due_date=payload.due_date,
             actor=c["actor"],
             source=c["source"],
         )

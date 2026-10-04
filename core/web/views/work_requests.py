@@ -52,6 +52,10 @@ def request_new(request):
         elif values.get("target") == "user":
             to_user = org.members.filter(pk=values.get("user") or 0).first()
         try:
+            try:
+                due = date.fromisoformat(values["due_date"]) if values.get("due_date") else None
+            except ValueError:
+                raise ServiceError({"due_date": "기한 형식이 올바르지 않습니다."}) from None
             req = wr.create_request(
                 org=org,
                 kind=values.get("kind", ""),
@@ -61,6 +65,7 @@ def request_new(request):
                 source="web",
                 team=team,
                 to_user=to_user,
+                due_date=due,
             )
         except ServiceError as e:
             errors = e.errors

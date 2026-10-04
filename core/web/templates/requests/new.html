@@ -28,6 +28,7 @@
     </fieldset>
     <label class="field">제목<input name="title" class="input" maxlength="200" value="{{ values.title }}" required></label>
     <label class="field">내용<textarea name="body" class="textarea" rows="6">{{ values.body }}</textarea></label>
+    <label class="field">희망 기한(선택)<input type="date" name="due_date" class="input" value="{{ values.due_date }}"></label>
     <button class="btn primary">요청 보내기</button>
   </form>
 </div>

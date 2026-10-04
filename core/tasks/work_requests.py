@@ -162,6 +162,7 @@ def create_request(
     team=None,
     to_user=None,
     posted_in: str = "",
+    due_date=None,
 ) -> WorkRequest:
     """posted_in: Discord에서 명령을 친 채널. 받는 팀의 채널이면 봇이 거기 이미 알렸다."""
     ts._ai_check(org, "ai.create_request", "요청 보내기", source, "request")
@@ -181,6 +182,8 @@ def create_request(
             raise ServiceError({"to_user": "받는 사람은 이 조직의 활성 멤버여야 합니다."})
         if to_user == actor:
             raise ServiceError({"to_user": "자기 자신에게는 요청할 수 없습니다."})
+    if due_date is not None and due_date < today_kst():
+        raise ServiceError({"due_date": "희망 기한은 오늘 이후여야 합니다."})
     body = (body or "").strip()
     same = WorkRequest.objects.filter(
         org=org,
@@ -190,6 +193,7 @@ def create_request(
         requested_by=actor,
         team=team,
         to_user=to_user,
+        due_date=due_date,
         status="pending",
         created_at__gte=timezone.now() - DUPLICATE_WINDOW,
     ).first()
@@ -203,6 +207,7 @@ def create_request(
         requested_by=actor,
         team=team,
         to_user=to_user,
+        due_date=due_date,
         source=source,
     )
     _notify_new(req, posted_in)
@@ -311,6 +316,7 @@ def _task_from_request(req, actor, source, project, assignee, due_date):
         raise ServiceError({"project": "태스크를 둘 프로젝트를 고르세요."})
     if project.org_id != req.org_id:
         raise ServiceError({"project": "이 조직의 프로젝트가 아닙니다."})
+    due_date = due_date or req.due_date  # 수락자가 비우면 요청자의 희망 기한
     footer = f"({req.number} · {req.requested_by.display_name}님의 요청)"
     return ts.create_task(
         project=project,
