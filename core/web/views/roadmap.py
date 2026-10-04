@@ -7,6 +7,7 @@ from django.urls import reverse
 from django.views.decorators.http import require_POST
 
 from common.errors import ServiceError
+from orgs import services as osv
 from projects.models import Milestone, Project, ProjectDependency
 from projects.services import (
     create_dependency,
@@ -26,7 +27,7 @@ from .common import can_admin, dialog, hx_redirect, org_or_404
 @login_required
 def capacity(request, org_id):
     org = org_or_404(request.user, org_id)
-    st = org_status(org)
+    st = org_status(org, viewer=request.user)
     c = st["counts"]
     rows = st["capacity"]
 
@@ -54,7 +55,7 @@ def capacity(request, org_id):
                 ("1인 평균 진행", c["avg_doing"], False),
             ],
             "rows": rows,
-            "teams": org.teams.all(),
+            "teams": osv.visible_teams(request.user, org),
             "team_id": team_id,
             "all_tags": all_tags,
             "picked": picked,

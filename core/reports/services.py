@@ -4,7 +4,8 @@ from datetime import date, timedelta
 from django.db.models import Count, Q
 
 from common.dates import kst_week_range, overdue_before, today_kst, week_bounds
-from orgs.models import TeamMembership
+from orgs.models import Team, TeamMembership
+from orgs.services import visible_teams
 from tasks.brief import task_brief, user_brief
 from tasks.models import ChangeLog, Task
 
@@ -13,8 +14,12 @@ def _open_qs(org):
     return Task.objects.filter(project__org=org, project__is_archived=False, status__in=Task.OPEN)
 
 
-def org_status(org) -> dict:
-    """조직 지표. 키: counts, by_project, by_assignee, capacity, projects_without_owner"""
+def org_status(org, *, viewer=None) -> dict:
+    """조직 지표. 키: counts, by_project, by_assignee, capacity, projects_without_owner
+
+    capacity의 팀 소속은 viewer가 볼 수 있는 팀만 담는다(`visible_teams`). viewer가 None(봇·
+    조직 채널 게시 등)이면 비공개 팀을 뺀다.
+    """
     today = today_kst()
     # 초과 판정만 유예(task.overdue_grace_days)를 본다. 화면 배지·알림과 같은 기준이다.
     overdue_day = overdue_before(org)
@@ -81,7 +86,11 @@ def org_status(org) -> dict:
     rows = {r["assignee_id"]: r for r in by_assignee}
     tags_by_user = {m.user_id: m.tags for m in org.memberships.all()}
     teams_by_user = defaultdict(list)
-    for tm in TeamMembership.objects.filter(team__org=org).select_related("team"):
+    if viewer is None:
+        shown = Team.objects.filter(org=org, is_private=False)
+    else:
+        shown = visible_teams(viewer, org)
+    for tm in TeamMembership.objects.filter(team__in=shown).select_related("team"):
         teams_by_user[tm.user_id].append({"id": tm.team_id, "name": tm.team.name})
 
     members = list(org.members.filter(is_active=True).order_by("display_name"))

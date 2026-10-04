@@ -102,12 +102,17 @@ def org_detail(request, org_id):
 def _member_teams(request, org):
     """팀원이 보는 팀 목록. 관리 기능 없이 누가 어느 팀이고 누가 팀장인지만 보여 준다."""
     mine = set(request.user.team_memberships.values_list("team_id", flat=True))
+    # 비공개 팀은 이름만 보인다 — 인원·팀장은 볼 수 있는 팀에서만 센다.
+    visible = set(osv.visible_teams(request.user, org).values_list("pk", flat=True))
     rows = [
         {
             "team": t,
             "mine": t.pk in mine,
-            "member_count": t.members.count(),
-            "leads": [m.user for m in t.memberships.filter(is_lead=True).select_related("user")],
+            "visible": t.pk in visible,
+            "member_count": t.members.count() if t.pk in visible else None,
+            "leads": [m.user for m in t.memberships.filter(is_lead=True).select_related("user")]
+            if t.pk in visible
+            else [],
         }
         for t in org.teams.all()
     ]

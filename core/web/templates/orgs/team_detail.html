@@ -5,7 +5,7 @@
   <div class="card-head">
     <div class="stack">
       <a class="t13" href="{% url 'org_teams' org.pk %}">{{ org.name }}</a>
-      <h1 class="t24">{{ team.name }}</h1>
+      <h1 class="t24">{{ team.name }}{% if team.is_private %} <span class="badge">비공개</span>{% endif %}{% if not team.dev_tools %} <span class="badge">비개발</span>{% endif %}</h1>
       {% if team.purpose %}<p class="muted">{{ team.purpose }}</p>{% endif %}
       {% if team.discord_channel_id %}<p class="muted t13">Discord 채널 <code>{{ team.discord_channel_id }}</code></p>{% endif %}
     </div>
@@ -42,17 +42,17 @@
 {% endif %}
 <section class="card">
   <h2>멤버</h2>
-  <p class="muted t13">팀과 사용자가 GitHub에 연결되어 있으면 팀 멤버 추가·제거를 GitHub 팀에도 요청합니다. 처리 결과를 확인하세요.</p>
+  {% if team.dev_tools %}<p class="muted t13">팀과 사용자가 GitHub에 연결되어 있으면 팀 멤버 추가·제거를 GitHub 팀에도 요청합니다. 처리 결과를 확인하세요.</p>{% endif %}
   <table class="grid">
-    <thead><tr><th>이름</th><th>GitHub</th><th></th></tr></thead>
+    <thead><tr><th>이름</th>{% if team.dev_tools %}<th>GitHub</th>{% endif %}<th></th></tr></thead>
     <tbody>
     {% for u in members %}
     <tr>
       <td>{{ u.display_name }}{% if u.pk in lead_ids %} <span class="badge ok">팀장</span>{% endif %}</td>
-      <td>{% if u.github %}@{{ u.github.login }}{% else %}<span class="badge">GitHub 미연결</span>{% endif %}</td>
+      {% if team.dev_tools %}<td>{% if u.github %}@{{ u.github.login }}{% else %}<span class="badge">GitHub 미연결</span>{% endif %}</td>{% endif %}
       <td class="row">{% if is_admin %}<form method="post" action="{% url 'team_lead' team.pk u.pk %}">{% csrf_token %}<input type="hidden" name="lead" value="{% if u.pk in lead_ids %}0{% else %}1{% endif %}"><button class="btn sm">{% if u.pk in lead_ids %}팀장 해제{% else %}팀장 지정{% endif %}</button></form><form method="post" action="{% url 'team_member_remove' team.pk u.pk %}">{% csrf_token %}<button class="btn sm danger">팀에서 제거</button></form>{% endif %}</td>
     </tr>
-    {% empty %}<tr><td colspan="3" class="muted">멤버가 없습니다.</td></tr>{% endfor %}
+    {% empty %}<tr><td colspan="{% if team.dev_tools %}3{% else %}2{% endif %}" class="muted">멤버가 없습니다.</td></tr>{% endfor %}
     </tbody>
   </table>
   <form method="post" action="{% url 'team_member_add' team.pk %}" class="row">{% csrf_token %}

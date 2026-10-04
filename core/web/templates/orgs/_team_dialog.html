@@ -4,6 +4,10 @@
   <p class="muted t12">이 팀을 나중에 GitHub 팀으로 만들 거면 로마자 이름을 권합니다. GitHub 주소는 한글을 담지 못해서
     한글 이름은 <code>team</code>, <code>team-1</code>처럼 바뀝니다(화면에 표시되는 이름은 그대로입니다).</p>
   <label class="field">목적<input class="input" name="purpose" value="{{ form.purpose.value|default:'' }}"></label>
+  <label class="check"><input type="checkbox" name="dev_tools" value="1"{% if form.dev_tools.value %} checked{% endif %}> 개발 도구(GitHub 팀 연결·동기화)</label>
+  <p class="muted t12">끄면 비개발 팀입니다. GitHub 팀 연결·생성·멤버 동기화를 쓰지 않고 화면에도 보이지 않습니다.</p>
+  <label class="check"><input type="checkbox" name="is_private" value="1"{% if form.is_private.value %} checked{% endif %}> 팀 화면 비공개</label>
+  <p class="muted t12">켜면 멤버·팀장·채널은 팀원과 조직 관리자만 봅니다. 다른 멤버에게는 팀 목록에 이름만 보입니다.</p>
   {% for e in form.non_field_errors %}<div class="error">{{ e }}</div>{% endfor %}
   {% for f in form %}{% for e in f.errors %}<div class="error">{{ f.label }}: {{ e }}</div>{% endfor %}{% endfor %}
   <div class="row">

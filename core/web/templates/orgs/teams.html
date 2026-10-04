@@ -80,10 +80,10 @@
     <tbody>
     {% for row in team_rows %}
     <tr>
-      <td><a href="{% url 'team_detail' row.team.pk %}">{{ row.team.name }}</a></td>
+      <td><a href="{% url 'team_detail' row.team.pk %}">{{ row.team.name }}</a>{% if row.team.is_private %} <span class="badge">비공개</span>{% endif %}</td>
       <td class="num">{{ row.member_count }}</td>
       <td class="num">{{ row.project_count }}</td>
-      <td>{% if row.github %}<span class="badge">@{{ row.github.slug }}</span>{% else %}<span class="muted">미연결</span>{% endif %}</td>
+      <td>{% if not row.team.dev_tools %}<span class="muted">—</span>{% elif row.github %}<span class="badge">@{{ row.github.slug }}</span>{% else %}<span class="muted">미연결</span>{% endif %}</td>
       <td class="row">
         <button type="button" class="btn sm" hx-get="{% url 'team_edit' row.team.pk %}" hx-target="#dialog" hx-swap="innerHTML">팀 수정</button>
         <form method="post" action="{% url 'team_delete' row.team.pk %}" onsubmit="return confirm('팀을 삭제할까요? 멤버와 프로젝트는 그대로 남습니다. GitHub 팀은 남습니다.')">{% csrf_token %}<button class="btn sm danger">팀 삭제</button></form>
