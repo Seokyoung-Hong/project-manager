@@ -9,6 +9,7 @@ DB로 올린다. 봇은 하나이고 여러 길드에 설치된다.
 채널 목록을 뽑을 수 없고, 그 토큰을 받아 오면 비밀 반경이 깨진다(GUIDE-00 §3).
 """
 
+import http.client
 import json
 import urllib.error
 import urllib.parse
@@ -69,9 +70,11 @@ def guild_from_code(code: str, redirect_uri: str) -> str:
     try:
         with urllib.request.urlopen(req, timeout=15) as r:  # noqa: S310 — 고정 호스트
             data = json.loads(r.read())
-    except (urllib.error.URLError, ValueError):
+    except (OSError, ValueError, http.client.HTTPException):
+        # URLError·TimeoutError·연결 끊김은 모두 OSError다. 500이 아니라 안내로 끝낸다.
         raise ServiceError({"guild_id": "Discord에서 설치를 확인하지 못했습니다."}) from None
-    guild_id = str((data.get("guild") or {}).get("id") or "")
+    guild = data.get("guild") if isinstance(data, dict) else None
+    guild_id = str((guild or {}).get("id") or "") if isinstance(guild, dict) else ""
     if not guild_id:
         raise ServiceError({"guild_id": "Discord에서 설치를 확인하지 못했습니다."})
     return guild_id
@@ -115,7 +118,15 @@ def deadline_alerts(org, today: date) -> list[tuple]:
     if not org_kinds:
         return []
     repeat = effective("notify.overdue_repeat", org=org)
-    overdue_before = today - timedelta(days=effective("task.overdue_grace_days", org=org))
+    # 유예일은 프로젝트가 덮어쓸 수 있다(overridable). 프로젝트마다 한 번만 계산한다.
+    grace_by_project: dict[int, date] = {}
+
+    def overdue_before(project) -> date:
+        if project.pk not in grace_by_project:
+            days = effective("task.overdue_grace_days", org=org, project=project)
+            grace_by_project[project.pk] = today - timedelta(days=days)
+        return grace_by_project[project.pk]
+
     qs = (
         Task.objects.filter(
             project__org=org,
@@ -131,9 +142,10 @@ def deadline_alerts(org, today: date) -> list[tuple]:
     for t in qs:
         delta = (t.due_date - today).days
         if delta < 0:
-            if t.due_date >= overdue_before:
-                continue  # 유예 안이다. 웹에서도 초과가 아니다
-            n = (overdue_before - t.due_date).days
+            before = overdue_before(t.project)
+            if t.due_date >= before:
+                continue  # 유예 안이다
+            n = (before - t.due_date).days
             kind = "overdue" if _overdue_due_today(n, repeat, today) else None
         else:
             kind = DUE_KINDS.get(delta)
