@@ -24,6 +24,7 @@ from .channels import NOT_A_MANAGER, can_manage_channels, link_channel
 from .commands import (
     BAD_DATE,
     TOO_FAST,
+    _error_reply,
     accept_request_reply,
     create_reply,
     decline_request_reply,
@@ -452,8 +453,12 @@ def register(tree: app_commands.CommandTree, guild, cfg, core: CoreClient, seen:
         name="팀채널", description="팀 채널을 만들고 연결합니다 (조직 관리자)", guild=guild
     )
     @app_commands.guild_only()
-    @app_commands.rename(team="팀", category="기존카테고리")
-    @app_commands.describe(team="팀 (입력하면 목록이 뜹니다)", category="넣을 기존 카테고리")
+    @app_commands.rename(team="팀", category="기존카테고리", create_category="새카테고리만들기")
+    @app_commands.describe(
+        team="팀 (입력하면 목록이 뜹니다)",
+        category="넣을 기존 카테고리",
+        create_category="카테고리가 없으면 새로 만듭니다",
+    )
     @app_commands.autocomplete(team=ac_team)
     async def team_channel(
         interaction: discord.Interaction, team: int, category: discord.CategoryChannel | None = None,

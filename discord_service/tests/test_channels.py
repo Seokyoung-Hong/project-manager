@@ -148,7 +148,10 @@ def test_deleted_channel_is_recreated(fake):
 
 def test_category_is_looked_up_by_name(fake):
     g = FakeGuild(categories=["팀"])
-    assert _link(g, fake, category="없는것") == "'없는것' 카테고리를 찾을 수 없습니다."
+    assert _link(g, fake, category="없는것") == (
+        "'없는것' 카테고리를 찾을 수 없습니다. "
+        "기존 카테고리를 선택하거나 새 카테고리 만들기를 지정해 주세요."
+    )
     assert g.created == []
     _link(g, fake, category="팀")
     assert g.created[0].category.name == "팀"

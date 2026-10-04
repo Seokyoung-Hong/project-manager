@@ -4,9 +4,9 @@ The MCP container has no Discord secret. This service uses the bot's gateway cac
 requires and forwards the caller's ProjectManager bearer token for every read or write.
 """
 
+import discord
 import httpx
 from aiohttp import web
-import discord
 
 
 def _token(request: web.Request) -> str:

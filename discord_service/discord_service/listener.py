@@ -18,8 +18,8 @@ import discord
 from discord import app_commands
 
 from .commands import RATE, handle, too_fast  # noqa: F401  (RATE·too_fast는 기존 import 경로 유지)
-from .core_client import CoreClient
 from .control import start_control_server
+from .core_client import CoreClient
 from .discord import chunk
 from .slash import register
 
