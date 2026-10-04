@@ -68,5 +68,9 @@
     <form method="post" action="{% url 'doc_new' project.pk %}">{% csrf_token %}<button class="btn primary">첫 문서 만들기</button></form>
   </section>
   {% endif %}
+  <section class="card" id="files">
+    <h2>파일 <span class="muted">{{ attachments|length }}</span></h2>
+    {% url 'project_attachment_add' project.pk as upload_url %}{% include "tasks/_attachments.html" with hx=False upload_url=upload_url %}
+  </section>
 </div>
 {% endblock %}

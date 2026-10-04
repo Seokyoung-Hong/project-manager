@@ -63,6 +63,14 @@ def is_owner(user, project) -> bool:
     return project.owners.filter(pk=user.pk).exists()
 
 
+def can_view_project(user, project) -> bool:
+    """이 사람이 프로젝트(와 그 태스크·문서·첨부)를 볼 수 있는가. 접근 검사는 여기 한 곳이다.
+
+    지금은 조직 멤버면 본다. 프로젝트 공개 범위(IMPL-PLAN-7 F)가 생기면 이 함수만 좁힌다.
+    """
+    return is_member(user, project.org)
+
+
 def require_level(actor, project, level: str, key: str):
     """level: member|owner|admin. 부족하면 ServiceError({key: ...}).
 
@@ -297,6 +305,12 @@ def delete_project(project, *, actor, source: str = "web"):
         actor=actor,
         source=source,
     )
+    from tasks.attachments import purge_files
+    from tasks.models import Attachment
+
+    purge_files(
+        Attachment.objects.filter(Q(project=project) | Q(task__project=project))
+    )  # 행은 CASCADE로 지워지고, 파일은 커밋 뒤에 지운다
     # Task.project는 PROTECT라 먼저 지운다. 체크리스트·오늘 목록·태스크 링크는 CASCADE.
     Task.objects.filter(project=project).delete()
     project.delete()  # 마일스톤·문서·API 스펙·의존성·저장소 연결은 CASCADE

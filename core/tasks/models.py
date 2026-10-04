@@ -1,3 +1,6 @@
+import uuid
+from pathlib import PurePath
+
 from django.conf import settings
 from django.db import models
 from django.db.models import Q
@@ -504,3 +507,59 @@ class Notice(models.Model):
     class Meta:
         ordering = ["id"]
         indexes = [models.Index(fields=["sent_at"])]
+
+
+def attachment_path(instance, filename):
+    """att/<org_id>/<uuid4 hex><ext>. 원래 이름은 Attachment.name에만 둔다(경로 조작·충돌 차단)."""
+    project = instance.project or instance.task.project
+    return f"att/{project.org_id}/{uuid.uuid4().hex}{PurePath(filename).suffix.lower()}"
+
+
+class Attachment(models.Model):
+    """태스크·프로젝트에 붙는 파일. 산출물(시안·게시 증빙)이면 kind로 구분하고 버전은 replaces로 잇는다."""
+
+    KINDS = [("file", "파일"), ("out", "산출물"), ("proof", "증빙")]
+
+    project = models.ForeignKey(
+        "projects.Project",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="attachments",
+    )
+    task = models.ForeignKey(
+        Task, on_delete=models.CASCADE, null=True, blank=True, related_name="attachments"
+    )
+    file = models.FileField(upload_to=attachment_path, max_length=200)
+    name = models.CharField("파일 이름", max_length=200)  # 원래 이름(표시·다운로드용)
+    size = models.PositiveBigIntegerField()
+    # 확장자 표(tasks.attachments.ALLOWED)에서 정한 값. 업로드 헤더를 믿지 않는다.
+    content_type = models.CharField(max_length=100)
+    sha256 = models.CharField(max_length=64)
+    kind = models.CharField(max_length=5, choices=KINDS, default="file")
+    note = models.CharField("메모", max_length=200, blank=True)  # "v2 — 색 수정"
+    version = models.PositiveSmallIntegerField(default=1)
+    replaces = models.ForeignKey(
+        "self", on_delete=models.SET_NULL, null=True, blank=True, related_name="replaced_by"
+    )
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="+"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-id"]
+        constraints = [
+            models.CheckConstraint(
+                condition=(Q(project__isnull=False) & Q(task__isnull=True))
+                | (Q(project__isnull=True) & Q(task__isnull=False)),
+                name="attachment_exactly_one_target",
+            )
+        ]
+
+    def __str__(self):
+        return self.name
+
+    @property
+    def target_project(self):
+        return self.project or self.task.project

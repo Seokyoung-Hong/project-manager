@@ -707,6 +707,9 @@ def delete_task(task, *, actor, source: str = "web") -> None:
         source=source,
     )
     wr.drop_assign_requests(task)
+    from .attachments import purge_files
+
+    purge_files(task.attachments.all())  # 첨부 행은 CASCADE, 파일은 커밋 뒤에 지운다
     task.delete()
 
 

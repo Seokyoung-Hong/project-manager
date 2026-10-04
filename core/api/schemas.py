@@ -89,6 +89,9 @@ class TaskOut(TaskBriefOut):
     # 지정 검토자. 있으면 검토 대기 → 완료는 이 사람이나 프로젝트·조직 관리자만 한다.
     reviewer: UserBrief | None = None
     children_count: int = 0  # 이 태스크를 뿌리로 하는 회차·변형 수
+    attachments: list[
+        "AttachmentOut"
+    ] = []  # 최신 버전만. 이전 버전은 /tasks/{id}/attachments?all=true
 
 
 class TaskCreateIn(Schema):
@@ -458,3 +461,17 @@ class DiscordRequestAnswerIn(Schema):
 
 class DiscordNoticeAckIn(Schema):
     ids: list[int]
+
+
+class AttachmentOut(Schema):
+    id: int
+    name: str
+    size: int
+    kind: str  # file | out(산출물) | proof(증빙)
+    content_type: str
+    version: int
+    replaces_id: int | None = None
+    note: str
+    url: str  # GET 하면 파일(토큰 인증)
+    created_by: UserBrief
+    created_at: datetime

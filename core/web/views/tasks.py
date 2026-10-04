@@ -14,6 +14,7 @@ from github.services import pr_compare_url, repo_state, sync_issues_if_stale
 from github.writes import default_branch_name
 from projects.models import Project
 from tasks import services as ts
+from tasks.attachments import attachments_of
 from tasks.models import ChangeLog, ChecklistItem, Link
 from tasks.work_requests import pending_assignee
 
@@ -91,6 +92,7 @@ def _panel_ctx(request, task, **extra):
         # 한쪽에만 넣으면 새로고침 전에는 문서가 보이지 않는다.
         "docs": task.docs.all(),
         "project_docs": task.project.docs.exclude(tasks=task),
+        "attachments": attachments_of(task),
         # 패널이 프로젝트·담당자까지 맡으므로 고를 대상을 함께 싣는다
         "org_projects": Project.objects.filter(org=task.project.org, is_archived=False).order_by(
             "name"
@@ -467,6 +469,8 @@ def _refs(request, task, error=None, link_form=None):
             "docs": task.docs.all(),
             # 이미 걸린 문서는 후보에서 뺀다 — 같은 것을 두 번 걸 이유가 없다
             "project_docs": task.project.docs.exclude(tasks=task),
+            "attachments": attachments_of(task),
+            "is_admin": can_admin(request.user, task.project.org),
             "error": error,
             "link_open": bool(error),
         },

@@ -7,6 +7,7 @@ from portfolio.api import router as portfolio_router
 
 from .auth import BrowserSessionAuth, TokenAuth
 from .routers import (
+    attachments,
     decisions,
     discord,
     docs,
@@ -90,6 +91,7 @@ api.add_router("/project-docs", docs.router)
 api.add_router("/tasks", tasks.router)
 api.add_router("/tasks", decisions.router)
 api.add_router("/tasks", pr_context.router)
+api.add_router("/", attachments.router)
 api.add_router("/me", portfolio_router)
 api.add_router("/today", today.router)
 api.add_router("/reports", reports.router)
