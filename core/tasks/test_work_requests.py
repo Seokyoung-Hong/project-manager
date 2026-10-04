@@ -73,7 +73,11 @@ def test_team_lead_and_admin_assign_directly(project, admin, member, mate, squad
     t = _task(project, member, assignee=mate)
     assert t.assignee == mate
     assert not WorkRequest.objects.exists()
-    assert Notice.objects.filter(user=mate, text__contains="담당자로 지정").exists()
+    note = Notice.objects.get(user=mate, text__contains="담당자로 지정")
+    # 번호만이 아니라 프로젝트·제목·기한·상태·웹 링크가 다 있다.
+    assert project.name in note.text and t.title in note.text
+    assert f"/tasks/{t.pk}>)" in note.text
+    assert note.text.endswith(" · 기한 없음 · 시작 전")
 
     t2 = _task(project, admin, assignee=member)
     assert t2.assignee == member

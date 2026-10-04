@@ -13,6 +13,7 @@ WEEKLY_KEYS = {
     "org",
     "period_start",
     "period_end",
+    "today",
     "completed",
     "reopened",
     "due_this_week",

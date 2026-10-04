@@ -24,7 +24,18 @@ def test_new_task_posts_created_to_its_project_channel(store, fake_bot, bot):
     assert fake_bot.to("chan-1") == fake_bot.sent
     assert "새 태스크" in fake_bot.sent[0] and "TASK-1" in fake_bot.sent[0]
     assert "팀원" in fake_bot.sent[0]  # 담당자 표시 이름까지만
-    assert "http" not in fake_bot.sent[0]  # 링크는 올리지 않는다
+    assert "<@" not in fake_bot.sent[0]  # 멘션은 넣지 않는다
+    # 번호만으로는 무슨 일인지 모른다: 프로젝트·제목·D-n·상태·웹 링크를 담는다.
+    assert fake_bot.sent[0] == (
+        "새 태스크 · **학식 API**\n"
+        "• [TASK-1 할 일 1](<http://pm/tasks/1>) · D-1 (9월 10일) · 시작 전 · 팀원"
+    )
+
+
+def test_blocked_post_keeps_the_reason_out_of_the_shared_channel(store, fake_bot, bot):
+    t = task(1, "2026-09-10", status="blocked", stop_reason="개인 사정", project=CH_PROJECT)
+    run_channel_events(make_core(FakeCore([t])), bot, store, 1, DAY, SINCE, events={"created"})
+    assert "막힘" in fake_bot.sent[0] and "개인 사정" not in fake_bot.sent[0]
 
 
 def test_unconnected_project_is_skipped_silently(store, fake_bot, bot):

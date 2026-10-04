@@ -10,6 +10,7 @@ from datetime import date, datetime
 
 from .core_client import CoreClient
 from .discord import Bot, DmBlocked, UnknownResult
+from .messages import alert_line, display_name
 from .store import Store
 
 log = logging.getLogger(__name__)
@@ -71,7 +72,7 @@ def run_escalations(
             if not recipients:
                 store.release(0, key, day)  # 보낼 사람이 없다. 관리자가 생기면 다시 시도한다
                 continue
-            text = _message(kind, items[0]["project"]["name"], items)
+            text = _message(kind, items[0]["project"]["name"], items, today)
             ok = True
             for r in recipients:
                 did = r.get("discord_user_id")
@@ -91,8 +92,12 @@ def run_escalations(
     return result
 
 
-def _message(kind: str, project_name: str, items: list[dict]) -> str:
+def _message(kind: str, project_name: str, items: list[dict], today: date) -> str:
     label = LABEL[kind]
-    head = f"⏰ **{project_name}** · {label} {len(items)}건이 오래 머물러 있습니다."
-    lines = [f"• **{t['number']}** {t['title']}" for t in items]
+    day = today.isoformat()
+    head = f"⏰ **{project_name}** · {label} {len(items)}건이 오래 머물러 있습니다. 확인해 주세요."
+    lines = [
+        alert_line(t, day, who=display_name) + f" · {_days_since(t['stopped_at'], today)}일째"
+        for t in items
+    ]
     return head + "\n" + "\n".join(lines)

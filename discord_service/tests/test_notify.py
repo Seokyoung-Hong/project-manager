@@ -5,7 +5,7 @@ from datetime import date, datetime, timedelta, timezone
 from conftest import CHANNEL, FakeBot, FakeCore, make_bot, make_core, member, task
 
 from discord_service.config import Config
-from discord_service.notify import classify, run_deadlines
+from discord_service.notify import run_deadlines
 from discord_service.scheduler import tick
 
 TODAY = date(2026, 9, 9)
@@ -39,14 +39,49 @@ def _org_kind(kind: str) -> str:
     return f"1:{kind}"
 
 
-def test_classify():
-    assert classify(task(1, "2026-09-12"), TODAY) == "d3"
-    assert classify(task(1, "2026-09-10"), TODAY) == "d1"
-    assert classify(task(1, "2026-09-09"), TODAY) == "d0"
-    assert classify(task(1, "2026-09-01"), TODAY) == "overdue"
-    assert classify(task(1, "2026-09-11"), TODAY) is None
-    assert classify(task(1, None), TODAY) is None
-    assert classify(task(1, "2026-09-09", status="done"), TODAY) is None
+def test_only_tasks_core_selected_are_sent(store, fake_bot, bot):
+    """알림 설정 거르기는 core 몫이다. core가 목록에서 뺀 태스크는 DM에 들어가지 않는다."""
+    fake = FakeCore([task(1, "2026-09-10"), task(2, "2026-09-10")])
+    fake.filtered_out = {2}
+    r = run_deadlines(make_core(fake), bot, store, 1, TODAY)
+    assert r["sent"] == 1
+    assert "TASK-1" in fake_bot.sent[0] and "TASK-2" not in fake_bot.sent[0]
+
+
+def test_deadline_dm_shows_title_project_due_status_and_link(store, fake_bot, bot):
+    """번호만으로는 무슨 일인지 모른다. 제목·프로젝트·D-n·상태·웹 링크가 다 있어야 한다."""
+    other = {"id": 2, "name": "산돌이 봇", "org_id": 1, "discord_channel_id": ""}
+    core = make_core(
+        FakeCore(
+            [
+                task(1, "2026-09-07", status="doing"),
+                task(2, "2026-09-08", status="blocked", stop_reason="서류 대기", project=other),
+            ]
+        )
+    )
+    run_deadlines(core, bot, store, 1, TODAY)
+    (msg,) = fake_bot.sent
+    assert msg.splitlines()[1] == "담당하신 태스크 2건의 기한이 지났습니다."
+    lines = msg.splitlines()
+    assert lines[2:6] == [
+        "**학식 API**",
+        "• [TASK-1 할 일 1](<http://pm/tasks/1>) · 2일 초과 (9월 7일) · 진행 중",
+        "**산돌이 봇**",
+        "• [TASK-2 할 일 2](<http://pm/tasks/2>) · 1일 초과 (9월 8일) · 막힘(서류 대기)",
+    ]
+    assert "했어" not in msg and "해요" not in msg
+
+
+def test_many_tasks_split_under_discord_limit(store, fake_bot, bot):
+    """한 사람에게 같은 종류가 많아도 2000자 제한 안에서 여러 메시지로 나뉜다."""
+    tasks = [task(i, "2026-09-10") for i in range(1, 61)]
+    for t in tasks:
+        t["title"] = "아주 긴 제목 " * 8
+    run_deadlines(make_core(FakeCore(tasks)), bot, store, 1, TODAY)
+    assert len(fake_bot.sent) > 1
+    assert all(len(m) <= 2000 for m in fake_bot.sent)
+    joined = "".join(fake_bot.sent)
+    assert all(f"TASK-{i} " in joined for i in range(1, 61))
 
 
 def test_dm_goes_to_the_assignee_only(store, fake_bot, bot):

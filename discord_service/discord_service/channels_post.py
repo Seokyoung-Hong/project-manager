@@ -5,8 +5,8 @@
 
 사건 감지는 `ChangeLog`가 아니라 폴링 차이다 — 이전 조회 이후 `updated_at`이 바뀐 태스크를
 받아, 이 서비스가 기억해 둔 지난 상태와 비교한다(`store.seen_status`). 멘션은 넣지 않는다
-(마감 DM과 같은 원칙: 채널은 공유 공간이다). 개인정보는 담당자 표시 이름까지만 — 링크·메모·
-사유는 올리지 않는다.
+(마감 DM과 같은 원칙: 채널은 공유 공간이다). 개인정보는 담당자 표시 이름까지만 — 메모·사유는
+올리지 않는다. 웹 링크는 올린다(로그인해야 열리고, 번호만으로는 무슨 일인지 알 수 없다).
 
 # ponytail: 5분이 아니라 매 틱(60초)마다 부르고, `since`에 여유를 둬 경계를 놓치지 않는다
 # (scheduler가 준다). core 호출이 늘지만 조직당 한 번이라 감당된다. 부하가 실제로 문제가
@@ -22,6 +22,7 @@ from datetime import datetime
 
 from .core_client import CoreClient
 from .discord import Bot
+from .messages import alert_line, display_name
 from .store import Store
 
 log = logging.getLogger(__name__)
@@ -36,11 +37,6 @@ def _created_since(t: dict, since: str) -> bool:
     태스크를 '새 태스크'로 올리지 않게 합니다. created_at이 없으면 옛 동작(새 태스크)을 따릅니다."""
     c = t.get("created_at")
     return not c or datetime.fromisoformat(c) >= datetime.fromisoformat(since)
-
-
-def _display(t: dict) -> str:
-    a = t.get("assignee") or {}
-    return a.get("display_name") or "담당자 없음"
 
 
 def run_channel_events(
@@ -92,7 +88,9 @@ def _post(bot: Bot, store: Store, org_id: int, kind: str, t: dict, day: str, res
     if not store.claim(0, key, day):
         result["skipped"] += 1
         return
-    text = f"• {LABEL[kind]} · **{t['number']}** {t['title']} — {_display(t)}"
+    text = f"{LABEL[kind]} · **{t['project']['name']}**\n" + alert_line(
+        t, day, who=display_name, reason=False
+    )
     try:
         bot.send_channel(text, channel_id)
         store.mark(0, key, day, "sent")

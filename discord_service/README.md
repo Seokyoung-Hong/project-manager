@@ -26,7 +26,7 @@ Webhook은 쓰지 않는다 — 발송은 봇 토큰으로 `discord.com/api/v10`
 | `SEND_HOUR` | | `9` | 마감 알림을 보낼 시각(시). 이 시각 **이후** 첫 tick에 하루 1회 |
 | `WEEKLY_WEEKDAY` | | `0` | 주간 보고 요일 (0=월) |
 | `WEEKLY_HOUR` | | `9` | 주간 보고 시각(시) |
-| `LLM_PROVIDER` | | (빈 값) | 비우면 고정 형식 보고서. 값이 있고 실패하면 고정 형식으로 되돌아간다 |
+| `LLM_PROVIDER` | | (빈 값) | **미구현.** 어떤 값을 넣어도 고정 형식 보고서가 나간다(summarize.py `_llm`이 비어 있다). 비워 둔다 |
 | `DB_PATH` | | `/data/discord.sqlite` | 발송 기록·DM 채널 캐시 SQLite 경로 |
 | `SITE_NAME` | | `산돌이 업무` | 테스트 메시지에 쓰는 이름 |
 

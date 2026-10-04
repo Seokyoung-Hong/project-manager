@@ -29,6 +29,9 @@ class Spec:
     lo: int = 0
     hi: int = 0
     ai_only: bool = False  # source == "mcp" 에만 적용
+    hidden: bool = (
+        False  # 아직 동작하지 않는 설정. 화면·API·MCP에 내지 않는다(저장된 값은 무시된다)
+    )
 
     @property
     def input_choices(self):
@@ -626,7 +629,8 @@ SPECS: dict[str, Spec] = {
                 ("done", "완료"),
                 ("blocked", "막힘"),
                 ("overdue_daily", "기한 초과 요약"),
-                ("milestone_due", "마일스톤 임박"),
+                # "milestone_due"(마일스톤 임박)는 봇이 아직 보내지 못해 선택지에서 뺐다.
+                # 마일스톤 목록 조회가 생기면 되살린다(channels_post.py 참고).
             ),
         ),
         Spec(
@@ -638,6 +642,7 @@ SPECS: dict[str, Spec] = {
             "notify",
             "팀 채널 주간 보고",
             "켜면 조직 채널 외에 팀 채널에도 그 팀 담당 프로젝트만 추려 보냅니다.",
+            hidden=True,  # 봇이 아직 팀 채널로 보내지 않는다(weekly.py 참고). 구현되면 푼다
         ),
         # --- 4.6 개인 설정 ---
         Spec(
@@ -736,9 +741,10 @@ GROUPS = [
 
 def specs_for(scope: str) -> list[Spec]:
     """그 층에서 편집할 수 있는 항목. 화면과 API가 이 순서로 그린다."""
+    shown = [s for s in SPECS.values() if not s.hidden]
     if scope == "project":
-        return [s for s in SPECS.values() if s.scope == "org" and s.overridable]
-    return [s for s in SPECS.values() if s.scope == scope]
+        return [s for s in shown if s.scope == "org" and s.overridable]
+    return [s for s in shown if s.scope == scope]
 
 
 def _coerce(spec: Spec, value):
@@ -876,7 +882,7 @@ def enforced(org, project=None) -> list[dict]:
     """거버넌스 화면 상단 '설정에서 강제 중' 표. 기본값이 아닌 항목만."""
     rows = []
     for spec in SPECS.values():
-        if spec.scope != "org":
+        if spec.scope != "org" or spec.hidden:
             continue
         value = effective(spec.key, org=org, project=project)
         if _same_as_default(spec, value):

@@ -1,7 +1,8 @@
 """조직의 Discord 서버 연결 화면. IMPL-PLAN-4 §8.4.
 
-GitHub 앱 설치와 같은 모양이다. 세션에 `state`를 두고 Discord로 보냈다가, 돌아온 `guild_id`를
-그 조직에 붙인다. `state` 대조가 CSRF 방어다 — Discord 쪽에서 곧바로 설치하면 이 값이 없어
+GitHub 앱 설치와 같은 모양이다. 세션에 `state`를 두고 Discord로 보냈다가, 돌아온 `code`를
+Discord에서 교환해 실제로 설치된 서버를 그 조직에 붙인다(쿼리의 `guild_id`는 믿지 않는다 —
+고쳐 쓰면 남의 서버를 선점할 수 있다). `state` 대조가 CSRF 방어다 — Discord 쪽에서 곧바로 설치하면 이 값이 없어
 연결이 기록되지 않는다(GitHub 설치와 같은 규칙이다).
 
 채널은 여기서 고르지 않는다. 목록을 뽑으려면 봇 토큰이 필요한데 core는 그 토큰을 갖지 않는다.
@@ -28,6 +29,10 @@ from .common import not_admin, org_or_404
 # 안 되므로 이 넷만 받는다(IMPL-PLAN-3 §채널 명령). Manage Roles는 자동 관리(IMPL-PLAN-5 사용자 결정 3)용이다.
 BOT_PERMISSIONS = str(channels.REQUIRED_PERMISSIONS)
 AUTHORIZE = "https://discord.com/oauth2/authorize"
+
+
+def _redirect_uri() -> str:
+    return f"{settings.SITE_URL}/orgs/discord/installed"
 
 
 def _enabled_or_404():
@@ -108,7 +113,7 @@ def discord_connect(request, org_id):
             "scope": "bot applications.commands",
             "permissions": BOT_PERMISSIONS,
             "response_type": "code",
-            "redirect_uri": f"{settings.SITE_URL}/orgs/discord/installed",
+            "redirect_uri": _redirect_uri(),
             "state": state,
         }
     )
@@ -117,16 +122,21 @@ def discord_connect(request, org_id):
 
 @login_required
 def discord_installed(request):
-    """Discord가 되돌려 주는 곳. ?code=&guild_id=&permissions=&state="""
+    """Discord가 되돌려 주는 곳. ?code=&guild_id=&permissions=&state= — 서버는 code 교환 결과로 정한다."""
     _enabled_or_404()
-    if request.GET.get("state") != request.session.pop("dc_state", None):
+    expected = request.session.pop("dc_state", None)
+    got = request.GET.get("state") or ""
+    if not expected or not secrets.compare_digest(got, expected):
         raise Http404
     org_id = request.session.pop("dc_org", None)
     org = org_or_404(request.user, org_id)
     if denied := not_admin(request, org, "Discord 연동"):
         return denied
     try:
-        dc.link_guild(org, request.GET.get("guild_id", ""), actor=request.user)
+        guild_id = dc.guild_from_code(request.GET.get("code", ""), _redirect_uri())
+        if request.GET.get("guild_id") and request.GET["guild_id"] != guild_id:
+            raise ServiceError({"guild_id": "Discord가 알려 준 서버와 요청의 서버가 다릅니다."})
+        dc.link_guild(org, guild_id, actor=request.user)
         messages.success(
             request, "Discord 서버를 연결했습니다. 알림 채널은 그 서버에서 /알림채널로 정해 주세요."
         )
