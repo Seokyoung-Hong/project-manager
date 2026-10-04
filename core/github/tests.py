@@ -21,7 +21,14 @@ from github import services as ghs
 from github.client import GitHubError
 from github.conftest import signed
 from github.crypto import decrypt, encrypt
-from github.models import GitEvent, GitHubIdentity, GitHubInstallation, RepoConnection
+from github.models import (
+    GitEvent,
+    GitHubIdentity,
+    GitHubInstallation,
+    RepoConnection,
+    RepoIssue,
+    TaskGitLink,
+)
 
 pytestmark = pytest.mark.django_db
 
@@ -376,3 +383,268 @@ def test_actor_none_only_from_github_services():
         if not h.startswith("github/") and "tests.py" not in h and "/tests/" not in h
     ]
     assert outside == [], outside
+
+
+# ---------- 검증: 개인 계정(User) 설치 · 저장소 하나 ----------
+# 결함은 xfail(strict=True)로 재현한다. 고치면 XPASS가 실패로 떠서 표시를 떼라고 알려 준다.
+
+
+def _user_install(org, admin):
+    from github.test_writes import _identity
+
+    GitHubInstallation.objects.create(
+        org=org,
+        installation_id=99,
+        account_login="solo-dev",
+        account_type="User",
+        repo_selection="selected",
+        installed_by=admin,
+    )
+    _identity(admin, "solo-dev")
+    org.refresh_from_db()
+    admin.refresh_from_db()
+
+
+@pytest.fixture
+def fake_user_github(monkeypatch):
+    """개인 계정 설치를 흉내 낸다. /orgs/* 는 GitHub처럼 404를 낸다(계정이 조직이 아니다)."""
+    calls = []
+
+    def fake(method, path, token, *, body=None, **kw):
+        calls.append((method, path))
+        if path.startswith("/app/installations/"):
+            return {
+                "account": {"login": "solo-dev", "type": "User"},
+                "repository_selection": "selected",
+            }
+        if "/repositories" in path:  # 설치 목록과 /user/installations/{id}/repositories
+            return {"repositories": [{"full_name": "solo-dev/app", "private": True}]}
+        if path.startswith("/orgs/") or path.startswith("/repos/solo-dev/app/teams"):
+            raise GitHubError(404, "Not Found")
+        return []
+
+    monkeypatch.setattr("github.client.request", fake)
+    monkeypatch.setattr("github.client.app_jwt", lambda: "jwt")
+    monkeypatch.setattr("github.client.installation_token", lambda iid: "tok")
+    return calls
+
+
+def _login(client):
+    client.login(username="admin1", password="pw12345678")
+    return client
+
+
+def test_user_account_install_and_single_repo_flow(
+    gh, client, org, admin, project, task, fake_user_github
+):
+    """개인 계정 설치 저장 → 후보 1개 → 연결 → 저장소 탭 200 → 웹훅 규칙 동작."""
+    from github.test_writes import _identity
+
+    inst = ghs.save_installation(org, 99, actor=admin)
+    assert (inst.account_login, inst.account_type) == ("solo-dev", "User")
+    identity = _identity(admin, "solo-dev")
+    identity.repos = ["solo-dev/app"]
+    identity.save(update_fields=["repos"])
+    _login(client)
+    r = client.get(f"/projects/{project.pk}/repo")
+    assert r.status_code == 200 and "solo-dev/app" in r.content.decode()
+    r = client.post(f"/projects/{project.pk}/repo", {"url": "https://github.com/solo-dev/app"})
+    assert r.status_code == 302
+    conn = RepoConnection.objects.get(project=project)
+    # /repos/{repo}/teams는 개인 저장소에서 404다. 화면은 깨지지 않아야 한다.
+    assert client.get(f"/projects/{project.pk}/repo").status_code == 200
+    payload = {
+        "repository": {"full_name": "solo-dev/app"},
+        "ref_type": "branch",
+        "ref": f"feat/x({task.number})",
+    }
+    assert signed(client, payload, "create", "user-1").status_code == 200
+    task.refresh_from_db()
+    assert task.status == "doing"
+    assert task.git.connection_id == conn.pk
+
+
+@pytest.mark.xfail(
+    strict=True, reason="결함: 개인 계정 설치의 'GitHub에서 설정' 링크가 /organizations/ 경로라 404"
+)
+def test_user_install_settings_link_points_to_user_settings(
+    gh, client, org, admin, fake_user_github
+):
+    _user_install(org, admin)
+    body = _login(client).get(f"/orgs/{org.pk}/github").content.decode()
+    assert "https://github.com/settings/installations/99" in body
+
+
+def test_user_install_team_page_does_not_500(gh, client, org, admin, team, fake_user_github):
+    _user_install(org, admin)
+    assert _login(client).get(f"/teams/{team.pk}").status_code == 200
+
+
+@pytest.mark.xfail(strict=True, reason="결함: 개인 계정 설치에서도 GitHub 팀 연결·생성 UI가 보인다")
+def test_user_install_hides_github_team_ui(gh, client, org, admin, team, fake_user_github):
+    _user_install(org, admin)
+    body = _login(client).get(f"/teams/{team.pk}").content.decode()
+    assert "GitHub 팀 만들고 연결" not in body
+
+
+@pytest.mark.xfail(
+    strict=True, reason="결함: 개인 계정 설치에서도 /orgs/{login}/memberships 초대를 부른다"
+)
+def test_user_install_invite_skips_org_api(gh, client, org, admin, fake_user_github):
+    _user_install(org, admin)
+    _login(client).post(
+        f"/orgs/{org.pk}/invites", {"days": 7, "gh_invite": "on", "gh_login": "new-hire"}
+    )
+    assert not [p for _, p in fake_user_github if p.startswith("/orgs/")]
+
+
+@pytest.mark.xfail(
+    strict=True, reason="결함: 개인 계정 설치에서도 멤버 제거 때 /orgs/{login}/members를 부른다"
+)
+def test_user_install_member_remove_skips_org_api(gh, client, org, admin, member, fake_user_github):
+    from github.test_writes import _identity
+    from orgs.models import OrgMembership
+
+    _user_install(org, admin)
+    _identity(member, "member-gh")
+    m = OrgMembership.objects.get(org=org, user=member)
+    _login(client).post(f"/orgs/memberships/{m.pk}/remove")
+    assert not OrgMembership.objects.filter(pk=m.pk).exists()
+    assert not [p for _, p in fake_user_github if p.startswith("/orgs/")]
+
+
+# ---------- 검증: 저장소 하나에 프로젝트 여럿 ----------
+
+
+@pytest.fixture
+def shared(gh, org, admin, project, conn):
+    """같은 저장소를 두 프로젝트에 잇는다. 두 번째는 대소문자만 다르게 적었다."""
+    from projects.services import create_project
+
+    p2 = create_project(org=org, name="P2", actor=admin, owners=[admin], status="active")
+    conn2 = RepoConnection.objects.create(
+        project=p2, url="https://github.com/O/R.git", full_name="O/R", created_by=admin
+    )
+    return conn, conn2
+
+
+def _repo(**kw):
+    return {"repository": {"full_name": "o/r"}, **kw}
+
+
+def test_shared_repo_task_ref_moves_only_own_project(gh, client, shared, task):
+    conn, conn2 = shared
+    branch = f"feat/x({task.number})"
+    signed(client, _repo(ref_type="branch", ref=branch), "create", "sh-1")
+    pr = {"number": 3, "title": "fix", "body": "", "head": {"ref": branch}}
+    signed(client, _repo(action="opened", pull_request=pr), "pull_request", "sh-2")
+    # 재전송은 두 연결 모두 중복으로 본다. IntegrityError 없이 200.
+    r = signed(client, _repo(ref_type="branch", ref=branch), "create", "sh-1")
+    assert r.status_code == 200 and r.json().get("duplicate")
+    task.refresh_from_db()
+    assert task.status == "review"
+    assert task.git.connection_id == conn.pk and task.git.pr_number == 3
+    assert GitEvent.objects.filter(connection=conn).count() == 2
+    results = set(GitEvent.objects.filter(connection=conn2).values_list("result", flat=True))
+    assert results == {"연결 안 됨"}
+    assert GitEvent.objects.filter(delivery_id__startswith="sh-1:").count() == 2
+
+
+def test_shared_repo_issues_are_per_project(gh, client, shared, admin):
+    from github.pr_context import build_pr_context
+    from github.test_writes import _identity
+
+    conn, conn2 = shared
+    issue = {"number": 9, "title": "버그", "state": "open", "labels": [], "assignee": None}
+    signed(client, _repo(action="opened", issue=issue), "issues", "is-1")
+    a = RepoIssue.objects.get(connection=conn, number=9)
+    b = RepoIssue.objects.get(connection=conn2, number=9)
+    task = ghs.import_issue(b, admin)
+    assert task.project_id == conn2.project_id and task.git.connection_id == conn2.pk
+    a.refresh_from_db()
+    assert a.task_id is None  # 다른 프로젝트 사본은 그대로 남는다
+    assert ghs.org_issues(conn.project.org).count() == 2  # 조직 뷰어에는 프로젝트별로 두 줄
+    # PR 맥락은 그 태스크 프로젝트의 연결을 기준으로 만든다.
+    identity = _identity(admin, "admin-gh")
+    identity.repos = ["O/R"]
+    identity.save(update_fields=["repos"])
+    admin.refresh_from_db()
+    ctx = build_pr_context(task, actor=admin)
+    assert ctx["issue"]["url"] == "https://github.com/O/R/issues/9"
+    issue["state"] = "closed"
+    signed(client, _repo(action="closed", issue=issue), "issues", "is-2")
+    task.refresh_from_db()
+    assert task.status == "done"
+    a.refresh_from_db()
+    assert a.state == "closed"
+
+
+def test_shared_repo_auto_import_creates_a_task_in_each_project(gh, client, shared, member):
+    """현재 동작 기록(정책 미정): 두 연결 모두 자동 가져오기면 같은 이슈가 태스크 둘이 된다."""
+    from github.test_writes import _identity
+
+    for c in shared:
+        c.auto_import = True
+        c.save(update_fields=["auto_import"])
+    _identity(member, "member-gh")
+    issue = {
+        "number": 5,
+        "title": "공유",
+        "state": "open",
+        "labels": [],
+        "assignee": {"login": "member-gh"},
+    }
+    r = signed(client, _repo(action="opened", issue=issue), "issues", "ai-1")
+    assert r.status_code == 200
+    assert RepoIssue.objects.filter(number=5, task__isnull=False).count() == 2
+
+
+@pytest.mark.xfail(
+    strict=True,
+    reason="결함: 한 연결의 create_task가 ServiceError를 내면 웹훅 전체가 400 — "
+    "앞 연결만 반영되고 재전송은 중복으로 버려진다",
+)
+def test_shared_repo_archived_project_does_not_break_delivery(gh, client, shared, member):
+    from github.test_writes import _identity
+    from projects.models import Project
+
+    conn, conn2 = shared
+    for c in shared:
+        c.auto_import = True
+        c.save(update_fields=["auto_import"])
+    Project.objects.filter(pk=conn2.project_id).update(is_archived=True)
+    _identity(member, "member-gh")
+    issue = {
+        "number": 6,
+        "title": "보관",
+        "state": "open",
+        "labels": [],
+        "assignee": {"login": "member-gh"},
+    }
+    r = signed(client, _repo(action="opened", issue=issue), "issues", "ar-1")
+    assert r.status_code == 200
+    assert GitEvent.objects.filter(connection=conn2, delivery_id__startswith="ar-1:").exists()
+
+
+def test_shared_repo_create_branch_and_disconnect(gh, shared, admin, monkeypatch):
+    from github import writes
+    from github.test_writes import _identity
+    from tasks.services import create_task
+
+    conn, conn2 = shared
+    _identity(admin, "admin-gh")
+    t2 = create_task(project=conn2.project, title="B", actor=admin, source="web", no_due_reason="x")
+    seen = []
+
+    def fake(method, path, token, **kw):
+        seen.append(path)
+        return {"default_branch": "main", "object": {"sha": "abc"}}
+
+    monkeypatch.setattr("github.client.request", fake)
+    writes.create_branch(t2, "feat/b", actor=admin)
+    assert seen[-1] == "/repos/O/R/git/refs"
+    assert TaskGitLink.objects.get(task=t2).connection_id == conn2.pk
+    # 한 프로젝트 연결을 끊어도 다른 프로젝트 연결·링크는 남는다.
+    assert ghs.disconnect_repo(project=conn.project, actor=admin)
+    assert RepoConnection.objects.filter(pk=conn2.pk).exists()
+    assert TaskGitLink.objects.filter(task=t2).exists()
