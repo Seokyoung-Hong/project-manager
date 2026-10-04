@@ -35,6 +35,7 @@ NEEDS: dict[str, str] = {
     "get_task_github": "read",
     "get_task_history": "read",
     "create_task": "write",
+    "duplicate_task": "write",
     "update_task": "write",
     "transition_task": "write",
     "extend_task": "write",

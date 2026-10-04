@@ -355,11 +355,14 @@ def list_tasks(
     query: str | None = None,
     updated_since: str | None = None,
     include_archived: bool = False,
+    include_templates: bool = False,
+    parent_id: int | None = None,
     limit: int = 50,
     offset: int = 0,
 ) -> dict:
     """태스크 검색. status는 'todo,doing,review' 처럼 쉼표로 여러 개. 날짜는 YYYY-MM-DD.
     updated_since는 ISO 8601 시각 이후 변경된 항목만 반환한다. include_archived로 보관 프로젝트도 포함한다.
+    템플릿(is_template)은 기본으로 빠진다. include_templates로 포함하고, parent_id로 한 계열의 회차·변형만 본다.
     결과: {items, total, limit, offset}. 미완료만 보려면 status='todo,doing,paused,blocked,review'.
     막힌 것만 보려면 status='blocked'."""
     return _core().get(
@@ -373,6 +376,8 @@ def list_tasks(
         q=query,
         updated_since=updated_since,
         include_archived=include_archived,
+        include_templates=include_templates,
+        parent=parent_id,
         limit=limit,
         offset=offset,
     )
@@ -579,8 +584,14 @@ def update_task(
     next_action: str | None = None,
     notes: str | None = None,
     checklist: list[dict] | None = None,
+    reviewer_id: int | None = None,
+    clear_reviewer: bool = False,
+    is_template: bool | None = None,
 ) -> dict:
     """태스크 수정. version은 get_task로 읽은 최신 값. 바꿀 항목만 준다. due_date는 YYYY-MM-DD.
+    reviewer_id는 지정 검토자(검토 대기 → 완료를 이 사람이나 관리자만 한다). 비우려면 clear_reviewer=True.
+    is_template=True면 템플릿으로 둔다(시작 전에서만, 기한이 지워진다). 템플릿은 상태를 바꾸지 않는다.
+    회차는 duplicate_task로 만든다.
     담당자를 비우려면 clear_assignee=True, 기한을 비우려면 clear_due_date=True 와 no_due_reason.
     checklist는 [{text, is_done}] 전체 교체.
     stop_reason은 일시정지·막힘 상태에서만 바꿀 수 있다. notes는 통째로 교체되므로 덧붙이려면 append_note."""
@@ -599,6 +610,8 @@ def update_task(
         "next_action": next_action,
         "notes": notes,
         "checklist": checklist,
+        "reviewer_id": reviewer_id,
+        "is_template": is_template,
     }.items():
         if v is not None:
             body[k] = v
@@ -608,12 +621,38 @@ def update_task(
         body["due_date"] = due_date
     if clear_assignee:
         body["assignee_id"] = None
+    if clear_reviewer:
+        body["reviewer_id"] = None
     return _core().patch(f"/api/tasks/{task_id}", body)
 
 
 @mcp.tool()
+def duplicate_task(
+    task_id: int,
+    title: str | None = None,
+    due_date: str | None = None,
+    no_due_reason: str = "",
+    assignee_id: int | None = None,
+    request_id: str | None = None,
+) -> dict:
+    """태스크 복제·회차 만들기. 설명·완료 조건·다음 행동·체크리스트(미완료로)·링크·문서 연결을 복사하고
+    같은 계열(parent_id)로 묶는다. 반복하는 일은 템플릿에서 이 도구로 회차를 만든다(자동 생성 없음).
+    title을 비우면 원본 제목. due_date(YYYY-MM-DD)가 없으면 no_due_reason 필수.
+    request_id를 주면 같은 값으로 재시도해도 중복 생성되지 않는다."""
+    body = {
+        "title": title,
+        "due_date": due_date,
+        "no_due_reason": no_due_reason,
+        "assignee_id": assignee_id,
+    }
+    headers = {"Idempotency-Key": request_id} if request_id else None
+    return _core().post(f"/api/tasks/{task_id}/duplicate", body, headers=headers)
+
+
+@mcp.tool()
 def transition_task(task_id: int, status: str, version: int, reason: str = "") -> dict:
-    """상태 변경. status: todo|doing|paused|blocked|review|done|cancelled.
+    """상태 변경. status: todo|doing|paused|blocked|review|done|cancelled. 템플릿은 상태를 바꾸지 않는다.
+    검토 대기에서 되돌릴 때(반려) 조직이 요구하면 reason 필수. 지정 검토자가 있으면 그 사람·관리자만 완료한다.
     blocked로 바꾸려면 reason 필수(막힘 사유). paused는 reason 선택. doing으로 바꾸려면 기한이 있어야 한다.
     완료·취소된 태스크는 todo 또는 doing으로만 다시 열 수 있다."""
     return _core().post(

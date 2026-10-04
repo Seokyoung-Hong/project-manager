@@ -61,6 +61,7 @@ def test_needs_table_covers_every_tool():
         "get_task_github",
         "get_task_history",
         "create_task",
+        "duplicate_task",
         "update_task",
         "transition_task",
         "extend_task",
