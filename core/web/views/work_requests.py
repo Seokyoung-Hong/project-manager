@@ -41,7 +41,8 @@ def request_new(request):
         raise Http404
     org_id = request.POST.get("org") or request.GET.get("org")
     org = org_or_404(request.user, org_id) if org_id else current_org(request, my_orgs)
-    values = request.POST if request.method == "POST" else {}
+    # GET 값은 미리 채우기용이다(팀 화면의 [이 팀에 요청 보내기] → ?team=).
+    values = request.POST if request.method == "POST" else request.GET
     errors = {}
     if request.method == "POST":
         team = None

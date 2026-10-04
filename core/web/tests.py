@@ -518,7 +518,7 @@ def test_admin_pages_explain_to_members(logged, org):
     예전에는 404였다. 멤버는 팀이 있다는 걸 이미 아는 사람이라 숨길 것이 없고,
     "없는 페이지"로 읽히면 권한 문제인지 알 수 없었다. 존재를 숨기는 404는 조직 밖 사람 몫이다.
     """
-    r = logged.get(f"/orgs/{org.pk}/teams")
+    r = logged.get(f"/orgs/{org.pk}/teams/new")
     assert r.status_code == 302 and r.url == f"/orgs/{org.pk}"
     page = logged.get(r.url)
     assert page.status_code == 200 and "조직 관리자만 접근할 수 있습니다" in page.content.decode()
@@ -626,12 +626,13 @@ def test_rail_close_handle_hides_list_completely(logged, project):
 
 def test_org_tabs_hidden_for_member(logged, org):
     body = logged.get(f"/orgs/{org.pk}").content.decode()
-    assert f"/orgs/{org.pk}/teams" not in body
+    assert f"/orgs/{org.pk}/settings" not in body
+    assert f"/orgs/{org.pk}/teams" in body  # 팀 탭은 팀원에게도 읽기 전용으로 보인다
 
 
 def test_org_teams_denial_is_htmx_aware(logged, org):
     """탭을 HTMX로 열다 거절되면 조각 대신 HX-Redirect로 조직 현황에 착지한다."""
-    r = logged.get(f"/orgs/{org.pk}/teams", headers={"HX-Request": "true"})
+    r = logged.get(f"/orgs/{org.pk}/teams/new", headers={"HX-Request": "true"})
     assert r.status_code == 204 and r.headers["HX-Redirect"] == f"/orgs/{org.pk}"
 
 

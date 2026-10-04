@@ -128,3 +128,35 @@ def test_team_lead_permission(logged, admin_client, team, member):
     assert "팀장" in admin_client.get(f"/teams/{team.pk}").content.decode()
     admin_client.post(url, {"lead": "0"})
     assert not TeamMembership.objects.get(team=team, user=member).is_lead
+
+
+# ---------- 팀원용 팀 화면 ----------
+
+
+def test_member_sees_team_list_and_detail_with_lead(client, org, team, admin, member):
+    from orgs.services import set_team_lead
+
+    set_team_lead(team, member, True, admin)
+    client.login(username="member1", password="pw12345678")
+    body = client.get(f"/orgs/{org.pk}/teams").content.decode()
+    assert team.name in body and "팀원" in body and "초대" not in body
+    body = client.get(f"/teams/{team.pk}").content.decode()
+    assert "팀장" in body
+    assert "팀장 지정" not in body and "삭제" not in body  # 관리 버튼 없음
+    assert client.post(f"/teams/{team.pk}/members/{member.pk}/lead", {"lead": "0"}).status_code == 404
+
+
+def test_member_can_request_other_team_from_team_page(client, org, admin, member):
+    from orgs.services import create_team
+
+    other = create_team(org=org, name="디자인", actor=admin)
+    client.login(username="member1", password="pw12345678")
+    body = client.get(f"/teams/{other.pk}").content.decode()
+    assert "이 팀에 요청 보내기" in body
+    form = client.get(f"/requests/new?org={org.pk}&target=team&team={other.pk}").content.decode()
+    assert f'value="{other.pk}" selected' in form
+
+
+def test_outsider_cannot_see_team(client, team, outsider):
+    client.login(username="outsider", password="pw12345678")
+    assert client.get(f"/teams/{team.pk}").status_code == 404

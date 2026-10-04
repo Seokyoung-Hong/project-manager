@@ -89,11 +89,30 @@ def team_delete(request, team_id):
     return redirect("org_teams", org_id=org_id)
 
 
+def _member_team_detail(request, team):
+    """팀원이 보는 팀 화면. 관리 버튼 없이 구성원·팀장·담당 프로젝트를 보이고 요청 보내기로 잇는다."""
+    return render(
+        request,
+        "orgs/team_view.html",
+        {
+            "org": team.org,
+            "team": team,
+            "members": team.members.order_by("display_name"),
+            "lead_ids": set(
+                team.memberships.filter(is_lead=True).values_list("user_id", flat=True)
+            ),
+            "is_mine": team.memberships.filter(user=request.user).exists(),
+            "projects": team.projects.filter(is_archived=False).order_by("name"),
+            "tab": "teams",
+        },
+    )
+
+
 @login_required
 def team_detail(request, team_id):
     team = _team_or_404(request, team_id)
-    if denied := not_admin(request, team.org, "팀 관리"):
-        return denied
+    if not can_admin(request.user, team.org):
+        return _member_team_detail(request, team)
     members = team.members.order_by("display_name")
     candidates = (
         team.org.members.filter(is_active=True)

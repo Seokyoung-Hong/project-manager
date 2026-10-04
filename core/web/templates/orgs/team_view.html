@@ -1,0 +1,28 @@
+{% extends "base.html" %}{% block title %}{{ team.name }}{% endblock %}
+{% block main %}
+{% include "orgs/_tabs.html" %}
+<div class="card">
+  <div class="card-head">
+    <div class="stack">
+      <a class="t13" href="{% url 'org_teams' org.pk %}">팀 목록</a>
+      <h1 class="t24">{{ team.name }}{% if is_mine %} <span class="badge">내 팀</span>{% endif %}</h1>
+      {% if team.purpose %}<p class="muted">{{ team.purpose }}</p>{% endif %}
+    </div>
+    {% if not is_mine %}<a class="btn" href="{% url 'request_new' %}?org={{ org.pk }}&amp;target=team&amp;team={{ team.pk }}">이 팀에 요청 보내기</a>{% endif %}
+  </div>
+</div>
+<section class="card">
+  <h2>멤버</h2>
+  <ul class="links">
+    {% for u in members %}<li>{{ u.display_name }}{% if u.pk in lead_ids %} <span class="badge ok">팀장</span>{% endif %}</li>
+    {% empty %}<li class="muted t13">멤버가 없습니다.</li>{% endfor %}
+  </ul>
+</section>
+<section class="card">
+  <h2>담당 프로젝트</h2>
+  <ul class="links">
+    {% for p in projects %}<li><a href="{% url 'project_detail' p.pk %}">{{ p.name }}</a></li>
+    {% empty %}<li class="muted t13">담당 프로젝트가 없습니다.</li>{% endfor %}
+  </ul>
+</section>
+{% endblock %}

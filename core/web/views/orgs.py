@@ -97,12 +97,28 @@ def org_detail(request, org_id):
     )
 
 
+def _member_teams(request, org):
+    """팀원이 보는 팀 목록. 관리 기능 없이 누가 어느 팀이고 누가 팀장인지만 보여 준다."""
+    mine = set(request.user.team_memberships.values_list("team_id", flat=True))
+    rows = [
+        {
+            "team": t,
+            "mine": t.pk in mine,
+            "member_count": t.members.count(),
+            "leads": [m.user for m in t.memberships.filter(is_lead=True).select_related("user")],
+        }
+        for t in org.teams.all()
+    ]
+    rows.sort(key=lambda r: (not r["mine"], r["team"].name))
+    return render(request, "orgs/teams_member.html", {"org": org, "team_rows": rows, "tab": "teams"})
+
+
 @login_required
 def org_teams(request, org_id):
     """조직 → 팀. 멤버·태그·초대·팀을 한 화면에서 관리한다."""
     org = org_or_404(request.user, org_id)
-    if denied := not_admin(request, org, "팀·멤버 관리"):
-        return denied
+    if not can_admin(request.user, org):
+        return _member_teams(request, org)
     load = {r["assignee_id"]: r for r in org_status(org)["by_assignee"]}
     memberships = list(org.memberships.select_related("user").order_by("user__display_name"))
     # 마지막 관리자는 services.remove_member가 거부한다 — 버튼도 그 규칙을 그대로 보여 준다
