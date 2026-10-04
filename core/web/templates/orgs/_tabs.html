@@ -7,7 +7,7 @@
   <!-- V2-05: 회의록 -->
   <a href="{% url 'org_governance' org.pk %}" {% if tab == "governance" %}aria-current="page"{% endif %}>거버넌스</a>
   <a href="{% url 'org_notes' org.pk %}" {% if tab == "notes" %}aria-current="page"{% endif %}>회의록</a>
-  {% if github_enabled %}<a href="{% url 'org_issues' org.pk %}" {% if tab == "issues" %}aria-current="page"{% endif %}>이슈</a>{% endif %}
+  {% if github_enabled and org.github %}<a href="{% url 'org_issues' org.pk %}" {% if tab == "issues" %}aria-current="page"{% endif %}>이슈</a>{% endif %}
   {% if github_enabled and is_admin %}<a href="{% url 'org_github' org.pk %}" {% if tab == "github" %}aria-current="page"{% endif %}>GitHub</a>{% endif %}
   {% if discord_enabled and is_admin %}<a href="{% url 'org_discord' org.pk %}" {% if tab == "discord" %}aria-current="page"{% endif %}>Discord</a>{% endif %}
   {% if is_admin %}<a href="{% url 'org_settings' org.pk %}" {% if tab == "settings" %}aria-current="page"{% endif %}>설정</a>{% endif %}

@@ -74,11 +74,36 @@ def repo_state(user, project) -> dict:
 # ---------- 조직 설치 ----------
 
 
+def is_user_install(org) -> bool:
+    """개인 계정(User)에 설치됐는가. 그러면 조직 전용 기능을 끈다.
+
+    개인 계정에는 `/orgs/*`(멤버·팀)가 없고, 저장소 하나가 곧 조직인 작은 프로젝트라
+    이슈 자동 가져오기도 쓰지 않는다. account_type이 빈 옛 행은 조직으로 본다.
+    """
+    inst = getattr(org, "github", None)
+    return inst is not None and inst.account_type == "User"
+
+
 def save_installation(org, installation_id: int, *, actor) -> GitHubInstallation:
     """GET /app/installations/{id}(앱 JWT)로 계정 정보를 읽어 저장한다.
 
-    다른 조직이 이미 그 설치를 쓰고 있으면 거부한다.
+    설치 id는 Setup URL의 GET 값이라 누구나 바꿔 넣을 수 있다(순차 정수라 추측도 된다).
+    누른 사람의 GitHub 토큰으로 `GET /user/installations`를 불러 그 사람이 접근할 수 있는
+    설치일 때만 받는다. 다른 조직이 이미 그 설치를 쓰고 있어도 거부한다.
     """
+    identity = getattr(actor, "github", None)
+    if identity is None:
+        raise ServiceError({"installation": "먼저 GitHub 계정을 연결하세요."})
+    mine = {
+        i.get("id")
+        for i in client.paginate("/user/installations", user_token(identity), key="installations")
+    }
+    if installation_id not in mine:
+        raise ServiceError(
+            {
+                "installation": "내 GitHub 계정으로 접근할 수 없는 설치입니다. 설치한 계정으로 연결하세요."
+            }
+        )
     other = (
         GitHubInstallation.objects.filter(installation_id=installation_id).exclude(org=org).exists()
     )
@@ -488,8 +513,27 @@ def handle_event(event: str, delivery: str, payload: dict) -> tuple[int, dict]:
                 )
         return 202, {"ignored": event}
     for conn in conns:  # 한 저장소를 두 프로젝트가 가리킬 수 있다
-        handler(conn, delivery, payload)
+        # 연결마다 따로 묶는다. 한 연결의 실패(보관 프로젝트, 비활성 담당자 …)가 웹훅 전체를
+        # 400으로 만들면 앞 연결만 반영되고, 재전송은 중복으로 버려져 뒤 연결은 영영 빠진다.
+        try:
+            with transaction.atomic():
+                handler(conn, delivery, payload)
+        except ServiceError as e:
+            _record_failure(conn, delivery, event, payload, " ".join(map(str, e.errors.values())))
+        except ConflictError:
+            _record_failure(conn, delivery, event, payload, "다른 변경과 충돌")
     return 200, {"ok": True}
+
+
+def _record_failure(conn, delivery, event, payload, reason):
+    record_event(
+        conn,
+        delivery,
+        kind=event,
+        payload=payload,
+        summary=_short(event, payload),
+        result=f"실패: {reason}",
+    )
 
 
 def _on_membership(payload: dict):

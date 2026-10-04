@@ -137,7 +137,9 @@ def team_detail(request, team_id):
     gh_link = getattr(team, "github", None)
     gh_install = getattr(team.org, "github", None)
     gh_teams = []
-    if settings.GITHUB_ENABLED and gh_install is not None and gh_link is None:
+    # 개인 계정 설치에는 GitHub 팀이 없다 — 목록을 묻지도, 연결 UI를 그리지도 않는다.
+    gh_user = gh_install is not None and gh_install.account_type == "User"
+    if settings.GITHUB_ENABLED and gh_install is not None and gh_link is None and not gh_user:
         try:
             gh_teams = gh_writes.list_org_teams(team.org, actor=request.user)
         except (ServiceError, GitHubError):
@@ -156,7 +158,8 @@ def team_detail(request, team_id):
             "projects": team.projects.filter(is_archived=False).order_by("name"),
             "is_admin": can_admin(request.user, team.org),
             "gh_link": gh_link,
-            "gh_install": gh_install is not None,
+            "gh_install": gh_install is not None and not gh_user,
+            "gh_user_install": gh_user,
             "gh_teams": gh_teams,
             "tab": "teams",
         },

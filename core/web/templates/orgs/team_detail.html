@@ -37,6 +37,8 @@
   <form method="post" action="{% url 'team_github_create' team.pk %}">{% csrf_token %}<button class="btn sm">GitHub 팀 만들고 연결</button></form>
   {% endif %}
 </section>
+{% elif github_enabled and gh_user_install %}
+<p class="muted t13">개인 계정 설치에서는 GitHub 팀을 쓸 수 없습니다.</p>
 {% endif %}
 <section class="card">
   <h2>멤버</h2>

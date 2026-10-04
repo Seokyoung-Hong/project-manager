@@ -8,6 +8,7 @@ from django.utils import timezone
 from django.views.decorators.http import require_POST
 
 from common.errors import ServiceError
+from github import services as gh_services
 from github import writes as gh_writes
 from orgs import requests as creq
 from orgs import services as osv
@@ -195,7 +196,12 @@ def invite_create(request, org_id):
     except ServiceError as e:
         messages.error(request, " ".join(e.errors.values()))
         return _member_redirect(request, org.pk)
-    if settings.GITHUB_ENABLED and form.is_valid() and form.cleaned_data["gh_invite"]:
+    # 개인 계정 설치에는 GitHub 조직이 없다. 부르면 404와 쓸모없는 재시도 항목만 남는다.
+    if (
+        settings.GITHUB_ENABLED
+        and form.cleaned_data["gh_invite"]
+        and not gh_services.is_user_install(org)
+    ):
         login = form.cleaned_data["gh_login"].strip()
         if login:
             warn = attempt(
@@ -257,7 +263,11 @@ def member_remove(request, membership_id):
     except ServiceError as e:
         messages.error(request, " ".join(e.errors.values()))
         return _member_redirect(request, org_id)
-    if settings.GITHUB_ENABLED and getattr(org, "github", None) is not None:
+    if (
+        settings.GITHUB_ENABLED
+        and getattr(org, "github", None) is not None
+        and not gh_services.is_user_install(org)
+    ):
         login = gh_writes._login_of(user)
         if login:
             warn = attempt(

@@ -8,13 +8,24 @@
     <span class="badge">{% if install.repo_selection == "all" %}전체 저장소{% else %}선택된 저장소{% endif %}</span>
   </p>
   <p class="muted t13">설치 시각 {{ install.installed_at|date:"Y-m-d H:i" }}</p>
+  {% if install.account_type == "User" %}
+  <a class="btn sm" target="_blank" rel="noopener"
+     href="https://github.com/settings/installations/{{ install.installation_id }}">GitHub에서 설정</a>
+  <p class="muted t13">개인 계정 설치입니다. GitHub 조직 멤버·팀 관리와 이슈 자동 가져오기는 쓰지 않습니다. 이슈는 저장소 탭에서 손으로 가져오세요.</p>
+  {% else %}
   <a class="btn sm" target="_blank" rel="noopener"
      href="https://github.com/organizations/{{ install.account_login }}/settings/installations/{{ install.installation_id }}">GitHub에서 설정</a>
+  {% endif %}
   {% else %}
   <p class="muted t13">이 조직에 아직 GitHub 앱이 설치되지 않았습니다.</p>
+  {% if identity %}
   <a class="btn primary" href="{% url 'github_install' org.pk %}">GitHub 앱 설치</a>
+  {% else %}
+  <p class="muted t13">먼저 GitHub 계정을 연결하세요. 설치를 마치고 돌아오면 내 계정으로 그 설치에 접근할 수 있는지 확인합니다.</p>
+  <a class="btn primary" href="{% url 'profile' %}">프로필에서 GitHub 연결</a>
   {% endif %}
-  <p class="muted t13">이 앱이 할 수 있는 것: 저장소 내용 읽기·브랜치 만들기 · 이슈 읽기·쓰기 · PR 읽기 · 조직 멤버와 팀 관리</p>
+  {% endif %}
+  <p class="muted t13">이 앱이 할 수 있는 것: 저장소 내용 읽기·브랜치 만들기 · 이슈 읽기·쓰기 · PR 읽기{% if install.account_type != "User" %} · 조직 멤버와 팀 관리{% endif %}</p>
   <p class="muted t13">할 수 없는 것: 저장소 삭제·설정 변경, 브랜치 보호 규칙, 저장소 권한 부여, PR 병합</p>
 </div>
 <div class="card">

@@ -93,6 +93,8 @@ def _apply(request, row, org):
     inst = getattr(org, "github", None)
     if (inst.installation_id if inst else None) != row["installation_id"]:
         _stale("앱 설치 정보를 다시 확인하세요.")
+    if inst.account_type == "User":
+        _stale("개인 계정 설치에서는 GitHub 조직·팀 기능을 쓸 수 없습니다.")
     kind = row["kind"]
     actor = request.user
     if kind == "invite":

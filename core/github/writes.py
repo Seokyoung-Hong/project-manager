@@ -28,6 +28,9 @@ def _org_login(org) -> str:
     inst = getattr(org, "github", None)
     if inst is None:
         raise ServiceError({"github": "이 조직에 GitHub 앱이 설치되어 있지 않습니다."})
+    if inst.account_type == "User":
+        # 개인 계정에는 /orgs/*가 없다(404). 부르기 전에 막는다 — 팀·멤버 함수가 전부 여기를 지난다.
+        raise ServiceError({"github": "개인 계정 설치에서는 GitHub 조직·팀 기능을 쓸 수 없습니다."})
     return inst.account_login
 
 

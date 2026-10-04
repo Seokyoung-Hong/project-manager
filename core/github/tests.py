@@ -386,7 +386,6 @@ def test_actor_none_only_from_github_services():
 
 
 # ---------- 검증: 개인 계정(User) 설치 · 저장소 하나 ----------
-# 결함은 xfail(strict=True)로 재현한다. 고치면 XPASS가 실패로 떠서 표시를 떼라고 알려 준다.
 
 
 def _user_install(org, admin):
@@ -412,6 +411,8 @@ def fake_user_github(monkeypatch):
 
     def fake(method, path, token, *, body=None, **kw):
         calls.append((method, path))
+        if path.startswith("/user/installations?"):  # 설치 소유 확인
+            return {"installations": [{"id": 99}]}
         if path.startswith("/app/installations/"):
             return {
                 "account": {"login": "solo-dev", "type": "User"},
@@ -440,9 +441,9 @@ def test_user_account_install_and_single_repo_flow(
     """개인 계정 설치 저장 → 후보 1개 → 연결 → 저장소 탭 200 → 웹훅 규칙 동작."""
     from github.test_writes import _identity
 
+    identity = _identity(admin, "solo-dev")
     inst = ghs.save_installation(org, 99, actor=admin)
     assert (inst.account_login, inst.account_type) == ("solo-dev", "User")
-    identity = _identity(admin, "solo-dev")
     identity.repos = ["solo-dev/app"]
     identity.save(update_fields=["repos"])
     _login(client)
@@ -464,9 +465,6 @@ def test_user_account_install_and_single_repo_flow(
     assert task.git.connection_id == conn.pk
 
 
-@pytest.mark.xfail(
-    strict=True, reason="결함: 개인 계정 설치의 'GitHub에서 설정' 링크가 /organizations/ 경로라 404"
-)
 def test_user_install_settings_link_points_to_user_settings(
     gh, client, org, admin, fake_user_github
 ):
@@ -480,16 +478,12 @@ def test_user_install_team_page_does_not_500(gh, client, org, admin, team, fake_
     assert _login(client).get(f"/teams/{team.pk}").status_code == 200
 
 
-@pytest.mark.xfail(strict=True, reason="결함: 개인 계정 설치에서도 GitHub 팀 연결·생성 UI가 보인다")
 def test_user_install_hides_github_team_ui(gh, client, org, admin, team, fake_user_github):
     _user_install(org, admin)
     body = _login(client).get(f"/teams/{team.pk}").content.decode()
     assert "GitHub 팀 만들고 연결" not in body
 
 
-@pytest.mark.xfail(
-    strict=True, reason="결함: 개인 계정 설치에서도 /orgs/{login}/memberships 초대를 부른다"
-)
 def test_user_install_invite_skips_org_api(gh, client, org, admin, fake_user_github):
     _user_install(org, admin)
     _login(client).post(
@@ -498,9 +492,6 @@ def test_user_install_invite_skips_org_api(gh, client, org, admin, fake_user_git
     assert not [p for _, p in fake_user_github if p.startswith("/orgs/")]
 
 
-@pytest.mark.xfail(
-    strict=True, reason="결함: 개인 계정 설치에서도 멤버 제거 때 /orgs/{login}/members를 부른다"
-)
 def test_user_install_member_remove_skips_org_api(gh, client, org, admin, member, fake_user_github):
     from github.test_writes import _identity
     from orgs.models import OrgMembership
@@ -599,11 +590,6 @@ def test_shared_repo_auto_import_creates_a_task_in_each_project(gh, client, shar
     assert RepoIssue.objects.filter(number=5, task__isnull=False).count() == 2
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="결함: 한 연결의 create_task가 ServiceError를 내면 웹훅 전체가 400 — "
-    "앞 연결만 반영되고 재전송은 중복으로 버려진다",
-)
 def test_shared_repo_archived_project_does_not_break_delivery(gh, client, shared, member):
     from github.test_writes import _identity
     from projects.models import Project
@@ -623,7 +609,9 @@ def test_shared_repo_archived_project_does_not_break_delivery(gh, client, shared
     }
     r = signed(client, _repo(action="opened", issue=issue), "issues", "ar-1")
     assert r.status_code == 200
-    assert GitEvent.objects.filter(connection=conn2, delivery_id__startswith="ar-1:").exists()
+    failed = GitEvent.objects.get(connection=conn2, delivery_id__startswith="ar-1:")
+    assert failed.result.startswith("실패: ")  # 사유가 그 연결의 이벤트에 남는다
+    assert RepoIssue.objects.get(connection=conn, number=6).task_id is not None
 
 
 def test_shared_repo_create_branch_and_disconnect(gh, shared, admin, monkeypatch):
@@ -648,3 +636,66 @@ def test_shared_repo_create_branch_and_disconnect(gh, shared, admin, monkeypatch
     assert ghs.disconnect_repo(project=conn.project, actor=admin)
     assert RepoConnection.objects.filter(pk=conn2.pk).exists()
     assert TaskGitLink.objects.filter(task=t2).exists()
+
+
+# ---------- 설치 소유 확인: Setup URL의 installation_id를 믿지 않는다 ----------
+
+
+def _my_installs(monkeypatch, ids):
+    def fake(method, path, token, **kw):
+        if path.startswith("/user/installations?"):
+            return {"installations": [{"id": i} for i in ids]}
+        return {"account": {"login": "acme", "type": "Organization"}, "repository_selection": "all"}
+
+    monkeypatch.setattr("github.client.request", fake)
+    monkeypatch.setattr("github.client.app_jwt", lambda: "jwt")
+
+
+def test_install_rejects_installation_the_user_cannot_see(gh, org, admin, monkeypatch):
+    from github.test_writes import _identity
+
+    _identity(admin, "admin-gh")
+    _my_installs(monkeypatch, [1])
+    with pytest.raises(ServiceError):
+        ghs.save_installation(org, 2, actor=admin)
+    assert not GitHubInstallation.objects.exists()
+    assert ghs.save_installation(org, 1, actor=admin).installation_id == 1
+
+
+def test_install_requires_github_identity(gh, org, admin, monkeypatch):
+    _my_installs(monkeypatch, [1])
+    with pytest.raises(ServiceError):
+        ghs.save_installation(org, 1, actor=admin)
+    assert not GitHubInstallation.objects.exists()
+
+
+def test_installed_callback_ignores_forged_installation_id(gh, client, org, admin, monkeypatch):
+    from github.test_writes import _identity
+
+    _identity(admin, "admin-gh")
+    _my_installs(monkeypatch, [1])
+    _login(client)
+    session = client.session
+    session["gh_state"], session["gh_install_org"] = "st", org.pk
+    session.save()
+    r = client.get("/orgs/github/installed?installation_id=2&state=st")
+    assert r.status_code == 302
+    assert not GitHubInstallation.objects.exists()
+
+
+def test_install_button_needs_github_identity(gh, client, org, admin):
+    _login(client)
+    body = client.get(f"/orgs/{org.pk}/github").content.decode()
+    assert "먼저 GitHub 계정을 연결하세요" in body
+    assert f"/orgs/{org.pk}/github/install" not in body
+    r = client.get(f"/orgs/{org.pk}/github/install")
+    assert r.status_code == 302 and "github.com" not in r["Location"]
+
+
+def test_org_issues_tab_only_with_install(gh, client, org, admin):
+    _login(client)
+    assert f"/orgs/{org.pk}/issues" not in client.get(f"/orgs/{org.pk}/teams").content.decode()
+    GitHubInstallation.objects.create(
+        org=org, installation_id=7, account_login="acme", installed_by=admin
+    )
+    assert f"/orgs/{org.pk}/issues" in client.get(f"/orgs/{org.pk}/teams").content.decode()

@@ -63,7 +63,7 @@
   </table>
   <form method="post" action="{% url 'invite_create' org.pk %}" class="row">{% csrf_token %}
     <label class="field">{{ form.days.label }}{{ form.days }}</label>
-    {% if github_enabled %}
+    {% if github_enabled and org.github.account_type != "User" %}
     <label class="field row"><input type="checkbox" name="gh_invite" id="id_gh_invite" onchange="document.getElementById('gh_login_field').hidden = !this.checked">GitHub 조직에도 초대</label>
     <label class="field" id="gh_login_field" hidden>{{ form.gh_login.label }}{{ form.gh_login }}</label>
     {% endif %}

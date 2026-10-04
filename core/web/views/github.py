@@ -83,6 +83,10 @@ def github_install(request, org_id):
     org = org_or_404(request.user, org_id)
     if denied := not_admin(request, org, "GitHub 연동"):
         return denied
+    if getattr(request.user, "github", None) is None:
+        # 돌아왔을 때 GET /user/installations로 설치 소유를 확인하므로 계정 연결이 먼저다.
+        messages.error(request, "먼저 GitHub 계정을 연결하세요.")
+        return redirect("org_github", org_id=org.pk)
     request.session["gh_install_org"] = org.pk
     state = secrets.token_urlsafe(16)
     request.session["gh_state"] = state
