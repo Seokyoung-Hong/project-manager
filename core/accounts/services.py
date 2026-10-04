@@ -14,6 +14,7 @@ from django.utils import timezone
 from common.errors import ServiceError
 from orgs.settings import clean
 
+from .identity import resolve
 from .models import User
 
 CODE_TTL = timedelta(minutes=10)
@@ -79,12 +80,7 @@ def unlink_discord_by_id(discord_user_id: str) -> bool:
 
 def user_by_discord_id(discord_user_id: str):
     """봇 명령의 행위자. 연결이 증명된 활성 사용자만 돌려준다."""
-    did = (discord_user_id or "").strip()
-    if not did:
-        return None
-    return User.objects.filter(
-        discord_user_id=did, discord_linked_at__isnull=False, is_active=True
-    ).first()
+    return resolve("discord", discord_user_id)
 
 
 # ---------- 개인 설정 ----------
