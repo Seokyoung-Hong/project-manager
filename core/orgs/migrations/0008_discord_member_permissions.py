@@ -6,7 +6,6 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("orgs", "0007_discord_channel_management"),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
@@ -51,9 +50,7 @@ class Migration(migrations.Migration):
             ],
             options={
                 "constraints": [
-                    models.UniqueConstraint(
-                        fields=("org", "user"), name="dcmemberperm_org_user"
-                    )
+                    models.UniqueConstraint(fields=("org", "user"), name="dcmemberperm_org_user")
                 ],
             },
         ),

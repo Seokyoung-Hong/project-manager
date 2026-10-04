@@ -90,7 +90,8 @@ def test_panel_contains_sections(logged, task):
 def test_text_autosave(logged, task):
     r = logged.post(f"/tasks/{task.pk}/text/notes", {"value": "메모"}, headers=HX)
     assert r.status_code == 204
-    assert r.headers["HX-Trigger"] == "saved"
+    # saved(자동 저장 표시) + task-changed(목록·오늘 화면의 행이 새 제목으로 다시 그린다)
+    assert json.loads(r.headers["HX-Trigger"]) == {"saved": {}, "task-changed": {"id": task.pk}}
     task.refresh_from_db()
     assert task.notes == "메모"
     assert task.version == 1

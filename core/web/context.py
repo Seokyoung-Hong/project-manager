@@ -43,7 +43,7 @@ NAV_BY_URL = {
 def shell(request):
     """base.html 셸: 현재 조직, 프로젝트 레일, nav 강조, 닫기 후 돌아갈 주소."""
     if not request.user.is_authenticated:
-        return {}
+        return {"github_enabled": settings.GITHUB_ENABLED}  # 로그인·가입 화면의 GitHub 버튼
     if settings.GITHUB_ENABLED:
         from github.services import refresh_github_access
 

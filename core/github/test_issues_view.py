@@ -2,7 +2,7 @@
 
 import pytest
 
-from github.models import RepoConnection, RepoIssue, TaskGitLink
+from github.models import GitHubIdentity, RepoConnection, RepoIssue, TaskGitLink
 from github.services import import_issue, org_issues
 
 pytestmark = pytest.mark.django_db
@@ -80,6 +80,9 @@ def test_import_twice_returns_the_same_task(issue, member, admin):
 
 
 def test_page_lists_and_imports(client, gh, org, conn, issue, member):
+    GitHubIdentity.objects.create(
+        user=member, github_id=321, login="m", repos=["teamSANDOL/sandol-api"]
+    )
     client.force_login(member)
     body = client.get(f"/orgs/{org.pk}/issues").content.decode()
     assert "#7" in body and issue.title in body and "내 태스크로 가져오기" in body
@@ -114,6 +117,9 @@ def test_import_rejects_other_orgs_issue(client, gh, org, conn, issue, outsider)
 def test_issue_markdown_is_readonly_and_escaped(client, gh, org, conn, issue, member, scope):
     issue.body = '# Heading\n- [x] done\n**bold**\n<script>alert(1)</script>\n[bad](javascript:alert(1))\n```py\nprint("hello")\n```'
     issue.save()
+    GitHubIdentity.objects.create(
+        user=member, github_id=9992, login="member", repos=[conn.full_name]
+    )
     client.force_login(member)
     pk = org.pk if scope == "orgs" else conn.project_id
     response = client.get(f"/{scope}/{pk}/issues")
@@ -179,3 +185,17 @@ def test_repo_teams_preserves_http_status(conn, monkeypatch):
 
     monkeypatch.setattr(views.client, "paginate", fail)
     assert views._repo_teams(conn) == {"teams": None, "status": "HTTP 403"}
+
+
+def test_member_who_cannot_see_repo_gets_no_issues(client, gh, org, conn, issue, member):
+    """조직 멤버라도 GitHub에서 그 저장소를 볼 수 없으면 이슈가 보이지 않고 가져올 수도 없다."""
+    GitHubIdentity.objects.create(user=member, github_id=321, login="m", repos=["o/other"])
+    client.force_login(member)
+    body = client.get(f"/orgs/{org.pk}/issues").content.decode()
+    assert issue.title not in body
+    r = client.post(f"/orgs/{org.pk}/issues/{issue.pk}/import")
+    assert r.status_code == 404
+    project_id = conn.project.pk
+    assert client.get(f"/projects/{project_id}/issues").status_code == 403
+    issue.refresh_from_db()
+    assert issue.task is None

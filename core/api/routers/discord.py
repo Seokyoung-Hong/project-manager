@@ -376,7 +376,9 @@ def channel_targets(request):
                     "name": obj.name,
                     "channel_id": cid,
                     "managed": obj.discord_channel_managed,
-                    "allowed_ids": sorted(base | (org_channels.explicit_allowed(cid) if cid else set())),
+                    "allowed_ids": sorted(
+                        base | (org_channels.explicit_allowed(cid) if cid else set())
+                    ),
                     "grant_ids": sorted(base),
                 }
             )

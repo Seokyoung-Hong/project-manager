@@ -9,7 +9,7 @@ from .core_client import CoreClient
 from .discord import Bot
 from .messages import test_message
 from .notify import run_deadlines
-from .scheduler import loop, tick
+from .scheduler import loop, notify_prefs, tick
 from .store import Store
 from .weekly import last_monday, run_weekly
 
@@ -84,7 +84,12 @@ def main():
     elif a.cmd == "deadlines":
         org = _find_org(core, a.org)
         today = date.fromisoformat(a.date) if a.date else datetime.now(cfg.tz).date()
-        print(run_deadlines(core, bot, store, a.org, today, channel_id=org["channel_id"]))
+        notify = notify_prefs(core.org_members(a.org))  # DM 거부자를 스케줄러와 똑같이 뺍니다
+        print(
+            run_deadlines(
+                core, bot, store, a.org, today, channel_id=org["channel_id"], notify=notify
+            )
+        )
     elif a.cmd == "status":
         print(json.dumps(store.recent(), ensure_ascii=False, indent=2))
 

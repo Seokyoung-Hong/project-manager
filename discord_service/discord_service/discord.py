@@ -32,6 +32,10 @@ class UnknownResult(Exception):
     """응답을 못 받아 성공 여부를 모른다."""
 
 
+class RetryExhausted(RuntimeError):
+    """429·5xx·연결 오류로 3회 모두 실패했다. 일시 장애라 다음 틱에 다시 시도하면 된다."""
+
+
 class DmBlocked(Exception):
     """그 사람에게는 DM을 보낼 수 없다. 재시도해도 달라지지 않는다."""
 
@@ -165,7 +169,7 @@ class Bot:
                 delay *= 2
                 continue
             raise RuntimeError(f"HTTP {r.status_code}: {r.text[:200]}")
-        raise RuntimeError(f"3회 실패: {last}")
+        raise RetryExhausted(f"3회 실패: {last}")
 
 
 def _error_code(r: httpx.Response) -> int | None:

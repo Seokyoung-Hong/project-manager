@@ -143,7 +143,9 @@ def test_member_sees_team_list_and_detail_with_lead(client, org, team, admin, me
     body = client.get(f"/teams/{team.pk}").content.decode()
     assert "팀장" in body
     assert "팀장 지정" not in body and "삭제" not in body  # 관리 버튼 없음
-    assert client.post(f"/teams/{team.pk}/members/{member.pk}/lead", {"lead": "0"}).status_code == 404
+    assert (
+        client.post(f"/teams/{team.pk}/members/{member.pk}/lead", {"lead": "0"}).status_code == 404
+    )
 
 
 def test_member_can_request_other_team_from_team_page(client, org, admin, member):

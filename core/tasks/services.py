@@ -1,6 +1,6 @@
 from datetime import date, timedelta
 
-from django.db import transaction
+from django.db import IntegrityError, transaction
 from django.db.models import Max, Q
 from django.utils import timezone
 
@@ -115,6 +115,7 @@ def _validate(
     actor,
     source,
     check_assignee=True,
+    check_priority=True,
 ):
     """check_assignee=False면 담당자가 조직의 활성 멤버인지 보지 않는다.
 
@@ -135,7 +136,9 @@ def _validate(
         errors["assignee"] = "담당자는 이 조직의 활성 멤버여야 합니다."
     if not isinstance(priority, int) or isinstance(priority, bool) or not 1 <= priority <= 10:
         errors["priority"] = "중요도는 1~10 사이의 정수여야 합니다."
-    else:
+    elif check_priority:
+        # 바꾸지 않은 중요도에는 상한을 다시 묻지 않는다. 관리자가 9로 둔 태스크의 기한을
+        # 일반 멤버가 고치는 것까지 막히기 때문이다(담당자의 check_assignee와 같은 이유).
         cap = effective("task.priority_cap", org=project.org, project=project)
         if (
             cap
@@ -217,7 +220,10 @@ def create_task(
             user=actor, key=idempotency_key, target_type="task"
         ).first()
         if hit:
-            return Task.objects.get(pk=hit.target_id)
+            existing = Task.objects.filter(pk=hit.target_id).first()
+            if existing is not None:
+                return existing
+            hit.delete()  # 대상이 지워진 키는 새로 만든다
     assignee = assignee or actor
     # 남에게 맡길 권한이 없으면 일단 만든 사람이 맡고, 받을 사람에게 담당 요청을 보낸다.
     ask = None
@@ -260,9 +266,17 @@ def create_task(
     elif assignee != actor:
         wr.notify_assigned(task, actor)
     if idempotency_key:
-        IdempotencyKey.objects.create(
-            user=actor, key=idempotency_key[:100], target_type="task", target_id=task.pk
-        )
+        # 같은 키로 동시에 두 번 오면 둘 다 위의 조회를 비켜 간다. 유니크 충돌이 난 쪽은
+        # 자기 태스크를 롤백하고 먼저 만들어진 것을 돌려준다.
+        try:
+            with transaction.atomic():
+                IdempotencyKey.objects.create(
+                    user=actor, key=idempotency_key, target_type="task", target_id=task.pk
+                )
+        except IntegrityError:
+            hit = IdempotencyKey.objects.get(user=actor, key=idempotency_key, target_type="task")
+            transaction.set_rollback(True)
+            return Task.objects.get(pk=hit.target_id)
     return task
 
 
@@ -352,6 +366,7 @@ def update_task(
         actor=actor,
         source=source,
         check_assignee="assignee" in changes,
+        check_priority="priority" in changes,
     )
     old = {f: getattr(task, f) for f in LOCKED_FIELDS}
     fields = {f: v for f, v in new.items() if v != old[f]}
@@ -415,6 +430,8 @@ def transition(
     org = task.project.org
     reopening = task.is_closed and new_status in ("todo", "doing")
     closing = new_status in ("done", "cancelled")
+    if reopening and task.project.is_archived:
+        raise ServiceError({"status": "보관된 프로젝트의 태스크는 다시 열 수 없습니다."})
     if reopening:
         _ai_check(org, "ai.reopen_task", "완료·취소 되돌리기", source, "status")
     elif closing:

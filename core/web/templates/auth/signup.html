@@ -6,5 +6,6 @@
   {% include "_fields.html" %}
   <button class="btn primary">가입</button>
 </form>
+{% if github_enabled %}<a class="btn" href="{% url 'github_login' %}?next={{ request.GET.next|urlencode }}">GitHub로 가입</a>{% endif %}
 <p class="t13">이미 계정이 있으면 <a href="{% url 'login' %}">로그인</a>하세요.</p>
 {% endblock %}

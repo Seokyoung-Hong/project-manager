@@ -103,7 +103,7 @@ async def connect_existing(
             ),
             None,
         )
-        if item is None:
+        if item is None or item.get("org_id") not in await guild_org_ids(core, guild.id):
             return f"{label}을(를) 찾을 수 없습니다."
         viewers = viewers_of(guild, channel) if members_intent else None
         res = await asyncio.to_thread(
@@ -137,7 +137,10 @@ async def connect_existing(
 # (웹은 core의 orgs.channels.NEEDS와 같은 기준을 봇 보고값으로 판정한다). 모르면 거절(fail closed).
 NEEDS = {
     "channel": ("manage_channels",),  # 채널 연결·생성·해제, /알림채널
-    "managed": ("manage_channels", "manage_roles"),  # 자동 관리 켜기·끄기. 비공개 생성도 멤버 덮어쓰기라 같다
+    "managed": (
+        "manage_channels",
+        "manage_roles",
+    ),  # 자동 관리 켜기·끄기. 비공개 생성도 멤버 덮어쓰기라 같다
 }
 
 
@@ -168,6 +171,12 @@ def can_manage_channels(user) -> bool:
         return False
 
 
+async def guild_org_ids(core: CoreClient, guild_id) -> set:
+    """이 길드에 묶인 조직 id. control.py·`/알림채널`과 같은 같은-길드 기준입니다."""
+    orgs = await asyncio.to_thread(core.orgs)
+    return {o["org_id"] for o in orgs if str(o.get("guild_id")) == str(guild_id)}
+
+
 async def link_channel(
     guild,
     user,
@@ -192,7 +201,8 @@ async def link_channel(
     save = getattr(core, set_method)
     try:
         item = next((i for i in await asyncio.to_thread(listing, uid) if i["id"] == item_id), None)
-        if item is None:
+        # 다른 길드에 묶인 조직의 것은 없는 것으로 다룹니다(조직 간 누출 방지).
+        if item is None or item.get("org_id") not in await guild_org_ids(core, guild.id):
             return f"{label}을(를) 찾을 수 없습니다."
         # 인가 선확인: 같은 값을 다시 적는 무해한 쓰기다. 관리자가 아니면 여기서 400으로 끝나고
         # 채널은 아예 만들어지지 않는다(별도 '관리자인가' 엔드포인트를 두지 않는다).

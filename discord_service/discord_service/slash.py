@@ -20,7 +20,13 @@ import httpx
 from discord import app_commands
 from discord.app_commands import Choice
 
-from .channels import NOT_A_MANAGER, can_manage_channels, connect_existing, link_channel
+from .channels import (
+    NOT_A_MANAGER,
+    can_manage_channels,
+    connect_existing,
+    guild_org_ids,
+    link_channel,
+)
 from .commands import (
     BAD_DATE,
     TOO_FAST,
@@ -198,9 +204,27 @@ def register(tree: app_commands.CommandTree, guild, cfg, core: CoreClient, seen:
         items = await cached(core, cache, str(interaction.user.id), "projects")
         return choices(items, current, lambda p: p["name"])
 
+    async def in_guild(interaction: discord.Interaction, items: list[dict]) -> list[dict]:
+        """지금 길드에 묶인 조직의 것만 남깁니다. 다른 조직의 이름이 이 서버에 보이지 않게 합니다."""
+        if interaction.guild is None:
+            return []
+        key = (str(interaction.guild.id), "orgs")
+        hit = cache.get(key)
+        if not hit or hit[0] <= time.monotonic():
+            try:
+                ids = await guild_org_ids(core, interaction.guild.id)
+            except httpx.HTTPError:
+                return []
+            hit = cache[key] = (time.monotonic() + CACHE_TTL, ids)
+        return [i for i in items if i.get("org_id") in hit[1]]
+
+    async def ac_channel_project(interaction: discord.Interaction, current: str):
+        items = await cached(core, cache, str(interaction.user.id), "projects")
+        return choices(await in_guild(interaction, items), current, lambda p: p["name"])
+
     async def ac_team(interaction: discord.Interaction, current: str):
         items = await cached(core, cache, str(interaction.user.id), "teams")
-        return choices(items, current, lambda t: t["name"])
+        return choices(await in_guild(interaction, items), current, lambda t: t["name"])
 
     async def ac_member(interaction: discord.Interaction, current: str):
         items = await cached(core, cache, str(interaction.user.id), "members")
@@ -356,8 +380,16 @@ def register(tree: app_commands.CommandTree, guild, cfg, core: CoreClient, seen:
             return
         channel_id = str(interaction.channel.id) if interaction.channel else ""
         out = await asyncio.to_thread(
-            guarded, _request, core, uid, title, body, kind.value if kind else "work",
-            team, to_user, channel_id,
+            guarded,
+            _request,
+            core,
+            uid,
+            title,
+            body,
+            kind.value if kind else "work",
+            team,
+            to_user,
+            channel_id,
         )
         private, public = (out, None) if isinstance(out, str) else out
         await send(interaction, private)
@@ -365,7 +397,9 @@ def register(tree: app_commands.CommandTree, guild, cfg, core: CoreClient, seen:
             await interaction.followup.send(public, allowed_mentions=NO_MENTION)
 
     @tree.command(name="요청수락", description="받은 요청을 수락합니다", guild=guild)
-    @app_commands.rename(number="번호", project="프로젝트", assignee="담당자", due="기한", note="메모")
+    @app_commands.rename(
+        number="번호", project="프로젝트", assignee="담당자", due="기한", note="메모"
+    )
     @app_commands.describe(
         number="요청 (입력하면 대기 중인 목록이 뜹니다)",
         project="작업 요청은 필수 (번호를 먼저 고르세요)",
@@ -397,16 +431,23 @@ def register(tree: app_commands.CommandTree, guild, cfg, core: CoreClient, seen:
     async def finish(interaction: discord.Interaction, number: int, note: str = ""):
         await respond(interaction, done_request_reply, number, note)
 
-    @tree.command(name="요청목록", description="대기 중인 받은·보낸 요청 (나에게만 보입니다)", guild=guild)
+    @tree.command(
+        name="요청목록", description="대기 중인 받은·보낸 요청 (나에게만 보입니다)", guild=guild
+    )
     async def request_list(interaction: discord.Interaction):
         await respond(interaction, request_list_reply)
 
     # --- C단계: 채널 생성 (조직 관리자) ---
 
     async def channel_cmd(
-        interaction: discord.Interaction, kind: str, item_id: int, category,
-        create_category: bool = False, selected: discord.TextChannel | None = None,
-        allow_outsiders: bool = False, managed: bool | None = None,
+        interaction: discord.Interaction,
+        kind: str,
+        item_id: int,
+        category,
+        create_category: bool = False,
+        selected: discord.TextChannel | None = None,
+        allow_outsiders: bool = False,
+        managed: bool | None = None,
     ):
         await interaction.response.defer(ephemeral=True)
         uid = str(interaction.user.id)
@@ -416,8 +457,15 @@ def register(tree: app_commands.CommandTree, guild, cfg, core: CoreClient, seen:
             reply = "서버 채널에서 실행해 주세요."
         elif selected is not None:
             reply = await connect_existing(
-                interaction.guild, interaction.user, core, uid, kind, item_id, selected,
-                allow_outsiders=allow_outsiders, managed=managed,
+                interaction.guild,
+                interaction.user,
+                core,
+                uid,
+                kind,
+                item_id,
+                selected,
+                allow_outsiders=allow_outsiders,
+                managed=managed,
                 members_intent=cfg.members_intent,
             )
         else:
@@ -436,12 +484,18 @@ def register(tree: app_commands.CommandTree, guild, cfg, core: CoreClient, seen:
         await send(interaction, reply)
 
     @tree.command(
-        name="팀채널", description="팀 채널을 비공개로 만들거나 기존 채널을 연결합니다 (조직 관리자)", guild=guild
+        name="팀채널",
+        description="팀 채널을 비공개로 만들거나 기존 채널을 연결합니다 (조직 관리자)",
+        guild=guild,
     )
     @app_commands.guild_only()
     @app_commands.rename(
-        team="팀", category="기존카테고리", create_category="새카테고리만들기", selected="기존채널",
-        allow_outsiders="권한밖허용", managed="자동관리",
+        team="팀",
+        category="기존카테고리",
+        create_category="새카테고리만들기",
+        selected="기존채널",
+        allow_outsiders="권한밖허용",
+        managed="자동관리",
     )
     @app_commands.describe(
         team="팀 (입력하면 목록이 뜹니다)",
@@ -453,9 +507,13 @@ def register(tree: app_commands.CommandTree, guild, cfg, core: CoreClient, seen:
     )
     @app_commands.autocomplete(team=ac_team)
     async def team_channel(
-        interaction: discord.Interaction, team: int, category: discord.CategoryChannel | None = None,
-        create_category: bool = False, selected: discord.TextChannel | None = None,
-        allow_outsiders: bool = False, managed: bool | None = None,
+        interaction: discord.Interaction,
+        team: int,
+        category: discord.CategoryChannel | None = None,
+        create_category: bool = False,
+        selected: discord.TextChannel | None = None,
+        allow_outsiders: bool = False,
+        managed: bool | None = None,
     ):
         await channel_cmd(
             interaction, "team", team, category, create_category, selected, allow_outsiders, managed
@@ -468,24 +526,40 @@ def register(tree: app_commands.CommandTree, guild, cfg, core: CoreClient, seen:
     )
     @app_commands.guild_only()
     @app_commands.rename(
-        project="프로젝트", category="기존카테고리", create_category="새카테고리만들기", selected="기존채널",
-        allow_outsiders="권한밖허용", managed="자동관리",
+        project="프로젝트",
+        category="기존카테고리",
+        create_category="새카테고리만들기",
+        selected="기존채널",
+        allow_outsiders="권한밖허용",
+        managed="자동관리",
     )
     @app_commands.describe(
-        project="프로젝트 (입력하면 목록이 뜹니다)", category="넣을 기존 카테고리",
+        project="프로젝트 (입력하면 목록이 뜹니다)",
+        category="넣을 기존 카테고리",
         create_category="카테고리가 없을 때 같은 이름으로 새 카테고리를 만듭니다",
         selected="기존 텍스트 채널을 선택하면 새 채널 대신 연결합니다",
         allow_outsiders="기존 채널을 권한 밖 인원이 볼 수 있어도 허용하고 연결합니다",
         managed="봇이 담당자에게 채널 권한을 맞춰 줍니다(기존 채널을 연결할 때)",
     )
-    @app_commands.autocomplete(project=ac_project)
+    @app_commands.autocomplete(project=ac_channel_project)
     async def project_channel(
-        interaction: discord.Interaction, project: int, category: discord.CategoryChannel | None = None,
-        create_category: bool = False, selected: discord.TextChannel | None = None,
-        allow_outsiders: bool = False, managed: bool | None = None,
+        interaction: discord.Interaction,
+        project: int,
+        category: discord.CategoryChannel | None = None,
+        create_category: bool = False,
+        selected: discord.TextChannel | None = None,
+        allow_outsiders: bool = False,
+        managed: bool | None = None,
     ):
         await channel_cmd(
-            interaction, "project", project, category, create_category, selected, allow_outsiders, managed
+            interaction,
+            "project",
+            project,
+            category,
+            create_category,
+            selected,
+            allow_outsiders,
+            managed,
         )
 
     # --- §8.4: 조직 알림 채널 지정 ---

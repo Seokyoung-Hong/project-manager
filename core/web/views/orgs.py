@@ -111,7 +111,9 @@ def _member_teams(request, org):
         for t in org.teams.all()
     ]
     rows.sort(key=lambda r: (not r["mine"], r["team"].name))
-    return render(request, "orgs/teams_member.html", {"org": org, "team_rows": rows, "tab": "teams"})
+    return render(
+        request, "orgs/teams_member.html", {"org": org, "team_rows": rows, "tab": "teams"}
+    )
 
 
 @login_required

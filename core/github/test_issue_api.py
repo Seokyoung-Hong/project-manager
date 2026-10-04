@@ -24,7 +24,9 @@ def repo(gh, project, member, monkeypatch):
     )
     member.refresh_from_db()
     monkeypatch.setattr(gh_services, "can_view_repo", lambda actor, full_name: True)
-    conn = RepoConnection.objects.create(project=project, url="u", full_name="o/r", created_by=member)
+    conn = RepoConnection.objects.create(
+        project=project, url="u", full_name="o/r", created_by=member
+    )
     project.refresh_from_db()
     return conn
 
@@ -61,7 +63,9 @@ def test_ai_header_counts_as_ai(client, repo, task, write_token, github_posts):
     """스킬이 보내는 X-Source: ai도 MCP와 같이 AI 정책에 걸린다."""
     task.project.org.settings = {"ai.create_task": "deny"}
     task.project.org.save(update_fields=["settings"])
-    r = client.post(f"/api/tasks/{task.pk}/github/issue", headers=_h(write_token, **{"X-Source": "ai"}))
+    r = client.post(
+        f"/api/tasks/{task.pk}/github/issue", headers=_h(write_token, **{"X-Source": "ai"})
+    )
     assert r.status_code == 400
     assert "AI" in r.content.decode()
     assert github_posts == []
@@ -75,7 +79,9 @@ def test_create_issue_without_repo_says_why(client, gh, task, write_token):
 
 def test_list_and_import_issue(client, repo, member, write_token):
     RepoIssue.objects.create(connection=repo, number=3, title="학식 메뉴 누락", body="본문")
-    r = client.get(f"/api/projects/{repo.project_id}/issues?imported=false", headers=_h(write_token))
+    r = client.get(
+        f"/api/projects/{repo.project_id}/issues?imported=false", headers=_h(write_token)
+    )
     assert [i["number"] for i in r.json()] == [3]
 
     first = client.post(f"/api/projects/{repo.project_id}/issues/3/import", headers=_h(write_token))
@@ -83,7 +89,9 @@ def test_list_and_import_issue(client, repo, member, write_token):
     again = client.post(f"/api/projects/{repo.project_id}/issues/3/import", headers=_h(write_token))
     assert again.status_code == 200
     assert again.json()["id"] == first.json()["id"]
-    left = client.get(f"/api/projects/{repo.project_id}/issues?imported=false", headers=_h(write_token))
+    left = client.get(
+        f"/api/projects/{repo.project_id}/issues?imported=false", headers=_h(write_token)
+    )
     assert left.json() == []
 
 

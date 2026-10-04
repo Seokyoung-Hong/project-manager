@@ -8,11 +8,14 @@
 `actor=None`은 웹훅 경로에서만 쓴다. 이 파일 밖에서 `tasks.services`에 None을 넘기지 않는다.
 """
 
+import logging
 import re
 from datetime import datetime, timedelta
 from urllib.parse import quote, urlencode
 
 from django.conf import settings
+from django.core.cache import cache
+from django.db import transaction
 from django.db.models import Q
 from django.utils import timezone
 
@@ -20,7 +23,7 @@ from common.errors import ConflictError, ServiceError
 from orgs.models import TeamMembership
 from orgs.services import ai_denied, is_member, orgs_of
 from orgs.settings import effective
-from projects.services import require_level
+from projects.services import _log, require_level
 from tasks.models import ChangeLog, Task
 from tasks.services import create_task, transition
 
@@ -37,7 +40,10 @@ from .models import (
     TaskGitLink,
 )
 
+log = logging.getLogger(__name__)
+
 REPO_TTL = timedelta(hours=6)
+REPO_RETRY_SECONDS = 300
 ISSUE_TTL = timedelta(minutes=10)
 EVENT_KEEP = 50
 
@@ -175,10 +181,85 @@ def refresh_github_access(request):
     last = identity.repos_checked_at
     if last and timezone.now() - last < REPO_TTL:
         return
+    # 실패해도 매 요청 다시 묻지 않는다. GitHub 장애가 모든 화면을 시간 초과만큼 붙잡기 때문이다.
+    # ponytail: 프로세스별 캐시라 워커마다 한 번씩은 다시 묻는다. 거슬리면 DB에 시각을 둔다.
+    retry_key = f"gh-repos-retry:{identity.pk}"
+    if cache.get(retry_key):
+        return
     try:
         sync_repos(identity)
     except (GitHubError, ServiceError):
-        pass
+        cache.set(retry_key, 1, REPO_RETRY_SECONDS)
+
+
+def _free_username(login: str) -> str:
+    """GitHub 로그인을 PM 아이디로 쓴다. 이미 있으면 -gh, -gh2 …를 붙인다.
+
+    GitHub 로그인은 영문·숫자·하이픈뿐이라 Django 아이디 규칙을 그대로 통과한다.
+    """
+    from accounts.models import User
+
+    base = login[:140]
+    name, n = base, 1
+    while User.objects.filter(username__iexact=name).exists():
+        name = f"{base}-gh" if n == 1 else f"{base}-gh{n}"
+        n += 1
+    return name
+
+
+def github_email(info: dict, token: str) -> str:
+    """GitHub 주 이메일. 공개 이메일이 없으면 /user/emails를 묻는다. 권한이 없으면 빈 값."""
+    if info.get("email"):
+        return info["email"][:254]
+    try:
+        emails = client.request("GET", "/user/emails", token)
+    except GitHubError:
+        return ""
+    primary = [e["email"] for e in emails if e.get("primary") and e.get("verified")]
+    return primary[0][:254] if primary else ""
+
+
+def lookalike_exists(login: str, email: str) -> bool:
+    """같은 아이디나 이메일로 가입했지만 GitHub를 연결하지 않은 계정이 있는가."""
+    from accounts.models import User
+
+    q = Q(username__iexact=login)
+    if email:
+        q |= Q(email__iexact=email)
+    return User.objects.filter(q, github__isnull=True).exists()
+
+
+@transaction.atomic
+def login_with_github(info: dict, token_data: dict) -> tuple:
+    """GitHub 사용자 정보로 PM 사용자를 찾고, 없으면 만든다. (identity, 새로 만들었나)를 돌려준다.
+
+    이미 연결된 GitHub 계정이면 그 사람이다. 처음 보는 계정이면 GitHub만으로 가입시킨다.
+    같은 이메일·아이디의 기존 PM 계정에 자동으로 붙이지 않는다 — 남의 계정을 가로챌 수 있다.
+    기존 계정을 쓰던 사람은 로그인한 뒤 프로필에서 GitHub를 연결하면 된다.
+    """
+    from accounts.models import User
+
+    github_id, login = info["id"], (info.get("login") or "")[:100]
+    identity = GitHubIdentity.objects.select_related("user").filter(github_id=github_id).first()
+    created = identity is None
+    if not created:
+        if not identity.user.is_active:
+            raise ServiceError({"github": "비활성화된 계정입니다. 조직 관리자에게 문의해 주세요."})
+        if identity.login != login:
+            identity.login = login
+            identity.save(update_fields=["login"])
+    else:
+        user = User(
+            username=_free_username(login or f"github-{github_id}"),
+            display_name=(info.get("name") or login)[:50],
+            email=info.get("email") or "",
+        )
+        user.set_unusable_password()  # 비밀번호 로그인은 없다. GitHub로만 들어온다.
+        user.save()
+        identity = GitHubIdentity.objects.create(user=user, github_id=github_id, login=login)
+        backfill_actor(identity)
+    _store_tokens(identity, token_data)
+    return identity, created
 
 
 def backfill_actor(identity):
@@ -261,7 +342,39 @@ def connect_repo(*, project, url, actor, source: str = "web") -> RepoConnection:
         project=project,
         defaults={"url": url.strip()[:300], "full_name": full_name, "created_by": actor},
     )
-    sync_issues_if_stale(conn)
+    try:
+        sync_issues_if_stale(conn)
+    except Exception:
+        # 연결은 이미 저장됐다. 이슈는 다음 동기화에 맞춰지므로 화면을 500으로 깨지 않는다.
+        log.exception("저장소 연결 직후 이슈 동기화에 실패했습니다: %s", full_name)
+    return conn
+
+
+REPO_SETTING_FIELDS = (
+    "import_label",
+    "auto_import",
+    "rule_issue",
+    "rule_branch",
+    "rule_commit",
+    "rule_pr",
+    "rule_merge",
+)
+
+
+def update_repo_settings(conn, changes: dict, *, actor, source: str = "web", token=None):
+    """저장소 규칙·가져오기 설정을 바꾼다. connect_repo와 같은 등급·AI 검사를 받는다."""
+    project = conn.project
+    require_level(actor, project, effective("project.settings_by", org=project.org), "repo")
+    _check_ai_manage_repo(project.org, source)
+    changed = []
+    for field, new in changes.items():
+        if field not in REPO_SETTING_FIELDS or getattr(conn, field) == new:
+            continue
+        _log(project, f"repo.{field}", getattr(conn, field), new, actor, source, token)
+        setattr(conn, field, new)
+        changed.append(field)
+    if changed:
+        conn.save(update_fields=changed)
     return conn
 
 
@@ -473,6 +586,9 @@ def _apply(task, status, *, actor, actor_login, note=""):
     """규칙이 상태를 바꾸는 유일한 통로. 실패해도 연결은 남기고 사유만 기록한다."""
     if task.status == status:
         return "변경 없음"
+    if not task.is_open:
+        # 완료·취소한 태스크를 GitHub 이벤트가 다시 열지 않는다.
+        return "닫힌 태스크"
     try:
         transition(
             task,
@@ -540,7 +656,7 @@ def _on_create(conn, delivery, payload):
 
 
 def _on_push(conn, delivery, payload):
-    branch = (payload.get("ref") or "").rsplit("/", 1)[-1]
+    branch = (payload.get("ref") or "").removeprefix("refs/heads/")
     commits = payload.get("commits") or []
     matched = 0
     last_task = None
@@ -561,8 +677,10 @@ def _on_push(conn, delivery, payload):
             "at": (c.get("timestamp") or ""),
         }
         # ponytail: JSON 목록 100건. 커밋 전체 이력이 필요해지면 별도 표로.
-        link.commits = ([*(link.commits or []), entry])[-COMMIT_KEEP:]
-        link.save(update_fields=["commits"])
+        # 같은 커밋이 여러 브랜치로 다시 push되면 sha가 같다. 한 번만 쌓는다.
+        if not any(entry["sha"] and x.get("sha") == entry["sha"] for x in link.commits or []):
+            link.commits = ([*(link.commits or []), entry])[-COMMIT_KEEP:]
+            link.save(update_fields=["commits"])
         if item:
             _check_item(task, item)
     record_event(
@@ -700,7 +818,9 @@ def _on_issues(conn, delivery, payload):
         )
         task = row.task
     elif action == "opened" and conn.rule_issue and conn.auto_import:
-        if conn.import_label and conn.import_label not in labels:
+        if row.task_id is not None:
+            result = "이미 가져옴"
+        elif conn.import_label and conn.import_label not in labels:
             result = "라벨 불일치"
         else:
             member = _assigned_member(conn, issue)
@@ -790,8 +910,15 @@ def import_issue(issue, actor, *, source="web"):
     갈라진다. GitHub 이슈에는 기한이 없으므로 고정 사유를 채운다(`create_task`가 열린 태스크에
     기한이나 사유 중 하나를 요구한다).
     """
-    if issue.task_id is not None:
-        return issue.task
+    with transaction.atomic():
+        # 두 사람이 동시에 누르면 태스크가 둘 생긴다. 행을 잠근 뒤 다시 본다.
+        issue = RepoIssue.objects.select_for_update().select_related("connection").get(pk=issue.pk)
+        if issue.task_id is not None:
+            return issue.task
+        return _import_locked(issue, actor, source)
+
+
+def _import_locked(issue, actor, source):
     conn = issue.connection
     task = create_task(
         project=conn.project,
@@ -869,6 +996,24 @@ def sync_issues_if_stale(conn):
         sync_issues(conn)
     except (ServiceError, GitHubError):
         pass
+
+
+def link_issue(task, issue):
+    """이미 동기화된 이슈를 태스크에 손으로 잇는다. 다른 태스크의 이슈는 빼앗지 않는다."""
+    if issue.task_id not in (None, task.pk):
+        raise ServiceError({"issue": f"이미 {issue.task.number}에 연결된 이슈입니다."})
+    link = getattr(task, "git", None)
+    if link is not None and link.issue_number and link.issue_number != issue.number:
+        unlink(task, "issue")  # 전에 잇던 이슈를 놓아 다른 태스크가 가져갈 수 있게 한다
+    link = _link_for(issue.connection, task)
+    link.issue_number = issue.number
+    link.issue_title = issue.title
+    link.issue_state = issue.state
+    link.save(update_fields=["issue_number", "issue_title", "issue_state"])
+    issue.task = task
+    issue.save(update_fields=["task"])
+    task._state.fields_cache.pop("git", None)
+    return link
 
 
 UNLINK_FIELDS = {

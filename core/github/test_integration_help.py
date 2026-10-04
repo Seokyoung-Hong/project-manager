@@ -4,7 +4,7 @@ import pytest
 from django.test import Client
 
 from github.client import GitHubError
-from github.models import GitHubInstallation, GitHubTeamLink, RepoConnection
+from github.models import GitHubIdentity, GitHubInstallation, GitHubTeamLink, RepoConnection
 from github.test_writes import _identity
 from orgs.models import Invite, TeamMembership
 
@@ -88,6 +88,7 @@ def test_issue_sync_failure_records_status_and_preserves_tasks(
     def fail(*_):
         raise GitHubError(0, "private details")
 
+    GitHubIdentity.objects.filter(user=admin).update(repos=[conn.full_name])
     monkeypatch.setattr("github.services.sync_issues", fail)
     before = project.tasks.count()
     assert client.post(f"/projects/{project.pk}/issues/sync").status_code == 302

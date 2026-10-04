@@ -89,7 +89,7 @@ def connect(fake, guild, ch, **kw):
 def test_connect_without_outsiders_links():
     g = FakeGuild([M(111), M(5, bot=True)])
     ch = g.add(FakeText(10, g, viewers=[111, 5]))
-    fake = FakeCore([])
+    fake = FakeCore([], orgs=[{"org_id": 1, "guild_id": "1"}])
     assert "연결했습니다" in connect(fake, g, ch)
     body = fake.calls[-1][1]
     assert body["viewers"] == [{"id": "111", "name": "멤버"}]  # 봇 계정은 제외한다
@@ -99,7 +99,7 @@ def test_connect_without_outsiders_links():
 def test_outsiders_are_refused_privately_with_names_and_retry_hint():
     g = FakeGuild([M(111), M(222, "외부인")])
     ch = g.add(FakeText(10, g, viewers=[111, 222]))
-    fake = FakeCore([])
+    fake = FakeCore([], orgs=[{"org_id": 1, "guild_id": "1"}])
     reply = connect(fake, g, ch)
     assert "권한 밖 1명" in reply and "외부인" in reply and "권한밖허용:True" in reply
     assert fake.channels["team"] == ""
@@ -110,7 +110,7 @@ def test_outsiders_are_refused_privately_with_names_and_retry_hint():
 def test_intent_off_is_unknown_and_needs_the_allow_option():
     g = FakeGuild([M(111)])
     ch = g.add(FakeText(10, g, viewers=[111]))
-    fake = FakeCore([])
+    fake = FakeCore([], orgs=[{"org_id": 1, "guild_id": "1"}])
     reply = connect(fake, g, ch, members_intent=False)
     assert "확인할 수 없습니다" in reply and "권한밖허용:True" in reply
     assert fake.calls[-1][1]["viewers"] is None and fake.channels["team"] == ""
@@ -120,7 +120,7 @@ def test_intent_off_is_unknown_and_needs_the_allow_option():
 def test_connect_requires_manage_channels_before_core():
     g = FakeGuild([M(111)])
     ch = g.add(FakeText(10, g))
-    fake = FakeCore([])
+    fake = FakeCore([], orgs=[{"org_id": 1, "guild_id": "1"}])
     reply = run(
         connect_existing(
             g, manager(False), make_core(fake), DID, "team", 1, ch, members_intent=True
@@ -195,7 +195,7 @@ def watcher(fake, tmp_path, intent=True, guild=None):
 def test_scan_reports_outsiders_without_bots_or_allowed_and_missing_members(tmp_path):
     g = FakeGuild([M(111), M(222, "외부인"), M(333, "허용됨"), M(5, bot=True), M(444, "접근없음")])
     g.add(FakeText(10, g, viewers=[222, 333, 5]))
-    fake = FakeCore([])
+    fake = FakeCore([], orgs=[{"org_id": 1, "guild_id": "1"}])
     fake.targets = [target(allowed=("111", "333"), grant=("111", "444"))]
     [res] = run(watcher(fake, tmp_path, guild=g).scan())
     [report] = fake.alert_reports
@@ -212,7 +212,7 @@ def test_scan_reports_outsiders_without_bots_or_allowed_and_missing_members(tmp_
 def test_scan_with_intent_off_only_reports_permissions(tmp_path):
     g = FakeGuild([M(222)], perms=3088)
     g.add(FakeText(10, g, viewers=[222]))
-    fake = FakeCore([])
+    fake = FakeCore([], orgs=[{"org_id": 1, "guild_id": "1"}])
     fake.targets = [target()]
     run(watcher(fake, tmp_path, intent=False, guild=g).scan())
     assert fake.alert_reports == []  # 감시·조정 건너뜀
@@ -225,7 +225,7 @@ def test_scan_reconciles_managed_channels_only(tmp_path):
     g = FakeGuild([M(111), M(222)])
     managed = g.add(FakeText(10, g))
     plain = g.add(FakeText(11, g))
-    fake = FakeCore([])
+    fake = FakeCore([], orgs=[{"org_id": 1, "guild_id": "1"}])
     fake.targets = [target("10", managed=True), {**target("11"), "id": 2}]
     run(watcher(fake, tmp_path, guild=g).scan())
     assert 111 in managed.ow and plain.ow == {}
@@ -271,6 +271,10 @@ def core_handler(me_did="111", admin=True, linked=None):
                     "projects": [{"id": 1, "name": "학식 API"}],
                 },
             )
+        if path == "/api/orgs/1/discord-control-check":
+            assert request.headers["Authorization"] == "Bearer pm_user"
+            assert request.headers["X-Source"] == "mcp"
+            return httpx.Response(200, json={"ok": True})
         if path == "/api/me":
             return httpx.Response(200, json={"discord_user_id": me_did})
         if path.endswith("/channel-check"):
@@ -300,12 +304,19 @@ class CtlGuild(FakeGuild):
         return self.fetch
 
 
-def call(guild, path, body, *, me_did="111", intent=True, admin=True):
+def call(guild, path, body, *, me_did="111", intent=True, admin=True, preflight=None):
     handler, calls = core_handler(me_did, admin)
+    original_handler = handler
+
+    def checked_handler(request):
+        if preflight is not None and request.url.path.endswith("/discord-control-check"):
+            return preflight(request)
+        return original_handler(request)
+
     client = SimpleNamespace(get_guild=lambda gid: guild)
     app = control.make_app(
         client, "http://core", core_token="bot", members_intent=intent,
-        transport=httpx.MockTransport(handler),
+        transport=httpx.MockTransport(checked_handler),
     )  # fmt: skip
 
     async def go():
@@ -384,7 +395,7 @@ def test_control_create_makes_a_private_channel_for_the_allowed_set():
 def test_connect_sends_the_guild_id_and_managed_needs_manage_roles():
     g = FakeGuild([M(111)])
     ch = g.add(FakeText(10, g, viewers=[111]))
-    fake = FakeCore([])
+    fake = FakeCore([], orgs=[{"org_id": 1, "guild_id": "1"}])
     connect(fake, g, ch)
     assert fake.calls[-1][1]["guild_id"] == "1"
     no_roles = SimpleNamespace(
@@ -405,7 +416,7 @@ def test_connect_sends_the_guild_id_and_managed_needs_manage_roles():
 def test_scan_merges_duplicate_channels_once(tmp_path):
     g = FakeGuild([M(111), M(222, "외부인"), M(333, "프로젝트팀")])
     ch = g.add(FakeText(10, g, viewers=[222, 333]))
-    fake = FakeCore([])
+    fake = FakeCore([], orgs=[{"org_id": 1, "guild_id": "1"}])
     fake.targets = [
         target("10", managed=True, allowed=("111",), grant=("111",)),
         {**target("10", managed=False, allowed=("333",), grant=("333",)), "kind": "project"},
@@ -424,7 +435,7 @@ def test_unlinked_channel_loses_only_the_bots_overwrites(tmp_path):
     new = g.add(FakeText(11, g))
     run(reconcile(g, old, ["111"], store))
     old.ow[222] = discord.PermissionOverwrite(view_channel=True)  # 사람이 넣은 것
-    fake = FakeCore([])
+    fake = FakeCore([], orgs=[{"org_id": 1, "guild_id": "1"}])
     fake.targets = [target("11", managed=True)]  # 팀이 다른 채널로 바뀌었다
     w = Watcher(SimpleNamespace(get_guild=lambda gid: g), make_core(fake), store, True)
     run(w.scan())
@@ -440,7 +451,7 @@ def test_overwrites_given_at_creation_are_recorded(tmp_path):
 
     store = Store(str(tmp_path / "s.sqlite"))
     g = CreateGuild()
-    fake = FakeCore([])
+    fake = FakeCore([], orgs=[{"org_id": 1, "guild_id": "1"}])
     run(
         link_channel(
             g, manager_member(), make_core(fake), DID, "team", 1, None, "산돌이", store=store
@@ -457,7 +468,7 @@ def test_create_requires_manage_roles():
     from discord_service.channels import link_channel
 
     g = CreateGuild()
-    fake = FakeCore([])
+    fake = FakeCore([], orgs=[{"org_id": 1, "guild_id": "1"}])
     user = manager_member()
     user.guild_permissions = discord.Permissions(manage_channels=True, manage_roles=False)
     reply = run(link_channel(g, user, make_core(fake), DID, "team", 1, None, "산돌이"))
@@ -479,7 +490,7 @@ def test_control_requires_manage_roles_for_create_and_managed_assign():
 
 def test_watcher_reports_a_denied_intent(tmp_path):
     g = FakeGuild([M(111)])
-    fake = FakeCore([])
+    fake = FakeCore([], orgs=[{"org_id": 1, "guild_id": "1"}])
     fake.targets = [target()]
     store = Store(str(tmp_path / "w.sqlite"))
     client = SimpleNamespace(get_guild=lambda gid: g)
@@ -531,7 +542,7 @@ def test_can_manage_table_and_fail_closed():
 def test_turning_automanage_on_or_off_needs_manage_roles_but_plain_connect_does_not():
     g = FakeGuild([M(111)])
     ch = g.add(FakeText(10, g, viewers=[111]))
-    fake = FakeCore([])
+    fake = FakeCore([], orgs=[{"org_id": 1, "guild_id": "1"}])
     no_roles = SimpleNamespace(
         id=111, guild_permissions=discord.Permissions(manage_channels=True, manage_roles=False)
     )
@@ -557,7 +568,7 @@ def test_scan_reports_linked_members_server_permissions(tmp_path):
     admin_bits = (1 << 4) | (1 << 28)
     g = FakeGuild([M(111, perms=admin_bits), M(222, perms=1 << 4), M(333)])
     g.add(FakeText(10, g))
-    fake = FakeCore([])
+    fake = FakeCore([], orgs=[{"org_id": 1, "guild_id": "1"}])
     fake.orgs_data = [
         {"org_id": 1, "name": "산돌이", "guild_id": "1", "channel_id": "", "settings": {}}
     ]
@@ -579,7 +590,7 @@ def test_scan_reports_linked_members_server_permissions(tmp_path):
 
 def test_orgs_without_targets_still_report_and_intent_off_reports_nothing(tmp_path):
     g = FakeGuild([M(111, perms=1 << 5)])
-    fake = FakeCore([])
+    fake = FakeCore([], orgs=[{"org_id": 1, "guild_id": "1"}])
     fake.orgs_data = [
         {"org_id": 1, "name": "산돌이", "guild_id": "1", "channel_id": "", "settings": {}}
     ]
@@ -602,3 +613,29 @@ def test_control_unlink_needs_manage_channels_and_goes_through_the_bot_api():
     [(method, path, body)] = [c for c in calls if c[1].endswith("/projects/1/channel")]
     assert method == "POST" and json.loads(body) == {"discord_user_id": "111", "channel_id": ""}
     assert not any(m == "PUT" for m, _, _ in calls)  # 사용자 토큰의 REST 해제 경로를 쓰지 않는다
+
+
+def test_control_preflight_fails_closed_before_discord_mutations():
+    def timeout(request):
+        raise httpx.ConnectError("private upstream", request=request)
+
+    responses = [
+        lambda request: httpx.Response(400, json={"detail": "private policy"}),
+        lambda request: httpx.Response(200, json={"ok": False}),
+        lambda request: httpx.Response(200, json=[]),
+        lambda request: httpx.Response(200, text="invalid json"),
+        timeout,
+    ]
+    for reject in responses:
+        for path, body in [
+            ("/projects/1/assign", {"org_id": 1, "channel_id": "10"}),
+            ("/projects/1/assign", {"org_id": 1, "channel_id": ""}),
+            ("/orgs/1/projects/1/channels", {"org_id": 1, "channel_name": "new"}),
+        ]:
+            guild = CtlGuild([M(111)], fetch=with_manage(True, roles=True))
+            existing = guild.add(FakeText(10, guild, viewers=[111]))
+            status, text, calls = call(guild, path, body, preflight=reject)
+            assert status in (403, 503)
+            assert "private" not in text
+            assert guild.channels == {10: existing}
+            assert not any(p.endswith("/channel-check") or m == "PUT" for m, p, _ in calls)

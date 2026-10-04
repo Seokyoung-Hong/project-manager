@@ -34,7 +34,9 @@ def _http(request: web.Request) -> httpx.AsyncClient:
 
 async def _org(request: web.Request, org_id: int, token: str) -> dict:
     async with _http(request) as http:
-        response = await http.get(f"/api/orgs/{org_id}", headers={"Authorization": f"Bearer {token}"})
+        response = await http.get(
+            f"/api/orgs/{org_id}", headers={"Authorization": f"Bearer {token}"}
+        )
     if response.status_code == 401:
         raise web.HTTPUnauthorized(text="ProjectManager 토큰이 유효하지 않습니다.")
     if response.status_code >= 400:
@@ -45,6 +47,34 @@ async def _org(request: web.Request, org_id: int, token: str) -> dict:
     if not data.get("discord_guild_id"):
         raise web.HTTPConflict(text="이 조직은 Discord 서버에 연결되지 않았습니다.")
     return data
+
+
+async def _mutation_preflight(request: web.Request, org_id: int, token: str) -> None:
+    """봇 토큰으로 바꾸기 전에 실제 사용자 토큰과 MCP 출처로 정책을 확인한다."""
+    try:
+        async with _http(request) as http:
+            response = await http.post(
+                f"/api/orgs/{org_id}/discord-control-check",
+                headers={"Authorization": f"Bearer {token}", "X-Source": "mcp"},
+            )
+    except httpx.HTTPError:
+        raise web.HTTPServiceUnavailable(
+            text="채널 변경 정책을 확인하지 못해 작업을 중단했습니다."
+        ) from None
+    if response.status_code == 401:
+        raise web.HTTPUnauthorized(text="ProjectManager 토큰이 유효하지 않습니다.")
+    if response.status_code != 200:
+        raise web.HTTPForbidden(
+            text="조직 권한 또는 AI 정책으로 Discord 채널 변경을 허용하지 않습니다."
+        )
+    try:
+        allowed = response.json().get("ok") is True
+    except (ValueError, AttributeError):
+        allowed = False
+    if not allowed:
+        raise web.HTTPServiceUnavailable(
+            text="채널 변경 정책 응답을 확인하지 못해 작업을 중단했습니다."
+        )
 
 
 async def _manager(
@@ -63,7 +93,9 @@ async def _manager(
     try:
         member = await guild.fetch_member(int(did))
     except (discord.HTTPException, ValueError):
-        raise web.HTTPForbidden(text="Discord 서버에서 사용자의 권한을 확인할 수 없습니다.") from None
+        raise web.HTTPForbidden(
+            text="Discord 서버에서 사용자의 권한을 확인할 수 없습니다."
+        ) from None
     if not can_manage_channels(member):
         raise web.HTTPForbidden(text="Discord 서버에서 채널 관리 권한이 있어야 합니다.")
     if roles and not can_manage_roles(member):  # 멤버 덮어쓰기를 넣는 일(비공개 생성·자동 관리)
@@ -102,14 +134,23 @@ async def list_channels(request: web.Request) -> web.Response:
     org = await _org(request, int(request.match_info["org_id"]), token)
     guild = _guild(request, org["discord_guild_id"])
     channels = [
-        {"id": str(c.id), "name": c.name, "category_id": str(c.category_id) if c.category_id else None,
-         "category_name": c.category.name if c.category else None, "type": "text"}
+        {
+            "id": str(c.id),
+            "name": c.name,
+            "category_id": str(c.category_id) if c.category_id else None,
+            "category_name": c.category.name if c.category else None,
+            "type": "text",
+        }
         for c in guild.text_channels
     ]
     categories = [{"id": str(c.id), "name": c.name} for c in guild.categories]
     projects = [
-        {"id": p["id"], "name": p["name"], "purpose": p.get("purpose", ""),
-         "discord_channel_id": p.get("discord_channel_id") or ""}
+        {
+            "id": p["id"],
+            "name": p["name"],
+            "purpose": p.get("purpose", ""),
+            "discord_channel_id": p.get("discord_channel_id") or "",
+        }
         for p in org["projects"]
     ]
     by_name_all: dict[str, list[str]] = {}
@@ -127,9 +168,16 @@ async def list_channels(request: web.Request) -> web.Response:
             if label in by_name:
                 label = f"{label} #{channel['id']}"
             by_name[label] = channel["id"]
-    return web.json_response({"guild_id": str(guild.id), "channels": channels,
-                              "channels_by_name": by_name, "channels_by_name_all": by_name_all,
-                              "categories": categories, "projects": projects})
+    return web.json_response(
+        {
+            "guild_id": str(guild.id),
+            "channels": channels,
+            "channels_by_name": by_name,
+            "channels_by_name_all": by_name_all,
+            "categories": categories,
+            "projects": projects,
+        }
+    )
 
 
 async def assign_channel(request: web.Request) -> web.Response:
@@ -139,6 +187,7 @@ async def assign_channel(request: web.Request) -> web.Response:
     project = _project(org, int(request.match_info["project_id"]))
     guild = _guild(request, org["discord_guild_id"])
     did = await _manager(request, guild, token, roles=body.get("managed") is not None)
+    await _mutation_preflight(request, int(body["org_id"]), token)
     channel_id = str(body.get("channel_id", "")).strip()
     if not channel_id:
         # 연결 해제: 위에서 서버 권한을 확인했으니 봇 API로 그 사람의 이름으로 해제한다
@@ -175,7 +224,8 @@ async def assign_channel(request: web.Request) -> web.Response:
     result = response.json()
     if not result["linked"]:
         result["message"] = outsiders_reply(result).replace(
-            "`권한밖허용:True`로 다시 실행해", "사용자에게 확인받은 뒤 allow_outsiders=true로 다시 호출해"
+            "`권한밖허용:True`로 다시 실행해",
+            "사용자에게 확인받은 뒤 allow_outsiders=true로 다시 호출해",
         )
     return web.json_response(
         {
@@ -193,6 +243,7 @@ async def create_project_channel(request: web.Request) -> web.Response:
     project = _project(org, int(request.match_info["project_id"]))
     guild = _guild(request, org["discord_guild_id"])
     did = await _manager(request, guild, token, roles=True)
+    await _mutation_preflight(request, int(body["org_id"]), token)
     name = str(body.get("channel_name", "")).strip()
     if not name or len(name) > 100:
         raise web.HTTPBadRequest(text="채널 이름은 1~100자여야 합니다.")
@@ -212,7 +263,9 @@ async def create_project_channel(request: web.Request) -> web.Response:
         category = discord.utils.get(guild.categories, name=new_category_name)
         if category is None:
             try:
-                category = await guild.create_category(new_category_name, reason="ProjectManager 프로젝트 채널")
+                category = await guild.create_category(
+                    new_category_name, reason="ProjectManager 프로젝트 채널"
+                )
                 created_category = category
             except discord.Forbidden:
                 raise web.HTTPForbidden(text="봇에게 카테고리 생성 권한이 없습니다.") from None

@@ -103,6 +103,7 @@ class TokenMiddleware:
             # 커넥터에는 "연결됨"으로 보이는데 아무것도 못 한다. 붙는 순간 실패시켜야
             # 클라이언트가 OAuth를 시작하거나 사람이 URL을 고친다.
             return await _unauthorized(send, scope)
+        # 원래 경로(/u/<TOKEN>/mcp)는 접근 로그에 남으면 토큰 유출이라 __main__에서 access_log=False로 끕니다.
         scope = dict(scope)
         scope["path"] = new_path
         scope["raw_path"] = new_path.encode()

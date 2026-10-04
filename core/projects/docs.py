@@ -11,7 +11,7 @@ from django.db import transaction
 from django.utils import timezone
 
 from common.errors import ConflictError, ServiceError
-from orgs.services import is_admin, is_member
+from orgs.services import is_admin, is_member, require_ai_enabled
 
 from .models import ProjectDoc
 
@@ -38,6 +38,7 @@ def get_visible_doc(user, doc_id: int):
 def create_doc(*, project, actor, title="제목 없는 문서", body_md="", source="web"):
     if not is_member(actor, project.org):
         raise ServiceError({"project": "이 조직의 멤버가 아닙니다."})
+    require_ai_enabled(project.org, source, "문서 만들기")
     if len((body_md or "").encode()) > MAX_BODY:
         raise ServiceError({"body_md": "본문이 너무 깁니다 (256KB 상한)."})
     return ProjectDoc.objects.create(
@@ -58,6 +59,7 @@ def update_doc(doc, field: str, value, *, actor, expected_version: int, source="
     """
     if not is_member(actor, doc.project.org):
         raise ServiceError({"project": "이 조직의 멤버가 아닙니다."})
+    require_ai_enabled(doc.project.org, source, "문서 고치기")
     if field not in EDITABLE:
         raise ServiceError({field: "수정할 수 없는 항목입니다."})
     if field == "title":

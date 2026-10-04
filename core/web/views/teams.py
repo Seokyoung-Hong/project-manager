@@ -168,7 +168,7 @@ def team_detail(request, team_id):
 def team_member_add(request, team_id):
     team = _admin_team_or_404(request, team_id)
     user_id = request.POST.get("user")
-    user = team.org.members.filter(pk=user_id).first() if user_id else None
+    user = team.org.members.filter(pk=user_id or 0).first()
     if user is None:
         messages.error(request, "조직 멤버를 선택하세요.")
         return redirect("team_detail", team_id=team.pk)
@@ -239,6 +239,8 @@ def team_github_link(request, team_id):
     slug, _, name = rest.partition(":")
     if not gid.isdecimal() or not slug:
         messages.error(request, "GitHub 팀을 선택하세요.")
+    elif GitHubTeamLink.objects.filter(github_team_id=int(gid)).exclude(team=team).exists():
+        messages.error(request, "그 GitHub 팀은 이미 다른 팀에 연결되어 있습니다.")
     else:
         GitHubTeamLink.objects.get_or_create(
             team=team, defaults={"github_team_id": int(gid), "slug": slug, "name": name}

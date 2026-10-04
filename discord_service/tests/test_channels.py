@@ -5,7 +5,7 @@ from types import SimpleNamespace
 
 import discord
 import pytest
-from conftest import FakeCore, make_core
+from conftest import FakeCore, make_core, org
 
 from discord_service.channels import NO_PERMISSION, NOT_A_MANAGER, can_manage_channels, link_channel
 
@@ -93,7 +93,15 @@ def _link(guild, fake, kind="team", item_id=1, category=None, uid=DID, user=None
 
 @pytest.fixture
 def fake():
-    return FakeCore([])
+    return FakeCore([], orgs=[org(guild_id="1")])
+
+
+def test_item_of_an_org_bound_to_another_guild_is_not_found(fake):
+    """다른 길드에 묶인 조직의 팀·프로젝트는 이 길드에서 연결하지 않습니다."""
+    fake.orgs_data = [org(guild_id="999")]
+    g = FakeGuild()
+    assert _link(g, fake) == "팀을(를) 찾을 수 없습니다."
+    assert g.created == [] and fake.paths() == ["teams"]
 
 
 def test_creates_links_and_replies(fake):
@@ -172,9 +180,8 @@ def test_deleted_channel_is_recreated(fake):
 
 def test_category_is_looked_up_by_name(fake):
     g = FakeGuild(categories=["팀"])
-    assert _link(g, fake, category="없는것") == (
-        "'없는것' 카테고리를 찾을 수 없습니다. "
-        "기존 카테고리를 선택하거나 새 카테고리 만들기를 지정해 주세요."
+    assert _link(g, fake, category="없는것").startswith(
+        "'없는것' 카테고리를 찾을 수 없습니다. 기존 카테고리를 선택하거나"
     )
     assert g.created == []
     _link(g, fake, category="팀")

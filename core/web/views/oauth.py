@@ -14,7 +14,7 @@ from urllib.parse import urlencode, urlparse
 
 from django.conf import settings
 from django.contrib.auth.decorators import login_required
-from django.http import HttpResponseRedirect, JsonResponse
+from django.http import HttpResponse, JsonResponse
 from django.shortcuts import render
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
@@ -57,7 +57,8 @@ def _redirect_ok(uri: str) -> bool:
         return False
     if p.scheme == "http":
         return p.hostname in ("localhost", "127.0.0.1", "::1")
-    return p.scheme != "javascript"
+    # 브라우저가 코드를 실행하거나 파일을 여는 스킴은 받지 않는다. 앱 고유 스킴만 남는다.
+    return p.scheme not in ("javascript", "data", "vbscript", "file", "blob", "about")
 
 
 @csrf_exempt
@@ -99,7 +100,9 @@ def _back(redirect_uri: str, state: str, **params):
     if state:
         params["state"] = state
     sep = "&" if urlparse(redirect_uri).query else "?"
-    return HttpResponseRedirect(f"{redirect_uri}{sep}{urlencode(params)}")
+    # HttpResponseRedirect는 http·https·ftp만 허용해 등록을 받아 준 앱 스킴(vscode: 등)에서
+    # DisallowedRedirect를 낸다. 등록 단계(_redirect_ok)가 이미 걸렀으므로 그대로 보낸다.
+    return HttpResponse(status=302, headers={"Location": f"{redirect_uri}{sep}{urlencode(params)}"})
 
 
 @login_required

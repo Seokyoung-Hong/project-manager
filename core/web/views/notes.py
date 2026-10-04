@@ -56,7 +56,10 @@ def org_notes(request, org_id):
     for n in notes:
         key = n.project_id or 0
         if key not in seen:
-            seen[key] = {"title": n.project.name if n.project else "조직 공통(프로젝트 미지정)", "items": []}
+            seen[key] = {
+                "title": n.project.name if n.project else "조직 공통(프로젝트 미지정)",
+                "items": [],
+            }
             groups.append(seen[key])
         seen[key]["items"].append(n)
     groups.sort(key=lambda g: g["title"] == "조직 공통(프로젝트 미지정)")
@@ -140,9 +143,15 @@ def note_save(request, note_id):
             note, field, value, actor=request.user, expected_version=version_of(request)
         )
     except ServiceError as e:
-        return JsonResponse({"error": " ".join(e.errors.values())}, status=400, json_dumps_params={"ensure_ascii": False})
+        return JsonResponse(
+            {"error": " ".join(e.errors.values())},
+            status=400,
+            json_dumps_params={"ensure_ascii": False},
+        )
     except ConflictError:
-        return JsonResponse({"error": CONFLICT_MSG}, status=409, json_dumps_params={"ensure_ascii": False})
+        return JsonResponse(
+            {"error": CONFLICT_MSG}, status=409, json_dumps_params={"ensure_ascii": False}
+        )
     resp = HttpResponse(status=204)
     resp["X-Note-Version"] = str(note.version)
     return trigger(resp, "saved")

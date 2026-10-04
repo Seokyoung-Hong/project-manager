@@ -21,7 +21,7 @@ from github.models import (
     TaskGitLink,
 )
 from projects.services import create_project
-from tasks.models import ChangeLog
+from tasks.models import ChangeLog, Task
 from tasks.services import checklist_add, create_task
 
 pytestmark = pytest.mark.django_db
@@ -638,3 +638,130 @@ def test_sync_issues_keeps_issues_without_the_import_label(gh, conn, admin, org,
     ghs.sync_issues(conn)
     assert not any("labels=" in p for p in asked)
     assert RepoIssue.objects.get(connection=conn, number=9).state == "open"
+
+
+# ---------- 2026-10 검토 반영 ----------
+
+
+def test_branch_rule_does_not_reopen_closed_task(gh, client, conn, task):
+    Task.objects.filter(pk=task.pk).update(status="cancelled")
+    payload = {
+        "repository": {"full_name": "o/r"},
+        "ref": f"feat/TASK-{task.pk}-again",
+        "ref_type": "branch",
+        "sender": {"id": 1, "login": "dev"},
+    }
+    signed(client, payload, "create", "closed-1")
+    task.refresh_from_db()
+    assert task.status == "cancelled"
+    assert GitEvent.objects.get(delivery_id__startswith="closed-1").result == "닫힌 태스크"
+
+
+def test_push_matches_full_branch_name_and_dedupes_sha(gh, client, conn, task):
+    """브랜치 이름의 마지막 조각만 보지 않는다. 같은 커밋이 다시 와도 한 번만 쌓는다."""
+    commit = {"id": "a" * 40, "message": "고침", "timestamp": "2026-09-01T00:00:00Z"}
+    payload = {
+        "repository": {"full_name": "o/r"},
+        "ref": f"refs/heads/TASK-{task.pk}/fix",
+        "commits": [commit],
+        "head_commit": commit,
+    }
+    signed(client, payload, "push", "push-a")
+    signed(client, payload, "push", "push-b")
+    assert [c["sha"] for c in TaskGitLink.objects.get(task=task).commits] == ["a" * 40]
+
+
+def test_opened_does_not_import_twice(gh, client, conn, task, member):
+    conn.auto_import = True
+    conn.import_label = ""
+    conn.save(update_fields=["auto_import", "import_label"])
+    GitHubIdentity.objects.create(user=member, github_id=42, login="member-gh")
+    RepoIssue.objects.create(connection=conn, number=60, title="t", task=task)
+    payload = {
+        "action": "opened",
+        "repository": {"full_name": "o/r"},
+        "issue": {"number": 60, "title": "t", "labels": [], "assignee": {"login": "member-gh"}},
+        "sender": {"id": 1, "login": "dev"},
+    }
+    before = Task.objects.count()
+    signed(client, payload, "issues", "reopen-1")
+    assert Task.objects.count() == before
+    assert RepoIssue.objects.get(connection=conn, number=60).task == task
+
+
+def test_refresh_access_backs_off_after_failure(gh, admin, monkeypatch):
+    from types import SimpleNamespace
+
+    GitHubIdentity.objects.create(user=admin, github_id=9, login="a")
+    admin.refresh_from_db()
+    calls = []
+
+    def fail(identity):
+        calls.append(1)
+        raise gh_client.GitHubError(502, "장애")
+
+    monkeypatch.setattr(ghs, "sync_repos", fail)
+    req = SimpleNamespace(user=admin)
+    ghs.refresh_github_access(req)
+    ghs.refresh_github_access(req)
+    assert len(calls) == 1
+
+
+def test_member_cannot_change_repo_settings(gh, client, conn, member):
+    client.force_login(member)
+    client.post(f"/projects/{conn.project.pk}/repo/settings", {"auto_import": "on"})
+    conn.refresh_from_db()
+    assert conn.auto_import is False
+
+
+def test_admin_repo_settings_logged(gh, client, conn, admin):
+    client.force_login(admin)
+    client.post(f"/projects/{conn.project.pk}/repo/settings", {"auto_import": "on"})
+    conn.refresh_from_db()
+    assert conn.auto_import is True
+    assert ChangeLog.objects.filter(target_type="project", field="repo.auto_import").exists()
+
+
+def test_oauth_callback_without_state_rejects_and_explains(gh, client, admin):
+    client.force_login(admin)
+    for query in ("?code=x", "?code=x&state="):
+        response = client.get("/settings/github/callback" + query)
+        assert response.status_code == 302
+        assert response.url == "/settings/profile"
+        assert not GitHubIdentity.objects.filter(user=admin).exists()
+        assert "oauth" in client.session["integration_problems"]
+
+
+def test_callback_rejects_github_account_of_another_user(gh, client, admin, member, monkeypatch):
+    GitHubIdentity.objects.create(user=member, github_id=500, login="taken")
+    monkeypatch.setattr(gh_client, "exchange_code", lambda code: {"access_token": "t"})
+    monkeypatch.setattr(gh_client, "request", lambda *a, **k: {"id": 500, "login": "taken"})
+    client.force_login(admin)
+    session = client.session
+    session["gh_oauth_state"] = "s1"
+    session.save()
+    r = client.get("/settings/github/callback?code=x&state=s1")
+    assert r.status_code == 302
+    assert not GitHubIdentity.objects.filter(user=admin).exists()
+
+
+def test_event_link_without_task_id_redirects(gh, client, conn, admin):
+    GitHubIdentity.objects.create(user=admin, github_id=8, login="a", repos=["o/r"])
+    event = GitEvent.objects.create(
+        connection=conn, delivery_id="x:1", occurred_at=timezone.now(), kind="push"
+    )
+    client.force_login(admin)
+    r = client.post(f"/projects/{conn.project.pk}/repo/events/{event.pk}/link", {"task_id": ""})
+    assert r.status_code == 302
+
+
+def test_git_issue_does_not_steal_other_tasks_issue(gh, client, conn, task, project, member):
+    GitHubIdentity.objects.create(user=member, github_id=7, login="m", repos=["o/r"])
+    other = create_task(
+        project=project, title="다른 일", actor=member, source="web", no_due_reason="x"
+    )
+    RepoIssue.objects.create(connection=conn, number=70, title="t", task=other)
+    client.force_login(member)
+    client.post(f"/tasks/{task.pk}/git/issue", {"number": "70"})
+    assert RepoIssue.objects.get(connection=conn, number=70).task == other
+    assert not TaskGitLink.objects.filter(task=task, issue_number=70).exists()

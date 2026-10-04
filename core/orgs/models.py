@@ -168,7 +168,9 @@ class ChangeRequest(models.Model):
     # AI가 왜 바꾸려는지. 사람이 허용할지 판단하는 근거라 요청에 반드시 받는다.
     reason = models.CharField("변경 이유", max_length=500)
     # 거버넌스 변경은 이력(ChangeLog)이 없어 이 행이 유일한 기록이다. 계정을 지워도 남긴다.
-    requested_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="+")
+    requested_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="+"
+    )
     token = models.ForeignKey(
         "accounts.ApiToken", on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
     )

@@ -276,3 +276,13 @@ def test_close_issue_view_explains_refusal(installed, as_admin, repo_ready, call
     assert r.status_code == 200
     assert "이미 닫힌 이슈입니다." in r.content.decode()
     assert len(calls) == 1  # 두 번째 거부에도 GitHub 쓰기는 없다
+
+
+def test_link_rejects_github_team_used_by_another_team(gh, client, org, admin, team):
+    """이미 다른 PM 팀에 연결된 GitHub 팀 id면 unique 충돌(500) 대신 안내만 한다."""
+    other = Team.objects.create(org=org, name="프론트", created_by=admin)
+    GitHubTeamLink.objects.create(team=other, github_team_id=55, slug="fe", name="fe")
+    client.force_login(admin)
+    r = client.post(f"/teams/{team.pk}/github/link", {"gh_team": "55:fe:fe"})
+    assert r.status_code == 302
+    assert not GitHubTeamLink.objects.filter(team=team).exists()

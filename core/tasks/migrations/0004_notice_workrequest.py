@@ -6,7 +6,6 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("orgs", "0006_teammembership_is_lead"),
         ("tasks", "0003_taskdecisionrecord"),
@@ -52,9 +51,7 @@ class Migration(migrations.Migration):
             options={
                 "ordering": ["id"],
                 "indexes": [
-                    models.Index(
-                        fields=["sent_at"], name="tasks_notic_sent_at_9f00bc_idx"
-                    )
+                    models.Index(fields=["sent_at"], name="tasks_notic_sent_at_9f00bc_idx")
                 ],
             },
         ),

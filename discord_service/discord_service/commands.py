@@ -137,7 +137,9 @@ def _pending(t: dict) -> str:
 def create_reply(core: CoreClient, did: str, fields: dict) -> str:
     t = core.create_task(did, fields)["task"]
     due = t["due_date"] or "기한 미정"
-    return f"{_head(t)} 을(를) 만들었습니다 — {t['project']['name']} · {due}\n{t['url']}{_pending(t)}"
+    return (
+        f"{_head(t)} 을(를) 만들었습니다 — {t['project']['name']} · {due}\n{t['url']}{_pending(t)}"
+    )
 
 
 def update_reply(core: CoreClient, did: str, num: int, changes: dict) -> str:

@@ -27,7 +27,8 @@
       <input type="hidden" name="opts" value="{{ row_opts }}">
       <select name="status" class="pill {{ task.status }}" aria-label="상태"
               data-status="{{ task.status }}" data-id="{{ task.pk }}" data-panel="{% url 'task_panel' task.pk %}"
-              hx-post="{% url 'task_status' task.pk %}{% if today_state_query %}?{{ today_state_query }}{% endif %}" hx-target="#task-{{ task.pk }}" hx-swap="outerHTML"
+              hx-post="{% url 'task_status' task.pk %}{% if today_state_query %}?{{ today_state_query }}{% endif %}"
+              {% if in_board %}hx-target="#board" hx-vals='js:{from:"board", include_closed:(document.getElementById("board")||{dataset:{}}).dataset.includeClosed||""}'{% else %}hx-target="#task-{{ task.pk }}"{% endif %} hx-swap="outerHTML"
               hx-trigger="change[!(this.value=='blocked' && this.dataset.status!='blocked')]"
               {% if read_only %}disabled{% endif %}>
         {% for code, label in task.STATUSES %}<option value="{{ code }}"{% if code == task.status %} selected{% endif %}>{{ code|status_mark }} {{ label }}</option>{% endfor %}

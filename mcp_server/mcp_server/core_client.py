@@ -18,13 +18,18 @@ def _detail(r: httpx.Response) -> str:
     return d if isinstance(d, str) else ""
 
 
+# 도구 호출마다 Core를 만들고 닫지 않으므로, 연결 풀(transport)은 모듈에 하나만 두고 함께 씁니다.
+# 그래야 호출마다 새 풀·소켓이 쌓이지 않습니다. 토큰 헤더는 호출마다 다르니 Client는 그대로 만듭니다.
+_TRANSPORT = httpx.HTTPTransport()
+
+
 class Core:
     def __init__(self, token: str, transport=None):
         self.http = httpx.Client(
             base_url=CORE_URL,
             timeout=20,
             headers={"Authorization": f"Bearer {token}", "X-Source": "mcp"},
-            transport=transport,
+            transport=transport or _TRANSPORT,
         )
 
     def _ok(self, r: httpx.Response):
@@ -36,7 +41,9 @@ class Core:
             raise CoreError("토큰이 유효하지 않습니다. 폐기됐거나 만료됐을 수 있습니다.")
         if r.status_code == 403:
             detail = _detail(r)
-            raise CoreError(detail or "이 토큰으로는 할 수 없는 작업입니다(읽기 전용 또는 접근 권한 없음).")
+            raise CoreError(
+                detail or "이 토큰으로는 할 수 없는 작업입니다(읽기 전용 또는 접근 권한 없음)."
+            )
         if r.status_code == 404:
             # core는 무엇을 못 찾았는지(프로젝트·사용자·팀…) 이미 말해 준다. 그대로 전달한다.
             raise CoreError(_detail(r) or "대상을 찾을 수 없습니다.")

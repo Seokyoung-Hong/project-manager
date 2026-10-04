@@ -6,7 +6,7 @@ from django.core.exceptions import ValidationError
 from ninja import Router
 from ninja.errors import HttpError
 
-from common.errors import ConflictError
+from common.errors import ConflictError, ServiceError
 
 from . import drafts, sources
 from .schemas import (
@@ -85,7 +85,9 @@ def list_sources(
         raise HttpError(400, str(exc)) from exc
     return {
         **result,
-        "items": [_source_out(item) if not isinstance(item, dict) else item for item in result["items"]],
+        "items": [
+            _source_out(item) if not isinstance(item, dict) else item for item in result["items"]
+        ],
     }
 
 
@@ -112,7 +114,7 @@ def get_portfolio_draft(request, draft_id: int):
     """Fetch a draft only for its owner; ownership is checked in the service."""
     try:
         draft = drafts.get_draft(request.auth, draft_id)
-    except ValidationError as exc:
+    except (ValidationError, ServiceError) as exc:
         raise HttpError(404, "포트폴리오 초안을 찾을 수 없습니다.") from exc
     return _draft_out(draft)
 
@@ -146,7 +148,7 @@ def export_portfolio_markdown(request, draft_id: int):
     try:
         draft = drafts.get_draft(request.auth, draft_id)
         markdown = drafts.export_markdown(request.auth, draft_id)
-    except ValidationError as exc:
+    except (ValidationError, ServiceError) as exc:
         raise HttpError(404, "포트폴리오 초안을 찾을 수 없습니다.") from exc
     return {
         "draft_id": draft.pk,

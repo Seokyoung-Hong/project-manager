@@ -35,6 +35,16 @@ def ai_denied(action: str) -> str:
     return f"이 조직 설정에서 AI의 {action}이 꺼져 있습니다. 사람이 웹에서 해 주세요. " + TOKEN_HINT
 
 
+def require_ai_enabled(org, source: str, action: str = "쓰기"):
+    """AI를 끈 조직(`ai.enabled=false`)이면 AI(source=mcp)의 모든 쓰기를 막는다.
+
+    세부 키(ai.create_task 같은 것)가 없는 쓰기 경로도 전부 이 하나를 거친다 — 설정 도움말이
+    "끄면 AI의 모든 쓰기를 막습니다"라고 약속하기 때문이다.
+    """
+    if source == "mcp" and not effective("ai.enabled", org=org):
+        raise ServiceError({"ai": ai_denied(action)})
+
+
 def _check_ai_manage_teams(org, source: str):
     """source가 mcp인데 AI 정책이 팀 관리를 막아 뒀으면 거부한다."""
     if source != "mcp":
@@ -60,7 +70,9 @@ def _display_setting(key: str, value) -> str:
 
 
 @transaction.atomic
-def set_org_settings(org, data: dict, actor, *, note: str = "", token=None) -> Organization:
+def set_org_settings(
+    org, data: dict, actor, *, note: str = "", source: str = "web", token=None
+) -> Organization:
     """조직 설정을 통째로 교체한다(병합이 아니다 — 키 없음 = 기본값이 규칙이기 때문이다).
 
     바뀐 키마다 이력을 남긴다.
@@ -82,7 +94,7 @@ def set_org_settings(org, data: dict, actor, *, note: str = "", token=None) -> O
                 old_value=_display_setting(key, old_v),
                 new_value=_display_setting(key, new_v),
                 actor=actor,
-                source="web",
+                source=source,
                 note=note,
                 token=token,
             )
@@ -95,6 +107,8 @@ def set_org_settings(org, data: dict, actor, *, note: str = "", token=None) -> O
 def set_locks(org, keys: list[str], actor) -> Organization:
     """덮어쓸 수 있는(overridable) 항목만 잠근다. 그 밖의 키는 조용히 걸러진다."""
     require_admin(actor, org)
+    # 승인 반영(_approve)·설정 저장과 동시에 돌면 옛 settings로 덮어쓰므로 행을 잠그고 다시 읽는다.
+    org = Organization.objects.select_for_update().get(pk=org.pk)
     old = org.settings or {}
     old_locked = old.get(LOCKED) or []
     new_locked = clean("org", {LOCKED: keys}, allow_locked=True).get(LOCKED, [])
@@ -132,8 +146,9 @@ def create_org(name: str, purpose: str, actor) -> Organization:
     return org
 
 
-def create_invite(org, actor, days: int | None = None) -> Invite:
+def create_invite(org, actor, days: int | None = None, *, source: str = "web") -> Invite:
     require_admin(actor, org)
+    require_ai_enabled(org, source, "초대 링크 만들기")
     if days is None:
         days = effective("org.invite_days", org=org)
     if not 1 <= days <= 90:
@@ -176,10 +191,12 @@ def join_by_token(user, token: str) -> Organization:
     return invite.org
 
 
+@transaction.atomic
 def change_role(membership, role: str, actor):
     require_admin(actor, membership.org)
     if role not in dict(OrgMembership.ROLES):
         raise ServiceError({"role": "알 수 없는 역할입니다."})
+    _lock_org(membership.org)
     if membership.role == "admin" and role != "admin" and _admin_count(membership.org) <= 1:
         raise ServiceError({"role": "마지막 관리자의 역할은 바꿀 수 없습니다."})
     membership.role = role
@@ -209,6 +226,7 @@ def remove_member(membership, actor):
     않으면 조직에 없는 사람이 팀 화면에 남는다.
     """
     require_admin(actor, membership.org)
+    _lock_org(membership.org)
     if membership.role == "admin" and _admin_count(membership.org) <= 1:
         raise ServiceError({"member": "마지막 관리자는 제거할 수 없습니다."})
     TeamMembership.objects.filter(team__org=membership.org, user=membership.user).delete()
@@ -217,6 +235,12 @@ def remove_member(membership, actor):
 
 def _admin_count(org) -> int:
     return OrgMembership.objects.filter(org=org, role="admin").count()
+
+
+def _lock_org(org):
+    """마지막 관리자 검사를 직렬화한다. 관리자 둘이 동시에 서로를 내리면 둘 다 count=2를 보고
+    통과해 관리자 0명이 되기 때문이다(그 조직은 설정도 승인도 영영 못 바꾼다)."""
+    Organization.objects.select_for_update().filter(pk=org.pk).exists()
 
 
 # ---------- 팀 ----------
@@ -327,11 +351,6 @@ def set_team_channel(team, channel_id: str, actor, *, checked: bool = False, man
     team.discord_channel_id = new
     team.save(update_fields=["discord_channel_id", "discord_channel_managed"])
     return team
-
-
-def teams_of(user, org):
-    """org 안에서 user가 속한 팀 queryset. 가시성 계산에 쓰지 않는다."""
-    return Team.objects.filter(org=org, memberships__user=user).distinct()
 
 
 # ---------- 거버넌스 ----------

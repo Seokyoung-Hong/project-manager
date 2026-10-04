@@ -24,5 +24,14 @@ class CustomUserAdmin(UserAdmin):
 
 @admin.register(ApiToken)
 class ApiTokenAdmin(admin.ModelAdmin):
-    list_display = ("prefix", "user", "name", "scope", "for_ai", "created_at", "expires_at", "revoked_at")
+    list_display = (
+        "prefix",
+        "user",
+        "name",
+        "scope",
+        "for_ai",
+        "created_at",
+        "expires_at",
+        "revoked_at",
+    )
     readonly_fields = ("prefix", "key_hash", "for_ai", "created_at", "last_used_at")

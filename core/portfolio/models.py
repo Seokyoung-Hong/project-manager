@@ -30,9 +30,7 @@ class PortfolioDraft(models.Model):
 
     class Meta:
         ordering = ["-updated_at", "-id"]
-        indexes = [
-            models.Index(fields=["owner", "updated_at"], name="portdraft_owner_updated_idx")
-        ]
+        indexes = [models.Index(fields=["owner", "updated_at"], name="portdraft_owner_updated_idx")]
 
     def __str__(self):
         return self.title
@@ -68,9 +66,7 @@ class PortfolioSource(models.Model):
             ),
         ]
         indexes = [
-            models.Index(
-                fields=["draft", "record_created_at"], name="portsrc_draft_created_idx"
-            )
+            models.Index(fields=["draft", "record_created_at"], name="portsrc_draft_created_idx")
         ]
 
     def __str__(self):

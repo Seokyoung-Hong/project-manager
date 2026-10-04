@@ -153,7 +153,7 @@ def set_gh_team_member(link, org, login: str, *, actor, add: bool):
 def create_issue(task, *, actor, body="") -> dict:
     conn = task.project.repo
     data = client.request("POST", f"/repos/{conn.full_name}/issues", _actor_token(actor),
-                          body={"title": f"{task.number} {task.title}", "body": body or task.description})
+                          body={"title": f"{task.title} ({task.number})", "body": body or task.description})
     link, _ = TaskGitLink.objects.get_or_create(task=task, defaults={"connection": conn})
     link.issue_number, link.issue_title, link.issue_state = data["number"], data["title"], "open"
     link.save(update_fields=["issue_number", "issue_title", "issue_state"])
@@ -186,7 +186,7 @@ def create_branch(task, name: str, *, actor) -> str:
     return name
 ```
 
-브랜치 기본 이름은 `feat/TASK-<id>`를 제안하고 사용자가 고칠 수 있게 한다. 이름 규칙을 강제하지는 않지만 **PM이 만들면 번호가 들어간다.**
+브랜치 기본 이름은 `feat/<제목 슬러그>(TASK-<id>)`(슬러그가 비면 `feat/TASK-<id>`)를 제안하고 사용자가 고칠 수 있게 한다. 이름 규칙을 강제하지는 않지만 **PM이 만들면 번호가 들어간다.**
 
 ---
 

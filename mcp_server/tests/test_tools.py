@@ -58,7 +58,7 @@ TOOL_NAMES = {
     "revoke_invite",
     "update_governance",
     "get_today",
-    "add_today",
+    "add_to_today",
     "exclude_today",
     "restore_excluded_today",
     "reorder_today",
@@ -125,10 +125,10 @@ def test_transition_blocked_needs_reason(fake_core, with_token):
     with pytest.raises(CoreError) as e:
         fn("transition_task")(1, "blocked", version=1)
     assert "막힘 사유" in str(e.value)
-    out = fn("transition_task")(1, "blocked", version=1, stop_reason="서류")
+    out = fn("transition_task")(1, "blocked", version=1, reason="서류")
     assert out["status"] == "blocked"
     assert out["stop_reason"] == "서류"
-    # core에는 예전 이름(reason)으로 간다. 오류가 말하는 stop_reason과 도구 인자 이름은 같아야 한다.
+    # 인자 이름은 웹 WebMCP(webmcp.js)와 같은 reason이고, core에도 reason으로 간다.
     assert last_body(fake_core)["reason"] == "서류"
 
 
@@ -305,3 +305,10 @@ def test_guide_is_listed_for_a_read_only_token():
 
     assert "get_guide" in permissions.NEEDS
     assert permissions.NEEDS["get_guide"] == "read"
+
+
+def test_core_clients_share_one_connection_pool():
+    """도구 호출마다 Core를 새로 만들어도 연결 풀은 하나를 함께 씁니다(소켓 누수 방지)."""
+    from mcp_server.core_client import Core
+
+    assert Core("a").http._transport is Core("b").http._transport

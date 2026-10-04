@@ -30,6 +30,15 @@ services:
       # 방화벽에서 프록시 장비 IP만 그 포트를 열어 둔다 — 직접 오는 요청은 평문 HTTP다.
       # cloudflared로만 공개한다면 WEB_PORT를 "127.0.0.1:8000"으로 둔다.
       - "${WEB_PORT:-8000}:8000"
+    healthcheck:
+      # migrate·collectstatic이 끝나고 gunicorn이 받기 시작해야 통과한다. 봇·mcp는 이걸 기다린다.
+      # TCP 연결만 본다. gunicorn은 migrate가 끝난 뒤에야 듣기 시작한다. HTTP로 물으면 Host가
+      # ALLOWED_HOSTS에 없어(127.0.0.1) 400이 나 영영 unhealthy가 된다.
+      test: ["CMD", "python", "-c", "import socket; socket.create_connection(('127.0.0.1', 8000), 3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
 
   discord:                       # 발송(60초 틱): 마감 DM·주간 보고
     profiles: ["discord"]        # DISCORD_BOT_TOKEN 없이는 기동에 실패한다 → 기본에서 뺀다
@@ -41,7 +50,8 @@ services:
     volumes:
       - discord_data:/data
     depends_on:
-      - web
+      web:
+        condition: service_healthy
     restart: unless-stopped
 
   discord-bot:                   # 수신(게이트웨이): DM 평문 명령. 같은 이미지, 리스너만 돈다
@@ -56,7 +66,8 @@ services:
     volumes:
       - discord_bot_data:/data
     depends_on:
-      - web
+      web:
+        condition: service_healthy
     expose:
       - "8081"                    # MCP 내부 채널 관리 브리지. 호스트 포트로 공개하지 않는다.
     restart: unless-stopped
@@ -73,7 +84,8 @@ services:
       # 앞단 프록시를 거치면 Host가 그 도메인이라 SDK가 421로 막는다. .env에서 도메인을 넣는다.
       MCP_ALLOWED_HOSTS: ${MCP_ALLOWED_HOSTS:-}
     depends_on:
-      - web
+      web:
+        condition: service_healthy
     restart: unless-stopped
     ports:
       - "${MCP_PORT:-127.0.0.1:8080}:8080"   # 기본은 루프백만. 밖에 공개하려면 .env에서 포트만 쓴다
