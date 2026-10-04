@@ -35,6 +35,7 @@
   <nav class="nav" aria-label="주 메뉴">
     <a href="{% url 'today' %}"{% if nav == "today" %} aria-current="page"{% endif %}>오늘</a>
     <a href="{% url 'me' %}"{% if nav == "me" %} aria-current="page"{% endif %}>내 태스크</a>
+    <a href="{% url 'request_index' %}"{% if nav == "request" %} aria-current="page"{% endif %}>요청{% if request_badge %} <span class="badge danger">{{ request_badge }}</span>{% endif %}</a>
     <a href="{% url 'project_index' %}"{% if nav == "project" %} aria-current="page"{% endif %}>프로젝트</a>
     <a href="{% url 'org' %}"{% if nav == "org" %} aria-current="page"{% endif %}>조직</a>
     <a href="{% url 'search' %}"{% if nav == "search" %} aria-current="page"{% endif %}>검색</a>

@@ -11,6 +11,7 @@ from orgs.services import ai_denied, is_admin, is_member, orgs_of, require_admin
 from orgs.settings import effective
 from projects.services import is_owner, project_stats
 
+from . import work_requests as wr
 from .models import ChangeLog, ChecklistItem, Link, Task, TodayItem
 
 # 자동 저장되는 부속 텍스트. version·ChangeLog 없음.
@@ -218,6 +219,10 @@ def create_task(
         if hit:
             return Task.objects.get(pk=hit.target_id)
     assignee = assignee or actor
+    # 남에게 맡길 권한이 없으면 일단 만든 사람이 맡고, 받을 사람에게 담당 요청을 보낸다.
+    ask = None
+    if not wr.can_assign_directly(actor, assignee, project.org, source):
+        ask, assignee = assignee, actor
     if priority is None:
         priority = effective("task.default_priority", org=project.org, project=project)
     if (
@@ -250,6 +255,10 @@ def create_task(
         created_by=actor,
     )
     _log(task, "created", "", task.number, actor, source, token)
+    if ask is not None:
+        wr.request_assign(task, ask, actor, source)
+    elif assignee != actor:
+        wr.notify_assigned(task, actor)
     if idempotency_key:
         IdempotencyKey.objects.create(
             user=actor, key=idempotency_key[:100], target_type="task", target_id=task.pk
@@ -316,6 +325,14 @@ def update_task(
             raise ServiceError({"reason": "기한 변경 사유를 입력하세요."})
     if "priority" in changes:
         _ai_check(task.project.org, "ai.change_priority", "중요도 바꾸기", source, "priority")
+    ask = None
+    if (
+        "assignee" in changes
+        and changes["assignee"] != task.assignee
+        and not wr.can_assign_directly(actor, changes["assignee"], task.project.org, source)
+    ):
+        ask = changes.pop("assignee")
+        wr.request_assign(task, ask, actor, source, note=reason)
     new = {f: changes.get(f, getattr(task, f)) for f in LOCKED_FIELDS}
     if "project" in changes:
         _require_member(actor, new["project"])
@@ -341,6 +358,10 @@ def update_task(
     if not fields:
         return task
     _apply(task, expected_version, fields)
+    if "assignee" in fields:
+        wr.drop_assign_requests(task, keep_user=ask)
+        if task.assignee != actor:
+            wr.notify_assigned(task, actor)
     for f in TRACKED:
         if f in fields:
             _log(
@@ -454,6 +475,8 @@ def transition(
         fields["completed_at"] = None
     old_status, old_completed, old_reason = task.status, task.completed_at, task.stop_reason
     _apply(task, expected_version, fields)
+    if closing:
+        wr.drop_assign_requests(task)
     _log(
         task,
         "status",
@@ -540,7 +563,11 @@ def delete_task(task, *, actor, source: str = "web") -> None:
     require_admin(actor, task.project.org)
     _ai_check(task.project.org, "ai.delete", "삭제", source, "task")
     if task.decision_records.exists():
-        raise ServiceError({"task": "의사결정 기록이 있는 태스크는 삭제할 수 없습니다. 취소하거나 프로젝트를 보관해 주세요."})
+        raise ServiceError(
+            {
+                "task": "의사결정 기록이 있는 태스크는 삭제할 수 없습니다. 취소하거나 프로젝트를 보관해 주세요."
+            }
+        )
     ChangeLog.objects.create(
         target_type="org",
         target_id=task.project.org_id,
@@ -550,6 +577,7 @@ def delete_task(task, *, actor, source: str = "web") -> None:
         actor=actor,
         source=source,
     )
+    wr.drop_assign_requests(task)
     task.delete()
 
 

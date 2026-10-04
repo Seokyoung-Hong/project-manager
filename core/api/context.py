@@ -8,8 +8,10 @@ from tasks.services import get_visible_task
 def ctx(request) -> dict:
     """services 함수에 넘길 actor/source/token."""
     token = getattr(request, "api_token", None)
+    ai_header = request.headers.get("X-Source", "").lower() in ("mcp", "ai")
     if token is None:
-        source = "web"
+        # 세션 쿠키로 부르는 브라우저 안 AI(WebMCP)는 X-Source: ai를 붙인다. 올릴 수만 있고 내릴 수는 없으니 믿어도 된다.
+        source = "mcp" if ai_header else "web"
     elif token.for_ai or request.headers.get("X-Source", "").lower() in ("mcp", "ai"):
         # AI 여부는 발급 때 정한 토큰 표시로 판단한다. 헤더는 호출자가 붙이므로 사람용 토큰을
         # AI로 올릴 수만 있고, AI용 토큰을 사람으로 내릴 수는 없다.

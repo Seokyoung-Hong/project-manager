@@ -38,9 +38,9 @@ AI 에이전트가 지금 보고 있는 사람의 세션 그대로 태스크를 
 | 인증 | API 토큰(`/settings/tokens`) | 지금 로그인한 세션 쿠키 |
 | 코드 | [`mcp_server/mcp_server/server.py`](mcp_server/mcp_server/server.py) | [`core/web/static/webmcp.js`](core/web/static/webmcp.js) |
 
-도구는 13개다. 읽기는 `list_orgs` `list_members` `list_projects` `list_tasks` `get_task` `get_today`
-`get_org_status` `get_governance`, 쓰기는 `create_task` `update_task` `transition_task` `append_note`
-`add_to_today`. 전부 `/api`를 그대로 부르므로 권한·낙관적 잠금(version)·검증은 서버 규칙 그대로다.
+도구는 17개다. 읽기는 `list_orgs` `list_members` `list_projects` `list_tasks` `get_task` `get_today`
+`get_org_status` `get_governance` `list_requests` `get_request`, 쓰기는 `create_task` `update_task`
+`transition_task` `append_note` `add_to_today` `create_request` `answer_request`. 전부 `/api`를 그대로 부르므로 권한·낙관적 잠금(version)·검증은 서버 규칙 그대로다.
 쓰기가 끝나면 화면 본문만 다시 그려서 사람이 보는 것과 어긋나지 않게 한다.
 
 ### 규약

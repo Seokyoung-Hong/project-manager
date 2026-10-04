@@ -24,6 +24,7 @@ from .views import (
     tasks,
     teams,
     today,
+    work_requests,
 )
 
 urlpatterns = [
@@ -64,6 +65,10 @@ urlpatterns = [
     path("today/restore", today.restore, name="today_restore"),
     path("today/move/<int:task_id>/<str:direction>", today.move, name="today_move"),
     path("today/settings", today.auto_pull, name="today_settings"),
+    path("requests", work_requests.request_index, name="request_index"),
+    path("requests/new", work_requests.request_new, name="request_new"),
+    path("requests/<int:req_id>", work_requests.request_detail, name="request_detail"),
+    path("requests/<int:req_id>/<str:action>", work_requests.request_act, name="request_act"),
     path("me", me.me, name="me"),
     path("portfolio", portfolio.portfolio, name="portfolio"),
     path("portfolio/prompt", portfolio.portfolio_prompt, name="portfolio_prompt"),
@@ -96,6 +101,11 @@ urlpatterns = [
         "teams/<int:team_id>/members/<int:user_id>/remove",
         teams.team_member_remove,
         name="team_member_remove",
+    ),
+    path(
+        "teams/<int:team_id>/members/<int:user_id>/lead",
+        teams.team_lead,
+        name="team_lead",
     ),
     path("teams/<int:team_id>/github/link", teams.team_github_link, name="team_github_link"),
     path("teams/<int:team_id>/github/create", teams.team_github_create, name="team_github_create"),
@@ -202,6 +212,12 @@ urlpatterns = [
     path("orgs/<int:org_id>/discord", discord.org_discord, name="org_discord"),
     path("orgs/<int:org_id>/discord/connect", discord.discord_connect, name="discord_connect"),
     path("orgs/<int:org_id>/discord/unlink", discord.discord_unlink, name="discord_unlink"),
+    path("orgs/<int:org_id>/discord/managed", discord.discord_managed, name="discord_managed"),
+    path(
+        "orgs/<int:org_id>/discord/alerts/<int:alert_id>/<str:action>",
+        discord.discord_alert,
+        name="discord_alert",
+    ),
     path("orgs/discord/installed", discord.discord_installed, name="discord_installed"),
     path("orgs/<int:org_id>/issues", github.org_issues, name="org_issues"),
     path("orgs/<int:org_id>/issues/sync", github.org_issues_sync, name="org_issues_sync"),

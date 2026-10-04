@@ -83,7 +83,13 @@ def get_project(request, project_id: int):
 @router.put("/{project_id}/discord-channel", response=dict)
 def set_discord_channel(request, project_id: int, payload: ProjectDiscordChannelIn):
     """조직 관리자가 Discord 프로젝트 채널 ID를 연결하거나 해제한다."""
-    project = set_project_channel(_project_or_404(request, project_id), payload.channel_id, request.auth)
+    project = _project_or_404(request, project_id)
+    if (payload.channel_id or "").strip() != project.discord_channel_id:
+        # Discord 쪽 상태를 바꾸는 동작이다: 사용자의 서버 권한을 봇 보고값으로 확인한다(fail closed)
+        from orgs.channels import require_discord
+
+        require_discord(request.auth, project.org, "channel")
+    project = set_project_channel(project, payload.channel_id, request.auth)
     return {"id": project.pk, "name": project.name, "discord_channel_id": project.discord_channel_id}
 
 

@@ -88,10 +88,10 @@ python -m discord_service status                  # 최근 발송·실행 기록
 
 1. Developer Portal에서 앱을 만들고 **Bot** 페이지 `[Reset Token]` → `DISCORD_BOT_TOKEN`.
    토큰은 그때 한 번만 보인다. APPLICATION ID·PUBLIC KEY는 필요 없다(인터랙션 엔드포인트를 쓰지 않는다).
-2. **특권 인텐트는 하나도 켜지 않는다.** 봇에게 온 DM의 본문은 MESSAGE CONTENT 없이도 전달된다.
+2. **MESSAGE CONTENT는 켜지 않는다**(봇에게 온 DM의 본문은 그것 없이도 전달된다). 채널 감시·자동 관리를 쓸 때만 **Server Members 인텐트**를 켠다.
 3. Installation → **Guild Install**, scope `bot` + `applications.commands`, permissions
-   `VIEW_CHANNEL | SEND_MESSAGES | MANAGE_CHANNELS`(=3088). 그 링크로 팀 서버에 추가한다.
-   Manage Channels는 `/팀채널`·`/프로젝트채널`용이다. **그 밖의 권한(Manage Roles·Manage Server·
+   `VIEW_CHANNEL | SEND_MESSAGES | READ_MESSAGE_HISTORY | MANAGE_CHANNELS | MANAGE_ROLES`(=268504080). 그 링크로 팀 서버에 추가한다. 채널 감시·자동 관리를 쓰려면 Server Members 인텐트를 먼저 켜고 `DISCORD_MEMBERS_INTENT=1`을 둔다(docs/OPERATIONS-DEPLOYMENT.md).
+   Manage Channels는 `/팀채널`·`/프로젝트채널`용, Manage Roles는 자동 관리의 멤버 덮어쓰기용이다. **그 밖의 권한(Manage Server·
    Administrator)은 주지 않는다.** 서버 id(개발자 모드 → 서버 우클릭 → ID 복사)를 `DISCORD_GUILD_ID`에 넣는다.
 4. 팀원 전원: 서버 우클릭 → 개인정보 보호 설정 → **'서버 멤버의 DM 허용' 켜기.** 꺼져 있으면
    Discord가 `50007`로 영구 거부한다(봇은 친구 추가가 안 되므로 '친구만' 설정은 하드 블록이다).

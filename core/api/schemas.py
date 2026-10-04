@@ -83,6 +83,7 @@ class TaskOut(TaskBriefOut):
     links: list[LinkOut]
     # 걸린 참고 문서. 본문은 /projects/{project_id}/docs/{id}에서 읽는다.
     docs: list[DocBrief]
+    pending_assignee: UserBrief | None = None
 
 
 class TaskCreateIn(Schema):
@@ -365,5 +366,73 @@ class DiscordChannelIn(Schema):
     channel_id: str = ""
 
 
+class DiscordViewer(Schema):
+    id: str
+    name: str = ""
+
+
+class DiscordChannelCheckIn(Schema):
+    """채널 연결 전 확인. viewers=None이면 봇이 채널을 보는 사람을 알 수 없다(멤버 인텐트 꺼짐)."""
+
+    discord_user_id: str
+    guild_id: str  # 채널이 속한 서버. 조직의 연결 서버와 같아야 한다
+    kind: str  # team | project
+    target_id: int
+    channel_id: str
+    viewers: list[DiscordViewer] | None = None
+    allow_outsiders: bool = False
+    managed: bool | None = None
+    created: bool = False  # 봇이 방금 비공개로 만든 채널
+
+
+class DiscordAlertChannelIn(Schema):
+    channel_id: str
+    outsiders: list[DiscordViewer] = []
+    missing: list[DiscordViewer] | None = None
+
+
+class DiscordAlertsIn(Schema):
+    guild_id: str
+    channels: list[DiscordAlertChannelIn]
+
+
+class DiscordGuildReportIn(Schema):
+    guild_id: str
+    permissions: int | None = None
+    watching: bool = False
+    intent_denied: bool = False  # 포털에서 멤버 인텐트가 꺼져 인텐트 없이 접속했다
+
+
+class DiscordMemberPermissionsIn(Schema):
+    """Discord를 연결한 PM 사용자들의 서버 권한 비트. 웹 관리 동작의 판정 근거다."""
+
+    guild_id: str
+    members: list[dict]  # {"discord_user_id": str, "permissions": int}
+
+
 class ProjectDiscordChannelIn(Schema):
     channel_id: str = ""
+
+
+class DiscordRequestIn(Schema):
+    """`/요청`. 팀·사람을 안 고르면 명령을 친 채널에 연결된 팀으로 보낸다."""
+
+    discord_user_id: str
+    title: str
+    body: str = ""
+    kind: str = "work"  # work | general
+    channel_id: str = ""
+    team_id: int | None = None
+    to_user_id: int | None = None
+
+
+class DiscordRequestAnswerIn(Schema):
+    discord_user_id: str
+    note: str = ""
+    project_id: int | None = None
+    assignee_id: int | None = None
+    due_date: date | None = None
+
+
+class DiscordNoticeAckIn(Schema):
+    ids: list[int]

@@ -12,12 +12,14 @@ from ninja.errors import HttpError
 
 from accounts.models import User
 from accounts.services import link_discord, unlink_discord_by_id, user_by_discord_id
+from orgs import channels as org_channels
 from orgs import discord as org_discord
 from orgs import settings as org_settings
 from orgs.models import OrgMembership, Team
 from orgs.services import orgs_of, set_team_channel
 from projects.models import Project
 from projects.services import set_project_channel
+from tasks import work_requests as wr
 from tasks.brief import task_brief
 from tasks.models import Task
 from tasks.services import (
@@ -35,16 +37,23 @@ from tasks.services import (
 from ..auth import BotTokenAuth
 from ..schemas import (
     DiscordActorIn,
+    DiscordAlertsIn,
+    DiscordChannelCheckIn,
     DiscordChannelIn,
     DiscordExtendIn,
+    DiscordGuildReportIn,
     DiscordLinkIn,
+    DiscordMemberPermissionsIn,
     DiscordNoteIn,
+    DiscordNoticeAckIn,
     DiscordOrgChannelIn,
+    DiscordRequestAnswerIn,
+    DiscordRequestIn,
     DiscordStatusIn,
     DiscordTaskCreateIn,
     DiscordTaskUpdateIn,
 )
-from ..serialize import task_out
+from ..serialize import request_out, task_out
 
 router = Router(tags=["discord"], auth=BotTokenAuth())
 
@@ -342,3 +351,218 @@ def project_channel(request, project_id: int, payload: DiscordChannelIn):
         "name": project.name,
         "discord_channel_id": project.discord_channel_id,
     }
+
+
+# ---------- 채널 관리(IMPL-PLAN-5 B). core는 Discord로 나가지 않고 봇이 올린 값만 비교한다 ----------
+
+
+@router.get("/channels", response=list[dict])
+def channel_targets(request):
+    """봇이 감시·조정할 대상 전부(연결 안 된 팀·프로젝트 포함 — 비공개 생성이 허용 집합을 여기서 읽는다).
+
+    `allowed_ids` = 허용 집합 ∪ 명시적 허용(권한 밖 비교용). `grant_ids` = 허용 집합(자동 관리가 덮어쓰기를 넣을 계정).
+    """
+    out = []
+    for org in org_discord.bound_orgs():
+        for kind, obj in org_channels.targets(org):
+            base = org_channels.base_allowed(kind, obj)
+            cid = obj.discord_channel_id
+            out.append(
+                {
+                    "org_id": org.pk,
+                    "guild_id": org.discord_guild_id,
+                    "kind": kind,
+                    "id": obj.pk,
+                    "name": obj.name,
+                    "channel_id": cid,
+                    "managed": obj.discord_channel_managed,
+                    "allowed_ids": sorted(base | (org_channels.explicit_allowed(cid) if cid else set())),
+                    "grant_ids": sorted(base),
+                }
+            )
+    return out
+
+
+@router.post("/channel-check", response=dict)
+def channel_check(request, payload: DiscordChannelCheckIn):
+    """채널 연결의 유일한 문. 권한 밖 인원이 있거나 확인 불가면 `allow_outsiders` 없이는 연결하지 않는다."""
+    actor = _actor(payload.discord_user_id)
+    if payload.kind == "team":
+        obj = Team.objects.filter(pk=payload.target_id, org__in=orgs_of(actor)).first()
+    elif payload.kind == "project":
+        obj = Project.objects.filter(pk=payload.target_id, org__in=orgs_of(actor)).first()
+    else:
+        raise HttpError(400, "kind는 team 또는 project여야 합니다.")
+    if obj is None:
+        raise HttpError(404, "대상을 찾을 수 없습니다.")
+    viewers = None if payload.viewers is None else [v.dict() for v in payload.viewers]
+    return org_channels.connect(
+        payload.kind,
+        obj,
+        payload.channel_id,
+        actor,
+        viewers=viewers,
+        allow_outsiders=payload.allow_outsiders,
+        managed=payload.managed,
+        created=payload.created,
+        guild_id=payload.guild_id,
+    )
+
+
+@router.post("/channel-alerts", response=dict)
+def channel_alerts(request, payload: DiscordAlertsIn):
+    """채널별 **현재** 권한 밖 인원 전체. 새로 보인 사람만 조직 관리자에게 DM으로 알린다."""
+    org = org_discord.org_by_guild(payload.guild_id)
+    if org is None:
+        raise HttpError(404, "이 서버는 조직에 연결되지 않았습니다.")
+    for ch in payload.channels:
+        org_channels.sync_alerts(
+            org,
+            ch.channel_id,
+            [v.dict() for v in ch.outsiders],
+            None if ch.missing is None else [v.dict() for v in ch.missing],
+        )
+    return {"ok": True}
+
+
+@router.post("/guild-report", response=dict)
+def guild_report(request, payload: DiscordGuildReportIn):
+    """봇이 이 길드에서 가진 권한과 감시 여부. 권한이 모자라면 웹이 재승인을 안내한다."""
+    org = org_discord.org_by_guild(payload.guild_id)
+    if org is None:
+        raise HttpError(404, "이 서버는 조직에 연결되지 않았습니다.")
+    org_channels.record_guild_report(
+        org, payload.permissions, payload.watching, payload.intent_denied
+    )
+    return {"ok": True}
+
+
+@router.post("/member-permissions", response=dict)
+def member_permissions(request, payload: DiscordMemberPermissionsIn):
+    """연결한 PM 사용자들의 서버 권한 비트. 웹의 Discord 관리 동작이 이 값으로 사용자 권한을 판정한다."""
+    org = org_discord.org_by_guild(payload.guild_id)
+    if org is None:
+        raise HttpError(404, "이 서버는 조직에 연결되지 않았습니다.")
+    org_channels.record_member_permissions(org, payload.members)
+    return {"ok": True}
+
+
+# ---------- 요청 (/요청). 팀 채널에서 치면 그 팀으로 간다 ----------
+
+
+def _request(actor, request_id: int):
+    req = wr.get_visible_request(actor, request_id)
+    if req is None:
+        raise HttpError(404, "요청을 찾을 수 없습니다.")
+    return req
+
+
+@router.post("/requests", response=dict)
+def create_request(request, payload: DiscordRequestIn):
+    actor = _actor(payload.discord_user_id)
+    team = to_user = None
+    if payload.to_user_id is not None:
+        to_user = _assignee(payload.to_user_id)
+    elif payload.team_id is not None:
+        team = Team.objects.filter(pk=payload.team_id, org__in=orgs_of(actor)).first()
+    else:
+        team = wr.team_by_channel(payload.channel_id)
+    if team is None and to_user is None:
+        raise HttpError(400, "팀 채널에서 쓰거나 받을 팀·사람을 골라 주세요.")
+    org = team.org if team else None
+    if org is None:
+        # 사람에게 보낼 때는 두 사람이 함께 속한 조직. 여럿이면 가장 먼저 만든 조직이다.
+        org = orgs_of(actor).filter(memberships__user=to_user).order_by("pk").first()
+        if org is None:
+            raise HttpError(400, "같은 조직의 멤버에게만 요청할 수 있습니다.")
+    req = wr.create_request(
+        org=org,
+        kind=payload.kind,
+        title=payload.title,
+        body=payload.body,
+        actor=actor,
+        source="dc",
+        team=team,
+        to_user=to_user,
+        posted_in=payload.channel_id,
+    )
+    out = request_out(req)
+    # 명령을 친 채널이 받는 팀의 채널일 때만 봇이 거기 공개로 알린다(다른 채널에 새지 않게).
+    out["announce_here"] = bool(team and payload.channel_id == team.discord_channel_id)
+    return {"request": out}
+
+
+@router.post("/requests/mine", response=dict)
+def my_requests(request, payload: DiscordActorIn):
+    """`번호` 자동완성과 `/요청목록`. 내가 답할 대기 요청과 내가 보낸 대기 요청."""
+    actor = _actor(payload.discord_user_id)
+    received = (
+        wr.received(actor)
+        .filter(status__in=("pending", "accepted"))
+        .exclude(status="accepted", kind__in=("work", "assign"))
+    )
+    sent = wr.visible_requests(actor).filter(requested_by=actor, status="pending")
+    return {
+        "received": [request_out(r) for r in received[:25]],
+        "sent": [request_out(r) for r in sent[:25]],
+    }
+
+
+@router.post("/requests/{int:request_id}/projects", response=list[dict])
+def request_projects(request, request_id: int, payload: DiscordActorIn):
+    """수락할 때 `프로젝트` 자동완성. 받는 팀이 맡은 프로젝트가 앞에 온다."""
+    req = _request(_actor(payload.discord_user_id), request_id)
+    return [{"id": p.pk, "name": p.name} for p in wr.projects_for(req)]
+
+
+@router.post("/requests/{int:request_id}/accept", response=dict)
+def accept_request(request, request_id: int, payload: DiscordRequestAnswerIn):
+    actor = _actor(payload.discord_user_id)
+    req = _request(actor, request_id)
+    project = _project(actor, payload.project_id) if payload.project_id else None
+    req = wr.accept(
+        req,
+        actor,
+        source="dc",
+        project=project,
+        assignee=_assignee(payload.assignee_id),
+        due_date=payload.due_date,
+        note=payload.note,
+    )
+    out = {"request": request_out(req)}
+    if req.task_id:
+        out["task"] = task_out(req.task)
+    return out
+
+
+@router.post("/requests/{int:request_id}/decline", response=dict)
+def decline_request(request, request_id: int, payload: DiscordRequestAnswerIn):
+    actor = _actor(payload.discord_user_id)
+    return {"request": request_out(wr.decline(_request(actor, request_id), actor, payload.note))}
+
+
+@router.post("/requests/{int:request_id}/done", response=dict)
+def complete_request(request, request_id: int, payload: DiscordRequestAnswerIn):
+    actor = _actor(payload.discord_user_id)
+    return {"request": request_out(wr.complete(_request(actor, request_id), actor, payload.note))}
+
+
+# ---------- 알림 발송함. 봇이 틱마다 가져가 보내고 ack한다 ----------
+
+
+@router.get("/notices", response=list[dict])
+def notices(request):
+    return [
+        {
+            "id": n.pk,
+            "discord_user_id": n.user.discord_user_id if n.user_id else None,
+            "channel_id": n.channel_id,
+            "text": n.text,
+        }
+        for n in wr.pending_notices()
+    ]
+
+
+@router.post("/notices/ack", response=dict)
+def ack_notices(request, payload: DiscordNoticeAckIn):
+    return {"acked": wr.mark_sent(payload.ids)}

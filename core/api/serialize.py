@@ -2,6 +2,7 @@ from django.conf import settings
 
 from projects.services import project_stats
 from tasks.brief import task_brief, user_brief
+from tasks.work_requests import pending_assignee
 
 
 def link_out(link) -> dict:
@@ -45,6 +46,8 @@ def task_out(t) -> dict:
             "links": [link_out(link) for link in t.links.all()],
             # 참고 문서는 제목과 id만. 본문은 /projects/{id}/docs/{doc_id}에서 읽는다.
             "docs": [{"id": d.pk, "title": d.title} for d in t.docs.all()],
+            # 담당 요청을 받은 사람이 아직 수락하지 않았다. 수락 전까지 assignee는 그대로다.
+            "pending_assignee": user_brief(pending) if (pending := pending_assignee(t)) else None,
         }
     )
     return d
@@ -79,4 +82,24 @@ def invite_out(inv) -> dict:
         "expires_at": inv.expires_at,
         "use_count": inv.use_count,
         "revoked_at": inv.revoked_at,
+    }
+
+
+def request_out(r) -> dict:
+    return {
+        "id": r.pk,
+        "number": r.number,
+        "kind": r.kind,
+        "kind_label": r.get_kind_display(),
+        "title": r.title,
+        "body": r.body,
+        "status": r.status,
+        "status_label": r.get_status_display(),
+        "requested_by": user_brief(r.requested_by),
+        "team": {"id": r.team.pk, "name": r.team.name} if r.team_id else None,
+        "to_user": user_brief(r.to_user) if r.to_user_id else None,
+        "task_id": r.task_id,
+        "response_note": r.response_note,
+        "url": settings.SITE_URL + r.path,
+        "created_at": r.created_at,
     }

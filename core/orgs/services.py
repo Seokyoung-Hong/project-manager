@@ -298,11 +298,34 @@ def remove_team_member(team, user, actor, source: str = ""):
     TeamMembership.objects.filter(team=team, user=user).delete()
 
 
-def set_team_channel(team, channel_id: str, actor) -> Team:
-    """봇이 만든 채널 id를 적는다. 빈 문자열이면 연결을 끊는다(Discord에서 지워졌을 때)."""
+def set_team_lead(team, user, is_lead: bool, actor) -> TeamMembership:
     require_admin(actor, team.org)
-    team.discord_channel_id = (channel_id or "").strip()[:32]
-    team.save(update_fields=["discord_channel_id"])
+    membership = TeamMembership.objects.filter(team=team, user=user).first()
+    if membership is None:
+        raise ServiceError({"user": "팀원만 팀장으로 정할 수 있습니다."})
+    membership.is_lead = is_lead
+    membership.save(update_fields=["is_lead"])
+    return membership
+
+
+def set_team_channel(team, channel_id: str, actor, *, checked: bool = False, managed=None) -> Team:
+    """봇이 만든 채널 id를 적는다. 빈 문자열이면 연결을 끊는다(Discord에서 지워졌을 때).
+
+    새 채널로 바꾸는 것은 `orgs.channels.connect`(권한 밖 인원 확인)만 `checked=True`로 한다.
+    """
+    from .channels import CHECK_REQUIRED, clear_alerts
+
+    require_admin(actor, team.org)
+    new = (channel_id or "").strip()[:32]
+    if new != team.discord_channel_id:
+        if new and not checked:
+            raise ServiceError({"channel_id": CHECK_REQUIRED})
+        clear_alerts(team.discord_channel_id, "team", team.pk)
+        team.discord_channel_managed = bool(managed)
+    elif managed is not None:
+        team.discord_channel_managed = managed
+    team.discord_channel_id = new
+    team.save(update_fields=["discord_channel_id", "discord_channel_managed"])
     return team
 
 

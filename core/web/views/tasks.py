@@ -13,6 +13,7 @@ from github.writes import default_branch_name
 from projects.models import Project
 from tasks import services as ts
 from tasks.models import ChangeLog, ChecklistItem, Link
+from tasks.work_requests import pending_assignee
 
 from ..forms import LinkForm
 from .common import (
@@ -90,6 +91,7 @@ def _panel_ctx(request, task, **extra):
             "name"
         ),
         "org_members": task.project.org.members.filter(is_active=True).order_by("display_name"),
+        "pending_assignee": pending_assignee(task),
         "history": history_rows(logs),
         "priorities": range(10, 0, -1),
         "due_label": due_label(task),

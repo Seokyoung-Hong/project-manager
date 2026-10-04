@@ -681,7 +681,10 @@ def _on_issues(conn, delivery, payload):
         number=number,
         defaults={
             "title": (issue.get("title") or "")[:300],
-            "state": issue.get("state") or ("closed" if action == "closed" else "open"),
+            # action이 아니라 payload의 상태를 따른다. 닫힌 이슈에 온 labeled·edited가 다시 열면 안 된다.
+            "state": issue.get("state")
+            if issue.get("state") in ("open", "closed")
+            else ("closed" if action == "closed" else "open"),
             "assignee_login": ((issue.get("assignee") or {}).get("login")) or "",
             "author_login": ((issue.get("user") or {}).get("login")) or "",
             "body": (issue.get("body") or "")[:5000],

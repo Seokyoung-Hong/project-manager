@@ -93,6 +93,8 @@ class FakeCore:
             )
             self.tasks[1]["version"] += 1
             return httpx.Response(200, json=self.tasks[1])
+        if p.startswith("/api/requests"):
+            return httpx.Response(200, json={"ok": True})
         if p == "/api/orgs/1/repos" and request.method == "GET":
             return httpx.Response(
                 200,
