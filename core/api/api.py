@@ -72,13 +72,14 @@ def _service_error(request, exc):
 @api.exception_handler(ConflictError)
 def _conflict(request, exc):
     latest = exc.latest
+    viewer = getattr(request, "auth", None)
     if hasattr(latest, "assignee"):
-        data = task_out(latest)
+        data = task_out(latest, viewer)
     elif hasattr(latest, "body_md"):
         # 프로젝트 문서. project_out을 태우면 없는 필드를 찾다 500이 난다.
         data = doc_out(latest, body=False)
     else:
-        data = project_out(latest)
+        data = project_out(latest, viewer=viewer)
     return api.create_response(request, {"detail": "conflict", "latest": data}, status=409)
 
 

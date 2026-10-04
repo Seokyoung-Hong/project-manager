@@ -224,6 +224,20 @@ def by_due(t):
 # ---------- 생성·수정 ----------
 
 
+IDEM_REUSED = "이미 다른 작업에 쓴 키입니다."
+
+
+def _idem_replay(actor, existing, project):
+    """같은 Idempotency-Key 재요청이면 처음 만든 태스크를 돌려준다.
+
+    대상 프로젝트가 다르거나 지금은 볼 수 없는 태스크면(공개 범위가 바뀌어 권한을 잃은 경우)
+    내용을 돌려주지 않고 거절한다 — 키로 비공개 태스크를 꺼내 볼 수 없어야 한다.
+    """
+    if existing.project_id != project.pk or not can_view_project(actor, existing.project):
+        raise ServiceError({"idempotency_key": IDEM_REUSED})
+    return existing
+
+
 @transaction.atomic
 def create_task(
     *,
@@ -249,9 +263,9 @@ def create_task(
             user=actor, key=idempotency_key, target_type="task"
         ).first()
         if hit:
-            existing = Task.objects.filter(pk=hit.target_id).first()
+            existing = Task.objects.filter(pk=hit.target_id).select_related("project").first()
             if existing is not None:
-                return existing
+                return _idem_replay(actor, existing, project)
             hit.delete()  # 대상이 지워진 키는 새로 만든다
     assignee = assignee or actor
     _require_viewer(assignee, project)
@@ -306,7 +320,7 @@ def create_task(
         except IntegrityError:
             hit = IdempotencyKey.objects.get(user=actor, key=idempotency_key, target_type="task")
             transaction.set_rollback(True)
-            return Task.objects.get(pk=hit.target_id)
+            return _idem_replay(actor, Task.objects.get(pk=hit.target_id), project)
     return task
 
 
@@ -411,6 +425,10 @@ def update_task(
     if not fields:
         return task
     _apply(task, expected_version, fields)
+    if "project" in fields:
+        # 문서는 같은 프로젝트의 태스크에만 걸린다(projects.docs.link_task). 옮기면 옛 프로젝트 문서
+        # 연결을 끊는다 — 남겨 두면 공개 프로젝트에서 비공개 문서 제목이 보인다.
+        task.docs.remove(*task.docs.exclude(project_id=task.project_id))
     if "assignee" in fields:
         wr.drop_assign_requests(task, keep_user=ask)
         if task.assignee != actor:

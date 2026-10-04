@@ -114,7 +114,7 @@ def list_tasks(
 
 @router.get("/{task_id}", response=TaskOut)
 def get_task(request, task_id: int):
-    return task_out(task_or_404(request, task_id))
+    return task_out(task_or_404(request, task_id), request.auth)
 
 
 @router.get("/{task_id}/github", response=dict)
@@ -260,7 +260,7 @@ def create_task_ep(request, payload: TaskCreateIn):
         replace_checklist(
             task, [i.dict() for i in payload.checklist], actor=c["actor"], source=c["source"]
         )
-    return 201, task_out(task)
+    return 201, task_out(task, request.auth)
 
 
 @router.delete("/{task_id}", response={204: None, 400: ErrorOut})
@@ -304,7 +304,7 @@ def patch_task(request, task_id: int, payload: TaskPatchIn):
         if not data and checklist is None and task.version != version:
             raise ConflictError(task)
         task = set_template(task, template, **c)
-    return task_out(task)
+    return task_out(task, request.auth)
 
 
 @router.post("/{task_id}/duplicate", response={201: TaskOut, 400: ErrorOut})
@@ -325,7 +325,7 @@ def duplicate_ep(request, task_id: int, payload: TaskDuplicateIn):
         idempotency_key=idem_key(request),
         **ctx(request),
     )
-    return 201, task_out(new)
+    return 201, task_out(new, request.auth)
 
 
 @router.post("/{task_id}/transition", response={200: TaskOut, 400: ErrorOut, 409: ConflictOut})
@@ -338,7 +338,7 @@ def transition_ep(request, task_id: int, payload: TransitionIn):
         expected_version=payload.version,
         **ctx(request),
     )
-    return task_out(task)
+    return task_out(task, request.auth)
 
 
 @router.post("/{task_id}/extend", response={200: TaskOut, 400: ErrorOut, 409: ConflictOut})
@@ -347,4 +347,4 @@ def extend_ep(request, task_id: int, payload: ExtendIn):
     task = extend_due(
         task, payload.due_date, payload.reason, expected_version=payload.version, **ctx(request)
     )
-    return task_out(task)
+    return task_out(task, request.auth)

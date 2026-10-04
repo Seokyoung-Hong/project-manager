@@ -3,6 +3,7 @@ from datetime import date, timedelta
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.db.models import Q
 from django.http import Http404, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
@@ -91,7 +92,7 @@ def _panel_ctx(request, task, **extra):
         "org_notes": visible_notes(request.user).filter(org=task.project.org),
         # _refs.html은 패널 최초 렌더(_panel_ctx)와 조각 갱신(_refs) 양쪽에서 쓰인다.
         # 한쪽에만 넣으면 새로고침 전에는 문서가 보이지 않는다.
-        "docs": task.docs.all(),
+        "docs": task.docs.filter(project_id=task.project_id),
         "project_docs": task.project.docs.exclude(tasks=task),
         "attachments": attachments_of(task),
         # 패널이 프로젝트·담당자까지 맡으므로 고를 대상을 함께 싣는다
@@ -110,7 +111,7 @@ def _panel_ctx(request, task, **extra):
         "stop_draft": task.stop_reason,
         "block_pending": request.GET.get("block") == "1",
         "reject_pending": "",
-        "series": _series(task),
+        "series": _series(request.user, task),
         "focus_notes": request.GET.get("focus") == "notes",
         "full_page": False,
         "error": None,
@@ -124,11 +125,15 @@ def _panel_ctx(request, task, **extra):
     return ctx
 
 
-def _series(task) -> list:
-    """같은 계열(뿌리 + 회차·변형). 계열이 없으면 빈 목록."""
+def _series(user, task) -> list:
+    """같은 계열(뿌리 + 회차·변형) 중 user가 볼 수 있는 것. 계열이 없으면 빈 목록.
+
+    회차는 다른(비공개) 프로젝트로 옮겨질 수 있어 뿌리·회차 모두 visible_tasks로 거른다.
+    """
     root = task.parent or task
-    children = list(root.children.select_related("assignee").order_by("id"))
-    return [root, *children] if children else []
+    visible = ts.visible_tasks(user)
+    rows = list(visible.filter(Q(pk=root.pk) | Q(parent=root)).order_by("id"))
+    return rows if len(rows) > 1 else []
 
 
 @login_required
@@ -467,7 +472,7 @@ def _refs(request, task, error=None, link_form=None):
             else LinkForm(dev_tools=task.project.dev_tools),
             "notes": visible_notes(request.user).filter(tasks=task),
             "org_notes": visible_notes(request.user).filter(org=task.project.org),
-            "docs": task.docs.all(),
+            "docs": task.docs.filter(project_id=task.project_id),
             # 이미 걸린 문서는 후보에서 뺀다 — 같은 것을 두 번 걸 이유가 없다
             "project_docs": task.project.docs.exclude(tasks=task),
             "attachments": attachments_of(task),
