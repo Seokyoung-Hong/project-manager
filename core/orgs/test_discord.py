@@ -145,8 +145,10 @@ def discord_token(monkeypatch, settings):
 
     def fake_urlopen(req, timeout=None):
         state["calls"].append((req.full_url, dict(urllib.parse.parse_qsl(req.data.decode()))))
-        if state["fail"]:
+        if state["fail"] is True:
             raise urllib.error.HTTPError(req.full_url, 400, "bad", {}, None)
+        if state["fail"]:
+            raise state["fail"]
         return _Resp(json.dumps({"access_token": "x", "guild": {"id": state["guild"]}}).encode())
 
     monkeypatch.setattr("orgs.discord.urllib.request.urlopen", fake_urlopen)
@@ -198,6 +200,26 @@ def test_installed_without_code_or_secret_does_not_bind(
     _install(client, org, "code=abc&guild_id=9001")
     org.refresh_from_db()
     assert org.discord_guild_id is None
+    assert discord_token["calls"] == []
+
+
+@pytest.mark.parametrize(
+    "error", [TimeoutError("timed out"), ConnectionResetError("reset"), OSError("down")]
+)
+def test_installed_network_errors_are_a_message_not_500(client, org, admin, discord_token, error):
+    discord_token["fail"] = error
+    client.force_login(admin)
+    r = _install(client, org, "code=abc&guild_id=9001")
+    assert r.status_code == 302
+    org.refresh_from_db()
+    assert org.discord_guild_id is None
+
+
+def test_installed_non_ascii_state_is_404_not_500(client, org, admin, discord_token):
+    client.force_login(admin)
+    client.get(f"/orgs/{org.pk}/discord/connect")
+    r = client.get("/orgs/discord/installed?code=abc&guild_id=9001&state=한글상태")
+    assert r.status_code == 404
     assert discord_token["calls"] == []
 
 
@@ -363,6 +385,25 @@ def test_deadline_alerts_org_and_user_kinds_intersect(org, dues, member):
     member.settings = {"user.notify_kinds": ["d1", "d0", "overdue"]}
     member.save(update_fields=["settings"])
     assert _kinds(org, MON) == {"d1": "d1", "over1": "overdue", "over8": "overdue"}
+
+
+def test_deadline_alerts_use_the_project_grace_days(org, project, member):
+    """유예일은 프로젝트가 덮어쓸 수 있다. 조직 0일·프로젝트 7일이면 어제 기한은 초과가 아니다."""
+    _due(project, member, "yesterday", MON - timedelta(days=1))
+    project.settings = {"task.overdue_grace_days": 7}
+    project.save(update_fields=["settings"])
+    assert _kinds(org, MON) == {}
+    _org_set(org, _locked=["task.overdue_grace_days"])  # 조직이 잠그면 조직 값(0일)을 따른다
+    assert _kinds(org, MON) == {"yesterday": "overdue"}
+
+
+def test_deadline_alerts_grace_is_computed_once_per_project(
+    org, project, member, django_assert_max_num_queries
+):
+    for i in range(5):
+        _due(project, member, f"late{i}", MON - timedelta(days=2))
+    with django_assert_max_num_queries(8):
+        assert len(dc.deadline_alerts(org, MON)) == 5
 
 
 def test_deadline_alerts_grace_days_match_the_web(org, dues):

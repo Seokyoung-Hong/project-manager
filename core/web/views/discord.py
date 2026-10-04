@@ -126,7 +126,8 @@ def discord_installed(request):
     _enabled_or_404()
     expected = request.session.pop("dc_state", None)
     got = request.GET.get("state") or ""
-    if not expected or not secrets.compare_digest(got, expected):
+    # 바이트로 비교한다. str끼리는 비ASCII가 섞이면 compare_digest가 TypeError(500)를 낸다.
+    if not expected or not secrets.compare_digest(got.encode(), expected.encode()):
         raise Http404
     org_id = request.session.pop("dc_org", None)
     org = org_or_404(request.user, org_id)
