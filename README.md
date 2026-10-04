@@ -181,7 +181,7 @@ docker compose exec -T web python manage.py loaddata --format=json - < devdata.j
 | `TZ` | 기본 `Asia/Seoul` |
 | `SEND_HOUR` | 마감 알림 시각(시). 기본 9 |
 | `WEEKLY_WEEKDAY` / `WEEKLY_HOUR` | 주간 보고 요일(0=월)·시각. 기본 0, 9 |
-| `LLM_PROVIDER` | 비우면 고정 형식 보고서 |
+| `LLM_PROVIDER` | **미구현.** 값을 넣어도 고정 형식 보고서가 나간다. 비워 둔다 |
 | `SITE_NAME` | 확인 메시지에 쓰는 이름 |
 
 `CORE_URL`·`DB_PATH`는 compose가 넣어 준다. `mcp_server`는 `CORE_URL`과 `PORT`만 쓴다.
