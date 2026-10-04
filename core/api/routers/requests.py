@@ -169,7 +169,7 @@ def accept_request(request, request_id: int, payload: RequestAcceptIn):
     )
     out = request_out(req)
     if req.task_id:
-        out["task"] = task_out(req.task)
+        out["task"] = task_out(req.task, request.auth)
     return out
 
 

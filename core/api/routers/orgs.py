@@ -66,7 +66,7 @@ def get_org(request, org_id: int):
         "purpose": org.purpose,
         "role": role,
         "discord_guild_id": org.discord_guild_id,
-        "projects": projects_out(projects),
+        "projects": projects_out(projects, request.auth),
         "teams": _teams_out(org, request.auth),
     }
 
@@ -139,7 +139,7 @@ def _team_out(t: Team, visible: bool = True) -> dict:
     return {
         "id": t.pk,
         "name": t.name,
-        "purpose": t.purpose,
+        "purpose": t.purpose if visible else None,
         "member_count": (t.members.count() if count is None else count) if visible else None,
         "dev_tools": t.dev_tools,
         "is_private": t.is_private,

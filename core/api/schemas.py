@@ -178,7 +178,7 @@ class ProjectStats(Schema):
 class TeamOut(Schema):  # 새 의미: 조직 안의 사람 묶음
     id: int
     name: str
-    purpose: str
+    purpose: str | None  # 볼 수 없는 비공개 팀이면 null
     member_count: int | None  # 볼 수 없는 비공개 팀이면 null
     dev_tools: bool = True
     is_private: bool = False

@@ -19,6 +19,7 @@ from projects.services import (
     update_project,
     visible_projects,
 )
+from tasks.services import get_visible_task
 
 from ..context import ctx, org_or_404
 from ..schemas import (
@@ -69,12 +70,12 @@ def list_projects(request, org: int | None = None, include_archived: bool = Fals
         qs = qs.filter(org_id=org)
     if not include_archived:
         qs = qs.filter(is_archived=False)
-    return projects_out(qs.order_by("org__name", "name"))
+    return projects_out(qs.order_by("org__name", "name"), request.auth)
 
 
 @router.get("/{project_id}", response=ProjectOut)
 def get_project(request, project_id: int):
-    return project_out(_project_or_404(request, project_id))
+    return project_out(_project_or_404(request, project_id), viewer=request.auth)
 
 
 @router.put("/{project_id}/discord-channel", response=dict)
@@ -109,7 +110,7 @@ def create_project_ep(request, payload: ProjectCreateIn):
         visibility=payload.visibility,
         **ctx(request),
     )
-    return 201, project_out(p)
+    return 201, project_out(p, viewer=request.auth)
 
 
 @router.patch("/{project_id}", response={200: ProjectOut, 400: ErrorOut, 409: ConflictOut})
@@ -125,7 +126,7 @@ def patch_project(request, project_id: int, payload: ProjectPatchIn):
     p = update_project(p, data, expected_version=version, **ctx(request))
     if visibility is not None:
         p = set_visibility(p, visibility, **ctx(request))
-    return project_out(p)
+    return project_out(p, viewer=request.auth)
 
 
 @router.delete("/{project_id}", response={204: None, 400: ErrorOut})
@@ -239,6 +240,9 @@ def import_issue(request, project_id: int, number: int):
     if issue is None:
         raise HttpError(404, "이슈를 찾을 수 없습니다. 저장소 이슈를 새로 고친 뒤 다시 시도하세요.")
     if issue.task_id is not None:
-        return 200, task_out(issue.task)
+        # 가져온 뒤 비공개 프로젝트로 옮겨졌을 수 있다 — 지금 볼 수 있을 때만 돌려준다.
+        if get_visible_task(request.auth, issue.task_id) is None:
+            raise HttpError(404, "이미 가져온 이슈입니다.")
+        return 200, task_out(issue.task, request.auth)
     task = gh_services.import_issue(issue, request.auth, source=ctx(request)["source"])
-    return 201, task_out(task)
+    return 201, task_out(task, request.auth)

@@ -323,3 +323,88 @@ def test_deadline_dm_skips_assignee_who_lost_access(org, admin, secret, secret_t
     assert secret_task.pk in [t.pk for t, _ in deadline_alerts(org, today_kst())]
     update_project(secret, {"teams": []}, actor=admin, expected_version=secret.version)
     assert secret_task.pk not in [t.pk for t, _ in deadline_alerts(org, today_kst())]
+
+
+# ---------- Sol 교차 검토 반려 4건(라운드 7) ----------
+
+
+def test_idempotency_key_cannot_replay_task_after_losing_access(
+    client, admin, member, project, secret
+):
+    h = {**_bearer(member), "Idempotency-Key": "k-1"}
+    body = {"project_id": secret.pk, "title": "극비키태스크", "due_date": today_kst().isoformat()}
+    r = client.post("/api/tasks", body, content_type="application/json", headers=h)
+    assert r.status_code == 201
+    update_project(secret, {"teams": []}, actor=admin, expected_version=secret.version)
+    body["project_id"] = project.pk
+    r = client.post("/api/tasks", body, content_type="application/json", headers=h)
+    assert r.status_code == 400
+    assert "극비키태스크" not in r.content.decode()
+
+
+def test_idempotency_key_bound_to_target_project(member, project, secret):
+    kw = {"title": "a", "actor": member, "source": "api", "due_date": today_kst()}
+    first = create_task(project=secret, idempotency_key="k-2", **kw)
+    assert create_task(project=secret, idempotency_key="k-2", **kw) == first
+    with pytest.raises(ServiceError):
+        create_task(project=project, idempotency_key="k-2", **kw)
+
+
+def test_series_hides_child_moved_to_private_project(client, admin, member, other, project, secret):
+    from tasks.services import duplicate_task, update_task
+
+    root = create_task(
+        project=project, title="공개뿌리", actor=member, source="web", due_date=today_kst()
+    )
+    child = duplicate_task(root, actor=member, source="web", title="숨은회차", due_date=today_kst())
+    update_task(
+        child, {"project": secret}, actor=admin, source="web", expected_version=child.version
+    )
+    assert "숨은회차" not in _login(client, "other1").get(f"/tasks/{root.pk}").content.decode()
+    client.logout()  # 세션 인증이 Bearer보다 먼저 잡힌다
+    got = client.get(f"/api/tasks/{root.pk}", headers=_bearer(other)).json()
+    assert got["children_count"] == 0
+    got = client.get(f"/api/tasks/{root.pk}", headers=_bearer(member)).json()
+    assert got["children_count"] == 1
+
+
+def test_docs_unlinked_when_task_moves_out(
+    client, admin, member, other, project, secret, secret_task
+):
+    from projects.docs import link_task
+    from tasks.services import update_task
+
+    doc = create_doc(project=secret, actor=member, title="비밀문서제목")
+    link_task(doc, secret_task, member)
+    update_task(
+        secret_task,
+        {"project": project},
+        actor=admin,
+        source="web",
+        expected_version=secret_task.version,
+    )
+    r = client.get(f"/api/tasks/{secret_task.pk}", headers=_bearer(other))
+    assert r.json()["docs"] == [] and "비밀문서제목" not in r.content.decode()
+    body = _login(client, "other1").get(f"/tasks/{secret_task.pk}").content.decode()
+    assert "비밀문서제목" not in body
+
+
+def test_private_team_details_hidden_in_project_out(client, org, admin, member, other, project):
+    from orgs.services import add_team_member, create_team
+
+    hr = create_team(org=org, name="인사", purpose="연봉협상", actor=admin, is_private=True)
+    add_team_member(hr, member, admin)
+    update_project(project, {"teams": [hr]}, actor=admin, expected_version=project.version)
+
+    def team_of(user, url):
+        data = client.get(url, headers=_bearer(user)).json()
+        rows = data if isinstance(data, list) else data.get("projects", [data])
+        return next(x for x in rows if x["id"] == project.pk)["teams"][0]
+
+    for url in (f"/api/projects/{project.pk}", "/api/projects", f"/api/orgs/{org.pk}"):
+        t = team_of(other, url)
+        assert t["name"] == "인사" and t["purpose"] is None and t["member_count"] is None, url
+        t = team_of(member, url)
+        assert t["purpose"] == "연봉협상" and t["member_count"] == 1, url
+    rows = client.get(f"/api/orgs/{org.pk}/teams", headers=_bearer(other)).json()
+    assert next(r for r in rows if r["id"] == hr.pk)["purpose"] is None

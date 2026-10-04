@@ -115,7 +115,7 @@ def done(request, task_id: int, payload: DiscordActorIn):
     task = transition(
         task, "done", expected_version=task.version, reason="", **_ctx(request, actor)
     )
-    return {"was": was, "task": task_out(task)}
+    return {"was": was, "task": task_out(task, actor)}
 
 
 @router.post("/tasks/{task_id}/extend", response=dict)
@@ -129,7 +129,7 @@ def extend(request, task_id: int, payload: DiscordExtendIn):
         expected_version=task.version,
         **_ctx(request, actor),
     )
-    return {"task": task_out(task)}
+    return {"task": task_out(task, actor)}
 
 
 # ---------- 슬래시 명령 (IMPL-PLAN-3). 자동완성 목록도 행위자 범위로만 준다 ----------
@@ -311,7 +311,7 @@ def create(request, payload: DiscordTaskCreateIn):
         no_due_reason=payload.no_due_reason,
         **_ctx(request, actor),
     )
-    return {"task": task_out(task)}
+    return {"task": task_out(task, actor)}
 
 
 @router.post("/tasks/{task_id}/update", response=dict)
@@ -323,7 +323,7 @@ def update(request, task_id: int, payload: DiscordTaskUpdateIn):
         changes["assignee"] = _assignee(changes.pop("assignee_id"))
     if changes:
         task = update_task(task, changes, expected_version=task.version, **_ctx(request, actor))
-    return {"task": task_out(task)}
+    return {"task": task_out(task, actor)}
 
 
 @router.post("/tasks/{task_id}/note", response=dict)
@@ -336,7 +336,7 @@ def note(request, task_id: int, payload: DiscordNoteIn):
         raise HttpError(400, "메모 내용을 입력하세요.")
     notes = f"{task.notes}\n{text}" if task.notes else text
     task = update_text(task, "notes", notes, actor=actor)
-    return {"task": task_out(task)}
+    return {"task": task_out(task, actor)}
 
 
 @router.post("/tasks/{task_id}/status", response=dict)
@@ -351,7 +351,7 @@ def status(request, task_id: int, payload: DiscordStatusIn):
         reason=payload.reason,
         **_ctx(request, actor),
     )
-    return {"was": was, "task": task_out(task)}
+    return {"was": was, "task": task_out(task, actor)}
 
 
 @router.post("/teams/{team_id}/channel", response=dict)
@@ -558,7 +558,7 @@ def accept_request(request, request_id: int, payload: DiscordRequestAnswerIn):
     )
     out = {"request": request_out(req)}
     if req.task_id:
-        out["task"] = task_out(req.task)
+        out["task"] = task_out(req.task, actor)
     return out
 
 

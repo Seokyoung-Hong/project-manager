@@ -2,9 +2,11 @@ from django.conf import settings
 from django.db.models import Count, Prefetch
 
 from orgs.models import Team
+from orgs.services import visible_teams
 from projects.services import project_stats, project_stats_bulk
 from tasks.attachments import attachments_of
 from tasks.brief import task_brief, user_brief
+from tasks.services import visible_tasks
 from tasks.work_requests import pending_assignee
 
 
@@ -25,7 +27,14 @@ def changelog_out(log) -> dict:
     }
 
 
-def task_out(t) -> dict:
+def task_out(t, viewer=None) -> dict:
+    """viewer: 응답을 받는 사람. 다른 프로젝트로 간 회차는 viewer가 볼 수 있을 때만 센다.
+    없으면 같은 프로젝트의 회차만 센다(태스크를 보는 사람은 그 프로젝트를 볼 수 있다)."""
+    children = (
+        visible_tasks(viewer).filter(parent=t)
+        if viewer is not None
+        else t.children.filter(project_id=t.project_id)
+    )
     items = list(t.checklist.all())
     d = task_brief(t)
     d.update(
@@ -48,19 +57,46 @@ def task_out(t) -> dict:
             "checklist_total": len(items),
             "links": [link_out(link) for link in t.links.all()],
             # 참고 문서는 제목과 id만. 본문은 /projects/{id}/docs/{doc_id}에서 읽는다.
-            "docs": [{"id": d.pk, "title": d.title} for d in t.docs.all()],
+            # 문서는 같은 프로젝트의 것만 걸린다(projects.docs.link_task). 옮긴 뒤 남은 연결이 있어도 내보내지 않는다.
+            "docs": [
+                {"id": d.pk, "title": d.title} for d in t.docs.filter(project_id=t.project_id)
+            ],
             # 담당 요청을 받은 사람이 아직 수락하지 않았다. 수락 전까지 assignee는 그대로다.
             "pending_assignee": user_brief(pending) if (pending := pending_assignee(t)) else None,
             "reviewer": user_brief(t.reviewer),
-            "children_count": t.children.count(),
+            "children_count": children.count(),
             "attachments": [attachment_out(a) for a in attachments_of(t)],  # 최신 버전만
         }
     )
     return d
 
 
-def project_out(p, stats=None) -> dict:
-    """stats를 넘기면(projects_out) 다시 세지 않는다."""
+def _shown_team_ids(viewer, org=None) -> set[int]:
+    """viewer가 세부(목적·인원)를 볼 수 있는 팀. viewer가 없으면 공개 팀만."""
+    if viewer is None:
+        qs = Team.objects.filter(is_private=False)
+        return set((qs.filter(org=org) if org is not None else qs).values_list("pk", flat=True))
+    return set(visible_teams(viewer, org).values_list("pk", flat=True))
+
+
+def _team_out(t, shown: set[int]) -> dict:
+    """비공개 팀을 볼 수 없는 사람에게는 이름만 준다(팀 목록과 같은 규칙)."""
+    if t.pk not in shown:
+        return {"id": t.pk, "name": t.name, "purpose": None, "member_count": None}
+    return {
+        "id": t.pk,
+        "name": t.name,
+        "purpose": t.purpose,
+        "member_count": t.member_count
+        if hasattr(t, "member_count")  # projects_out이 미리 센 값
+        else t.members.count(),
+    }
+
+
+def project_out(p, stats=None, viewer=None, shown_teams=None) -> dict:
+    """stats를 넘기면(projects_out) 다시 세지 않는다. viewer 밖 비공개 팀은 이름만."""
+    if shown_teams is None:
+        shown_teams = _shown_team_ids(viewer, p.org_id)
     return {
         "id": p.pk,
         "org_id": p.org_id,
@@ -68,17 +104,7 @@ def project_out(p, stats=None) -> dict:
         "purpose": p.purpose,
         "discord_channel_id": p.discord_channel_id,
         "owners": [user_brief(u) for u in p.owners.all()],
-        "teams": [
-            {
-                "id": t.pk,
-                "name": t.name,
-                "purpose": t.purpose,
-                "member_count": t.member_count
-                if hasattr(t, "member_count")  # projects_out이 미리 센 값
-                else t.members.count(),
-            }
-            for t in p.teams.all()
-        ],
+        "teams": [_team_out(t, shown_teams) for t in p.teams.all()],
         "status": p.status,
         "status_label": p.status_label,
         "is_archived": p.is_archived,
@@ -91,7 +117,7 @@ def project_out(p, stats=None) -> dict:
     }
 
 
-def projects_out(qs) -> list[dict]:
+def projects_out(qs, viewer=None) -> list[dict]:
     """프로젝트 목록. 관리자·팀(인원 수)·링크·통계를 프로젝트 수와 무관하게 몇 번의 쿼리로 읽는다."""
     teams = Team.objects.annotate(member_count=Count("members"))
     ps = list(
@@ -100,7 +126,8 @@ def projects_out(qs) -> list[dict]:
         .prefetch_related("owners", "links", Prefetch("teams", queryset=teams))
     )
     stats = project_stats_bulk(ps)
-    return [project_out(p, stats[p.pk]) for p in ps]
+    shown = _shown_team_ids(viewer)
+    return [project_out(p, stats[p.pk], shown_teams=shown) for p in ps]
 
 
 def invite_out(inv) -> dict:
