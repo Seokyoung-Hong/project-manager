@@ -4,9 +4,9 @@
 {% block auth %}
 <h1 class="t24">조직 참여</h1>
 {% if org %}
-<div class="notice"><span aria-hidden="true">ⓘ</span><span class="grow"><b>{{ org.name }}</b> 조직에 초대되었습니다.<br>로그인하거나 가입하면 바로 참여합니다.</span></div>
+<div class="notice"><span aria-hidden="true">ⓘ</span><span class="grow"><b>{{ org.name }}</b> 조직에 초대되었습니다.<br>로그인하거나 가입한 뒤 이 조직에 참여할 수 있습니다. 가입 후 조직 참여를 확인하세요.</span></div>
 <div class="stack">
-  <a class="btn primary" href="{% url 'signup' %}?next={{ request.path }}">가입하고 참여하기</a>
+  <a class="btn primary" href="{% url 'signup' %}?next={{ request.path }}">계정 만들기</a>
   <a class="btn" href="{% url 'login' %}?next={{ request.path }}">이미 계정이 있습니다 · 로그인</a>
 </div>
 {% else %}
@@ -20,7 +20,7 @@
   <h1 class="t24">조직 참여</h1>
   {% if error %}<div class="notice bad">{{ error }}</div>
   {% else %}
-  <p class="muted">초대 링크로 조직에 참여합니다.</p>
+  <p class="muted"><b>{{ org.name }}</b> 조직에 참여할까요?</p>
   <form method="post" class="row">{% csrf_token %}<button class="btn primary">조직에 참여하기</button></form>
   {% endif %}
 </div>

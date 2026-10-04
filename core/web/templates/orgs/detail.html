@@ -2,7 +2,7 @@
 {% block main %}
 {% include "orgs/_tabs.html" %}
 <div class="card org-summary-card">
-  <div class="tiles org-kpis" tabindex="0" role="region" aria-label="조직 태스크 요약, 좌우로 스크롤 가능">
+  <div class="tiles org-kpis" tabindex="0" role="region" aria-label="조직 태스크 요약">
     {% for label, value, url, danger in tiles %}<a class="tile{% if danger and value %} danger{% endif %}" href="{{ url }}"><b>{{ value }}</b><span>{{ label }}</span></a>{% endfor %}
   </div>
 </div>

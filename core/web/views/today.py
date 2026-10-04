@@ -60,7 +60,7 @@ def _ctx(request):
         row["today_state_query"] = v["today_state_query"]
         if v["today_state_query"]:
             row["row_query"] = f"{row['row_query']}&{v['today_state_query']}"
-    v["auto_pull_choices"] = User.AUTO_PULL_CHOICES
+    v["auto_pull_choices"] = [(n, f"{n}일 이내" if n else "사용 안 함") for n, _ in User.AUTO_PULL_CHOICES]
     v["focus_due"] = due_label(v["focus"]) if v["focus"] else ""
     v["focus_due_class"] = due_class(v["focus"]) if v["focus"] else ""
     return v

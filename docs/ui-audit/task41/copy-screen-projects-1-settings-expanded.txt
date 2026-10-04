@@ -1,0 +1,161 @@
+Browser tab: 2, Title: "ProjectManager · 설정", URL: "http://127.0.0.1:8017/projects/1/settings".
+1 AXWebArea ProjectManager · 설정, URL: 127.0.0.1:8017/projects/1/settings
+	2 container
+		3 button (collapsed) Description: 조직 전환, Help: 산돌이, Secondary Actions: Expand
+			4 text 산돌이
+		5 container 주 메뉴
+			6 link Description: 오늘, Value: 127.0.0.1:8017/today
+			7 link Description: 내 태스크, Value: 127.0.0.1:8017/me
+			8 link Description: 프로젝트, Value: 127.0.0.1:8017/projects
+			9 link Description: 조직, Value: 127.0.0.1:8017/org
+			10 link Description: 검색, Value: 127.0.0.1:8017/search
+		11 link Description: 빠른 추가, Value: 127.0.0.1:8017/today?quick=1
+		12 button (collapsed) Description: 내 메뉴, Help: 김, Secondary Actions: Expand
+			13 text 김
+		14 container 프로젝트
+			15 text 프로젝트 4 미완료
+			16 button (expanded) Description: 프로젝트 목록 접기, Help: 목록 접기, Secondary Actions: Collapse
+			17 link Description: P ProjectManager 5, Help: ProjectManager, Value: 127.0.0.1:8017/projects/1
+			18 link Description: 강 강의실 시간표 3, Help: 강의실 시간표, Value: 127.0.0.1:8017/projects/3
+			19 link Description: 공 공지 알림 3, Help: 공지 알림, Value: 127.0.0.1:8017/projects/4
+			20 link Description: 학 학식 API 3, Help: 학식 API, Value: 127.0.0.1:8017/projects/2
+			21 button ＋ 새 프로젝트
+		22 link Description: 산돌이, Value: 127.0.0.1:8017/orgs/1
+		23 heading ProjectManager, Value: 1
+			24 text ProjectManager
+		25 container 프로젝트 메뉴
+			26 link Description: 태스크, Value: 127.0.0.1:8017/projects/1
+			27 link Description: 문서, Value: 127.0.0.1:8017/projects/1/docs
+			28 link Description: API 문서, Value: 127.0.0.1:8017/projects/1/api
+			29 link Description: 설정, Value: 127.0.0.1:8017/projects/1/settings
+		30 container
+			31 heading 프로젝트 설정, Value: 2
+				32 text 프로젝트 설정
+			33 text 이 프로젝트의 태스크 규칙·기본 화면·알림을 한 번에 저장합니다. 3개 섹션 조직에서 변경을 허용한 항목만 수정할 수 있습니다. “조직에서 잠금”은 조직 값을 표시하며 이 화면에서 바꿀 수 없습니다.
+			34 container 프로젝트 설정 섹션
+				35 link Description: 태스크 규칙 12, Value: 127.0.0.1:8017/projects/1/settings#project-settings-group-1
+				36 link Description: 프로젝트 권한 1, Value: 127.0.0.1:8017/projects/1/settings#project-settings-group-2
+				37 link Description: 알림 3, Value: 127.0.0.1:8017/projects/1/settings#project-settings-group-3
+			38 text 세 섹션을 함께 저장합니다.
+			39 button 프로젝트 설정 저장
+			40 container project-settings-group-1
+				41 button (expanded) 태스크 규칙 12개 항목 ⌄, Secondary Actions: Collapse
+					42 text 태스크 규칙
+					43 text 12개 항목
+					44 text ⌄
+				45 content list
+					46 container
+						47 text 기본 중요도
+						48 text 생성 화면·API·AI가 중요도를 주지 않았을 때 쓰는 값입니다.
+						49 container 기본 중요도
+							50 stepper (settable, integer) 기본 중요도, Value: 5, ID: setting-task.default_priority
+					51 container
+						52 text 중요도 상한
+						53 text 이 값을 넘는 중요도는 프로젝트 관리자만 정할 수 있습니다. 0이면 제한하지 않습니다.
+						54 container 중요도 상한
+							55 stepper (settable, integer) 중요도 상한, Value: 0, ID: setting-task.priority_cap
+					56 container
+						57 text 완료 조건을 적지 않으면 태스크를 만들 수 없습니다.
+						58 container 완료 조건 필수
+							59 checkbox (settable, integer) 완료 조건 필수, Value: 0, ID: setting-task.require_done_when
+					60 container
+						61 text 기한 미정 사유로 대신할 수 없습니다.
+						62 container 기한 필수
+							63 checkbox (settable, integer) 기한 필수, Value: 0, ID: setting-task.due_required
+					64 container
+						65 text 기본 기한(영업일)
+						66 text 생성 화면의 기한 초기값을 오늘+N영업일로 제안합니다. 자동으로 채우지는 않습니다. 0이면 제안하지 않습니다.
+						67 container 기본 기한(영업일)
+							68 stepper (settable, integer) 기본 기한(영업일), Value: 0, ID: setting-task.default_due_days
+					69 container
+						70 text 완료는 검토 대기를 거쳐서만 할 수 있습니다.
+						71 container 검토 대기 필수
+							72 checkbox (settable, integer) 검토 대기 필수, Value: 0, ID: setting-task.review_required
+					73 container
+						74 text 끄면 담당자 본인이 검토 대기에서 완료로 바꿀 수 없습니다.
+						75 container 본인 검토 허용
+							76 checkbox (settable, integer) 본인 검토 허용, Value: 1, ID: setting-task.self_review
+					77 container
+						78 text 완료·취소한 태스크를 되돌릴 때 사유를 적게 합니다.
+						79 container 재개 사유 필수
+							80 checkbox (settable, integer) 재개 사유 필수, Value: 0, ID: setting-task.reopen_reason_required
+					81 container 취소 사유 필수
+						82 checkbox (settable, integer) 취소 사유 필수, Value: 0, ID: setting-task.cancel_reason_required
+					83 container
+						84 text 사유는 이력에 남습니다.
+						85 container 담당자 변경 사유 필수
+							86 checkbox (settable, integer) 담당자 변경 사유 필수, Value: 0, ID: setting-task.assignee_change_reason
+					87 container
+						88 text 연장은 이미 사유를 받습니다. 단축·삭제에도 사유를 받게 합니다.
+						89 container 기한 변경 사유 필수
+							90 checkbox (settable, integer) 기한 변경 사유 필수, Value: 0, ID: setting-task.due_change_reason
+					91 container
+						92 text 초과 유예(일)
+						93 text 기한이 지나도 N일까지는 초과로 강조하지 않고 초과 알림도 보내지 않습니다.
+						94 container 초과 유예(일)
+							95 stepper (settable, integer) 초과 유예(일), Value: 0, ID: setting-task.overdue_grace_days
+			117 container project-settings-group-2
+				118 button (expanded) 프로젝트 권한 1개 항목 ⌄, Secondary Actions: Collapse
+					119 text 프로젝트 권한
+					120 text 1개 항목
+					130 text ⌄
+				122 content list
+					123 container
+						124 text 프로젝트 첫 화면
+						125 container 프로젝트 첫 화면
+							126 pop up button (collapsed, settable) 프로젝트 첫 화면, Value: 목록, ID: setting-project.default_view, Secondary Actions: Expand
+								127 menu
+									128 (selected) 목록
+									129 보드
+			131 container project-settings-group-3
+				132 button (expanded) 알림 3개 항목 ⌄, Secondary Actions: Collapse
+					133 text 알림
+					134 text 3개 항목
+					135 text ⌄
+				136 content list
+					137 container
+						138 text 막힘 에스컬레이션(일)
+						139 text 막힘이 N일을 넘으면 프로젝트 관리자에게 DM을 보냅니다. 0이면 보내지 않습니다.
+						140 container 막힘 에스컬레이션(일)
+							141 stepper (settable, integer) 막힘 에스컬레이션(일), Value: 0, ID: setting-notify.blocked_escalate_days
+					142 container
+						143 text 검토 독촉(일)
+						144 text 검토 대기가 N일을 넘으면 프로젝트 관리자에게 DM을 보냅니다. 0이면 보내지 않습니다.
+						145 container 검토 독촉(일)
+							146 stepper (settable, integer) 검토 독촉(일), Value: 0, ID: setting-notify.review_nudge_days
+					147 container
+						148 text 프로젝트 채널 게시
+						149 text 채널이 연결된 프로젝트만 해당합니다. 멘션은 넣지 않습니다.
+						150 container 프로젝트 채널 게시
+							151 container 프로젝트 채널 게시
+								152 text 프로젝트 채널 게시
+								153 container
+									154 checkbox (settable, integer) Description: 태스크 생성, Value: 0, ID: setting-notify.project_channel_events-created
+									155 text 태스크 생성
+								156 container
+									157 checkbox (settable, integer) Description: 완료, Value: 0, ID: setting-notify.project_channel_events-done
+									158 text 완료
+								159 container
+									160 checkbox (settable, integer) Description: 막힘, Value: 0, ID: setting-notify.project_channel_events-blocked
+									161 text 막힘
+								162 container
+									163 checkbox (settable, integer) Description: 기한 초과 요약, Value: 0, ID: setting-notify.project_channel_events-overdue_daily
+									164 text 기한 초과 요약
+								165 container
+									166 checkbox (settable, integer) Description: 마일스톤 임박, Value: 0, ID: setting-notify.project_channel_events-milestone_due
+									167 text 마일스톤 임박
+		104 container
+			105 heading 프로젝트 정리, Value: 2
+				106 text 프로젝트 정리
+			107 text 끝난 프로젝트는 보관해 숨깁니다. 좌측 목록과 프로젝트 화면에서 빠지고, 조직 개요에서 "보관 포함"을 켜면 다시 보입니다. 데이터는 지워지지 않습니다.
+			108 button 프로젝트 보관
+			109 button 미완료까지 취소하고 보관
+			110 text 삭제는 보관한 뒤에 할 수 있습니다.
+		111 container
+			112 heading 프로젝트 거버넌스 추가 문단, Value: 2
+				113 text 프로젝트 거버넌스 추가 문단
+			114 text 조직 거버넌스에 이 프로젝트만의 규칙을 덧붙입니다. 5000자까지 씁니다.
+			115 text entry area (settable)
+			116 button 거버넌스 저장
+
+The focused UI element is 132 button (expanded) 알림 3개 항목 ⌄, Secondary Actions: Collapse

@@ -27,13 +27,13 @@
         <form method="post" action="{% url 'member_tags' r.m.pk %}" class="row member-skills-form">{% csrf_token %}
           <label class="sr-only" for="member-tags-{{ r.m.pk }}">{{ r.m.user.display_name }} 스킬 태그</label>
           <input class="input member-skills-input" id="member-tags-{{ r.m.pk }}" name="tags" value="{{ r.m.tags|join:', ' }}" placeholder="백엔드, Django">
-          <button class="btn sm">저장</button>
+          <button class="btn sm">기술 태그 저장</button>
         </form>
       </td>
       <td class="t13">{% if r.m.user.discord_user_id %}연결{% else %}<span class="muted">없음</span>{% endif %}</td>
       <td class="num">{{ r.load.open|default:0 }}{% if r.load.overdue %} <span class="danger t13">초과 {{ r.load.overdue }}</span>{% endif %}</td>
-      <td>{% if r.can_remove %}<form method="post" action="{% url 'member_remove' r.m.pk %}" onsubmit="return confirm('조직에서 제거할까요? GitHub 조직에서도 빠집니다. 담당 중인 미완료 태스크는 담당자 그대로 조직에 남습니다.')">{% csrf_token %}<button class="btn sm danger">제거</button></form>
-        {% else %}<button class="btn sm" disabled title="마지막 관리자는 제거할 수 없습니다">제거</button>{% endif %}</td>
+      <td>{% if r.can_remove %}<form method="post" action="{% url 'member_remove' r.m.pk %}" onsubmit="return confirm('조직에서 제거할까요? 담당 중인 태스크는 담당자 그대로 조직에 남습니다. 조직과 사용자 모두 GitHub에 연결되어 있으면 GitHub 조직에서도 제거를 요청합니다. 처리 결과를 확인하세요.')">{% csrf_token %}<button class="btn sm danger">조직에서 제거</button></form>
+        {% else %}<button class="btn sm" disabled title="마지막 관리자는 제거할 수 없습니다">조직에서 제거</button>{% endif %}</td>
     </tr>
     {% endfor %}
     </tbody>
@@ -51,12 +51,12 @@
     <tr>
       <td class="row" style="gap:6px">
         <code class="ellipsis" title="{{ site_url }}{{ i.path }}">{{ site_url }}{{ i.path }}</code>
-        <button type="button" class="btn sm" data-copy-text="{{ site_url }}{{ i.path }}" data-copy-label="초대 링크 복사됨">복사</button>
+        <button type="button" class="btn sm" data-copy-text="{{ site_url }}{{ i.path }}" data-copy-label="초대 링크 복사됨">초대 링크 복사</button>
         {% if not i.is_usable %}<span class="badge">만료</span>{% endif %}
       </td>
       <td>{{ i.expires_at|date:"Y-m-d H:i" }}</td>
       <td class="num">{{ i.use_count }}</td>
-      <td><form method="post" action="{% url 'invite_revoke' i.pk %}">{% csrf_token %}<button class="btn sm danger">폐기</button></form></td>
+      <td><form method="post" action="{% url 'invite_revoke' i.pk %}">{% csrf_token %}<button class="btn sm danger">초대 링크 폐기</button></form></td>
     </tr>
     {% empty %}<tr><td colspan="4" class="muted">초대 링크가 없습니다.</td></tr>{% endfor %}
     </tbody>
@@ -85,8 +85,8 @@
       <td class="num">{{ row.project_count }}</td>
       <td>{% if row.github %}<span class="badge">@{{ row.github.slug }}</span>{% else %}<span class="muted">미연결</span>{% endif %}</td>
       <td class="row">
-        <button type="button" class="btn sm" hx-get="{% url 'team_edit' row.team.pk %}" hx-target="#dialog" hx-swap="innerHTML">수정</button>
-        <form method="post" action="{% url 'team_delete' row.team.pk %}" onsubmit="return confirm('팀을 삭제할까요? 멤버와 프로젝트는 그대로 남습니다. GitHub 팀은 남습니다.')">{% csrf_token %}<button class="btn sm danger">삭제</button></form>
+        <button type="button" class="btn sm" hx-get="{% url 'team_edit' row.team.pk %}" hx-target="#dialog" hx-swap="innerHTML">팀 수정</button>
+        <form method="post" action="{% url 'team_delete' row.team.pk %}" onsubmit="return confirm('팀을 삭제할까요? 멤버와 프로젝트는 그대로 남습니다. GitHub 팀은 남습니다.')">{% csrf_token %}<button class="btn sm danger">팀 삭제</button></form>
       </td>
     </tr>
     {% empty %}<tr><td colspan="5" class="muted">팀이 없습니다.</td></tr>{% endfor %}

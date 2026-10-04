@@ -6,9 +6,9 @@
     <div>
       <h1 class="t24">내 포트폴리오{% if draft %} 초안{% endif %}</h1>
       {% if draft %}<p class="muted t13">비공개 Markdown 초안 · 마지막 수정 {{ draft.updated_at|date:"Y-m-d H:i" }}</p>
-      {% else %}<p class="muted t13">기록된 의사결정과 AI 작업 판단에서 출처를 선택해 Markdown 초안을 만듭니다.</p>{% endif %}
+      {% else %}<p class="muted t13">기록을 골라 AI에 전달할 포트폴리오 작성 요청을 만듭니다. AI가 작성한 내용을 붙여 넣어 비공개 초안으로 저장하세요.</p>{% endif %}
     </div>
-    {% if draft %}<a class="btn sm" href="{% url 'portfolio' %}">새 초안 만들기</a>{% endif %}
+    {% if draft %}<a class="btn sm" href="{% url 'portfolio' %}">새 초안 준비하기</a>{% endif %}
   </div>
 
   {% if saved_drafts %}
@@ -23,7 +23,7 @@
   {% endif %}
 
   {% if draft %}
-  {% if conflict_message %}<div class="notice bad" role="alert"><span aria-hidden="true">⚠</span><span class="grow">{{ conflict_message }} 현재 서버 초안은 아래 출처 목록에서 열 수 있습니다. 제출한 편집 내용은 본문 칸에 유지했습니다.</span></div>{% endif %}
+  {% if conflict_message %}<div class="notice bad" role="alert"><span aria-hidden="true">⚠</span><span class="grow">{{ conflict_message }} 현재 서버 초안은 “저장한 비공개 초안” 목록에서 다시 열 수 있습니다. 제출한 편집 내용은 본문 칸에 유지했습니다.</span></div>{% endif %}
   {% if draft.stale_source_ids %}<div class="notice bad" role="status"><span aria-hidden="true">⚠</span><span class="grow">출처 기록이 정정되거나 변경되었습니다. 현재 초안은 기존 출처 스냅샷을 유지합니다. 내용을 확인한 뒤 직접 수정하세요.</span></div>{% endif %}
   <form method="post" action="{% url 'portfolio_save' draft.pk %}" class="stack">
     {% csrf_token %}
@@ -32,8 +32,9 @@
     <label class="field"><span>초안 제목</span><input class="input" type="text" name="title" maxlength="200" value="{% if form_title != None %}{{ form_title }}{% else %}{{ draft.title }}{% endif %}" required></label>
     <label class="field"><span>Markdown 본문</span><textarea class="input" name="body_md" rows="28" spellcheck="true">{% if form_body != None %}{{ form_body }}{% else %}{{ draft.body_md }}{% endif %}</textarea></label>
     <div class="row gap">
-      <button class="btn primary" type="submit">저장</button>
+      <button class="btn primary" type="submit">초안 저장</button>
       <a class="btn" href="{% url 'portfolio_export' draft.pk %}">Markdown 다운로드</a>
+      <span class="muted t13">저장한 내용만 내려받습니다. 변경 후 먼저 저장하세요.</span>
     </div>
   </form>
   <div class="subgroup" style="margin-top:20px">
@@ -100,7 +101,7 @@
 
     {% if generation_prompt %}
     <section class="subgroup" style="margin-top:24px">
-      <div class="row gap wrap"><h2 class="t16">AI에게 전달할 프롬프트</h2><button type="button" class="btn sm" onclick="navigator.clipboard.writeText(document.getElementById('portfolio-prompt').value)">프롬프트 복사</button></div>
+      <div class="row gap wrap"><h2 class="t16">AI에게 전달할 프롬프트</h2><button type="button" class="btn sm" onclick="copyText(document.getElementById('portfolio-prompt').value, '프롬프트 복사됨')">프롬프트 복사</button></div>
       <p class="muted t13">선택한 기록의 의사 요지만 포함합니다. 프롬프트를 Codex, Claude Code, OpenCode 등에 전달한 뒤 생성된 Markdown을 아래에 붙여 넣어 저장하세요.</p>
       <textarea id="portfolio-prompt" class="input" rows="16" readonly>{{ generation_prompt }}</textarea>
       <form method="post" action="{% url 'portfolio_create' %}" class="stack" style="margin-top:14px">

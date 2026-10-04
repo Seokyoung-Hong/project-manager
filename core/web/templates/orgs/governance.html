@@ -4,7 +4,7 @@
 {% include "orgs/_pending_requests.html" %}
 {% if enforced_rows %}
 <section class="card">
-  <h2>설정에서 강제 중</h2>
+  <h2>현재 적용 중인 설정</h2>
   <table class="grid">
     <thead><tr><th>항목</th><th>값</th><th>어디서</th></tr></thead>
     <tbody>
@@ -20,7 +20,7 @@
     <span class="badge{% if is_default %}{% else %} primary{% endif %}">{% if is_default %}기본안{% else %}우리 조직 규칙{% endif %}</span>
   </div>
   <p class="muted t13">
-    사람과 AI가 함께 읽는 기준입니다. AI는 태스크를 만들거나 기한·담당을 바꾸기 전에 이 글을 읽고 그대로 움직입니다.
+    이 문서는 사람과 AI가 따를 합의입니다. 앱이 자동으로 적용하는 제한은 설정에서 확인하세요.
     {% if is_default %}지금은 기본 제안을 그대로 쓰고 있습니다. 조직에 맞게 고쳐 주세요.{% endif %}
   </p>
   {% if is_admin %}
@@ -28,7 +28,7 @@
     <textarea name="text" class="textarea" rows="28" aria-label="거버넌스 본문">{{ text }}</textarea>
     {% if error %}<div class="error">{{ error }}</div>{% endif %}
     <div class="row" style="margin-top:8px">
-      <button class="btn primary">저장</button>
+      <button class="btn primary">거버넌스 저장</button>
       {% if not is_default %}
       <button class="btn" name="reset" value="1" onclick="return confirm('기본안으로 되돌릴까요? 지금 내용은 지워집니다.')">기본안으로 되돌리기</button>
       {% endif %}

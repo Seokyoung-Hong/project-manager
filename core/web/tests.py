@@ -601,7 +601,8 @@ def test_mobile_project_picker_names_current_project(logged, project, task):
     assert f"<strong>{project.name}</strong>" in body
     assert f'href="/projects/{project.pk}" aria-current="page"' in body
     assert 'class="tiles five project-kpis" tabindex="0" role="region"' in body
-    assert "프로젝트 태스크 요약, 좌우로 스크롤 가능" in body
+    assert 'aria-label="프로젝트 태스크 요약"' in body
+    assert "프로젝트 태스크 요약, 좌우로 스크롤 가능" not in body
 
 
 def test_rail_shows_open_counts(logged, project, task):
@@ -714,7 +715,8 @@ def test_org_overview_marks_mobile_scroll_regions(as_admin, org, project, task):
     body = as_admin.get(f"/orgs/{org.pk}").content.decode()
     assert 'class="tabs org-tabs"' in body
     assert 'class="tiles org-kpis" tabindex="0" role="region"' in body
-    assert 'aria-label="조직 태스크 요약, 좌우로 스크롤 가능"' in body
+    assert 'aria-label="조직 태스크 요약"' in body
+    assert "조직 태스크 요약, 좌우로 스크롤 가능" not in body
     assert 'class="table-scroll" tabindex="0" role="region"' in body
     assert 'class="grid project-table"' in body
     assert 'class="grid assignee-table"' in body
@@ -1461,11 +1463,11 @@ def test_settings_controls_have_programmatic_labels(client, member, admin, org, 
 
 def test_governance_shows_enforced_settings(as_admin, org):
     body = as_admin.get(f"/orgs/{org.pk}/governance").content.decode()
-    assert "설정에서 강제 중" not in body
+    assert "현재 적용 중인 설정" not in body
 
     as_admin.post(f"/orgs/{org.pk}/settings", {"task.require_done_when": "on"})
     body = as_admin.get(f"/orgs/{org.pk}/governance").content.decode()
-    assert "설정에서 강제 중" in body
+    assert "현재 적용 중인 설정" in body
     assert "완료 조건 필수" in body
 
 
@@ -1486,7 +1488,7 @@ def test_archive_lives_in_project_settings_not_the_header(client, org, project, 
     assert "프로젝트 보관" not in head
     body = client.get(f"/projects/{project.pk}/settings").content.decode()
     assert "프로젝트 보관" in body
-    assert "미완료까지 취소하고 보관" in body
+    assert "미완료 태스크를 모두 취소하고 프로젝트 보관" in body
     assert "프로젝트 삭제" not in body  # 보관 전에는 지울 수 없다
 
 

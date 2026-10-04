@@ -30,6 +30,16 @@ class Spec:
     hi: int = 0
     ai_only: bool = False  # source == "mcp" 에만 적용
 
+    @property
+    def input_choices(self):
+        """시각·요일의 숫자 매핑을 유지하면서 입력 화면에서는 의미를 보여 준다."""
+        if self.key in ("notify.send_hour", "notify.weekly_hour", "user.notify_hour"):
+            fallback = "조직 설정 따름" if self.scope == "user" else "서버 기본값"
+            return [(-1, fallback)] + [(n, f"{n:02d}:00") for n in range(24)]
+        if self.key == "notify.weekly_weekday":
+            return [(-1, "서버 기본 요일")] + [(n, day + "요일") for n, day in enumerate("월화수목금토일")]
+        return []
+
 
 def _s(*a, **kw):
     return Spec(*a, **kw)
@@ -75,7 +85,7 @@ SPECS: dict[str, Spec] = {
             True,
             "task",
             "완료 조건 필수",
-            "완료 조건을 적지 않으면 태스크를 만들 수 없습니다.",
+            "켜면 완료 조건을 입력해야 태스크를 만들 수 있습니다.",
         ),
         _s(
             "task.due_required",
@@ -85,7 +95,7 @@ SPECS: dict[str, Spec] = {
             True,
             "task",
             "기한 필수",
-            "기한 미정 사유로 대신할 수 없습니다.",
+            "켜면 기한을 입력해야 하며, 기한 미정 사유로 대신할 수 없습니다.",
         ),
         _s(
             "task.default_due_days",
@@ -95,7 +105,7 @@ SPECS: dict[str, Spec] = {
             True,
             "task",
             "기본 기한(영업일)",
-            "생성 화면의 기한 초기값을 오늘+N영업일로 제안합니다. 자동으로 채우지는 않습니다. 0이면 제안하지 않습니다.",
+            "생성 화면에서 오늘 이후 설정한 영업일 수만큼 지난 목표일을 제안합니다. 영업일은 월~금이며 공휴일은 따로 제외하지 않습니다. 자동으로 채우지는 않습니다. 0이면 제안하지 않습니다.",
             lo=0,
             hi=30,
         ),
@@ -130,7 +140,7 @@ SPECS: dict[str, Spec] = {
             True,
             "task",
             "검토 대기 필수",
-            "완료는 검토 대기를 거쳐서만 할 수 있습니다.",
+            "켜면 검토 대기를 거쳐야 완료할 수 있습니다.",
         ),
         _s(
             "task.self_review",
@@ -150,7 +160,7 @@ SPECS: dict[str, Spec] = {
             True,
             "task",
             "재개 사유 필수",
-            "완료·취소한 태스크를 되돌릴 때 사유를 적게 합니다.",
+            "켜면 완료·취소한 태스크를 되돌릴 때 사유를 입력해야 합니다.",
         ),
         _s("task.cancel_reason_required", "bool", False, "org", True, "task", "취소 사유 필수", ""),
         _s(
@@ -161,7 +171,7 @@ SPECS: dict[str, Spec] = {
             True,
             "task",
             "담당자 변경 사유 필수",
-            "사유는 이력에 남습니다.",
+            "켜면 담당자 변경 사유를 입력해야 하며, 사유는 이력에 남습니다.",
         ),
         _s(
             "task.due_change_reason",
@@ -171,7 +181,7 @@ SPECS: dict[str, Spec] = {
             True,
             "task",
             "기한 변경 사유 필수",
-            "연장은 이미 사유를 받습니다. 단축·삭제에도 사유를 받게 합니다.",
+            "켜면 기한 단축·삭제에도 사유를 입력해야 합니다. 기한 연장은 이 설정과 관계없이 사유를 받습니다.",
         ),
         _s(
             "task.overdue_grace_days",
@@ -260,7 +270,7 @@ SPECS: dict[str, Spec] = {
             False,
             "project",
             "프로젝트 관리자 1명 이상",
-            "관리자가 없는 프로젝트를 만들거나 마지막 관리자를 뺄 수 없습니다. 이미 관리자가 없는 프로젝트는 그대로 둡니다.",
+            "켜면 관리자가 없는 프로젝트를 만들거나 마지막 관리자를 뺄 수 없습니다. 이미 관리자가 없는 프로젝트는 그대로 둡니다.",
         ),
         _s(
             "project.default_view",
@@ -294,7 +304,7 @@ SPECS: dict[str, Spec] = {
             "org",
             False,
             "org",
-            "스킬 태그 편집",
+            "보유 기술 태그 편집",
             "",
             choices=(("admin", "조직 관리자만"), ("self", "본인도 가능")),
         ),
@@ -306,7 +316,7 @@ SPECS: dict[str, Spec] = {
             False,
             "org",
             "팀 자율 참여",
-            "멤버가 스스로 팀에 들어가고 나갈 수 있습니다.",
+            "켜면 멤버가 스스로 팀에 들어가고 나갈 수 있습니다.",
         ),
         # --- 4.4 AI 정책 (source == "mcp" 에만) ---
         _s(
@@ -497,7 +507,7 @@ SPECS: dict[str, Spec] = {
             False,
             "notify",
             "마감 알림 시각",
-            "-1이면 서버 기본값(.env.discord의 SEND_HOUR)을 씁니다.",
+            "0~23은 알림을 보낼 시각입니다. -1이면 서버에 설정된 기본 시각을 따릅니다.",
             lo=-1,
             hi=23,
         ),
@@ -525,7 +535,7 @@ SPECS: dict[str, Spec] = {
             False,
             "notify",
             "주말에는 보내지 않기",
-            "토·일에는 마감 DM을 보내지 않습니다.",
+            "켜면 토·일에는 마감 DM을 보내지 않습니다.",
         ),
         _s("notify.weekly_enabled", "bool", True, "org", False, "notify", "주간 보고", ""),
         _s(
@@ -536,7 +546,7 @@ SPECS: dict[str, Spec] = {
             False,
             "notify",
             "주간 보고 요일",
-            "0=월요일. -1이면 서버 기본값입니다.",
+            "0=월요일, 1=화요일, 2=수요일, 3=목요일, 4=금요일, 5=토요일, 6=일요일입니다. -1이면 서버 기본 요일을 따릅니다.",
             lo=-1,
             hi=6,
         ),
@@ -548,7 +558,7 @@ SPECS: dict[str, Spec] = {
             False,
             "notify",
             "주간 보고 시각",
-            "-1이면 서버 기본값입니다.",
+            "0~23은 보고를 보낼 시각입니다. -1이면 서버 기본 시각을 따릅니다.",
             lo=-1,
             hi=23,
         ),
@@ -559,7 +569,7 @@ SPECS: dict[str, Spec] = {
             "org",
             True,
             "notify",
-            "막힘 에스컬레이션(일)",
+            "막힘 관리자 알림(일)",
             "막힘이 N일을 넘으면 프로젝트 관리자에게 DM을 보냅니다. 0이면 보내지 않습니다.",
             lo=0,
             hi=14,
@@ -601,7 +611,7 @@ SPECS: dict[str, Spec] = {
             False,
             "notify",
             "팀 채널 주간 보고",
-            "조직 채널 외에 팀 채널에도 그 팀 담당 프로젝트만 추려 보냅니다.",
+            "켜면 조직 채널 외에 팀 채널에도 그 팀 담당 프로젝트만 추려 보냅니다.",
         ),
         # --- 4.6 개인 설정 ---
         _s(
@@ -612,7 +622,7 @@ SPECS: dict[str, Spec] = {
             False,
             "user",
             "개인 DM 받기",
-            "끄면 마감·에스컬레이션 DM을 받지 않습니다. 채널 주간 보고는 그대로입니다.",
+            "끄면 마감·막힘·검토 대기 관리자 알림 DM을 받지 않습니다. 채널 주간 보고는 그대로입니다.",
         ),
         _s(
             "user.notify_kinds",
@@ -633,7 +643,7 @@ SPECS: dict[str, Spec] = {
             False,
             "user",
             "내 마감 알림 시각",
-            "-1이면 조직 설정을 따릅니다.",
+            "0~23은 내 마감 알림 시각입니다. -1이면 조직 설정을 따릅니다.",
             lo=-1,
             hi=23,
         ),
@@ -817,7 +827,13 @@ def display(key: str, value) -> str:
         names = dict(spec.choices)
         return ", ".join(names.get(v, v) for v in value) or "없음"
     if spec.kind == "int" and value == -1:
-        return "서버 기본값"
+        return "조직 설정 따름" if spec.scope == "user" else "서버 기본값"
+    if spec.input_choices:
+        return dict(spec.input_choices).get(value, str(value))
+    if value == 0 and key in ("task.default_due_days", "notify.blocked_escalate_days", "notify.review_nudge_days"):
+        return "사용 안 함"
+    if value == 0 and key in ("task.doing_limit", "task.priority_cap", "ai.priority_cap", "org.invite_max_uses"):
+        return "제한 없음"
     return str(value)
 
 

@@ -1,0 +1,125 @@
+Browser tab: 2, Title: "API 토큰", URL: "http://127.0.0.1:8017/settings/tokens".
+1 AXWebArea API 토큰, URL: 127.0.0.1:8017/settings/tokens
+	2 container
+		3 button (collapsed) Description: 조직 전환, Help: 산돌이, Secondary Actions: Expand
+			4 text 산돌이
+		5 container 주 메뉴
+			6 link Description: 오늘, Value: 127.0.0.1:8017/today
+			7 link Description: 내 태스크, Value: 127.0.0.1:8017/me
+			8 link Description: 프로젝트, Value: 127.0.0.1:8017/projects
+			9 link Description: 조직, Value: 127.0.0.1:8017/org
+			10 link Description: 검색, Value: 127.0.0.1:8017/search
+		11 link Description: 빠른 추가, Value: 127.0.0.1:8017/today?quick=1
+		12 button (collapsed) Description: 내 메뉴, Help: 김, Secondary Actions: Expand
+			13 text 김
+		14 heading 설정, Value: 1
+			15 text 설정
+		16 container 설정 메뉴
+			17 link Description: 프로필, Value: 127.0.0.1:8017/settings/profile
+			18 link Description: 환경설정, Value: 127.0.0.1:8017/settings/preferences
+			19 link Description: API 토큰, Value: 127.0.0.1:8017/settings/tokens
+		20 container
+			21 heading API 토큰, Value: 2
+				22 text API 토큰
+			23 table
+				24 row
+					25 cell
+						26 text 이름
+					27 cell
+						28 text 앞자리
+					29 cell
+						30 text 범위
+					31 cell
+						32 text 용도
+					33 cell
+						34 text 만료
+				35 row
+					36 cell
+						37 text 토큰이 없습니다.
+			38 container
+				39 text 이름
+				40 text field (settable) 이름, ID: id_name
+			41 container
+				42 text 범위
+				43 pop up button (collapsed, settable) 범위, Value: 읽기, ID: id_scope, Secondary Actions: Expand
+					44 menu
+						45 (selected) 읽기
+						46 읽기·쓰기
+			47 container
+				48 text 용도
+				49 pop up button (collapsed, settable) 용도, Value: AI 도구(Claude·Codex 등), ID: id_purpose, Secondary Actions: Expand
+					50 menu
+						51 (selected) AI 도구(Claude·Codex 등)
+						52 사람이 쓰는 스크립트·자동화
+			53 button 토큰 발급
+		54 container
+			55 heading AI 클라이언트 연결, Value: 2
+				56 text AI 클라이언트 연결
+			57 text 셸이 있는 Claude Code에서는  스킬 이 가장 가볍습니다. claude.ai 웹·모바일처럼 셸이 없는 곳은  OAuth  커넥터로 붙습니다.
+			58 table
+				59 row
+					60 cell
+						61 text 클라이언트
+					62 cell
+						63 text 설정
+				64 row
+					65 cell
+						66 text Claude Code
+						67 text 스킬 · 이 기기만
+					68 cell
+						69 text 저장소의 
+						70 text skills/
+						71 text  폴더(
+						72 text pm
+						73 text , 
+						74 text pm-*
+						75 text )를 
+						76 text ~/.claude/skills/
+						77 text 에 복사하고 
+						78 text pm.py login
+						79 text 으로 로그인합니다(브라우저에서 허용 — 토큰을 손으로 옮기지 않습니다). 
+						80 text /pm-start
+						81 text , 
+						82 text /pm-new
+						83 text  같은 명령이 생깁니다. 자세한 방법은 
+						84 text skills/README.md
+						85 text 를 보세요.
+				86 row
+					87 cell
+						88 text Claude 앱 / claude.ai
+						89 text OAuth
+					90 cell
+						91 text 설정 → 커넥터 → 커스텀 커넥터 추가 → URL 
+						92 text http://127.0.0.1:8017/mcp
+						93 button 복사
+						94 text '연결'을 누르면 이 사이트의 로그인·허용 화면이 뜹니다. 허용하면 토큰이 자동으로 발급돼 아래 목록에 나타납니다 — 위에서 따로 발급하지 않아도 됩니다.
+				95 row
+					96 cell
+						97 text Claude Code
+						98 text MCP · 헤더
+					99 cell
+						100 text claude mcp add --transport http sandol http://127.0.0.1:8017/mcp --header "Authorization: Bearer <TOKEN>"
+						101 button 복사
+				102 row
+					103 cell
+						104 text Codex CLI
+						105 text 헤더
+					106 cell
+						107 text ~/.codex/config.toml
+						108 text 에 
+						109 text [mcp_servers.sandol]
+						110 text url = "http://127.0.0.1:8017/mcp"
+						111 text bearer_token_env_var = "SANDOL_TOKEN"
+						112 text  추가, 환경 변수 
+						113 text SANDOL_TOKEN=<TOKEN>
+				114 row
+					115 cell
+						116 text 그 밖의 클라이언트
+						117 text 개인 비밀 URL
+					118 cell
+						119 text OAuth도 헤더도 못 넣는 곳이면 URL에 토큰을 넣습니다: 
+						120 text http://127.0.0.1:8017/u/<TOKEN>/mcp
+						121 text , 인증 없음
+			122 text <TOKEN>은 위에서 발급한 값입니다. 개인 비밀 URL은 비밀번호와 같습니다. 주소창과 프록시 기록에 남으니, 넣을 곳이 있으면 헤더나 OAuth를 쓰세요. 유출되면 이 화면에서 폐기하세요.
+
+The focused UI element is 1 AXWebArea API 토큰, URL: 127.0.0.1:8017/settings/tokens

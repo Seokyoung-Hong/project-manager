@@ -2,7 +2,7 @@ from datetime import date, timedelta
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.http import Http404, HttpResponse
+from django.http import Http404, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
 
@@ -232,7 +232,7 @@ def task_text(request, task_id, field):
     try:
         ts.update_text(task, field, request.POST.get("value", ""), actor=request.user)
     except ServiceError as e:
-        return HttpResponse(" ".join(e.errors.values()), status=400)
+        return JsonResponse({"error": " ".join(e.errors.values())}, status=400, json_dumps_params={"ensure_ascii": False})
     return trigger(HttpResponse(status=204), "saved")
 
 
@@ -363,14 +363,14 @@ def checklist_action(request, item_id, action):
     return trigger(_checklist(request, task), "task-changed", task)
 
 
-def _refs(request, task, error=None):
+def _refs(request, task, error=None, link_form=None):
     return render(
         request,
         "tasks/_refs.html",
         {
             "task": task,
             "links": task.links.all(),
-            "link_form": LinkForm(),
+            "link_form": link_form if link_form is not None else LinkForm(),
             "notes": task.meeting_notes.all(),
             "org_notes": task.project.org.notes.all(),
             "docs": task.docs.all(),
@@ -388,12 +388,12 @@ def link_add(request, task_id):
     task = task_or_404(request.user, task_id)
     form = LinkForm(request.POST)
     if not form.is_valid():
-        return _refs(request, task, error="링크 입력이 올바르지 않습니다.")
+        return _refs(request, task, error="표시된 입력 오류를 고쳐 주세요.", link_form=form)
     d = form.cleaned_data
     try:
         ts.add_link(actor=request.user, task=task, title=d["title"], url=d["url"], kind=d["kind"])
     except ServiceError as e:
-        return _refs(request, task, error=" ".join(e.errors.values()))
+        return _refs(request, task, error=" ".join(e.errors.values()), link_form=form)
     return _refs(request, task)
 
 

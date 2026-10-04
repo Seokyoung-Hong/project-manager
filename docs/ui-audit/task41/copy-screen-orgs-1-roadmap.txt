@@ -1,0 +1,64 @@
+Browser tab: 2, Title: "로드맵", URL: "http://127.0.0.1:8017/orgs/1/roadmap".
+1 AXWebArea 로드맵, URL: 127.0.0.1:8017/orgs/1/roadmap
+	2 container
+		3 button (collapsed) Description: 조직 전환, Help: 산돌이, Secondary Actions: Expand
+			4 text 산돌이
+		5 container 주 메뉴
+			6 link Description: 오늘, Value: 127.0.0.1:8017/today
+			7 link Description: 내 태스크, Value: 127.0.0.1:8017/me
+			8 link Description: 프로젝트, Value: 127.0.0.1:8017/projects
+			9 link Description: 조직, Value: 127.0.0.1:8017/org
+			10 link Description: 검색, Value: 127.0.0.1:8017/search
+		11 link Description: 빠른 추가, Value: 127.0.0.1:8017/today?quick=1
+		12 button (collapsed) Description: 내 메뉴, Help: 김, Secondary Actions: Expand
+			13 text 김
+		14 heading 산돌이, Value: 1
+			15 text 산돌이
+		16 container 조직 메뉴
+			17 link Description: 개요, Value: 127.0.0.1:8017/orgs/1
+			18 link Description: 팀, Value: 127.0.0.1:8017/orgs/1/teams
+			19 link Description: 부하 현황, Value: 127.0.0.1:8017/orgs/1/capacity
+			20 link Description: 로드맵, Value: 127.0.0.1:8017/orgs/1/roadmap
+			21 link Description: 거버넌스, Value: 127.0.0.1:8017/orgs/1/governance
+			22 link Description: 회의록, Value: 127.0.0.1:8017/orgs/1/notes
+			23 link Description: 설정, Value: 127.0.0.1:8017/orgs/1/settings
+		24 container
+			25 heading 로드맵, Value: 2
+				26 text 로드맵
+			27 button 새 마일스톤
+			28 text 오늘 10월 11월 12월 사용성 개선 ProjectManager · 10월 18일 · 완료 1/6
+			29 button 수정
+			30 text 사용성 개선 학식 API · 10월 18일 · 완료 0/3
+			31 button 수정
+			32 text 사용성 개선 강의실 시간표 · 10월 18일 · 완료 0/3
+			33 button 수정
+			34 text 사용성 개선 공지 알림 · 10월 18일 · 완료 0/3
+			35 button 수정
+			36 text 세로선은 오늘, 점선 테두리는 준비 중, 채워진 부분은 진행률입니다.
+		37 container
+			38 heading 프로젝트 의존성, Value: 2
+				39 text 프로젝트 의존성
+			40 text 의존성이 없습니다.
+			41 text 시작 프로젝트
+			42 pop up button (collapsed, settable) 시작 프로젝트, ID: dependency-from, Secondary Actions: Expand
+				43 menu
+					44 (selected) 시작 프로젝트
+					45 ProjectManager
+					46 강의실 시간표
+					47 공지 알림
+					48 학식 API
+			49 text 의존 프로젝트
+			50 pop up button (collapsed, settable) 의존 프로젝트, ID: dependency-to, Secondary Actions: Expand
+				51 menu
+					52 (selected) 의존 프로젝트
+					53 ProjectManager
+					54 강의실 시간표
+					55 공지 알림
+					56 학식 API
+			57 container
+				58 text 의존성 메모
+				59 text field (settable) 의존성 메모, ID: dependency-note
+			60 checkbox (settable, integer) Description: 차단, Value: 0
+			61 button 추가
+
+The focused UI element is 1 AXWebArea 로드맵, URL: 127.0.0.1:8017/orgs/1/roadmap

@@ -1,0 +1,12 @@
+Browser tab: 2, Title: "ProjectManager · API 문서", URL: "http://127.0.0.1:8017/projects/1/api".
+The following is a diff from the previous accessibility tree with ~ and + representing changed and added elements, respectively. Removed elements are summarized by ID range.
+Removed element IDs: 31-48
+~1 AXWebArea ProjectManager · API 문서, URL: 127.0.0.1:8017/projects/1/api
+~		30 text API 문서
++		31 container
++			32 text field (settable)
++			33 button 주소에서 불러오기
++			34 button 파일, ID: api-upload-file
++			35 text 파일
++		36 text 아직 등록된 문서가 없습니다. 주소를 넣거나 openapi.json을 올리세요.
+The focused UI element is 1 AXWebArea ProjectManager · API 문서, URL: 127.0.0.1:8017/projects/1/api

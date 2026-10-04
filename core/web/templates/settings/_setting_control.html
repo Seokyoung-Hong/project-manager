@@ -4,7 +4,13 @@
   <span class="setting-toggle-state" aria-hidden="true"></span>
 </label>
 {% elif row.spec.kind == "int" %}
+{% if row.spec.input_choices %}
+<select id="setting-{{ row.spec.key }}" class="select setting-select" name="{{ row.spec.key }}"{% if row.spec.help %} aria-describedby="setting-help-{{ row.spec.key }}"{% endif %}>
+  {% for code, clabel in row.spec.input_choices %}<option value="{{ code }}"{% if code == row.value %} selected{% endif %}>{{ clabel }}</option>{% endfor %}
+</select>
+{% else %}
 <input id="setting-{{ row.spec.key }}" class="input setting-number" type="number" name="{{ row.spec.key }}" value="{{ row.value }}" min="{{ row.spec.lo }}" max="{{ row.spec.hi }}"{% if row.spec.help %} aria-describedby="setting-help-{{ row.spec.key }}"{% endif %}>
+{% endif %}
 {% elif row.spec.kind == "choice" %}
 <select id="setting-{{ row.spec.key }}" class="select setting-select" name="{{ row.spec.key }}"{% if row.spec.help %} aria-describedby="setting-help-{{ row.spec.key }}"{% endif %}>
   {% for code, clabel in row.spec.choices %}<option value="{{ code }}"{% if code == row.value %} selected{% endif %}>{{ clabel }}</option>{% endfor %}

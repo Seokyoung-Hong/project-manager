@@ -1,3 +1,5 @@
+from datetime import timedelta
+
 from django import forms
 from django.contrib.auth.forms import AuthenticationForm, UserCreationForm
 
@@ -7,6 +9,22 @@ from projects.models import Project
 from tasks.models import Link
 
 PRIORITY_CHOICES = [(n, str(n)) for n in range(10, 0, -1)]
+
+
+def suggested_due_date(*, org, project=None):
+    """설정의 영업일은 월~금이다. 날짜를 강제하지 않고 생성 폼에 제안만 한다."""
+    from common.dates import today_kst
+    from orgs.settings import effective
+
+    remaining = effective("task.default_due_days", org=org, project=project)
+    if not remaining:
+        return ""
+    day = today_kst()
+    while remaining:
+        day += timedelta(days=1)
+        if day.weekday() < 5:
+            remaining -= 1
+    return day.isoformat()
 
 
 class LoginForm(AuthenticationForm):
@@ -76,11 +94,12 @@ class TaskInlineForm(forms.Form):
     # IdempotencyKey.key는 varchar(100)이다. 클라이언트가 보내는 값이므로 폼에서 막는다.
     idem = forms.CharField(widget=forms.HiddenInput, required=False, max_length=100)
 
-    def __init__(self, *args, org, **kwargs):
+    def __init__(self, *args, org, project=None, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields["assignee"].queryset = org.members.filter(is_active=True).order_by(
             "display_name"
         )
+        self.suggested_due_date = suggested_due_date(org=org, project=project)
 
 
 class QuickTaskForm(forms.Form):
@@ -103,6 +122,9 @@ class QuickTaskForm(forms.Form):
             .select_related("org")
             .order_by("org__name", "name")
         )
+        # 선택한 프로젝트의 설정에 맞는 제안을 제공한다. 날짜 입력은 사용자가 결정한다.
+        for project in self.fields["project"].queryset:
+            project.suggested_due_date = suggested_due_date(org=project.org, project=project)
 
 
 class LinkForm(forms.Form):

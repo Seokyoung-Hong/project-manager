@@ -1,7 +1,8 @@
 from datetime import datetime
 
+from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.http import Http404, HttpResponse
+from django.http import Http404, HttpResponse, JsonResponse
 from django.shortcuts import redirect, render
 from django.urls import reverse
 from django.views.decorators.http import require_POST
@@ -55,10 +56,10 @@ def org_notes(request, org_id):
     for n in notes:
         key = n.project_id or 0
         if key not in seen:
-            seen[key] = {"title": n.project.name if n.project else "팀 공통", "items": []}
+            seen[key] = {"title": n.project.name if n.project else "조직 공통(프로젝트 미지정)", "items": []}
             groups.append(seen[key])
         seen[key]["items"].append(n)
-    groups.sort(key=lambda g: g["title"] == "팀 공통")
+    groups.sort(key=lambda g: g["title"] == "조직 공통(프로젝트 미지정)")
     for g in groups:
         g["hint"] = f"{len(g['items'])}건"
 
@@ -88,7 +89,8 @@ def note_new(request, org_id):
     org = org_or_404(request.user, org_id)
     try:
         note = ts_notes.create_note(org=org, actor=request.user)
-    except ServiceError:
+    except ServiceError as e:
+        messages.error(request, "회의록을 만들지 못했습니다. " + " ".join(e.errors.values()))
         return redirect("org_notes", org_id=org.pk)
     return redirect(f"{reverse('org_notes', args=[org.pk])}?note={note.pk}")
 
@@ -103,12 +105,14 @@ def note_upload(request, org_id):
     if raw_project:
         project = project_or_404(request.user, raw_project)
     if f is None:
+        messages.error(request, "업로드할 Markdown 파일(.md 또는 .markdown)을 선택하세요.")
         return redirect("org_notes", org_id=org.pk)
     try:
         note = ts_notes.upload_note(
             org=org, actor=request.user, filename=f.name, raw=f.read(), project=project
         )
-    except ServiceError:
+    except ServiceError as e:
+        messages.error(request, "회의록을 업로드하지 못했습니다. " + " ".join(e.errors.values()))
         return redirect("org_notes", org_id=org.pk)
     return redirect(f"{reverse('org_notes', args=[org.pk])}?note={note.pk}")
 
@@ -136,9 +140,9 @@ def note_save(request, note_id):
             note, field, value, actor=request.user, expected_version=version_of(request)
         )
     except ServiceError as e:
-        return HttpResponse(" ".join(e.errors.values()), status=400)
+        return JsonResponse({"error": " ".join(e.errors.values())}, status=400, json_dumps_params={"ensure_ascii": False})
     except ConflictError:
-        return HttpResponse(CONFLICT_MSG, status=409)
+        return JsonResponse({"error": CONFLICT_MSG}, status=409, json_dumps_params={"ensure_ascii": False})
     resp = HttpResponse(status=204)
     resp["X-Note-Version"] = str(note.version)
     return trigger(resp, "saved")
@@ -151,7 +155,8 @@ def note_delete(request, note_id):
     org_id = note.org_id
     try:
         ts_notes.delete_note(note, request.user)
-    except ServiceError:
+    except ServiceError as e:
+        messages.error(request, "회의록을 삭제하지 못했습니다. " + " ".join(e.errors.values()))
         return redirect(f"{reverse('org_notes', args=[org_id])}?note={note.pk}")
     return redirect("org_notes", org_id=org_id)
 

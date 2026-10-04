@@ -1,0 +1,26 @@
+[
+  {
+    "name": "clipboard-cancel",
+    "url": "http://127.0.0.1:8018/portfolio/prompt",
+    "text": "산돌이\n오늘\n내 태스크\n프로젝트\n조직\n검색\n빠른 추가\n김\n내 포트폴리오\n\n기록을 골라 AI에 전달할 포트폴리오 작성 요청을 만듭니다. AI가 작성한 내용을 붙여 넣어 비공개 초안으로 저장하세요.\n\n저장한 비공개 초안\nASTRA saved draft\n출처 1건 · 수정 2026-10-04 19:24\n조직\n산돌이\n프로젝트\n모든 프로젝트\nProjectManager\n강의실 시간표\n공지 알림\n학식 API\n시작일\n종료일\n사용자 기록 종류\n전체 기록\n주요 선택\n요구·제약\n명시적 답변\n방향 수정\n구현 방식 지시\nAI 협업 방식\n출처 보기\n포트폴리오 출처\n사용자 기록과 AI 판단을 구분해 표시합니다. 현재 조건 1건 / 전체 1건\nProjectManager\nTASK-16 · 2026-10-04\n내 결정\nPM에서 확인\nASTRA UX decision seed\n선택한 출처로 AI 프롬프트 만들기\nAI에게 전달할 프롬프트\n프롬프트 복사\n\n선택한 기록의 의사 요지만 포함합니다. 프롬프트를 Codex, Claude Code, OpenCode 등에 전달한 뒤 생성된 Markdown을 아래에 붙여 넣어 저장하세요.\n\n초안 제목\nAI가 작성한 Markdown\n비공개 초안 저장",
+    "returned": false,
+    "dialogs": [
+      "prompt"
+    ],
+    "successTextPresent": false
+  },
+  {
+    "name": "notes-expired-before-return",
+    "url": "http://127.0.0.1:8018/orgs/1/notes?scope=all&note=4",
+    "text": "산돌이\n오늘\n내 태스크\n프로젝트\n조직\n검색\n빠른 추가\n김\n산돌이\n개요\n팀\n부하 현황\n로드맵\n거버넌스\n회의록\n설정\n← 회의록 목록\n저장 완료를 확인하지 못했습니다. 로그인 상태를 확인하세요. 작성 중인 내용은 이 화면에 남아 있습니다. 내용을 복사해 보관한 뒤 다시 시도하세요.\n프로젝트\n조직 공통(프로젝트 미지정)\nProjectManager\n강의실 시간표\n공지 알림\n학식 API\n작성자\n김하늘\n회의 일시\n태그\n본문 편집\n본문 편집을 눌러 작성하세요.\n업무 흐름과 안내를 명확하게 정리합니다.\n결정 사항\n•\n주요 화면의 일관성을 우선합니다.\n•\n변경 후 실제 동작을 확인합니다.\n쓰는 법\n회의록 삭제",
+    "body": "ASTRA_SESSION_EXPIRED_CONTENT",
+    "status": "저장 완료를 확인하지 못했습니다. 로그인 상태를 확인하세요. 작성 중인 내용은 이 화면에 남아 있습니다. 내용을 복사해 보관한 뒤 다시 시도하세요."
+  },
+  {
+    "name": "notes-expired-return-blocked",
+    "url": "http://127.0.0.1:8018/orgs/1/notes?scope=all&note=4",
+    "text": "산돌이\n오늘\n내 태스크\n프로젝트\n조직\n검색\n빠른 추가\n김\n산돌이\n개요\n팀\n부하 현황\n로드맵\n거버넌스\n회의록\n설정\n← 회의록 목록\n저장 완료를 확인하지 못했습니다. 로그인 상태를 확인하세요. 작성 중인 내용은 이 화면에 남아 있습니다. 내용을 복사해 보관한 뒤 다시 시도하세요.\n프로젝트\n조직 공통(프로젝트 미지정)\nProjectManager\n강의실 시간표\n공지 알림\n학식 API\n작성자\n김하늘\n회의 일시\n태그\n본문 편집\n본문 편집을 눌러 작성하세요.\n업무 흐름과 안내를 명확하게 정리합니다.\n결정 사항\n•\n주요 화면의 일관성을 우선합니다.\n•\n변경 후 실제 동작을 확인합니다.\n쓰는 법\n회의록 삭제",
+    "body": "ASTRA_SESSION_EXPIRED_CONTENT",
+    "status": "저장 완료를 확인하지 못했습니다. 로그인 상태를 확인하세요. 작성 중인 내용은 이 화면에 남아 있습니다. 내용을 복사해 보관한 뒤 다시 시도하세요."
+  }
+]

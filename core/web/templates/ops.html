@@ -2,7 +2,8 @@
 {% block main %}
 {% with settings_tab="ops" %}{% include "settings/_tabs.html" %}{% endwith %}
 <section class="card">
-  <div class="card-head"><h2>운영 상태</h2><a class="btn sm" href="{% url 'export_json' %}">JSON 내보내기</a></div>
+  <div class="card-head"><h2>운영 상태</h2><a class="btn sm" href="{% url 'export_json' %}">운영 데이터 JSON 내보내기</a></div>
+  <p class="muted t13">사용자 일부 정보, 조직·멤버·팀·초대 일부 정보, 프로젝트·태스크·체크리스트·오늘 목록·외부 링크·변경 이력을 포함합니다. 문서·회의록·의사결정 기록·포트폴리오 초안·연동 자격정보는 포함하지 않습니다. 전체 백업으로 사용할 수 없습니다.</p>
   <table class="grid">
     <thead><tr><th>이름</th><th>마지막 실행</th><th>결과</th><th>상세</th></tr></thead>
     <tbody>

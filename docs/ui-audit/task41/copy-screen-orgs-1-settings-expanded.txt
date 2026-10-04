@@ -1,0 +1,460 @@
+Browser tab: 2, Title: "조직 설정", URL: "http://127.0.0.1:8017/orgs/1/settings".
+1 AXWebArea 조직 설정, URL: 127.0.0.1:8017/orgs/1/settings
+	2 container
+		3 button (collapsed) Description: 조직 전환, Help: 산돌이, Secondary Actions: Expand
+			4 text 산돌이
+		5 container 주 메뉴
+			6 link Description: 오늘, Value: 127.0.0.1:8017/today
+			7 link Description: 내 태스크, Value: 127.0.0.1:8017/me
+			8 link Description: 프로젝트, Value: 127.0.0.1:8017/projects
+			9 link Description: 조직, Value: 127.0.0.1:8017/org
+			10 link Description: 검색, Value: 127.0.0.1:8017/search
+		11 link Description: 빠른 추가, Value: 127.0.0.1:8017/today?quick=1
+		12 button (collapsed) Description: 내 메뉴, Help: 김, Secondary Actions: Expand
+			13 text 김
+		14 heading 산돌이, Value: 1
+			15 text 산돌이
+		16 container 조직 메뉴
+			17 link Description: 개요, Value: 127.0.0.1:8017/orgs/1
+			18 link Description: 팀, Value: 127.0.0.1:8017/orgs/1/teams
+			19 link Description: 부하 현황, Value: 127.0.0.1:8017/orgs/1/capacity
+			20 link Description: 로드맵, Value: 127.0.0.1:8017/orgs/1/roadmap
+			21 link Description: 거버넌스, Value: 127.0.0.1:8017/orgs/1/governance
+			22 link Description: 회의록, Value: 127.0.0.1:8017/orgs/1/notes
+			23 link Description: 설정, Value: 127.0.0.1:8017/orgs/1/settings
+		24 text 조직 기본값과 잠금
+		25 text “프로젝트 변경 허용”이 켜진 항목만 프로젝트에서 다른 값을 저장할 수 있습니다. 끄면 조직 값으로 고정됩니다. 개인 환경설정은 알림·화면 기본값만 바꾸며 조직 규칙을 완화하지 않습니다.
+		26 container
+			27 container 조직 설정 섹션
+				28 link Description: 태스크 규칙 14, Value: 127.0.0.1:8017/orgs/1/settings#settings-group-1
+				29 link Description: 프로젝트 권한 8, Value: 127.0.0.1:8017/orgs/1/settings#settings-group-2
+				30 link Description: 조직 운영 4, Value: 127.0.0.1:8017/orgs/1/settings#settings-group-3
+				31 link Description: AI 정책 14, Value: 127.0.0.1:8017/orgs/1/settings#settings-group-4
+				32 link Description: 알림 11, Value: 127.0.0.1:8017/orgs/1/settings#settings-group-5
+			33 text 다섯 섹션의 값과 잠금을 함께 저장합니다.
+			34 button 조직 설정 저장
+			35 container settings-group-1
+				36 button (expanded) 태스크 규칙 14개 항목 ⌄, Secondary Actions: Collapse
+					37 text 태스크 규칙
+					38 text 14개 항목
+					39 text ⌄
+				40 content list
+					41 container
+						42 text 기본 중요도
+						43 text 생성 화면·API·AI가 중요도를 주지 않았을 때 쓰는 값입니다.
+						44 container 기본 중요도
+							45 stepper (settable, integer) 기본 중요도, Value: 5, ID: setting-task.default_priority
+						46 text 프로젝트 변경 허용
+						47 checkbox (settable, integer) Description: 기본 중요도 · 프로젝트 변경 허용, Value: 1, ID: unlock-task.default_priority
+					48 container
+						49 text 중요도 상한
+						50 text 이 값을 넘는 중요도는 프로젝트 관리자만 정할 수 있습니다. 0이면 제한하지 않습니다.
+						51 container 중요도 상한
+							52 stepper (settable, integer) 중요도 상한, Value: 0, ID: setting-task.priority_cap
+						53 text 프로젝트 변경 허용
+						54 checkbox (settable, integer) Description: 중요도 상한 · 프로젝트 변경 허용, Value: 1, ID: unlock-task.priority_cap
+					55 container
+						56 text 완료 조건을 적지 않으면 태스크를 만들 수 없습니다.
+						57 container 완료 조건 필수
+							58 checkbox (settable, integer) 완료 조건 필수, Value: 0, ID: setting-task.require_done_when
+						59 text 프로젝트 변경 허용
+						60 checkbox (settable, integer) Description: 완료 조건 필수 · 프로젝트 변경 허용, Value: 1, ID: unlock-task.require_done_when
+					61 container
+						62 text 기한 미정 사유로 대신할 수 없습니다.
+						63 container 기한 필수
+							64 checkbox (settable, integer) 기한 필수, Value: 0, ID: setting-task.due_required
+						65 text 프로젝트 변경 허용
+						66 checkbox (settable, integer) Description: 기한 필수 · 프로젝트 변경 허용, Value: 1, ID: unlock-task.due_required
+					67 container
+						68 text 기본 기한(영업일)
+						69 text 생성 화면의 기한 초기값을 오늘+N영업일로 제안합니다. 자동으로 채우지는 않습니다. 0이면 제안하지 않습니다.
+						70 container 기본 기한(영업일)
+							71 stepper (settable, integer) 기본 기한(영업일), Value: 0, ID: setting-task.default_due_days
+						72 text 프로젝트 변경 허용
+						73 checkbox (settable, integer) Description: 기본 기한(영업일) · 프로젝트 변경 허용, Value: 1, ID: unlock-task.default_due_days
+					74 container
+						75 text 동시 진행 한도
+						76 text 한 사람이 동시에 진행 중으로 둘 수 있는 태스크 수입니다. 0이면 제한하지 않습니다.
+						77 container 동시 진행 한도
+							78 stepper (settable, integer) 동시 진행 한도, Value: 0, ID: setting-task.doing_limit
+						79 text 프로젝트 변경 허용 조직에서 고정
+					80 container
+						81 text 한도 초과 처리
+						82 text 경고면 숫자만 보여 주고, 차단이면 진행 중으로 바꾸지 못하게 막습니다.
+						83 container 한도 초과 처리
+							84 pop up button (collapsed, settable) 한도 초과 처리, Value: 경고만, ID: setting-task.doing_limit_mode, Secondary Actions: Expand
+								85 menu
+									86 (selected) 경고만
+									87 차단
+						88 text 프로젝트 변경 허용 조직에서 고정
+					89 container
+						90 text 완료는 검토 대기를 거쳐서만 할 수 있습니다.
+						91 container 검토 대기 필수
+							92 checkbox (settable, integer) 검토 대기 필수, Value: 0, ID: setting-task.review_required
+						93 text 프로젝트 변경 허용
+						94 checkbox (settable, integer) Description: 검토 대기 필수 · 프로젝트 변경 허용, Value: 1, ID: unlock-task.review_required
+					95 container
+						96 text 끄면 담당자 본인이 검토 대기에서 완료로 바꿀 수 없습니다.
+						97 container 본인 검토 허용
+							98 checkbox (settable, integer) 본인 검토 허용, Value: 1, ID: setting-task.self_review
+						99 text 프로젝트 변경 허용
+						100 checkbox (settable, integer) Description: 본인 검토 허용 · 프로젝트 변경 허용, Value: 1, ID: unlock-task.self_review
+					101 container
+						102 text 완료·취소한 태스크를 되돌릴 때 사유를 적게 합니다.
+						103 container 재개 사유 필수
+							104 checkbox (settable, integer) 재개 사유 필수, Value: 0, ID: setting-task.reopen_reason_required
+						105 text 프로젝트 변경 허용
+						106 checkbox (settable, integer) Description: 재개 사유 필수 · 프로젝트 변경 허용, Value: 1, ID: unlock-task.reopen_reason_required
+					107 container
+						108 container 취소 사유 필수
+							109 checkbox (settable, integer) 취소 사유 필수, Value: 0, ID: setting-task.cancel_reason_required
+						110 text 프로젝트 변경 허용
+						111 checkbox (settable, integer) Description: 취소 사유 필수 · 프로젝트 변경 허용, Value: 1, ID: unlock-task.cancel_reason_required
+					112 container
+						113 text 사유는 이력에 남습니다.
+						114 container 담당자 변경 사유 필수
+							115 checkbox (settable, integer) 담당자 변경 사유 필수, Value: 0, ID: setting-task.assignee_change_reason
+						116 text 프로젝트 변경 허용
+						117 checkbox (settable, integer) Description: 담당자 변경 사유 필수 · 프로젝트 변경 허용, Value: 1, ID: unlock-task.assignee_change_reason
+					118 container
+						119 text 연장은 이미 사유를 받습니다. 단축·삭제에도 사유를 받게 합니다.
+						120 container 기한 변경 사유 필수
+							121 checkbox (settable, integer) 기한 변경 사유 필수, Value: 0, ID: setting-task.due_change_reason
+						122 text 프로젝트 변경 허용
+						123 checkbox (settable, integer) Description: 기한 변경 사유 필수 · 프로젝트 변경 허용, Value: 1, ID: unlock-task.due_change_reason
+					124 container
+						125 text 초과 유예(일)
+						126 text 기한이 지나도 N일까지는 초과로 강조하지 않고 초과 알림도 보내지 않습니다.
+						127 container 초과 유예(일)
+							128 stepper (settable, integer) 초과 유예(일), Value: 0, ID: setting-task.overdue_grace_days
+						129 text 프로젝트 변경 허용
+						130 checkbox (settable, integer) Description: 초과 유예(일) · 프로젝트 변경 허용, Value: 1, ID: unlock-task.overdue_grace_days
+			152 container settings-group-2
+				153 button (expanded) 프로젝트 권한 8개 항목 ⌄, Secondary Actions: Collapse
+					154 text 프로젝트 권한
+					155 text 8개 항목
+					224 text ⌄
+				157 content list
+					158 container
+						159 text 프로젝트 생성
+						160 container 프로젝트 생성
+							161 pop up button (collapsed, settable) 프로젝트 생성, Value: 멤버 누구나, ID: setting-project.create_by, Secondary Actions: Expand
+								162 menu
+									163 (selected) 멤버 누구나
+									164 조직 관리자만
+						165 text 프로젝트 변경 허용 조직에서 고정
+					166 container
+						167 text 이름·목적·담당 팀 수정
+						168 container 이름·목적·담당 팀 수정
+							169 pop up button (collapsed, settable) 이름·목적·담당 팀 수정, Value: 멤버 누구나, ID: setting-project.edit_by, Secondary Actions: Expand
+								170 menu
+									171 (selected) 멤버 누구나
+									172 프로젝트 관리자
+									173 조직 관리자만
+						174 text 프로젝트 변경 허용 조직에서 고정
+					175 container
+						176 text 프로젝트 상태 변경
+						177 container 프로젝트 상태 변경
+							178 pop up button (collapsed, settable) 프로젝트 상태 변경, Value: 멤버 누구나, ID: setting-project.status_by, Secondary Actions: Expand
+								179 menu
+									180 (selected) 멤버 누구나
+									181 프로젝트 관리자
+									182 조직 관리자만
+						183 text 프로젝트 변경 허용 조직에서 고정
+					184 container
+						185 text 보관·복원
+						186 container 보관·복원
+							187 pop up button (collapsed, settable) 보관·복원, Value: 조직 관리자만, ID: setting-project.archive_by, Secondary Actions: Expand
+								188 menu
+									189 프로젝트 관리자
+									190 (selected) 조직 관리자만
+						191 text 프로젝트 변경 허용 조직에서 고정
+					192 container
+						193 text 프로젝트 설정 편집
+						194 text 저장소 규칙과 프로젝트 거버넌스 문단을 포함합니다.
+						195 container 프로젝트 설정 편집
+							196 pop up button (collapsed, settable) 프로젝트 설정 편집, Value: 프로젝트 관리자, ID: setting-project.settings_by, Secondary Actions: Expand
+								197 menu
+									198 (selected) 프로젝트 관리자
+									199 조직 관리자만
+						200 text 프로젝트 변경 허용 조직에서 고정
+					201 container
+						202 text 마일스톤·의존성
+						203 container 마일스톤·의존성
+							204 pop up button (collapsed, settable) 마일스톤·의존성, Value: 멤버 누구나, ID: setting-project.roadmap_by, Secondary Actions: Expand
+								205 menu
+									206 (selected) 멤버 누구나
+									207 프로젝트 관리자
+									208 조직 관리자만
+						209 text 프로젝트 변경 허용 조직에서 고정
+					210 container
+						211 text 관리자가 없는 프로젝트를 만들거나 마지막 관리자를 뺄 수 없습니다. 이미 관리자가 없는 프로젝트는 그대로 둡니다.
+						212 container 프로젝트 관리자 1명 이상
+							213 checkbox (settable, integer) 프로젝트 관리자 1명 이상, Value: 0, ID: setting-project.owner_required
+						214 text 프로젝트 변경 허용 조직에서 고정
+					215 container
+						216 text 프로젝트 첫 화면
+						217 container 프로젝트 첫 화면
+							218 pop up button (collapsed, settable) 프로젝트 첫 화면, Value: 목록, ID: setting-project.default_view, Secondary Actions: Expand
+								219 menu
+									220 (selected) 목록
+									221 보드
+						222 text 프로젝트 변경 허용
+						223 checkbox (settable, integer) Description: 프로젝트 첫 화면 · 프로젝트 변경 허용, Value: 1, ID: unlock-project.default_view
+			225 container settings-group-3
+				226 button (expanded) 조직 운영 4개 항목 ⌄, Secondary Actions: Collapse
+					227 text 조직 운영
+					228 text 4개 항목
+					255 text ⌄
+				230 content list
+					231 container
+						232 text 초대 링크 만료(일)
+						233 container 초대 링크 만료(일)
+							234 stepper (settable, integer) 초대 링크 만료(일), Value: 7, ID: setting-org.invite_days
+						235 text 프로젝트 변경 허용 조직에서 고정
+					236 container
+						237 text 초대 링크 사용 횟수
+						238 text 0이면 무제한입니다.
+						239 container 초대 링크 사용 횟수
+							240 stepper (settable, integer) 초대 링크 사용 횟수, Value: 0, ID: setting-org.invite_max_uses
+						241 text 프로젝트 변경 허용 조직에서 고정
+					242 container
+						243 text 스킬 태그 편집
+						244 container 스킬 태그 편집
+							245 pop up button (collapsed, settable) 스킬 태그 편집, Value: 조직 관리자만, ID: setting-org.tags_by, Secondary Actions: Expand
+								246 menu
+									247 (selected) 조직 관리자만
+									248 본인도 가능
+						249 text 프로젝트 변경 허용 조직에서 고정
+					250 container
+						251 text 멤버가 스스로 팀에 들어가고 나갈 수 있습니다.
+						252 container 팀 자율 참여
+							253 checkbox (settable, integer) 팀 자율 참여, Value: 0, ID: setting-org.team_join_self
+						254 text 프로젝트 변경 허용 조직에서 고정
+			256 container settings-group-4
+				257 button (expanded) AI 정책 14개 항목 ⌄, Secondary Actions: Collapse
+					258 text AI 정책
+					259 text 14개 항목
+					373 text ⌄
+				261 content list
+					262 container
+						263 text 끄면 이 조직에 대한 AI의 모든 쓰기를 막습니다. 읽기는 남습니다.
+						264 container AI 쓰기 허용
+							265 checkbox (settable, integer) AI 쓰기 허용, Value: 1, ID: setting-ai.enabled
+						266 text 프로젝트 변경 허용 조직에서 고정
+					267 container
+						268 text 태스크 만들기
+						269 container 태스크 만들기
+							270 pop up button (collapsed, settable) 태스크 만들기, Value: 허용, ID: setting-ai.create_task, Secondary Actions: Expand
+								271 menu
+									272 (selected) 허용
+									273 막기
+						274 text 프로젝트 변경 허용 조직에서 고정
+					275 container
+						276 text 본문 고치기
+						277 text 제목·설명·완료 조건·다음 행동·메모·체크리스트입니다.
+						278 container 본문 고치기
+							279 pop up button (collapsed, settable) 본문 고치기, Value: 허용, ID: setting-ai.edit_text, Secondary Actions: Expand
+								280 menu
+									281 (selected) 허용
+									282 막기
+						283 text 프로젝트 변경 허용 조직에서 고정
+					284 container
+						285 text AI 작업 기록
+						286 text 태스크에 사용자 입력과 AI의 주요 판단을 의사 요지로 기록합니다. 대화 원문은 사용자가 명시적으로 요청하지 않는 한 전송하지 않습니다.
+						287 container AI 작업 기록
+							288 pop up button (collapsed, settable) AI 작업 기록, Value: 허용, ID: setting-ai.record_work, Secondary Actions: Expand
+								289 menu
+									290 (selected) 허용
+									291 막기
+						292 text 프로젝트 변경 허용 조직에서 고정
+					293 container
+						294 text 담당자 바꾸기
+						295 container 담당자 바꾸기
+							296 pop up button (collapsed, settable) 담당자 바꾸기, Value: 허용, ID: setting-ai.change_assignee, Secondary Actions: Expand
+								297 menu
+									298 (selected) 허용
+									299 막기
+						300 text 프로젝트 변경 허용 조직에서 고정
+					301 container
+						302 text 기한 바꾸기
+						303 container 기한 바꾸기
+							304 pop up button (collapsed, settable) 기한 바꾸기, Value: 허용, ID: setting-ai.change_due, Secondary Actions: Expand
+								305 menu
+									306 (selected) 허용
+									307 막기
+						308 text 프로젝트 변경 허용 조직에서 고정
+					309 container
+						310 text 중요도 바꾸기
+						311 container 중요도 바꾸기
+							312 pop up button (collapsed, settable) 중요도 바꾸기, Value: 허용, ID: setting-ai.change_priority, Secondary Actions: Expand
+								313 menu
+									314 (selected) 허용
+									315 막기
+						316 text 프로젝트 변경 허용 조직에서 고정
+					317 container
+						318 text AI 중요도 상한
+						319 text AI는 이 값을 넘는 중요도를 정할 수 없습니다. 0이면 제한하지 않습니다.
+						320 container AI 중요도 상한
+							321 stepper (settable, integer) AI 중요도 상한, Value: 7, ID: setting-ai.priority_cap
+						322 text 프로젝트 변경 허용 조직에서 고정
+					323 container
+						324 text 미완료 상태 바꾸기
+						325 container 미완료 상태 바꾸기
+							326 pop up button (collapsed, settable) 미완료 상태 바꾸기, Value: 허용, ID: setting-ai.transition_open, Secondary Actions: Expand
+								327 menu
+									328 (selected) 허용
+									329 막기
+						330 text 프로젝트 변경 허용 조직에서 고정
+					331 container
+						332 text 완료·취소 처리
+						333 container 완료·취소 처리
+							334 pop up button (collapsed, settable) 완료·취소 처리, Value: 허용, ID: setting-ai.close_task, Secondary Actions: Expand
+								335 menu
+									336 (selected) 허용
+									337 막기
+						338 text 프로젝트 변경 허용 조직에서 고정
+					339 container
+						340 text 완료·취소 되돌리기
+						341 container 완료·취소 되돌리기
+							342 pop up button (collapsed, settable) 완료·취소 되돌리기, Value: 허용, ID: setting-ai.reopen_task, Secondary Actions: Expand
+								343 menu
+									344 (selected) 허용
+									345 막기
+						346 text 프로젝트 변경 허용 조직에서 고정
+					347 container
+						348 text 태스크 삭제
+						349 text 삭제는 되돌릴 수 없어 기본값이 막기입니다. 프로젝트·팀 삭제는 이 값과 상관없이 늘 사람이 승인 링크에서 허용해야 합니다.
+						350 container 태스크 삭제
+							351 pop up button (collapsed, settable) 태스크 삭제, Value: 막기, ID: setting-ai.delete, Secondary Actions: Expand
+								352 menu
+									353 허용
+									354 (selected) 막기
+						355 text 프로젝트 변경 허용 조직에서 고정
+					356 container
+						357 text 저장소 연결·해제
+						358 text AI가 프로젝트에 GitHub 저장소를 잇거나 끊는 것입니다.
+						359 container 저장소 연결·해제
+							360 pop up button (collapsed, settable) 저장소 연결·해제, Value: 허용, ID: setting-ai.manage_repo, Secondary Actions: Expand
+								361 menu
+									362 (selected) 허용
+									363 막기
+						364 text 프로젝트 변경 허용 조직에서 고정
+					365 container
+						366 text 팀 만들고 사람 넣기
+						367 container 팀 만들고 사람 넣기
+							368 pop up button (collapsed, settable) 팀 만들고 사람 넣기, Value: 허용, ID: setting-ai.manage_teams, Secondary Actions: Expand
+								369 menu
+									370 (selected) 허용
+									371 막기
+						372 text 프로젝트 변경 허용 조직에서 고정
+			374 container settings-group-5
+				375 button (expanded) 알림 11개 항목 ⌄, Secondary Actions: Collapse
+					376 text 알림
+					377 text 11개 항목
+					378 text ⌄
+				379 content list
+					380 container
+						381 text 보내는 마감 알림
+						382 container 보내는 마감 알림
+							383 container 보내는 마감 알림
+								384 text 보내는 마감 알림
+								385 container
+									386 checkbox (settable, integer) Description: 3일 전, Value: 1, ID: setting-notify.deadline_kinds-d3
+									387 text 3일 전
+								388 container
+									389 checkbox (settable, integer) Description: 하루 전, Value: 1, ID: setting-notify.deadline_kinds-d1
+									390 text 하루 전
+								391 container
+									392 checkbox (settable, integer) Description: 당일, Value: 1, ID: setting-notify.deadline_kinds-d0
+									393 text 당일
+								394 container
+									395 checkbox (settable, integer) Description: 기한 초과, Value: 1, ID: setting-notify.deadline_kinds-overdue
+									396 text 기한 초과
+						397 text 프로젝트 변경 허용 조직에서 고정
+					398 container
+						399 text 마감 알림 시각
+						400 text -1이면 서버 기본값(.env.discord의 SEND_HOUR)을 씁니다.
+						401 container 마감 알림 시각
+							402 stepper (settable, integer) 마감 알림 시각, Value: -1, ID: setting-notify.send_hour
+						403 text 프로젝트 변경 허용 조직에서 고정
+					404 container
+						405 text 초과 알림 반복
+						406 container 초과 알림 반복
+							407 pop up button (collapsed, settable) 초과 알림 반복, Value: 매일, ID: setting-notify.overdue_repeat, Secondary Actions: Expand
+								408 menu
+									409 (selected) 매일
+									410 평일만
+									411 주 1회
+									412 한 번만
+						413 text 프로젝트 변경 허용 조직에서 고정
+					414 container
+						415 text 토·일에는 마감 DM을 보내지 않습니다.
+						416 container 주말에는 보내지 않기
+							417 checkbox (settable, integer) 주말에는 보내지 않기, Value: 0, ID: setting-notify.quiet_weekend
+						418 text 프로젝트 변경 허용 조직에서 고정
+					419 container
+						420 container 주간 보고
+							421 checkbox (settable, integer) 주간 보고, Value: 1, ID: setting-notify.weekly_enabled
+						422 text 프로젝트 변경 허용 조직에서 고정
+					423 container
+						424 text 주간 보고 요일
+						425 text 0=월요일. -1이면 서버 기본값입니다.
+						426 container 주간 보고 요일
+							427 stepper (settable, integer) 주간 보고 요일, Value: -1, ID: setting-notify.weekly_weekday
+						428 text 프로젝트 변경 허용 조직에서 고정
+					429 container
+						430 text 주간 보고 시각
+						431 text -1이면 서버 기본값입니다.
+						432 container 주간 보고 시각
+							433 stepper (settable, integer) 주간 보고 시각, Value: -1, ID: setting-notify.weekly_hour
+						434 text 프로젝트 변경 허용 조직에서 고정
+					435 container
+						436 text 막힘 에스컬레이션(일)
+						437 text 막힘이 N일을 넘으면 프로젝트 관리자에게 DM을 보냅니다. 0이면 보내지 않습니다.
+						438 container 막힘 에스컬레이션(일)
+							439 stepper (settable, integer) 막힘 에스컬레이션(일), Value: 0, ID: setting-notify.blocked_escalate_days
+						440 text 프로젝트 변경 허용
+						441 checkbox (settable, integer) Description: 막힘 에스컬레이션(일) · 프로젝트 변경 허용, Value: 1, ID: unlock-notify.blocked_escalate_days
+					442 container
+						443 text 검토 독촉(일)
+						444 text 검토 대기가 N일을 넘으면 프로젝트 관리자에게 DM을 보냅니다. 0이면 보내지 않습니다.
+						445 container 검토 독촉(일)
+							446 stepper (settable, integer) 검토 독촉(일), Value: 0, ID: setting-notify.review_nudge_days
+						447 text 프로젝트 변경 허용
+						448 checkbox (settable, integer) Description: 검토 독촉(일) · 프로젝트 변경 허용, Value: 1, ID: unlock-notify.review_nudge_days
+					449 container
+						450 text 프로젝트 채널 게시
+						451 text 채널이 연결된 프로젝트만 해당합니다. 멘션은 넣지 않습니다.
+						452 container 프로젝트 채널 게시
+							453 container 프로젝트 채널 게시
+								454 text 프로젝트 채널 게시
+								455 container
+									456 checkbox (settable, integer) Description: 태스크 생성, Value: 0, ID: setting-notify.project_channel_events-created
+									457 text 태스크 생성
+								458 container
+									459 checkbox (settable, integer) Description: 완료, Value: 0, ID: setting-notify.project_channel_events-done
+									460 text 완료
+								461 container
+									462 checkbox (settable, integer) Description: 막힘, Value: 0, ID: setting-notify.project_channel_events-blocked
+									463 text 막힘
+								464 container
+									465 checkbox (settable, integer) Description: 기한 초과 요약, Value: 0, ID: setting-notify.project_channel_events-overdue_daily
+									466 text 기한 초과 요약
+								467 container
+									468 checkbox (settable, integer) Description: 마일스톤 임박, Value: 0, ID: setting-notify.project_channel_events-milestone_due
+									469 text 마일스톤 임박
+						470 text 프로젝트 변경 허용
+						471 checkbox (settable, integer) Description: 프로젝트 채널 게시 · 프로젝트 변경 허용, Value: 1, ID: unlock-notify.project_channel_events
+					472 container
+						473 text 조직 채널 외에 팀 채널에도 그 팀 담당 프로젝트만 추려 보냅니다.
+						474 container 팀 채널 주간 보고
+							475 checkbox (settable, integer) 팀 채널 주간 보고, Value: 0, ID: setting-notify.team_channel_weekly
+						476 text 프로젝트 변경 허용 조직에서 고정
+		147 container
+			148 heading 설정 변경 이력, Value: 2
+				149 text 설정 변경 이력
+			150 content list
+				151 text 변경 이력 없음
+
+The focused UI element is 375 button (expanded) 알림 11개 항목 ⌄, Secondary Actions: Collapse

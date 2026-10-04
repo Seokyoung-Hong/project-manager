@@ -32,7 +32,9 @@ def _fake_repos(monkeypatch, repos):
     monkeypatch.setattr("github.client.installation_token", lambda iid: "tok")
     monkeypatch.setattr(
         "github.client.request",
-        lambda method, path, token, **kw: {"repositories": repos},
+        lambda method, path, token, **kw: (
+            {"repositories": repos} if path.startswith("/installation/repositories") else []
+        ),
     )
 
 

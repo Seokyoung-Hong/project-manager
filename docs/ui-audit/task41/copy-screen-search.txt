@@ -1,0 +1,28 @@
+Browser tab: 2, Title: "검색", URL: "http://127.0.0.1:8017/search".
+1 AXWebArea 검색, URL: 127.0.0.1:8017/search
+	2 container
+		3 button (collapsed) Description: 조직 전환, Help: 산돌이, Secondary Actions: Expand
+			4 text 산돌이
+		5 container 주 메뉴
+			6 link Description: 오늘, Value: 127.0.0.1:8017/today
+			7 link Description: 내 태스크, Value: 127.0.0.1:8017/me
+			8 link Description: 프로젝트, Value: 127.0.0.1:8017/projects
+			9 link Description: 조직, Value: 127.0.0.1:8017/org
+			10 link Description: 검색, Value: 127.0.0.1:8017/search
+		11 link Description: 빠른 추가, Value: 127.0.0.1:8017/today?quick=1
+		12 button (collapsed) Description: 내 메뉴, Help: 김, Secondary Actions: Expand
+			13 text 김
+		14 heading 검색, Value: 1
+			15 text 검색
+		16 container
+			17 text field (settable)
+			18 checkbox (settable, integer) Description: 완료·취소 포함, Value: 0
+			19 checkbox (settable, integer) Description: 보관 포함, Value: 0
+			20 button 검색
+		21 container
+			22 heading 결과 0, Value: 2
+				23 text 결과  0
+			24 content list
+				25 text 검색 결과가 없습니다. 위의 “완료·취소 포함”과 “보관 포함”을 켜고 다시 찾아보세요.
+
+The focused UI element is 17 text field (settable)

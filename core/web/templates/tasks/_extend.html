@@ -1,7 +1,7 @@
 <form class="stop-box" hx-post="{% url 'task_extend' task.pk %}" hx-target="#panel" hx-swap="innerHTML">
   <input type="hidden" name="version" value="{{ task.version }}">
-  <label class="field">새 목표일<input class="input" type="date" name="due_date" min="{{ extend_min|date:'Y-m-d' }}" required></label>
-  <label class="field">연장 사유<input class="input" name="reason" placeholder="왜 미루나요? (필수)"></label>
+  <label class="field">{% if task.due_date %}새 목표일{% else %}목표일{% endif %}<input class="input" type="date" name="due_date" min="{{ extend_min|date:'Y-m-d' }}" required></label>
+  <label class="field">{% if task.due_date %}목표일 연장 사유{% else %}목표일 지정 사유{% endif %}<input class="input" name="reason" placeholder="목표일을 변경하는 이유를 적으세요. (필수)" required></label>
   {% if extend_error %}<div class="error">{{ extend_error }}</div>{% endif %}
-  <button class="btn sm primary">저장</button>
+  <button class="btn sm primary">{% if task.due_date %}목표일 연장{% else %}목표일 저장{% endif %}</button>
 </form>

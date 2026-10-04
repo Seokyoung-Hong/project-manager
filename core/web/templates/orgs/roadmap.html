@@ -8,7 +8,7 @@
   </div>
   <div class="stack" style="gap:4px">
     <div class="tl-head"><span class="tl-name"></span>
-      <div class="tl-track"><span class="tl-today" style="left:{{ today_pct }}%" aria-hidden="true"></span>{% for m in months %}<span>{{ m.month }}월</span>{% endfor %}</div>
+      <div class="tl-track"><span class="tl-today tl-today-label" style="left:{{ today_pct }}%"><span>오늘</span></span>{% for m in months %}<span>{{ m.month }}월</span>{% endfor %}</div>
     </div>
     {% for r in rows %}
     <div class="tl-row">
@@ -33,6 +33,7 @@
 </section>
 <section class="card org-dependencies-card">
   <h2>프로젝트 의존성</h2>
+  <p class="muted t13">왼쪽 프로젝트가 오른쪽 프로젝트에 의존합니다. 차단 표시는 관계를 기록하며, 앱이 프로젝트 착수를 자동으로 막지는 않습니다.</p>
   <div class="stack dependency-list">
     {% for d in deps %}
     <article class="dependency-row">
@@ -49,15 +50,15 @@
   </div>
   <form method="post" action="{% url 'dependency_add' org.pk %}" class="dependency-form">{% csrf_token %}
     <div class="dependency-form-route">
-      <label class="sr-only" for="dependency-from">시작 프로젝트</label>
+      <label class="sr-only" for="dependency-from">의존하는 프로젝트</label>
       <select class="select" id="dependency-from" name="from_project" required>
-        <option value="">시작 프로젝트</option>
+        <option value="">의존하는 프로젝트</option>
         {% for p in projects %}<option value="{{ p.pk }}">{{ p.name }}</option>{% endfor %}
       </select>
       <span aria-hidden="true" class="dependency-arrow muted">→</span>
-      <label class="sr-only" for="dependency-to">의존 프로젝트</label>
+      <label class="sr-only" for="dependency-to">선행 프로젝트</label>
       <select class="select" id="dependency-to" name="to_project" required>
-        <option value="">의존 프로젝트</option>
+        <option value="">선행 프로젝트</option>
         {% for p in projects %}<option value="{{ p.pk }}">{{ p.name }}</option>{% endfor %}
       </select>
     </div>
@@ -67,7 +68,7 @@
     </div>
     <div class="dependency-form-actions">
       <label class="check t13"><input type="checkbox" name="is_blocking"> 차단</label>
-      <button class="btn sm">추가</button>
+      <button class="btn sm">의존성 추가</button>
     </div>
   </form>
 </section>

@@ -679,7 +679,7 @@ def _on_issues(conn, delivery, payload):
         number=number,
         defaults={
             "title": (issue.get("title") or "")[:300],
-            "state": "closed" if action == "closed" else "open",
+            "state": issue.get("state") or ("closed" if action == "closed" else "open"),
             "assignee_login": ((issue.get("assignee") or {}).get("login")) or "",
             "author_login": ((issue.get("user") or {}).get("login")) or "",
             "body": (issue.get("body") or "")[:5000],

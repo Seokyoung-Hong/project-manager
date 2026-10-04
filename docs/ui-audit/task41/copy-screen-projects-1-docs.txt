@@ -1,0 +1,51 @@
+Browser tab: 2, Title: "ProjectManager · 문서", URL: "http://127.0.0.1:8017/projects/1/docs".
+1 AXWebArea ProjectManager · 문서, URL: 127.0.0.1:8017/projects/1/docs
+	2 container
+		3 button (collapsed) Description: 조직 전환, Help: 산돌이, Secondary Actions: Expand
+			4 text 산돌이
+		5 container 주 메뉴
+			6 link Description: 오늘, Value: 127.0.0.1:8017/today
+			7 link Description: 내 태스크, Value: 127.0.0.1:8017/me
+			8 link Description: 프로젝트, Value: 127.0.0.1:8017/projects
+			9 link Description: 조직, Value: 127.0.0.1:8017/org
+			10 link Description: 검색, Value: 127.0.0.1:8017/search
+		11 link Description: 빠른 추가, Value: 127.0.0.1:8017/today?quick=1
+		12 button (collapsed) Description: 내 메뉴, Help: 김, Secondary Actions: Expand
+			13 text 김
+		14 container 프로젝트
+			15 text 프로젝트 4 미완료
+			16 button (expanded) Description: 프로젝트 목록 접기, Help: 목록 접기, Secondary Actions: Collapse
+			17 link Description: P ProjectManager 5, Help: ProjectManager, Value: 127.0.0.1:8017/projects/1
+			18 link Description: 강 강의실 시간표 3, Help: 강의실 시간표, Value: 127.0.0.1:8017/projects/3
+			19 link Description: 공 공지 알림 3, Help: 공지 알림, Value: 127.0.0.1:8017/projects/4
+			20 link Description: 학 학식 API 3, Help: 학식 API, Value: 127.0.0.1:8017/projects/2
+			21 button ＋ 새 프로젝트
+		22 link Description: 산돌이, Value: 127.0.0.1:8017/orgs/1
+		23 heading ProjectManager, Value: 1
+			24 text ProjectManager
+		25 container 프로젝트 메뉴
+			26 link Description: 태스크, Value: 127.0.0.1:8017/projects/1
+			27 link Description: 문서, Value: 127.0.0.1:8017/projects/1/docs
+			28 link Description: API 문서, Value: 127.0.0.1:8017/projects/1/api
+			29 link Description: 설정, Value: 127.0.0.1:8017/projects/1/settings
+		30 container
+			31 heading 문서 1, Value: 2
+				32 text 문서  1
+			33 button .md 올리기, ID: doc-upload-file
+			34 text .md 올리기
+			35 button 새 문서
+			36 link Description: 제목 없는 문서 김하늘 · v2 · 10/4, Value: 127.0.0.1:8017/projects/1/docs?doc=1
+			37 text 문서는 이 프로젝트 안에만 있습니다. 올린 .md는 본문 텍스트만 읽어 저장하고, 파일과 이미지 첨부는 저장하지 않습니다.
+		38 container doc-editor
+			39 text field (settable) Description: 제목, Value: 제목 없는 문서
+			40 text 만든 사람 김하늘 마지막 수정 김하늘
+			41 text v2 · 10/4 00:20
+			42 container doc-form
+				43 button 본문 편집
+				44 text Enter로 시작 · Esc로 나가기
+				45 text 로컬 디자인 검증 문서입니다.
+			46 button (collapsed) 쓰는 법, Secondary Actions: Expand
+				47 text 쓰는 법
+			48 button 삭제
+
+The focused UI element is 1 AXWebArea ProjectManager · 문서, URL: 127.0.0.1:8017/projects/1/docs

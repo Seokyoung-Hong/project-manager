@@ -1,0 +1,92 @@
+Browser tab: 2, Title: "환경설정", URL: "http://127.0.0.1:8017/settings/preferences".
+1 AXWebArea 환경설정, URL: 127.0.0.1:8017/settings/preferences
+	2 container
+		3 button (collapsed) Description: 조직 전환, Help: 산돌이, Secondary Actions: Expand
+			4 text 산돌이
+		5 container 주 메뉴
+			6 link Description: 오늘, Value: 127.0.0.1:8017/today
+			7 link Description: 내 태스크, Value: 127.0.0.1:8017/me
+			8 link Description: 프로젝트, Value: 127.0.0.1:8017/projects
+			9 link Description: 조직, Value: 127.0.0.1:8017/org
+			10 link Description: 검색, Value: 127.0.0.1:8017/search
+		11 link Description: 빠른 추가, Value: 127.0.0.1:8017/today?quick=1
+		12 button (collapsed) Description: 내 메뉴, Help: 김, Secondary Actions: Expand
+			13 text 김
+		14 heading 설정, Value: 1
+			15 text 설정
+		16 container 설정 메뉴
+			17 link Description: 프로필, Value: 127.0.0.1:8017/settings/profile
+			18 link Description: 환경설정, Value: 127.0.0.1:8017/settings/preferences
+			19 link Description: API 토큰, Value: 127.0.0.1:8017/settings/tokens
+		20 container
+			21 heading 환경설정, Value: 2
+				22 text 환경설정
+			23 text 내 알림과 기본 화면에만 적용됩니다. 개인 설정 조직의 태스크 규칙이나 권한은 완화하지 않습니다. 조직에서 제한한 알림 종류도 여기서 다시 켤 수 없습니다.
+			24 container
+				25 text 알림과 화면 기본값을 함께 저장합니다.
+				26 button 환경설정 저장
+			27 container 알림 3
+				28 heading 알림 3, Value: 3, ID: personal-settings-1
+					29 text 알림
+				30 content list
+					31 container
+						32 text 끄면 마감·에스컬레이션 DM을 받지 않습니다. 채널 주간 보고는 그대로입니다.
+						33 container 개인 DM 받기
+							34 checkbox (settable, integer) 개인 DM 받기, Value: 1, ID: setting-user.notify_dm
+					35 container
+						36 text 받을 마감 알림
+						37 text 조직이 끈 종류는 켤 수 없습니다.
+						38 container 받을 마감 알림
+							39 container 받을 마감 알림
+								40 text 받을 마감 알림
+								41 container
+									42 checkbox (settable, integer) Description: 3일 전, Value: 1, ID: setting-user.notify_kinds-d3
+									43 text 3일 전
+								44 container
+									45 checkbox (settable, integer) Description: 하루 전, Value: 1, ID: setting-user.notify_kinds-d1
+									46 text 하루 전
+								47 container
+									48 checkbox (settable, integer) Description: 당일, Value: 1, ID: setting-user.notify_kinds-d0
+									49 text 당일
+								50 container
+									51 checkbox (settable, integer) Description: 기한 초과, Value: 1, ID: setting-user.notify_kinds-overdue
+									52 text 기한 초과
+					53 container
+						54 text 내 마감 알림 시각
+						55 text -1이면 조직 설정을 따릅니다.
+						56 container 내 마감 알림 시각
+							57 stepper (settable, integer) 내 마감 알림 시각, Value: -1, ID: setting-user.notify_hour
+			58 container 화면 기본값 4
+				59 heading 화면 기본값 4, Value: 3, ID: personal-settings-2
+					60 text 화면 기본값 4
+				61 content list
+					62 container
+						63 text 로그인 후 첫 화면
+						64 container 로그인 후 첫 화면
+							65 pop up button (collapsed, settable) 로그인 후 첫 화면, Value: 오늘, ID: setting-user.start_page, Secondary Actions: Expand
+								66 menu
+									67 (selected) 오늘
+									68 내 태스크
+					69 container
+						70 text 내 태스크 기본 묶음
+						71 container 내 태스크 기본 묶음
+							72 pop up button (collapsed, settable) 내 태스크 기본 묶음, Value: 기한, ID: setting-user.me_group, Secondary Actions: Expand
+								73 menu
+									74 (selected) 기한
+									75 프로젝트
+									76 상태
+									77 묶지 않음
+					78 container
+						79 text 내 태스크 기본 정렬
+						80 container 내 태스크 기본 정렬
+							81 pop up button (collapsed, settable) 내 태스크 기본 정렬, Value: 기한, ID: setting-user.me_sort, Secondary Actions: Expand
+								82 menu
+									83 (selected) 기한
+									84 중요도
+									85 최근 수정
+					86 container
+						87 text 프로젝트 설정보다 우선합니다.
+						88 container 프로젝트를 항상 보드로
+							89 checkbox (settable, integer) 프로젝트를 항상 보드로, Value: 0, ID: setting-user.board_default
+
+The focused UI element is 1 AXWebArea 환경설정, URL: 127.0.0.1:8017/settings/preferences

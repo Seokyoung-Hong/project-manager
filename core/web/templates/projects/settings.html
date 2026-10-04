@@ -15,7 +15,7 @@
   <nav class="settings-jump" aria-label="프로젝트 설정 섹션">
     {% for label, group_rows in groups %}<a class="chip" href="#project-settings-group-{{ forloop.counter }}" data-action="open-settings-group" data-target="#project-settings-group-{{ forloop.counter }}">{{ label }} <span>{{ group_rows|length }}</span></a>{% endfor %}
   </nav>
-  {% if editable %}<div class="settings-save-bar"><span class="settings-save-hint">세 섹션을 함께 저장합니다.</span><button class="btn primary">프로젝트 설정 저장</button></div>{% endif %}
+  {% if editable %}<div class="settings-save-bar"><span class="settings-save-hint">표시된 모든 섹션을 함께 저장합니다.</span><button class="btn primary">프로젝트 설정 저장</button></div>{% endif %}
   {% for label, group_rows in groups %}
   <details id="project-settings-group-{{ forloop.counter }}" class="settings-section"{% if forloop.first %} open{% endif %}>
     <summary class="settings-section-summary"><span>{{ label }}</span><span class="muted t12">{{ group_rows|length }}개 항목</span></summary>
@@ -78,13 +78,13 @@
   </p>
   <div class="row wrap gap">
     <form method="post" action="{% url 'project_archive' project.pk %}"
-          onsubmit="return confirm('보관할까요? 미완료 태스크가 있으면 거부됩니다.')">
+          onsubmit="return confirm('{{ project.name|escapejs }} 프로젝트를 보관할까요? 미완료 태스크가 있으면 보관할 수 없습니다. 데이터는 유지됩니다.')">
       {% csrf_token %}<button class="btn">프로젝트 보관</button>
     </form>
     <form method="post" action="{% url 'project_archive' project.pk %}"
-          onsubmit="return confirm('남은 미완료 태스크를 모두 취소하고 보관합니다. 계속할까요?')">
+          onsubmit="return confirm('{{ project.name|escapejs }} 프로젝트의 미완료 태스크 {{ open_task_count }}건을 모두 취소하고 보관할까요? 태스크와 프로젝트 데이터는 유지됩니다.')">
       {% csrf_token %}<input type="hidden" name="cancel_open" value="1">
-      <button class="btn danger">미완료까지 취소하고 보관</button>
+      <button class="btn danger">미완료 태스크를 모두 취소하고 프로젝트 보관</button>
     </form>
   </div>
   <p class="muted t13">삭제는 보관한 뒤에 할 수 있습니다.</p>

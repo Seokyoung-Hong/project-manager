@@ -1,0 +1,54 @@
+[
+  {
+    "width": 1280,
+    "action": "project-toggle",
+    "url": "http://127.0.0.1:8018/projects/1",
+    "text": "산돌이\n오늘\n내 태스크\n프로젝트\n조직\n검색\n빠른 추가\n김\n»\n산돌이\nProjectManager\n태스크\n문서\nAPI 문서\n설정\n\n팀의 업무와 결정을 한 곳에서 관리합니다.\n\n관리자 김하늘\n🚧 진행 중\n\n개발 또는 구현 진행 중\n\n프로젝트 수정\n태스크 만들기\n1/6\n완료\n5\n미완료\n1\n기한 초과\n1\n검토 대기\n1\n막힘\n목록\n보드\n완료·취소 포함\nProjectManager\n메뉴 누락 안내 개선\n이서준\n중요도 7/10\n체크리스트 0/2\n10월 3일 초과\n○ 시작 전\n▶ 진행 중\n⏸ 일시정지\n■ 막힘\n◆ 검토 대기\n✓ 완료\n✕ 취소\n오늘 추가\nProjectManager\n모바일 업무 화면 정리\n김하늘\n중요도 6/10\n체크리스트 0/2\n오늘 마감\n○ 시작 전\n▶ 진행 중\n⏸ 일시정지\n■ 막힘\n◆ 검토 대기\n✓ 완료\n✕ 취소\n오늘 제외\nProjectManager\n새 학기 시간표 검증\n김하늘\n체크리스트 0/2\n10월 5일\n○ 시작 전\n▶ 진행 중\n⏸ 일시정지\n■ 막힘\n◆ 검토 대기\n✓ 완료\n✕ 취소\n오늘 제외\nProjectManager\n연결 오류 안내 작성\n이서준\n중요도 4/10\n외부 API 응답 확인 대기\n체크리스트 0/2\n10월 6일\n○ 시작 전\n▶ 진행 중\n⏸ 일시정지\n■ 막힘\n◆ 검토 대기\n✓ 완료\n✕ 취소\n오늘 추가\nProjectManager\n배포 전 점검\n김하늘\n중요도 2/10\n사유 없음\n체크리스트 0/2\n10월 8일\n○ 시작 전\n▶ 진행 중\n⏸ 일시정지\n■ 막힘\n◆ 검토 대기\n✓ 완료\n✕ 취소\n오늘 제외\n참고 링크\n링크 없음\n＋ 링크 추가"
+  },
+  {
+    "width": 1280,
+    "action": "진행 메모 열기",
+    "url": "http://127.0.0.1:8018/tasks/2",
+    "focus": {
+      "tag": "TEXTAREA",
+      "name": "value",
+      "placeholder": "지금까지 한 일, 막힌 점, 다음에 할 일"
+    }
+  },
+  {
+    "width": 1280,
+    "action": "자세히 보기",
+    "url": "http://127.0.0.1:8018/tasks/2",
+    "focus": {
+      "tag": "BUTTON",
+      "name": null,
+      "placeholder": null
+    }
+  },
+  {
+    "width": 390,
+    "action": "project-toggle",
+    "url": "http://127.0.0.1:8018/projects/1",
+    "text": "산돌이\n오늘\n내 태스크\n프로젝트\n조직\n검색\n빠른 추가\n김\n현재 프로젝트\nProjectManager\n4\nP\nProjectManager\n미완료 5\n강\n강의실 시간표\n미완료 3\n공\n공지 알림\n미완료 3\n학\n학식 API\n미완료 3\n＋ 새 프로젝트\n산돌이\nProjectManager\n태스크\n문서\nAPI 문서\n설정\n\n팀의 업무와 결정을 한 곳에서 관리합니다.\n\n관리자 김하늘\n🚧 진행 중\n\n개발 또는 구현 진행 중\n\n프로젝트 수정\n태스크 만들기\n1/6\n완료\n5\n미완료\n1\n기한 초과\n1\n검토 대기\n1\n막힘\n목록\n보드\n완료·취소 포함\nProjectManager\n메뉴 누락 안내 개선\n이서준\n중요도 7/10\n체크리스트 0/2\n10월 3일 초과\n○ 시작 전\n▶ 진행 중\n⏸ 일시정지\n■ 막힘\n◆ 검토 대기\n✓ 완료\n✕ 취소\n오늘 추가\nProjectManager\n모바일 업무 화면 정리\n김하늘\n중요도 6/10\n체크리스트 0/2\n오늘 마감\n○ 시작 전\n▶ 진행 중\n⏸ 일시정지\n■ 막힘\n◆ 검토 대기\n✓ 완료\n✕ 취소\n오늘 제외\nProjectManager\n새 학기 시간표 검증\n김하늘\n체크리스트 0/2\n10월 5일\n○ 시작 전\n▶ 진행 중\n⏸ 일시정지\n■ 막힘\n◆ 검토 대기\n✓ 완료\n✕ 취소\n오늘 제외\nProjectManager\n연결 오류 안내 작성\n이서준\n중요도 4/10\n외부 API 응답 확인 대기\n체크리스트 0/2\n10월 6일\n○ 시작 전\n▶ 진행 중\n⏸ 일시정지\n■ 막힘\n◆ 검토 대기\n✓ 완료\n✕ 취소\n오늘 추가\nProjectManager\n배포 전 점검\n김하늘\n중요도 2/10\n사유 없음\n체크리스트 0/2\n10월 8일\n○ 시작 전\n▶ 진행 중\n⏸ 일시정지\n■ 막힘\n◆ 검토 대기\n✓ 완료\n✕ 취소\n오늘 제외\n참고 링크\n링크 없음\n＋ 링크 추가"
+  },
+  {
+    "width": 390,
+    "action": "진행 메모 열기",
+    "url": "http://127.0.0.1:8018/tasks/2",
+    "focus": {
+      "tag": "TEXTAREA",
+      "name": "value",
+      "placeholder": "지금까지 한 일, 막힌 점, 다음에 할 일"
+    }
+  },
+  {
+    "width": 390,
+    "action": "자세히 보기",
+    "url": "http://127.0.0.1:8018/tasks/2",
+    "focus": {
+      "tag": "BODY",
+      "name": null,
+      "placeholder": null
+    }
+  }
+]

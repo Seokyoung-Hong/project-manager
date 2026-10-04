@@ -1,0 +1,32 @@
+Browser tab: 2, Title: "Page not found at /orgs/1/github", URL: "http://127.0.0.1:8017/orgs/1/github".
+The following is a diff from the previous accessibility tree with ~ and + representing changed and added elements, respectively. Removed elements are summarized by ID range.
+Removed element IDs: 352-355
+~1 AXWebArea Page not found at /orgs/1/github, URL: 127.0.0.1:8017/orgs/1/github
+~					15 text http://127.0.0.1:8017/orgs/1/github
+~					20 text web.views.github.org_github
++			352 container
++				353 AXListMarker 110. 
++				354 text orgs/<int:org_id>/discord/connect [name='discord_connect']
++			355 container
++				356 AXListMarker 111. 
++				357 text orgs/<int:org_id>/discord/unlink [name='discord_unlink']
++			358 container
++				359 AXListMarker 112. 
++				360 text orgs/discord/installed [name='discord_installed']
++			361 container
++				362 AXListMarker 113. 
++				363 text orgs/<int:org_id>/issues [name='org_issues']
++			364 container
++				365 AXListMarker 114. 
++				366 text orgs/<int:org_id>/issues/sync [name='org_issues_sync']
++			367 container
++				368 AXListMarker 115. 
++				369 text orgs/<int:org_id>/issues/<int:issue_id>/import [name='org_issue_import']
++			370 container
++				371 AXListMarker 116. 
++				372 text orgs/<int:org_id>/github [name='org_github']
++		373 container
++			374 text The current path,  orgs/1/github , matched the last one.
++	375 container
++		376 text You’re seeing this error because you have  DEBUG = True  in your Django settings file. Change that to  False , and Django will display a standard 404 page.
+The focused UI element is 1 AXWebArea Page not found at /orgs/1/github, URL: 127.0.0.1:8017/orgs/1/github

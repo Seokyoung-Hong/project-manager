@@ -18,7 +18,7 @@
       <option value="all" {% if state == "all" %}selected{% endif %}>전부</option>
     </select>
     <input type="search" name="q" value="{{ q }}" placeholder="제목·본문 검색">
-    <button class="btn sm">찾기</button>
+    <button class="btn sm">이슈 찾기</button>
   </form>
   <form method="post" action="{% if project %}{% url 'project_issues_sync' project.pk %}{% else %}{% url 'org_issues_sync' org.pk %}{% endif %}">
     {% csrf_token %}

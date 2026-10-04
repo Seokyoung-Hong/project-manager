@@ -1,0 +1,14 @@
+Browser tab: 2, Title: "Page not found at /projects/1/issues", URL: "http://127.0.0.1:8017/projects/1/issues".
+The following is a diff from the previous accessibility tree with ~ and + representing changed and added elements, respectively. Removed elements are summarized by ID range.
+Removed element IDs: 394-397
+~1 AXWebArea Page not found at /projects/1/issues, URL: 127.0.0.1:8017/projects/1/issues
+~					15 text http://127.0.0.1:8017/projects/1/issues
+~					20 text web.views.github.project_issues
++			394 container
++				395 AXListMarker 124. 
++				396 text projects/<int:project_id>/issues [name='project_issues']
++		397 container
++			398 text The current path,  projects/1/issues , matched the last one.
++	399 container
++		400 text You’re seeing this error because you have  DEBUG = True  in your Django settings file. Change that to  False , and Django will display a standard 404 page.
+The focused UI element is 1 AXWebArea Page not found at /projects/1/issues, URL: 127.0.0.1:8017/projects/1/issues

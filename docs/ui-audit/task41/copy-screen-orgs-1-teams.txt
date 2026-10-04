@@ -1,0 +1,135 @@
+Browser tab: 2, Title: "조직 → 팀", URL: "http://127.0.0.1:8017/orgs/1/teams".
+1 AXWebArea 조직 → 팀, URL: 127.0.0.1:8017/orgs/1/teams
+	2 container
+		3 button (collapsed) Description: 조직 전환, Help: 산돌이, Secondary Actions: Expand
+			4 text 산돌이
+		5 container 주 메뉴
+			6 link Description: 오늘, Value: 127.0.0.1:8017/today
+			7 link Description: 내 태스크, Value: 127.0.0.1:8017/me
+			8 link Description: 프로젝트, Value: 127.0.0.1:8017/projects
+			9 link Description: 조직, Value: 127.0.0.1:8017/org
+			10 link Description: 검색, Value: 127.0.0.1:8017/search
+		11 link Description: 빠른 추가, Value: 127.0.0.1:8017/today?quick=1
+		12 button (collapsed) Description: 내 메뉴, Help: 김, Secondary Actions: Expand
+			13 text 김
+		14 heading 산돌이, Value: 1
+			15 text 산돌이
+		16 container 조직 메뉴
+			17 link Description: 개요, Value: 127.0.0.1:8017/orgs/1
+			18 link Description: 팀, Value: 127.0.0.1:8017/orgs/1/teams
+			19 link Description: 부하 현황, Value: 127.0.0.1:8017/orgs/1/capacity
+			20 link Description: 로드맵, Value: 127.0.0.1:8017/orgs/1/roadmap
+			21 link Description: 거버넌스, Value: 127.0.0.1:8017/orgs/1/governance
+			22 link Description: 회의록, Value: 127.0.0.1:8017/orgs/1/notes
+			23 link Description: 설정, Value: 127.0.0.1:8017/orgs/1/settings
+		24 container
+			25 heading 멤버, Value: 2
+				26 text 멤버
+			27 text 관리자 1명. 마지막 관리자는 역할을 바꾸거나 제거할 수 없습니다.
+			28 container 조직 멤버 관리, 좌우로 스크롤 가능
+				29 table
+					30 row
+						31 cell
+							32 text 이름
+						33 cell
+							34 text 역할
+						35 cell
+							36 text 소속 팀
+						37 cell
+							38 text 스킬 태그
+						39 cell
+							40 text Discord
+						41 cell
+							42 text 미완료
+					43 row
+						44 cell
+							45 text 김하늘
+							46 text design_demo
+						47 cell
+							48 pop up button (collapsed, settable) Description: 김하늘 역할, Value: 관리자, Secondary Actions: Expand
+								49 menu
+									50 (selected) 관리자
+									51 멤버
+						52 cell
+							53 text 서비스 개발
+						54 cell
+							55 container
+								56 text 김하늘 스킬 태그
+								57 text field (settable) 김하늘 스킬 태그, ID: member-tags-1
+								58 button 저장
+						59 cell
+							60 text 없음
+						61 cell
+							62 text 9
+						63 cell
+							64 button (disabled) 제거, Help: 마지막 관리자는 제거할 수 없습니다
+					65 row
+						66 cell
+							67 text 이서준
+							68 text design_member
+						69 cell
+							70 pop up button (collapsed, settable) Description: 이서준 역할, Value: 멤버, Secondary Actions: Expand
+								71 menu
+									72 관리자
+									73 (selected) 멤버
+						74 cell
+							75 text 서비스 개발
+						76 cell
+							77 container
+								78 text 이서준 스킬 태그
+								79 text field (settable) 이서준 스킬 태그, ID: member-tags-2
+								80 button 저장
+						81 cell
+							82 text 없음
+						83 cell
+							84 text 5  초과 4
+						85 cell
+							86 button 제거
+			87 text Discord가 ‘없음’인 멤버는 마감 알림 DM을 받지 못합니다. 본인이 프로필 → [Discord 연결]에서 코드를 받아 봇에게 DM으로 보내면 됩니다.
+		88 container
+			89 heading 초대 링크, Value: 2
+				90 text 초대 링크
+			91 text 초대 링크는 조직 전체용입니다. 제거한 사람이 링크를 가지고 있으면 다시 참여할 수 있으니, 필요하면 링크를 폐기하고 새로 만드세요.
+			92 table
+				93 row
+					94 cell
+						95 text 링크
+					96 cell
+						97 text 만료
+					98 cell
+						99 text 사용
+				100 row
+					101 cell
+						102 text 초대 링크가 없습니다.
+			103 container
+				104 text 만료(일)
+				105 stepper (settable, integer) 만료(일), Value: 7, ID: id_days
+			106 button 초대 링크 만들기
+		107 container
+			108 heading 팀, Value: 2
+				109 text 팀
+			110 button 새 팀
+			111 table
+				112 row
+					113 cell
+						114 text 이름
+					115 cell
+						116 text 멤버
+					117 cell
+						118 text 담당 프로젝트
+					119 cell
+						120 text GitHub
+				121 row
+					122 cell
+						123 link Description: 서비스 개발, Value: 127.0.0.1:8017/teams/1
+					124 cell
+						125 text 2
+					126 cell
+						127 text 4
+					128 cell
+						129 text 미연결
+					130 cell
+						131 button 수정
+						132 button 삭제
+
+The focused UI element is 1 AXWebArea 조직 → 팀, URL: 127.0.0.1:8017/orgs/1/teams
