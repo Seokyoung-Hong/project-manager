@@ -1,0 +1,16 @@
+<form class="stack" hx-post="{% url 'task_duplicate' task.pk %}" hx-target="#dialog" hx-swap="innerHTML">
+  <h2 class="t20">{% if task.is_template %}회차 만들기{% elif task.status == "done" and task.parent_id %}다음 회차 만들기{% else %}복제{% endif %}</h2>
+  <p class="muted t13">{{ task.number }}의 설명·완료 조건·다음 행동·체크리스트(미완료로)·링크·문서 연결을 복사하고 같은 계열로 묶습니다. 기한은 새로 정하세요.</p>
+  <input type="hidden" name="idem" value="{{ idem }}">
+  <label class="field">제목<input class="input" name="title" value="{{ title }}" required autofocus></label>
+  <div class="row">
+    <label class="field">기한<input class="input" type="date" name="due_date" value="{{ due_date }}"></label>
+    <label class="field">담당자<select class="select auto" name="assignee">{% for u in members %}<option value="{{ u.pk }}"{% if u.pk == assignee_id %} selected{% endif %}>{{ u.display_name }}</option>{% endfor %}</select></label>
+  </div>
+  <label class="field">기한 미정 사유 (기한이 없을 때만)<input class="input" name="no_due_reason" value="{{ no_due_reason }}"></label>
+  {% if error %}<div class="error" role="alert">{{ error }}</div>{% endif %}
+  <div class="row">
+    <button class="btn primary">만들기</button>
+    <button type="button" class="btn" data-action="close-dialog">취소</button>
+  </div>
+</form>

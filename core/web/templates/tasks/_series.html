@@ -1,0 +1,5 @@
+<details class="section"{% if task.parent_id %} open{% endif %}><summary>같은 계열 {{ series|length }}</summary>
+  <ul class="stack">
+    {% for t in series %}<li class="row"><a href="{% url 'task_detail' t.pk %}"{% if t.pk == task.pk %} aria-current="true"{% endif %}>{{ t.number }} {{ t.title }}</a>{% if t.is_template %}<span class="badge primary">템플릿</span>{% else %}<span class="pill sm {{ t.status }}">{{ t.status_label }}</span>{% endif %}{% if t.due_date %}<span class="muted t13">{{ t.due_date|date:"n월 j일" }}</span>{% endif %}</li>{% endfor %}
+  </ul>
+</details>

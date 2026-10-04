@@ -182,6 +182,9 @@ FIELD_LABELS = {
     "completed_at": "완료 시각",
     "owners": "관리자",
     "is_archived": "보관",
+    "reviewer": "검토자",
+    "is_template": "템플릿",
+    "parent": "계열",
 }
 
 
@@ -196,7 +199,9 @@ def _display(field, raw: str) -> str:
         return fmt_md(date.fromisoformat(raw))
     if field == "completed_at":
         return raw[:10]
-    if field == "assignee":
+    if field == "is_template":
+        return "예" if raw == "True" else "아니오"
+    if field in ("assignee", "reviewer"):
         u = User.objects.filter(pk=raw).first()
         return u.display_name if u else raw
     if field == "project":

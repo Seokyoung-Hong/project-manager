@@ -1959,3 +1959,65 @@ def test_quick_add_done_when_required(logged, org, project, member):
     r = logged.post("/today/quick", {**data, "done_when": "게시 링크"}, headers=HX)
     assert r.status_code == 204
     assert Task.objects.get(title="빠른 카드뉴스").done_when == "게시 링크"
+
+
+# ---------- 계열·템플릿·반려·검토자 화면 — IMPL-PLAN-7 B ----------
+
+
+def test_duplicate_dialog_creates_series(logged, task):
+    body = logged.get(f"/tasks/{task.pk}/duplicate", headers=HX).content.decode()
+    assert 'name="title"' in body and "복제" in body
+    r = logged.post(
+        f"/tasks/{task.pk}/duplicate",
+        {"title": "굿즈 디자인(키링)", "no_due_reason": "시안 대기", "assignee": task.assignee_id},
+        headers=HX,
+    )
+    assert r.status_code == 204
+    new = Task.objects.get(title="굿즈 디자인(키링)")
+    assert r.headers["HX-Redirect"] == f"/tasks/{new.pk}" and new.parent == task
+    panel = logged.get(f"/tasks/{task.pk}/panel", headers=HX).content.decode()
+    assert "같은 계열 2" in panel
+    # 오류는 대화상자에 그대로 남는다(기한도 사유도 없음).
+    r = logged.post(f"/tasks/{task.pk}/duplicate", {"title": "x"}, headers=HX)
+    assert r.status_code == 200 and "사유" in r.content.decode()
+
+
+def test_template_toggle_and_chip(logged, project, task):
+    r = logged.post(f"/tasks/{task.pk}/meta", {"is_template": "1"}, headers=HX)
+    assert "템플릿 해제" in r.content.decode() and "회차 만들기" in r.content.decode()
+    task.refresh_from_db()
+    assert task.is_template
+    body = logged.get(f"/projects/{project.pk}").content.decode()
+    assert "템플릿 1" in body
+    board = logged.get(f"/projects/{project.pk}?view=board").content.decode()
+    assert "템플릿 1" in board
+
+
+def test_reviewer_select_and_reject_reason_panel(logged, org, admin, task, client):
+    r = logged.post(
+        f"/tasks/{task.pk}/meta", {"reviewer": admin.pk, "version": task.version}, headers=HX
+    )
+    task.refresh_from_db()
+    assert task.reviewer == admin and "검토자 관리자" in r.content.decode()
+    org.settings = {"task.reject_reason_required": True}
+    org.save()
+    v = task.version
+    logged.post(
+        f"/tasks/{task.pk}/status", {"status": "review", "version": v, "from": "panel"}, headers=HX
+    )
+    task.refresh_from_db()
+    client.force_login(admin)
+    r = client.post(
+        f"/tasks/{task.pk}/status",
+        {"status": "doing", "version": task.version, "from": "panel"},
+        headers=HX,
+    )
+    body = r.content.decode()
+    assert "반려 사유" in body and 'name="status" value="doing"' in body
+    r = client.post(
+        f"/tasks/{task.pk}/status",
+        {"status": "doing", "version": task.version, "from": "panel", "reason": "로고 수정"},
+        headers=HX,
+    )
+    task.refresh_from_db()
+    assert task.status == "doing"

@@ -55,6 +55,25 @@ class Task(models.Model):
     )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    # 계열(회차·변형). 평평하다 — parent는 항상 계열의 뿌리이고 뿌리의 parent는 None이다.
+    parent = models.ForeignKey(
+        "self",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="children",
+        verbose_name="원본",
+    )
+    # 템플릿은 진행하지 않는다. 회차는 duplicate_task로 만든다(자동 생성 없음).
+    is_template = models.BooleanField("템플릿", default=False)
+    reviewer = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="reviewing_tasks",
+        verbose_name="검토자",
+    )
 
     class Meta:
         ordering = ["-id"]
@@ -74,6 +93,10 @@ class Task(models.Model):
             models.CheckConstraint(
                 condition=~Q(status="done") | Q(completed_at__isnull=False),
                 name="task_done_requires_completed_at",
+            ),
+            models.CheckConstraint(
+                condition=~Q(is_template=True) | Q(status="todo"),
+                name="task_template_is_todo",
             ),
         ]
         indexes = [
@@ -424,6 +447,7 @@ class WorkRequest(models.Model):
         related_name="received_requests",
     )
     # assign은 넘길 태스크, work는 수락해서 생긴 태스크
+    due_date = models.DateField("희망 기한", null=True, blank=True)
     task = models.ForeignKey(
         Task, on_delete=models.SET_NULL, null=True, blank=True, related_name="requests"
     )

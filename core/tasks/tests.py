@@ -1130,3 +1130,165 @@ def test_default_settings_regression_full_lifecycle(project, member, admin):
     assert t.status == "todo"
     t = update_task(t, {"assignee": admin}, actor=admin, source="web", expected_version=t.version)
     assert t.assignee == admin
+
+
+# ---------- 계열·템플릿·반려·검토자 — IMPL-PLAN-7 B(F4·F6·F8/F9·F10) ----------
+
+
+def _third(org):
+    """세 번째 멤버(디자인 검토자 역할)."""
+    from accounts.models import User
+    from orgs.models import OrgMembership
+
+    u = User.objects.create_user("design1", password="pw12345678", display_name="디자이너")
+    OrgMembership.objects.create(org=org, user=u, role="member")
+    return u
+
+
+def _card(project, member):
+    """예시: 카드뉴스 템플릿 원본."""
+    from projects.models import ProjectDoc
+
+    t = create_task(
+        project=project,
+        title="카드뉴스 템플릿",
+        actor=member,
+        source="web",
+        description="인스타 카드뉴스 4장",
+        done_when="게시 링크를 산출물로 붙인다",
+        next_action="문구 초안",
+        priority=6,
+        no_due_reason="템플릿",
+    )
+    replace_checklist(t, [{"text": "문구", "is_done": True}, {"text": "디자인"}], actor=member)
+    add_link(actor=member, task=t, title="가이드", url="https://ex.com/g", kind="doc")
+    doc = ProjectDoc.objects.create(project=project, title="브랜드 가이드", created_by=member)
+    doc.tasks.add(t)
+    return t
+
+
+def test_duplicate_copies_series_flat(project, member):
+    tpl = _card(project, member)
+    w1 = ts.duplicate_task(
+        tpl,
+        actor=member,
+        source="web",
+        title="10월 1주차 카드뉴스 올리기",
+        due_date=today_kst() + timedelta(days=3),
+    )
+    assert (w1.parent, w1.status, w1.is_template) == (tpl, "todo", False)
+    assert (w1.description, w1.done_when, w1.next_action, w1.priority) == (
+        "인스타 카드뉴스 4장",
+        "게시 링크를 산출물로 붙인다",
+        "문구 초안",
+        6,
+    )
+    assert [(i.text, i.is_done) for i in w1.checklist.all()] == [("문구", False), ("디자인", False)]
+    assert [lk.url for lk in w1.links.all()] == ["https://ex.com/g"]
+    assert [d.title for d in w1.docs.all()] == ["브랜드 가이드"]
+    # 회차의 회차도 뿌리에 붙는다(계열은 평평하다).
+    w2 = ts.duplicate_task(w1, actor=member, source="web", no_due_reason="미정")
+    assert w2.parent == tpl and w2.title == w1.title
+    assert set(tpl.children.all()) == {w1, w2}
+    assert _logs(w2, "parent").get().note == f"{w1.number}에서 복제"
+
+
+def test_duplicate_idempotent_and_ai_policy(org, project, member):
+    tpl = _card(project, member)
+    a = ts.duplicate_task(tpl, actor=member, source="api", no_due_reason="x", idempotency_key="k1")
+    b = ts.duplicate_task(tpl, actor=member, source="api", no_due_reason="x", idempotency_key="k1")
+    assert a == b and a.checklist.count() == 2  # 재시도에 체크리스트가 두 번 붙지 않는다
+    _set(org, **{"ai.create_task": "deny"})
+    with pytest.raises(ServiceError):
+        ts.duplicate_task(tpl, actor=member, source="mcp", no_due_reason="x")
+
+
+def test_set_template_rules_and_transition_blocked(org, project, member, task):
+    _set(org, **{"task.due_required": True})
+    t = ts.set_template(task, True, actor=member)
+    assert (t.is_template, t.due_date, t.no_due_reason) == (True, None, "템플릿")
+    assert _logs(t, "is_template").exists()
+    # 기한 필수 조직에서도 템플릿은 기한 없이 고칠 수 있다.
+    t = update_task(t, {"priority": 7}, actor=member, source="web", expected_version=t.version)
+    with pytest.raises(ServiceError) as e:
+        transition(t, "doing", actor=member, source="web", expected_version=t.version)
+    assert "템플릿" in e.value.errors["status"]
+    t = ts.set_template(t, False, actor=member)
+    t = transition(t, "done", actor=member, source="web", expected_version=t.version)
+    with pytest.raises(ServiceError) as e:
+        ts.set_template(t, True, actor=member)
+    assert "is_template" in e.value.errors
+
+
+def test_db_constraint_template_is_todo(task):
+    with pytest.raises(IntegrityError), transaction.atomic():
+        Task.objects.filter(pk=task.pk).update(is_template=True, status="review")
+
+
+def test_templates_excluded_from_views(org, admin, project, member, task):
+    from projects.services import project_stats
+    from reports.services import org_status
+
+    before = project_stats(project)["total"]
+    tpl = ts.set_template(
+        create_task(
+            project=project,
+            title="카드뉴스 템플릿",
+            actor=member,
+            source="web",
+            no_due_reason="템플릿",
+        ),
+        True,
+        actor=member,
+    )
+    assert project_stats(project)["total"] == before
+    assert tpl not in search(member, "카드뉴스")
+    assert all(t != tpl for g in me_view(member)["groups"] for t in g.get("tasks", []))
+    assert org_status(org)["counts"]["open"] == 1
+    today_view(member)  # 템플릿이 있어도 깨지지 않는다
+    # 보관은 템플릿 때문에 막히지 않고, 템플릿은 그대로 남는다.
+    archive_project(project, actor=admin, cancel_open=True)
+    tpl.refresh_from_db()
+    assert (tpl.is_template, tpl.status) == (True, "todo")
+
+
+def test_reject_reason_required(org, member, admin, task):
+    _set(org, **{"task.reject_reason_required": True})
+    t = transition(task, "review", actor=member, source="web", expected_version=1)
+    with pytest.raises(ServiceError) as e:
+        transition(t, "doing", actor=admin, source="web", expected_version=t.version)
+    assert "reason" in e.value.errors
+    t = transition(
+        t, "doing", actor=admin, source="web", reason="색 대비 부족", expected_version=t.version
+    )
+    assert _logs(t, "status").order_by("-id").first().note == "색 대비 부족"
+    # 검토 대기가 아닌 곳에서 되돌리는 것은 반려가 아니다.
+    t = transition(t, "todo", actor=member, source="web", expected_version=t.version)
+    assert t.status == "todo"
+
+
+def test_reviewer_completes_only_reviewer_or_admin(org, admin, member, task):
+    designer = _third(org)
+    t = update_task(task, {"reviewer": designer}, actor=member, source="web", expected_version=1)
+    assert _logs(t, "reviewer").get().new_value == str(designer.pk)
+    t = transition(t, "review", actor=member, source="web", expected_version=t.version)
+    with pytest.raises(ServiceError) as e:
+        transition(t, "done", actor=member, source="web", expected_version=t.version)
+    assert "디자이너" in e.value.errors["status"]
+    t = transition(t, "done", actor=designer, source="web", expected_version=t.version)
+    assert t.status == "done"
+    # 관리자 예외
+    t = transition(t, "doing", actor=member, source="web", expected_version=t.version)
+    t = transition(t, "review", actor=member, source="web", expected_version=t.version)
+    t = transition(t, "done", actor=admin, source="web", expected_version=t.version)
+    assert t.status == "done"
+
+
+def test_reviewer_validation(org, member, outsider, task):
+    with pytest.raises(ServiceError) as e:
+        update_task(task, {"reviewer": outsider}, actor=member, source="web", expected_version=1)
+    assert "reviewer" in e.value.errors
+    _set(org, **{"task.self_review": False})
+    with pytest.raises(ServiceError) as e:
+        update_task(task, {"reviewer": member}, actor=member, source="web", expected_version=1)
+    assert "reviewer" in e.value.errors

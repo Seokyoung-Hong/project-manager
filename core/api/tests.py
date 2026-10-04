@@ -802,3 +802,33 @@ def test_my_settings_roundtrip(client, write_token):
 
     r = client.get("/api/me/settings", headers=_h(write_token))
     assert r.json()["values"]["user.notify_dm"] is False
+
+
+# ---------- 계열·템플릿·검토자 API — IMPL-PLAN-7 B ----------
+
+
+def test_duplicate_template_reviewer_api(api, task, admin, org):
+    r = api.patch(f"/api/tasks/{task.pk}", {"version": 1, "is_template": True})
+    assert r.status_code == 200 and r.json()["is_template"] is True
+    assert r.json()["due_date"] is None
+    ids = [t["id"] for t in api.get("/api/tasks").json()["items"]]
+    assert task.pk not in ids
+    ids = [t["id"] for t in api.get("/api/tasks?include_templates=true").json()["items"]]
+    assert task.pk in ids
+    body = {"title": "10월 1주차", "due_date": (today_kst() + timedelta(days=2)).isoformat()}
+    h = {"Idempotency-Key": "dup-1"}
+    r1 = api.post(f"/api/tasks/{task.pk}/duplicate", body, headers=h)
+    r2 = api.post(f"/api/tasks/{task.pk}/duplicate", body, headers=h)
+    assert r1.status_code == r2.status_code == 201
+    assert r1.json()["id"] == r2.json()["id"]
+    assert r1.json()["parent_id"] == task.pk and r1.json()["is_template"] is False
+    got = api.get(f"/api/tasks?parent={task.pk}").json()["items"]
+    assert [t["id"] for t in got] == [r1.json()["id"]]
+    assert api.get(f"/api/tasks/{task.pk}").json()["children_count"] == 1
+    new = r1.json()
+    r = api.patch(f"/api/tasks/{new['id']}", {"version": new["version"], "reviewer_id": admin.pk})
+    assert r.status_code == 200 and r.json()["reviewer"]["id"] == admin.pk
+    r = api.patch(f"/api/tasks/{new['id']}", {"version": r.json()["version"], "reviewer_id": None})
+    assert r.json()["reviewer"] is None
+    r = api.post(f"/api/tasks/{task.pk}/transition", {"status": "doing", "version": 2})
+    assert r.status_code == 400 and "템플릿" in r.json()["detail"]["status"]

@@ -102,6 +102,9 @@ PM apidoc 12 put openapi.json                         # 프로젝트 API 문서 
 | 태스크 고치기 | `PATCH /api/tasks/{id}` — `version` 필수, 바꿀 필드만 |
 | 상태 바꾸기 | `POST /api/tasks/{id}/transition` `{"status", "version", "reason"}` |
 | 기한 미루기 | `POST /api/tasks/{id}/extend` `{"due_date", "reason", "version"}` |
+| 복제·회차 만들기 | `POST /api/tasks/{id}/duplicate --key …` `{"title"?, "due_date"?, "no_due_reason"?, "assignee_id"?}` — 체크리스트(미완료로)·링크·문서를 복사하고 `parent_id`로 묶는다. 반복 업무는 템플릿에서 사람이 회차를 만든다(자동 생성 없음) |
+| 템플릿으로 두기·해제 | `PATCH /api/tasks/{id}` `{"version", "is_template": true}` — 시작 전에서만. 템플릿은 상태를 바꾸지 않고 목록·집계에서 빠진다(`GET /api/tasks?include_templates=true`) |
+| 검토자 지정 | `PATCH /api/tasks/{id}` `{"version", "reviewer_id"}` (`null`이면 해제) — 검토 대기 → 완료는 검토자나 관리자만. 반려(검토 대기 → 시작 전·진행 중)는 조직이 요구하면 `reason` 필수 |
 | ✋ 태스크 지우기 | `DELETE /api/tasks/{id}` — 되돌릴 수 없다. 보통은 `cancelled`로 바꾸는 게 맞다 |
 | GitHub 이슈 만들고 잇기 | `POST /api/tasks/{id}/github/issue` (본문 없음) |
 | 이슈를 태스크로 | `POST /api/projects/{id}/issues/{number}/import` |

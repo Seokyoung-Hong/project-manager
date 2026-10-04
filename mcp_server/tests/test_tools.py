@@ -40,6 +40,7 @@ TOOL_NAMES = {
     "get_task_github",
     "get_task_history",
     "create_task",
+    "duplicate_task",
     "update_task",
     "transition_task",
     "extend_task",
@@ -255,7 +256,7 @@ async def test_tool_names_registered(fake_core):
     finally:
         current_token.reset(tok)
     assert {t.name for t in tools} == TOOL_NAMES
-    assert len(TOOL_NAMES) == 71
+    assert len(TOOL_NAMES) == 72
 
 
 def test_governance_tool(fake_core, with_token):
@@ -312,3 +313,17 @@ def test_core_clients_share_one_connection_pool():
     from mcp_server.core_client import Core
 
     assert Core("a").http._transport is Core("b").http._transport
+
+
+def test_task_series_tools_shape(fake_core, with_token):
+    with pytest.raises(CoreError):  # 가짜 core에는 이 끝점이 없다 — 보낸 요청 모양만 본다
+        fn("duplicate_task")(1, title="10월 2주차", due_date="2026-10-14", request_id="d1")
+    method, path, headers, _ = fake_core.calls[-1]
+    assert (method, path) == ("POST", "/api/tasks/1/duplicate")
+    assert headers["idempotency-key"] == "d1"
+    assert last_body(fake_core)["due_date"] == "2026-10-14"
+    fn("update_task")(1, version=1, reviewer_id=3, is_template=False)
+    assert last_body(fake_core) == {"version": 1, "reviewer_id": 3, "is_template": False}
+    fn("list_tasks")(include_templates=True, parent_id=7)
+    assert "include_templates=true" in fake_core.calls[-1][1]
+    assert "parent=7" in fake_core.calls[-1][1]
