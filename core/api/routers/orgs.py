@@ -213,7 +213,7 @@ def org_repos(request, org_id: int):
     from github import services as gh_services
 
     org = org_or_404(request, org_id)
-    return gh_services.installation_repos(org)
+    return gh_services.installation_repos(org, request.auth)
 
 
 @router.get("/{org_id}/tasks", response=TaskListOut)

@@ -329,7 +329,7 @@ def project_repo(request, project_id):
             ctx["org_repos"] = []
         else:
             try:
-                ctx["org_repos"] = _pickable_repos(project, strict=True)
+                ctx["org_repos"] = _pickable_repos(project, request.user, strict=True)
                 ctx["repo_choices_status"] = (
                     "저장소 목록을 확인했습니다."
                     if ctx["org_repos"]
@@ -364,13 +364,13 @@ def project_repo(request, project_id):
     return render(request, "projects/repo.html", ctx)
 
 
-def _pickable_repos(project, *, strict=False):
+def _pickable_repos(project, user, *, strict=False):
     """조직 설치가 접근할 수 있는 저장소 + 이미 다른 프로젝트에 연결됐으면 그 표시.
 
     같은 저장소를 두 프로젝트에 붙일지는 connect_repo가 판단한다 — 여기서는 고르지 못하게
     막지 않고 이미 연결됐다는 사실만 보여 준다.
     """
-    repos = gh_services.installation_repos(project.org, strict=strict)
+    repos = gh_services.installation_repos(project.org, user, strict=strict)
     taken = dict(
         RepoConnection.objects.filter(project__org=project.org)
         .exclude(project=project)

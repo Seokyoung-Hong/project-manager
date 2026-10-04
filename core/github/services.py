@@ -88,22 +88,14 @@ def save_installation(org, installation_id: int, *, actor) -> GitHubInstallation
     """GET /app/installations/{id}(앱 JWT)로 계정 정보를 읽어 저장한다.
 
     설치 id는 Setup URL의 GET 값이라 누구나 바꿔 넣을 수 있다(순차 정수라 추측도 된다).
-    누른 사람의 GitHub 토큰으로 `GET /user/installations`를 불러 그 사람이 접근할 수 있는
-    설치일 때만 받는다. 다른 조직이 이미 그 설치를 쓰고 있어도 거부한다.
+    "볼 수 있는 설치"(`/user/installations`)로는 부족하다 — 읽기 전용 협력자에게도 보인다.
+    그러면 남의 설치를 먼저 연결해 설치 토큰으로 비공개 저장소 목록을 볼 수 있다.
+    그래서 **설치 계정의 주인**만 받는다: 개인 계정이면 그 본인, 조직이면 그 조직의 활성 admin.
+    다른 조직이 이미 그 설치를 쓰고 있어도 거부한다.
     """
     identity = getattr(actor, "github", None)
     if identity is None:
         raise ServiceError({"installation": "먼저 GitHub 계정을 연결하세요."})
-    mine = {
-        i.get("id")
-        for i in client.paginate("/user/installations", user_token(identity), key="installations")
-    }
-    if installation_id not in mine:
-        raise ServiceError(
-            {
-                "installation": "내 GitHub 계정으로 접근할 수 없는 설치입니다. 설치한 계정으로 연결하세요."
-            }
-        )
     other = (
         GitHubInstallation.objects.filter(installation_id=installation_id).exclude(org=org).exists()
     )
@@ -111,6 +103,13 @@ def save_installation(org, installation_id: int, *, actor) -> GitHubInstallation
         raise ServiceError({"installation": "이 설치는 이미 다른 조직이 사용하고 있습니다."})
     data = client.request("GET", f"/app/installations/{installation_id}", client.app_jwt())
     account = data.get("account") or {}
+    if not _owns_account(identity, account):
+        raise ServiceError(
+            {
+                "installation": "설치한 GitHub 계정의 본인이나 그 GitHub 조직의 관리자(admin)만 "
+                "연결할 수 있습니다."
+            }
+        )
     GitHubInstallation.objects.update_or_create(
         org=org,
         defaults={
@@ -122,6 +121,22 @@ def save_installation(org, installation_id: int, *, actor) -> GitHubInstallation
         },
     )
     return org.github
+
+
+def _owns_account(identity, account: dict) -> bool:
+    """이 사람이 설치 계정의 주인인가. 개인 계정은 같은 GitHub id, 조직은 활성 admin."""
+    if account.get("type") == "User":
+        return bool(account.get("id")) and account.get("id") == identity.github_id
+    login = account.get("login") or ""
+    if account.get("type") != "Organization" or not login:
+        return False
+    try:
+        m = client.request("GET", f"/user/memberships/orgs/{quote(login)}", user_token(identity))
+    except GitHubError as e:
+        if e.status in (403, 404):  # 그 조직의 멤버가 아니다
+            return False
+        raise
+    return (m or {}).get("role") == "admin" and (m or {}).get("state") == "active"
 
 
 # ---------- 사용자 토큰 ----------
@@ -300,8 +315,12 @@ def backfill_actor(identity):
 # ---------- 저장소 주소 ----------
 
 
-def installation_repos(org, *, strict=False) -> list[dict]:
-    """조직의 GitHub 앱 설치가 접근할 수 있는 저장소 목록. 저장소 연결 화면의 자동완성이 쓴다.
+def installation_repos(org, user, *, strict=False) -> list[dict]:
+    """조직의 GitHub 앱 설치가 접근할 수 있는 저장소 중 **이 사람도 볼 수 있는 것**.
+    저장소 연결 화면의 자동완성이 쓴다.
+
+    설치 토큰은 설치 범위 전부를 본다. 그대로 돌려주면 GitHub 권한이 없는 PM 멤버에게 비공개
+    저장소 이름이 새므로 `can_view_repo`(그 사람의 GitHub 접근 목록)와 교집합만 낸다.
 
     이미 다른 프로젝트에 연결됐는지는 여기서 보지 않는다 — 호출부가 판단한다.
     설치가 없거나 GitHub가 오류를 내면 빈 목록을 돌려준다. 화면은 입력창만으로도 그대로
@@ -325,6 +344,7 @@ def installation_repos(org, *, strict=False) -> list[dict]:
             "private": bool(r.get("private")),
         }
         for r in repos
+        if can_view_repo(user, r["full_name"])
     ]
 
 

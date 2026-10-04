@@ -126,7 +126,7 @@ def _dialog(request, form, org, project=None):
             ],
             "status_value": form["status"].value() or "preparing",
             "repo_input": repo_input,
-            "org_repos": gh_services.installation_repos(org) if repo_input else [],
+            "org_repos": gh_services.installation_repos(org, request.user) if repo_input else [],
         },
     )
 
