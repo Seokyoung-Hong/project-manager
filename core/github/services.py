@@ -192,6 +192,76 @@ def refresh_github_access(request):
         cache.set(retry_key, 1, REPO_RETRY_SECONDS)
 
 
+def _free_username(login: str) -> str:
+    """GitHub 로그인을 PM 아이디로 쓴다. 이미 있으면 -gh, -gh2 …를 붙인다.
+
+    GitHub 로그인은 영문·숫자·하이픈뿐이라 Django 아이디 규칙을 그대로 통과한다.
+    """
+    from accounts.models import User
+
+    base = login[:140]
+    name, n = base, 1
+    while User.objects.filter(username__iexact=name).exists():
+        name = f"{base}-gh" if n == 1 else f"{base}-gh{n}"
+        n += 1
+    return name
+
+
+def github_email(info: dict, token: str) -> str:
+    """GitHub 주 이메일. 공개 이메일이 없으면 /user/emails를 묻는다. 권한이 없으면 빈 값."""
+    if info.get("email"):
+        return info["email"][:254]
+    try:
+        emails = client.request("GET", "/user/emails", token)
+    except GitHubError:
+        return ""
+    primary = [e["email"] for e in emails if e.get("primary") and e.get("verified")]
+    return primary[0][:254] if primary else ""
+
+
+def lookalike_exists(login: str, email: str) -> bool:
+    """같은 아이디나 이메일로 가입했지만 GitHub를 연결하지 않은 계정이 있는가."""
+    from accounts.models import User
+
+    q = Q(username__iexact=login)
+    if email:
+        q |= Q(email__iexact=email)
+    return User.objects.filter(q, github__isnull=True).exists()
+
+
+@transaction.atomic
+def login_with_github(info: dict, token_data: dict) -> tuple:
+    """GitHub 사용자 정보로 PM 사용자를 찾고, 없으면 만든다. (identity, 새로 만들었나)를 돌려준다.
+
+    이미 연결된 GitHub 계정이면 그 사람이다. 처음 보는 계정이면 GitHub만으로 가입시킨다.
+    같은 이메일·아이디의 기존 PM 계정에 자동으로 붙이지 않는다 — 남의 계정을 가로챌 수 있다.
+    기존 계정을 쓰던 사람은 로그인한 뒤 프로필에서 GitHub를 연결하면 된다.
+    """
+    from accounts.models import User
+
+    github_id, login = info["id"], (info.get("login") or "")[:100]
+    identity = GitHubIdentity.objects.select_related("user").filter(github_id=github_id).first()
+    created = identity is None
+    if not created:
+        if not identity.user.is_active:
+            raise ServiceError({"github": "비활성화된 계정입니다. 조직 관리자에게 문의해 주세요."})
+        if identity.login != login:
+            identity.login = login
+            identity.save(update_fields=["login"])
+    else:
+        user = User(
+            username=_free_username(login or f"github-{github_id}"),
+            display_name=(info.get("name") or login)[:50],
+            email=info.get("email") or "",
+        )
+        user.set_unusable_password()  # 비밀번호 로그인은 없다. GitHub로만 들어온다.
+        user.save()
+        identity = GitHubIdentity.objects.create(user=user, github_id=github_id, login=login)
+        backfill_actor(identity)
+    _store_tokens(identity, token_data)
+    return identity, created
+
+
 def backfill_actor(identity):
     """이 로그인으로 남아 있던 GitHub 이력을 이 사람의 것으로 바꾼다."""
     ChangeLog.objects.filter(

@@ -1,0 +1,10 @@
+{% extends "base.html" %}{% block title %}GitHub로 가입{% endblock %}
+{% block auth %}
+<h1 class="t24">GitHub로 가입</h1>
+<div class="notice bad"><span aria-hidden="true">⚠</span><span class="grow">동일한 아이디 또는 이메일로 가입되어 GitHub와 연결되지 않은 계정이 존재합니다.<br>정말 신규로 가입하시겠습니까?</span></div>
+<p class="t13 muted">본인의 기존 계정이라면 그 계정으로 로그인한 뒤 프로필에서 GitHub를 연결해 주세요.</p>
+<form method="post" class="stack">{% csrf_token %}
+  <button class="btn primary">신규로 가입</button>
+  <a class="btn" href="{% url 'login' %}">기존 계정으로 로그인</a>
+</form>
+{% endblock %}

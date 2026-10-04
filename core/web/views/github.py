@@ -1,16 +1,19 @@
 """GitHub 화면. 업무 규칙은 전부 github/services.py에 있다 — 여기서는 부르기만 한다."""
 
 import hmac
+import json
 import secrets
 from urllib.parse import urlencode
 
 from django.conf import settings
 from django.contrib import messages
+from django.contrib.auth import login
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
 from django.http import Http404
 from django.shortcuts import redirect, render
 from django.urls import reverse
+from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_POST
 
 from common.errors import ServiceError
@@ -18,6 +21,7 @@ from github import client
 from github import services as gh_services
 from github import writes as gh_writes
 from github.client import GitHubError
+from github.crypto import decrypt, encrypt
 from github.models import GitHubIdentity, RepoConnection, RepoIssue, TaskGitLink
 from tasks.models import Task
 
@@ -111,9 +115,7 @@ def github_installed(request):
 # ---------- 사용자: 계정 연결 ----------
 
 
-@login_required
-def github_connect(request):
-    _gh_enabled_or_404()
+def _authorize(request):
     state = secrets.token_urlsafe(16)
     request.session["gh_oauth_state"] = state
     q = urlencode(
@@ -127,11 +129,61 @@ def github_connect(request):
 
 
 @login_required
+def github_connect(request):
+    _gh_enabled_or_404()
+    return _authorize(request)
+
+
+def github_login(request):
+    """GitHub로 로그인·가입. 콜백은 계정 연결과 같은 주소를 쓴다(GitHub에 등록한 주소 하나)."""
+    _gh_enabled_or_404()
+    if request.user.is_authenticated:
+        return redirect("today")
+    nxt = request.GET.get("next", "")
+    if url_has_allowed_host_and_scheme(nxt, allowed_hosts={request.get_host()}):
+        request.session["gh_login_next"] = nxt  # 초대 링크(/join/…)로 온 사람이 그대로 참여하게
+    return _authorize(request)
+
+
+def _finish_login(request, data: dict, info: dict):
+    try:
+        identity, created = gh_services.login_with_github(info, data)
+    except ServiceError as e:
+        messages.error(request, " ".join(e.errors.values()))
+        return redirect("login")
+    try:
+        gh_services.sync_repos(identity)
+    except (GitHubError, ServiceError):
+        pass  # 저장소 목록은 프로필에서 다시 확인할 수 있다. 로그인은 막지 않는다.
+    login(request, identity.user, backend="django.contrib.auth.backends.ModelBackend")
+    nxt = request.session.pop("gh_login_next", "")
+    if created:
+        messages.info(request, "가입되었습니다. 조직을 만들거나 초대 링크로 참여하세요.")
+    # 갓 가입한 사람은 조직이 없다 — signup과 같이 조직 목록으로 보낸다.
+    return redirect(nxt or ("org_list" if created else "today"))
+
+
+def github_login_confirm(request):
+    """같은 아이디·이메일의 기존 계정이 있을 때 신규 가입을 한 번 더 확인한다."""
+    _gh_enabled_or_404()
+    raw = request.session.get("gh_pending")
+    if request.user.is_authenticated or not raw:
+        return redirect("login")
+    if request.method == "POST":
+        text = decrypt(request.session.pop("gh_pending"))
+        if not text:  # 키를 갈아 복호화가 안 되면 처음부터 다시
+            return redirect("login")
+        pending = json.loads(text)
+        return _finish_login(request, pending["data"], pending["info"])
+    return render(request, "auth/github_confirm.html")
+
+
 def github_callback(request):
     _gh_enabled_or_404()
     if not _state_ok(request, "gh_oauth_state"):
         raise Http404
     code = request.GET.get("code", "")
+    failed = "profile" if request.user.is_authenticated else "login"
     try:
         if not code:
             raise GitHubError(400, "코드가 없습니다.")
@@ -139,7 +191,15 @@ def github_callback(request):
         info = client.request("GET", "/user", data["access_token"])
     except GitHubError:
         messages.error(request, "GitHub 연결에 실패했습니다.")
-        return redirect("profile")
+        return redirect(failed)
+    if not request.user.is_authenticated:
+        info["email"] = gh_services.github_email(info, data["access_token"])
+        new = not GitHubIdentity.objects.filter(github_id=info["id"]).exists()
+        if new and gh_services.lookalike_exists(info["login"], info["email"]):
+            # 기존 계정 주인이 실수로 새 계정을 만들지 않게 한 번 묻는다. 토큰이 있으니 암호화해 둔다.
+            request.session["gh_pending"] = encrypt(json.dumps({"data": data, "info": info}))
+            return redirect("github_login_confirm")
+        return _finish_login(request, data, info)
     if GitHubIdentity.objects.filter(github_id=info["id"]).exclude(user=request.user).exists():
         messages.error(request, "이 GitHub 계정은 이미 다른 사용자에게 연결되어 있습니다.")
         return redirect("profile")
