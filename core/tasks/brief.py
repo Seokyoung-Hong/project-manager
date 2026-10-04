@@ -7,6 +7,14 @@ def user_brief(u) -> dict | None:
     return {"id": u.pk, "display_name": u.display_name, "discord_user_id": u.discord_user_id}
 
 
+def _reviewer_sees(t) -> bool:
+    if t.reviewer_id is None:
+        return False
+    from tasks.services import can_see
+
+    return can_see(t.reviewer, t.project)
+
+
 def task_brief(t) -> dict:
     return {
         "id": t.pk,
@@ -21,7 +29,8 @@ def task_brief(t) -> dict:
         },
         "assignee": user_brief(t.assignee),
         # 지정 검토자. 검토 독촉(escalate)이 관리자보다 먼저 이 사람에게 보낸다.
-        "reviewer": user_brief(t.reviewer),
+        # 공개 범위·담당 팀이 바뀌어 검토자가 더는 못 보면 내보내지 않는다 → 독촉은 관리자에게 간다.
+        "reviewer": user_brief(t.reviewer) if _reviewer_sees(t) else None,
         "status": t.status,
         "priority": t.priority,
         "due_date": t.due_date.isoformat() if t.due_date else None,

@@ -408,3 +408,59 @@ def test_private_team_details_hidden_in_project_out(client, org, admin, member, 
         assert t["purpose"] == "연봉협상" and t["member_count"] == 1, url
     rows = client.get(f"/api/orgs/{org.pk}/teams", headers=_bearer(other)).json()
     assert next(r for r in rows if r["id"] == hr.pk)["purpose"] is None
+
+
+# ---------- Fable 최종 검토: 지정 검토자 가시성 ----------
+
+
+def test_reviewer_must_see_private_project(admin, other, secret_task):
+    from tasks.services import update_task
+
+    with pytest.raises(ServiceError) as e:
+        update_task(
+            secret_task,
+            {"reviewer": other},
+            actor=admin,
+            source="web",
+            expected_version=secret_task.version,
+        )
+    assert "볼 수 없는" in e.value.errors["reviewer"]
+
+
+def test_move_rejected_when_reviewer_cant_see(admin, member, other, project, secret):
+    from tasks.services import update_task
+
+    t = create_task(project=project, title="공개", actor=member, source="web", due_date=today_kst())
+    t = update_task(t, {"reviewer": other}, actor=admin, source="web", expected_version=t.version)
+    with pytest.raises(ServiceError) as e:
+        update_task(t, {"project": secret}, actor=admin, source="web", expected_version=t.version)
+    assert "reviewer" in e.value.errors
+
+
+def test_reviewer_who_lost_access_not_sent_to_bot(client, org, admin, team, secret, secret_task):
+    from orgs.services import add_team_member
+    from tasks.services import update_task
+
+    rv = User.objects.create_user(
+        "rv1",
+        password="pw12345678",
+        display_name="검토자",
+        discord_user_id="333",
+        discord_linked_at=timezone.now(),
+    )
+    OrgMembership.objects.create(org=org, user=rv, role="member")
+    add_team_member(team, rv, admin)
+    update_task(
+        secret_task,
+        {"reviewer": rv},
+        actor=admin,
+        source="web",
+        expected_version=secret_task.version,
+    )
+    url = f"/api/orgs/{org.pk}/tasks?project={secret.pk}"
+    h = _bearer(admin, "bot")
+    assert client.get(url, headers=h).json()["items"][0]["reviewer"]["id"] == rv.pk
+    secret.refresh_from_db()
+    update_project(secret, {"teams": []}, actor=admin, expected_version=secret.version)
+    # 검토 독촉(escalate)은 reviewer가 비면 프로젝트 관리자·조직 관리자에게 보낸다.
+    assert client.get(url, headers=h).json()["items"][0]["reviewer"] is None
