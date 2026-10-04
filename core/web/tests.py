@@ -342,8 +342,12 @@ def test_token_purpose_is_chosen_at_issue(logged, member):
     from accounts.models import ApiToken
 
     logged.post("/settings/tokens", {"name": "ai", "scope": "write", "purpose": "ai"})
-    logged.post("/settings/tokens", {"name": "사람", "scope": "write", "purpose": "person"})
-    logged.post("/settings/tokens", {"name": "봇", "scope": "bot", "purpose": "person"})
+    # 사람용은 "AI에 넣지 않겠다"는 확인 없이는 발급되지 않는다.
+    r = logged.post("/settings/tokens", {"name": "확인없음", "scope": "write", "purpose": "person"})
+    assert "확인이 필요합니다" in r.content.decode()
+    ack = {"person_ack": "on"}
+    logged.post("/settings/tokens", {"name": "사람", "scope": "write", "purpose": "person", **ack})
+    logged.post("/settings/tokens", {"name": "봇", "scope": "bot", "purpose": "person", **ack})
     assert dict(member.tokens.values_list("name", "for_ai")) == {"ai": True, "사람": False}
     assert not ApiToken.issue(member, "봇", "bot")[0].for_ai  # 봇 토큰은 사람 명령을 옮긴다
 

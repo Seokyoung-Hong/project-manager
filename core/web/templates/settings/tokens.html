@@ -37,12 +37,32 @@
     </table>
   </details>
   {% endif %}
+  <h3>용도에 따른 차이</h3>
+  <table class="grid">
+    <thead><tr><th></th><th>AI 도구용</th><th>사람용</th></tr></thead>
+    <tbody>
+      <tr><td>조직의 AI 정책</td><td>적용됩니다. 조직이 AI에게 막아 둔 일(삭제, 요청 수락, 담당자·기한 변경 등)은 거절됩니다.</td><td><b>적용되지 않습니다.</b> 사람인 나와 똑같은 권한으로 모든 일을 합니다.</td></tr>
+      <tr><td>변경 이력</td><td>"AI"가 한 일로 남습니다.</td><td>내가 직접 한 일로 남습니다.</td></tr>
+      <tr><td>쓰는 곳</td><td>Claude·Codex·MCP 커넥터 등 AI 도구</td><td>내가 직접 짜고 내용을 아는 스크립트·자동화</td></tr>
+    </tbody>
+  </table>
+  <div class="card" role="alert" style="border-color:var(--danger)">
+    <p class="danger"><b>⚠ 사람용 토큰을 AI 도구에 절대 넣지 마세요.</b></p>
+    <ul class="t13">
+      <li>조직 관리자가 AI에게 막아 둔 일을 AI가 그대로 할 수 있게 됩니다. 태스크 삭제, 요청 수락·거절, 담당자·기한·중요도 변경, 완료 처리가 모두 포함됩니다.</li>
+      <li>AI가 한 일이 <b>내가 직접 한 일로 기록</b>됩니다. 나중에 사람이 한 일과 AI가 한 일을 구분할 수 없고, 그 책임은 나에게 남습니다.</li>
+      <li>AI가 잘못 이해하거나 외부 글(이슈·메모)의 지시에 속으면, 막을 장치 없이 내 권한으로 실행됩니다.</li>
+      <li>발급 뒤에는 용도를 바꿀 수 없습니다. 잘못 발급했다면 바로 폐기하고 새로 발급해 주세요.</li>
+    </ul>
+  </div>
   <form method="post" class="row">{% csrf_token %}
     <label class="field">{{ form.name.label }}{{ form.name }}</label>
     <label class="field">{{ form.scope.label }}{{ form.scope }}</label>
     <label class="field">{{ form.purpose.label }}{{ form.purpose }}</label>
+    <label class="row t13">{{ form.person_ack }} {{ form.person_ack.label }} <span class="muted">(사람용일 때 필수)</span></label>
     <button class="btn primary">토큰 발급</button>
   </form>
+  {% if form.errors %}<p class="danger t13">{% for f in form %}{% for e in f.errors %}{{ e }} {% endfor %}{% endfor %}{{ form.non_field_errors|join:" " }}</p>{% endif %}
 </section>
 <section class="card">
   <h2>AI 클라이언트 연결</h2>

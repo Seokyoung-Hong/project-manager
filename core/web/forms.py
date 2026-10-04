@@ -132,3 +132,15 @@ class TokenForm(forms.Form):
         choices=[("ai", "AI 도구(Claude·Codex 등)"), ("person", "사람이 쓰는 스크립트·자동화")],
         initial="ai",
     )
+    person_ack = forms.BooleanField(
+        label="이 토큰을 AI 도구에 넣지 않겠습니다", required=False
+    )
+
+    def clean(self):
+        data = super().clean()
+        # 사람용 토큰을 AI에 주면 조직의 AI 정책(ai.*)이 전부 풀린다. 실수로 고르지 않게 한 번 더 받는다.
+        if data.get("purpose") == "person" and not data.get("person_ack"):
+            self.add_error(
+                "person_ack", "사람용 토큰은 AI 도구에 넣지 않겠다는 확인이 필요합니다."
+            )
+        return data
