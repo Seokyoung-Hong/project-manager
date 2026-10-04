@@ -48,7 +48,12 @@
   }
 
   function api(method, path, data, headers) {
-    var opt = { method: method, credentials: "same-origin", headers: { "X-CSRFToken": csrf } };
+    // X-Source: ai — 세션 쿠키로 부르므로 이 표시가 없으면 서버가 사람으로 보고 조직의 AI 정책(ai.*)을 건너뛴다.
+    var opt = {
+      method: method,
+      credentials: "same-origin",
+      headers: { "X-CSRFToken": csrf, "X-Source": "ai" },
+    };
     Object.keys(headers || {}).forEach(function (k) {
       opt.headers[k] = headers[k];
     });

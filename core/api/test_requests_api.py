@@ -140,3 +140,38 @@ def test_ai_create_and_cancel_follow_create_request(client, member, admin, org):
     set_org_settings(org, {"ai.create_request": "deny"}, admin)
     assert post("/api/requests", body).status_code == 400
     assert post(f"/api/requests/{made.json()['id']}/cancel", {}).status_code == 400
+
+
+def test_idempotency_key_used_for_a_task_is_rejected_without_side_effects(api, org, admin, project):
+    from tasks.models import Notice, WorkRequest
+
+    h = {"Idempotency-Key": "k-1"}
+    r = api.post(
+        "/api/tasks", {"project_id": project.pk, "title": "t", "no_due_reason": "x"}, headers=h
+    )
+    assert r.status_code == 201
+    before = (WorkRequest.objects.count(), Notice.objects.count())
+    r = api.post(
+        "/api/requests",
+        {"org_id": org.pk, "title": "x", "kind": "general", "to_user_id": admin.pk},
+        headers=h,
+    )
+    assert r.status_code == 400
+    assert (WorkRequest.objects.count(), Notice.objects.count()) == before
+
+
+def test_browser_ai_with_session_is_held_to_ai_policy(client, admin, org, member):
+    """WebMCP는 세션 쿠키로 부르고 X-Source: ai를 붙인다. 수락은 기본 막힘."""
+    req = wr.create_request(
+        org=org, kind="general", title="x", actor=admin, source="web", to_user=member
+    )
+    client.login(username="member1", password="pw12345678")
+    r = client.post(
+        f"/api/requests/{req.pk}/accept",
+        {},
+        content_type="application/json",
+        headers={"X-Source": "ai"},
+    )
+    assert r.status_code == 400
+    r = client.post(f"/api/requests/{req.pk}/accept", {}, content_type="application/json")
+    assert r.status_code == 200  # 같은 사람이 직접 하면 된다

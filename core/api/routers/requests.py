@@ -1,5 +1,6 @@
 from datetime import date
 
+from django.db import transaction
 from ninja import Router, Schema
 from ninja.errors import HttpError
 
@@ -110,7 +111,10 @@ def create_request_ep(request, payload: RequestCreateIn):
         raise _not_found("조직")
     key = idem_key(request)
     if key:
-        hit = IdempotencyKey.objects.filter(user=c["actor"], key=key, target_type="request").first()
+        # 키는 사람마다 하나의 대상에만 쓴다(idem_user_key). 다른 종류에 쓴 키면 만들기 전에 거절한다.
+        hit = IdempotencyKey.objects.filter(user=c["actor"], key=key).first()
+        if hit and hit.target_type != "request":
+            return 400, {"detail": {"idempotency_key": "이미 다른 작업에 쓴 키입니다."}}
         if hit:
             return 201, request_out(WorkRequest.objects.get(pk=hit.target_id))
     team = to_user = None
@@ -122,20 +126,21 @@ def create_request_ep(request, payload: RequestCreateIn):
         to_user = User.objects.filter(pk=payload.to_user_id).first()
         if to_user is None or not is_member(to_user, org):
             raise _not_found("받는 사람")
-    req = wr.create_request(
-        org=org,
-        kind=payload.kind,
-        title=payload.title,
-        body=payload.body,
-        team=team,
-        to_user=to_user,
-        actor=c["actor"],
-        source=c["source"],
-    )
-    if key:
-        IdempotencyKey.objects.create(
-            user=c["actor"], key=key, target_type="request", target_id=req.pk
+    with transaction.atomic():  # 키 기록이 실패하면 요청·알림도 남기지 않는다
+        req = wr.create_request(
+            org=org,
+            kind=payload.kind,
+            title=payload.title,
+            body=payload.body,
+            team=team,
+            to_user=to_user,
+            actor=c["actor"],
+            source=c["source"],
         )
+        if key:
+            IdempotencyKey.objects.create(
+                user=c["actor"], key=key, target_type="request", target_id=req.pk
+            )
     return 201, request_out(req)
 
 
