@@ -368,3 +368,27 @@ class DiscordChannelIn(Schema):
 
 class ProjectDiscordChannelIn(Schema):
     channel_id: str = ""
+
+
+class DiscordRequestIn(Schema):
+    """`/요청`. 팀·사람을 안 고르면 명령을 친 채널에 연결된 팀으로 보낸다."""
+
+    discord_user_id: str
+    title: str
+    body: str = ""
+    kind: str = "work"  # work | general
+    channel_id: str = ""
+    team_id: int | None = None
+    to_user_id: int | None = None
+
+
+class DiscordRequestAnswerIn(Schema):
+    discord_user_id: str
+    note: str = ""
+    project_id: int | None = None
+    assignee_id: int | None = None
+    due_date: date | None = None
+
+
+class DiscordNoticeAckIn(Schema):
+    ids: list[int]

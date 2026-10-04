@@ -83,3 +83,23 @@ def invite_out(inv) -> dict:
         "use_count": inv.use_count,
         "revoked_at": inv.revoked_at,
     }
+
+
+def request_out(r) -> dict:
+    return {
+        "id": r.pk,
+        "number": r.number,
+        "kind": r.kind,
+        "kind_label": r.get_kind_display(),
+        "title": r.title,
+        "body": r.body,
+        "status": r.status,
+        "status_label": r.get_status_display(),
+        "requested_by": user_brief(r.requested_by),
+        "team": {"id": r.team.pk, "name": r.team.name} if r.team_id else None,
+        "to_user": user_brief(r.to_user) if r.to_user_id else None,
+        "task_id": r.task_id,
+        "response_note": r.response_note,
+        "url": settings.SITE_URL + r.path,
+        "created_at": r.created_at,
+    }

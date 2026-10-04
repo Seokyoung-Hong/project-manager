@@ -19,6 +19,7 @@ from orgs.services import orgs_of, set_team_channel
 from projects.models import Project
 from projects.services import set_project_channel
 from tasks.brief import task_brief
+from tasks import work_requests as wr
 from tasks.models import Task
 from tasks.services import (
     by_due,
@@ -39,12 +40,15 @@ from ..schemas import (
     DiscordExtendIn,
     DiscordLinkIn,
     DiscordNoteIn,
+    DiscordNoticeAckIn,
     DiscordOrgChannelIn,
+    DiscordRequestAnswerIn,
+    DiscordRequestIn,
     DiscordStatusIn,
     DiscordTaskCreateIn,
     DiscordTaskUpdateIn,
 )
-from ..serialize import task_out
+from ..serialize import request_out, task_out
 
 router = Router(tags=["discord"], auth=BotTokenAuth())
 
@@ -342,3 +346,120 @@ def project_channel(request, project_id: int, payload: DiscordChannelIn):
         "name": project.name,
         "discord_channel_id": project.discord_channel_id,
     }
+
+
+# ---------- 요청 (/요청). 팀 채널에서 치면 그 팀으로 간다 ----------
+
+
+def _request(actor, request_id: int):
+    req = wr.get_visible_request(actor, request_id)
+    if req is None:
+        raise HttpError(404, "요청을 찾을 수 없습니다.")
+    return req
+
+
+@router.post("/requests", response=dict)
+def create_request(request, payload: DiscordRequestIn):
+    actor = _actor(payload.discord_user_id)
+    team = to_user = None
+    if payload.to_user_id is not None:
+        to_user = _assignee(payload.to_user_id)
+    elif payload.team_id is not None:
+        team = Team.objects.filter(pk=payload.team_id, org__in=orgs_of(actor)).first()
+    else:
+        team = wr.team_by_channel(payload.channel_id)
+    if team is None and to_user is None:
+        raise HttpError(400, "팀 채널에서 쓰거나 받을 팀·사람을 골라 주세요.")
+    org = team.org if team else None
+    if org is None:
+        # 사람에게 보낼 때는 두 사람이 함께 속한 조직. 여럿이면 가장 먼저 만든 조직이다.
+        org = orgs_of(actor).filter(memberships__user=to_user).order_by("pk").first()
+        if org is None:
+            raise HttpError(400, "같은 조직의 멤버에게만 요청할 수 있습니다.")
+    req = wr.create_request(
+        org=org,
+        kind=payload.kind,
+        title=payload.title,
+        body=payload.body,
+        actor=actor,
+        source="dc",
+        team=team,
+        to_user=to_user,
+    )
+    return {"request": request_out(req)}
+
+
+@router.post("/requests/mine", response=dict)
+def my_requests(request, payload: DiscordActorIn):
+    """`번호` 자동완성과 `/요청목록`. 내가 답할 대기 요청과 내가 보낸 대기 요청."""
+    actor = _actor(payload.discord_user_id)
+    received = (
+        wr.received(actor)
+        .filter(status__in=("pending", "accepted"))
+        .exclude(status="accepted", kind__in=("work", "assign"))
+    )
+    sent = wr.visible_requests(actor).filter(requested_by=actor, status="pending")
+    return {
+        "received": [request_out(r) for r in received[:25]],
+        "sent": [request_out(r) for r in sent[:25]],
+    }
+
+
+@router.post("/requests/{int:request_id}/projects", response=list[dict])
+def request_projects(request, request_id: int, payload: DiscordActorIn):
+    """수락할 때 `프로젝트` 자동완성. 받는 팀이 맡은 프로젝트가 앞에 온다."""
+    req = _request(_actor(payload.discord_user_id), request_id)
+    return [{"id": p.pk, "name": p.name} for p in wr.projects_for(req)]
+
+
+@router.post("/requests/{int:request_id}/accept", response=dict)
+def accept_request(request, request_id: int, payload: DiscordRequestAnswerIn):
+    actor = _actor(payload.discord_user_id)
+    req = _request(actor, request_id)
+    project = _project(actor, payload.project_id) if payload.project_id else None
+    req = wr.accept(
+        req,
+        actor,
+        source="dc",
+        project=project,
+        assignee=_assignee(payload.assignee_id),
+        due_date=payload.due_date,
+        note=payload.note,
+    )
+    out = {"request": request_out(req)}
+    if req.task_id:
+        out["task"] = task_out(req.task)
+    return out
+
+
+@router.post("/requests/{int:request_id}/decline", response=dict)
+def decline_request(request, request_id: int, payload: DiscordRequestAnswerIn):
+    actor = _actor(payload.discord_user_id)
+    return {"request": request_out(wr.decline(_request(actor, request_id), actor, payload.note))}
+
+
+@router.post("/requests/{int:request_id}/done", response=dict)
+def complete_request(request, request_id: int, payload: DiscordRequestAnswerIn):
+    actor = _actor(payload.discord_user_id)
+    return {"request": request_out(wr.complete(_request(actor, request_id), actor, payload.note))}
+
+
+# ---------- 알림 발송함. 봇이 틱마다 가져가 보내고 ack한다 ----------
+
+
+@router.get("/notices", response=list[dict])
+def notices(request):
+    return [
+        {
+            "id": n.pk,
+            "discord_user_id": n.user.discord_user_id if n.user_id else None,
+            "channel_id": n.channel_id,
+            "text": n.text,
+        }
+        for n in wr.pending_notices()
+    ]
+
+
+@router.post("/notices/ack", response=dict)
+def ack_notices(request, payload: DiscordNoticeAckIn):
+    return {"acked": wr.mark_sent(payload.ids)}

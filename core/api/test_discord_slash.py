@@ -198,3 +198,51 @@ def test_slash_endpoints_need_the_bot_scope(client, task, team, write_token):
     for path in ("/projects", "/mytasks", f"/tasks/{task.pk}/note", f"/teams/{team.pk}/channel"):
         r = client.post(f"{DC}{path}", data=BODY, content_type="application/json", headers=h)
         assert r.status_code == 403
+
+
+# ---------- 요청 ----------
+
+
+def test_request_in_team_channel_goes_to_that_team(post, client, bot_token, team, admin, project):
+    team.discord_channel_id = "555"
+    team.save()
+    # member(111)가 자기 팀 채널에서 /요청. 받는 쪽도 그 팀이다.
+    r = post("/requests", {"title": "결제 오류 확인", "channel_id": "555"})
+    assert r.status_code == 200
+    req = r.json()["request"]
+    assert (req["team"]["id"], req["status"], req["kind"]) == (team.pk, "pending", "work")
+
+    r = post(f"/requests/{req['id']}/projects")
+    assert [p["id"] for p in r.json()] == [project.pk]
+    r = post(f"/requests/{req['id']}/accept")
+    assert r.status_code == 400  # 프로젝트 필수
+    r = post(f"/requests/{req['id']}/accept", {"project_id": project.pk})
+    assert r.status_code == 200
+    assert r.json()["task"]["assignee"]["id"] == r.json()["request"]["requested_by"]["id"]
+
+
+def test_request_without_team_channel_is_400(post, member):
+    assert post("/requests", {"title": "x", "channel_id": "nope"}).status_code == 400
+
+
+def test_request_to_person_and_notices(post, client, bot_token, admin, member, org):
+    admin.discord_user_id, admin.discord_linked_at = "999", member.discord_linked_at
+    admin.save()
+    r = post("/requests", {"title": "리뷰", "kind": "general", "to_user_id": admin.pk})
+    rid = r.json()["request"]["id"]
+    h = {"Authorization": f"Bearer {bot_token}"}
+    notes = client.get(f"{DC}/notices", headers=h).json()
+    assert [n["discord_user_id"] for n in notes] == ["999"]
+    r = client.post(
+        f"{DC}/notices/ack", {"ids": [notes[0]["id"]]}, content_type="application/json", headers=h
+    )
+    assert r.json() == {"acked": 1}
+    assert client.get(f"{DC}/notices", headers=h).json() == []
+
+    # admin이 수락하고 완료한다. member는 받는 사람이 아니라 답하지 못한다.
+    assert post(f"/requests/{rid}/accept").status_code == 400
+    admin_post = {"discord_user_id": "999"}
+    assert post(f"/requests/{rid}/accept", admin_post).status_code == 200
+    mine = post("/requests/mine", admin_post).json()
+    assert [x["id"] for x in mine["received"]] == [rid]
+    assert post(f"/requests/{rid}/done", admin_post).json()["request"]["status"] == "done"
