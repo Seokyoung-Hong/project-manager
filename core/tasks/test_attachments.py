@@ -206,3 +206,77 @@ def test_api_upload_list_download(client, write_token, task, member):
     r = client.post(f"/api/tasks/{task.pk}/attachments", {"file": _f("a.html")}, headers=h)
     assert r.status_code == 400
     assert client.delete(f"/api/attachments/{att['id']}", headers=h).status_code == 204
+
+
+# ---------- 동시 업로드 경쟁 — 검사와 저장 사이에 다른 요청을 끼워 넣어 결정적으로 재현한다 ----------
+
+
+class _Racing(SimpleUploadedFile):
+    """검사를 모두 통과한 뒤 내용을 읽는 순간(해시 계산) 다른 요청 `other()`를 한 번 끝까지 실행한다.
+
+    한 연결에서 돌리므로 끼어든 요청의 행은 바깥 요청이 롤백될 때 같이 사라진다(실제로는 별도
+    트랜잭션이라 남는다). 그래서 DB 행 수가 아니라 "바깥 요청이 거부되는가"와 디스크의 파일을 본다.
+    수정 전에는 바깥 요청이 그대로 저장돼 1,433,600 bytes·2개·v2 둘이 됐다."""
+
+    def __init__(self, other, name="b.png", data=PNG):
+        super().__init__(name, data, content_type="image/png")
+        self.other = other
+
+    def chunks(self, chunk_size=None):
+        if self.other is not None:
+            other, self.other = self.other, None
+            other()
+        return super().chunks(chunk_size)
+
+
+def _stored(settings):
+    return sorted(p for p in settings.MEDIA_ROOT.rglob("*") if p.is_file())
+
+
+def test_quota_race_does_not_overshoot(task, member, org, settings):
+    org.settings = {"org.attachment_quota_mb": 1}
+    org.save()
+    big = b"0" * (700 * 1024)
+
+    def other():
+        _add(task, member, upload=_f("a.png", big))
+
+    with pytest.raises(ServiceError) as e:
+        _add(task, member, upload=_Racing(other, data=big))
+    assert "용량" in e.value.errors["file"]
+    assert [p.stat().st_size for p in _stored(settings)] == [700 * 1024]  # 거부된 쪽 파일은 지운다
+
+
+def test_count_race_does_not_overshoot(task, member, monkeypatch, settings):
+    monkeypatch.setattr(at, "MAX_PER_TARGET", 1)
+    with pytest.raises(ServiceError) as e:
+        _add(task, member, upload=_Racing(lambda: _add(task, member)))
+    assert "1개" in e.value.errors["file"]
+    assert len(_stored(settings)) == 1
+
+
+def test_version_race_keeps_single_successor(task, member, settings):
+    v1 = _add(task, member)
+    with pytest.raises(ServiceError) as e:
+        _add(task, member, upload=_Racing(lambda: _add(task, member, replaces=v1)), replaces=v1)
+    assert "새 버전" in e.value.errors["replaces"]
+    assert len(_stored(settings)) == 2  # v1과 먼저 올라간 v2만
+
+
+def test_single_successor_constraint(task, member):
+    """잠금을 비켜 가도 DB가 두 번째 v2를 막는다."""
+    from django.db import IntegrityError, transaction
+
+    v1 = _add(task, member)
+    _add(task, member, replaces=v1)
+    with pytest.raises(IntegrityError), transaction.atomic():
+        Attachment.objects.create(
+            task=task,
+            name="x.png",
+            size=1,
+            content_type="image/png",
+            sha256="0",
+            file="att/x.png",
+            replaces=v1,
+            created_by=member,
+        )

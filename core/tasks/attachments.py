@@ -8,10 +8,11 @@ import hashlib
 import logging
 from pathlib import PurePath
 
-from django.db import transaction
+from django.db import IntegrityError, transaction
 from django.db.models import Q, Sum
 
 from common.errors import ServiceError
+from orgs.models import Organization
 from orgs.services import is_admin, is_member
 from orgs.settings import effective
 from projects.services import can_view_project
@@ -61,6 +62,19 @@ def org_usage_bytes(org) -> int:
     )
 
 
+def _check_room(target, org, incoming: int, replaces) -> None:
+    """개수·할당량·버전 분기 검사. 저장 전(incoming=올릴 크기)과 저장 뒤(incoming=0) 두 번 부른다."""
+    if Attachment.objects.filter(**target).count() + (1 if incoming else 0) > MAX_PER_TARGET:
+        raise ServiceError({"file": f"한 곳에 {MAX_PER_TARGET}개까지 붙일 수 있습니다."})
+    quota = effective("org.attachment_quota_mb", org=org) * 1024 * 1024
+    if org_usage_bytes(org) + incoming > quota:
+        raise ServiceError(
+            {"file": "조직의 첨부 파일 용량을 넘습니다. 조직 관리자에게 문의하세요."}
+        )
+    if replaces is not None and replaces.replaced_by.exists():
+        raise ServiceError({"replaces": "이미 새 버전이 있습니다. 최신 버전에서 올리세요."})
+
+
 def can_download(user, att) -> bool:
     """접근 검사는 projects.services.can_view_project 한 곳에 둔다(공개 범위 포함)."""
     return can_view_project(user, att.target_project)
@@ -85,23 +99,19 @@ def add_attachment(
     if kind not in dict(Attachment.KINDS):
         raise ServiceError({"kind": "알 수 없는 종류입니다."})
     target = {"task": task} if task is not None else {"project": project}
-    if Attachment.objects.filter(**target).count() >= MAX_PER_TARGET:
-        raise ServiceError({"file": f"한 곳에 {MAX_PER_TARGET}개까지 붙일 수 있습니다."})
-    quota = effective("org.attachment_quota_mb", org=target_project.org) * 1024 * 1024
-    if org_usage_bytes(target_project.org) + upload.size > quota:
-        raise ServiceError(
-            {"file": "조직의 첨부 파일 용량을 넘습니다. 조직 관리자에게 문의하세요."}
-        )
-    version = 1
+    if replaces is not None and (replaces.task_id, replaces.project_id) != (
+        getattr(task, "pk", None),
+        getattr(project, "pk", None),
+    ):
+        raise ServiceError({"replaces": "같은 곳에 붙은 파일의 새 버전만 올릴 수 있습니다."})
+    # 같은 조직의 업로드를 조직 행 잠금으로 줄 세운다(할당량·개수·버전 검사와 저장이 한 덩어리).
+    # 대상(태스크·프로젝트)과 원본 첨부 행도 잠근다. SQLite에서는 잠금이 없으므로 아래에서
+    # 저장 뒤 다시 센다 — 끼어든 요청이 있어도 넘친 쪽이 롤백된다.
+    Organization.objects.select_for_update().filter(pk=target_project.org_id).first()
+    type(task or project).objects.select_for_update().filter(pk=(task or project).pk).first()
     if replaces is not None:
-        if (replaces.task_id, replaces.project_id) != (
-            getattr(task, "pk", None),
-            getattr(project, "pk", None),
-        ):
-            raise ServiceError({"replaces": "같은 곳에 붙은 파일의 새 버전만 올릴 수 있습니다."})
-        if replaces.replaced_by.exists():
-            raise ServiceError({"replaces": "이미 새 버전이 있습니다. 최신 버전에서 올리세요."})
-        version = replaces.version + 1
+        replaces = Attachment.objects.select_for_update().get(pk=replaces.pk)
+    _check_room(target, target_project.org, upload.size, replaces)
     digest = hashlib.sha256()
     for chunk in upload.chunks():
         digest.update(chunk)
@@ -114,17 +124,26 @@ def add_attachment(
         sha256=digest.hexdigest(),
         kind=kind,
         note=(note or "").strip()[:200],
-        version=version,
+        version=replaces.version + 1 if replaces is not None else 1,
         replaces=replaces,
         created_by=actor,
     )
+    # 파일은 모든 검사가 끝난 뒤, 행 저장 직전에 쓴다. 이 함수 안의 어떤 실패에도 파일을 지운다.
     att.file.save(name, upload, save=False)
     try:
-        att.save()
+        try:
+            with transaction.atomic():
+                att.save()
+        except IntegrityError:
+            raise ServiceError(
+                {"replaces": "다른 사람이 먼저 새 버전을 올렸습니다. 최신 버전에서 다시 올리세요."}
+            ) from None
+        _check_room(target, target_project.org, 0, None)  # 저장 뒤 재확인(자기 행 포함)
     except Exception:
         att.file.delete(save=False)
         raise
-    # ponytail: 바깥 트랜잭션이 나중에 롤백되면 파일만 남는다. 쌓이면 DB에 없는 파일을 지우는 명령을 둔다.
+    # ponytail: 이 함수가 돌아간 뒤 바깥 트랜잭션이 롤백되면 파일만 남는다(웹·API는 바깥 트랜잭션이
+    # 없다). 쌓이면 DB에 없는 파일을 지우는 관리 명령을 둔다.
     log.info("첨부 업로드: %s (%d bytes, %s)", name, upload.size, source)
     return att
 
