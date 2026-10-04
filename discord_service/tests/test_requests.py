@@ -17,8 +17,9 @@ from discord_service.scheduler import tick
 KST = timezone(timedelta(hours=9))
 
 
-def req(i=3, status="pending", team=True, to_user=False, kind="work"):
+def req(i=3, status="pending", team=True, to_user=False, kind="work", here=False):
     return {
+        "announce_here": here,
         "id": i,
         "number": f"REQ-{i}",
         "kind": kind,
@@ -57,7 +58,12 @@ class ReqCore(FakeCore):
             return httpx.Response(
                 200,
                 json={
-                    "request": req(7, to_user="to_user_id" in body, team="to_user_id" not in body)
+                    "request": req(
+                        7,
+                        to_user="to_user_id" in body,
+                        team="to_user_id" not in body,
+                        here=getattr(self, "here", "to_user_id" not in body),
+                    )
                 },
             )
         if path == "requests/mine":
@@ -110,6 +116,14 @@ def test_team_request_is_confirmed_privately_then_announced_publicly():
     assert "team_id" not in core.created
     assert [e for _, e in i.sent] == [True, False]
     assert "/요청수락" in i.sent[1][0] and "REQ-7" in i.sent[1][0]
+
+
+def test_team_request_from_another_channel_is_not_announced_there():
+    core = ReqCore()
+    core.here = False  # core가 '이 채널은 받는 팀의 채널이 아니다'라고 답했다
+    i = FakeInteraction()
+    run(_cmd(_tree(core), "요청").callback(i, title="API 부탁", team=1))
+    assert [e for _, e in i.sent] == [True]
 
 
 def test_request_to_a_person_stays_private():

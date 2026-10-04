@@ -385,8 +385,12 @@ def create_request(request, payload: DiscordRequestIn):
         source="dc",
         team=team,
         to_user=to_user,
+        posted_in=payload.channel_id,
     )
-    return {"request": request_out(req)}
+    out = request_out(req)
+    # 명령을 친 채널이 받는 팀의 채널일 때만 봇이 거기 공개로 알린다(다른 채널에 새지 않게).
+    out["announce_here"] = bool(team and payload.channel_id == team.discord_channel_id)
+    return {"request": out}
 
 
 @router.post("/requests/mine", response=dict)

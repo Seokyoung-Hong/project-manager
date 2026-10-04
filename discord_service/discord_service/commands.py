@@ -176,8 +176,8 @@ def request_reply(core: CoreClient, did: str, fields: dict) -> tuple[str, str | 
     r = core.create_request(did, fields)
     to = r["to_user"]["display_name"] if r["to_user"] else r["team"]["name"]
     private = f"{_rhead(r)} 요청을 {to}에게 보냈습니다.\n{r['url']}"
-    if r["to_user"] or not r["team"]:
-        return private, None
+    if not r.get("announce_here"):
+        return private, None  # 사람에게 보냈거나, 받는 팀의 채널이 아닌 곳에서 쳤다
     public = (
         f"📨 {_rhead(r)} — {r['kind_label']} 요청 · 요청자 {r['requested_by']['display_name']}"
         f" → {r['team']['name']} 팀\n받을 수 있는 분은 `/요청수락` 에서 {r['number']} 을(를) 골라 주세요."

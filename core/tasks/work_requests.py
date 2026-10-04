@@ -21,9 +21,15 @@ from .models import Notice, WorkRequest
 RESPONSE_MAX = 300
 
 
-def can_assign_directly(actor, assignee, org) -> bool:
-    """actor가 None이면 GitHub 웹훅이다(이슈 담당자를 그대로 따른다)."""
-    if actor is None or assignee is None or actor == assignee or is_admin(actor, org):
+def can_assign_directly(actor, assignee, org, source: str = "") -> bool:
+    """GitHub 경로(source="gh", actor None)는 이슈 담당자를 그대로 따른다 — 거기서 이미 정해진 배정이다."""
+    if (
+        source == "gh"
+        or actor is None
+        or assignee is None
+        or actor == assignee
+        or is_admin(actor, org)
+    ):
         return True
     return TeamMembership.objects.filter(
         user=actor, is_lead=True, team__org=org, team__memberships__user=assignee
@@ -57,14 +63,14 @@ def notify_assigned(task, actor):
     )
 
 
-def _notify_new(req):
+def _notify_new(req, posted_in: str = ""):
     head = f"📨 {req.requested_by.display_name}님의 {req.get_kind_display()} **{req.number}** {req.title}"
     link = _link(req.path)
     if req.to_user_id:
         notify(req.org, f"{head}\n수락·거절: {link}", user=req.to_user)
         return
-    if req.source == "dc":
-        return  # /요청을 친 팀 채널에 봇이 이미 답했다
+    if posted_in and posted_in == req.team.discord_channel_id:
+        return  # /요청을 친 그 팀 채널에 봇이 이미 공개로 알렸다
     if req.team.discord_channel_id:
         notify(req.org, f"{head}\n수락·거절: {link}", channel_id=req.team.discord_channel_id)
         return
@@ -128,8 +134,18 @@ def can_respond(user, req) -> bool:
 
 @transaction.atomic
 def create_request(
-    *, org, kind: str, title: str, actor, source: str, body: str = "", team=None, to_user=None
+    *,
+    org,
+    kind: str,
+    title: str,
+    actor,
+    source: str,
+    body: str = "",
+    team=None,
+    to_user=None,
+    posted_in: str = "",
 ) -> WorkRequest:
+    """posted_in: Discord에서 명령을 친 채널. 받는 팀의 채널이면 봇이 거기 이미 알렸다."""
     if kind not in ("work", "general"):
         raise ServiceError({"kind": "작업 요청이나 일반 요청만 직접 만들 수 있습니다."})
     if not is_member(actor, org):
@@ -156,7 +172,7 @@ def create_request(
         to_user=to_user,
         source=source,
     )
-    _notify_new(req)
+    _notify_new(req, posted_in)
     return req
 
 
@@ -182,6 +198,14 @@ def request_assign(task, to_user, actor, source: str, note: str = "") -> WorkReq
     )
     _notify_new(req)
     return req
+
+
+def drop_assign_requests(task, keep_user=None):
+    """담당자가 이미 정해졌거나(바로 할당·다른 요청 수락) 태스크가 닫혔다. 남은 담당 요청을
+    나중에 수락하면 그 결정을 덮어쓰므로 취소한다."""
+    WorkRequest.objects.filter(task=task, kind="assign", status="pending").exclude(
+        to_user=keep_user
+    ).update(status="cancelled", responded_at=timezone.now())
 
 
 def pending_assignee(task):

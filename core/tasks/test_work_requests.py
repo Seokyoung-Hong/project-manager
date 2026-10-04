@@ -113,9 +113,47 @@ def test_team_request_goes_to_channel(org, admin, squad):
     squad.save()
     wr.create_request(org=org, kind="work", title="x", actor=admin, source="web", team=squad)
     assert Notice.objects.get().channel_id == "999"
-    # Discord에서 만든 요청은 봇이 이미 그 채널에 답했다.
-    wr.create_request(org=org, kind="work", title="y", actor=admin, source="dc", team=squad)
+    # 그 팀 채널에서 /요청을 쳤으면 봇이 이미 거기 답했다.
+    wr.create_request(
+        org=org, kind="work", title="y", actor=admin, source="dc", team=squad, posted_in="999"
+    )
     assert Notice.objects.count() == 1
+    # 다른 채널에서 팀을 골라 보냈으면 받는 팀 채널에 알린다.
+    wr.create_request(
+        org=org, kind="work", title="z", actor=admin, source="dc", team=squad, posted_in="123"
+    )
+    assert Notice.objects.filter(channel_id="999").count() == 2
+
+
+def test_direct_assignment_cancels_stale_assign_request(project, admin, member, mate, squad):
+    t = _task(project, member, assignee=mate)
+    req = WorkRequest.objects.get(kind="assign")
+    update_task(t, {"assignee": admin}, actor=admin, source="web", expected_version=t.version)
+    req.refresh_from_db()
+    assert req.status == "cancelled"
+    with pytest.raises(ServiceError):
+        wr.accept(req, mate, source="web")
+
+
+def test_closing_task_cancels_assign_request(project, member, mate):
+    from tasks.services import transition
+
+    t = _task(project, member, assignee=mate)
+    transition(t, "cancelled", actor=member, source="web", expected_version=t.version)
+    assert WorkRequest.objects.get(kind="assign").status == "cancelled"
+
+
+def test_github_import_follows_issue_assignee(project, member, mate):
+    t = create_task(
+        project=project,
+        title="이슈",
+        actor=member,
+        assignee=mate,
+        source="gh",
+        no_due_reason="GitHub 이슈로 가져옴",
+    )
+    assert t.assignee == mate
+    assert not WorkRequest.objects.exists()
 
 
 def test_non_lead_accepting_for_teammate_sends_assign_request(

@@ -221,7 +221,7 @@ def create_task(
     assignee = assignee or actor
     # 남에게 맡길 권한이 없으면 일단 만든 사람이 맡고, 받을 사람에게 담당 요청을 보낸다.
     ask = None
-    if not wr.can_assign_directly(actor, assignee, project.org):
+    if not wr.can_assign_directly(actor, assignee, project.org, source):
         ask, assignee = assignee, actor
     if priority is None:
         priority = effective("task.default_priority", org=project.org, project=project)
@@ -329,7 +329,7 @@ def update_task(
     if (
         "assignee" in changes
         and changes["assignee"] != task.assignee
-        and not wr.can_assign_directly(actor, changes["assignee"], task.project.org)
+        and not wr.can_assign_directly(actor, changes["assignee"], task.project.org, source)
     ):
         ask = changes.pop("assignee")
         wr.request_assign(task, ask, actor, source, note=reason)
@@ -358,8 +358,10 @@ def update_task(
     if not fields:
         return task
     _apply(task, expected_version, fields)
-    if "assignee" in fields and task.assignee != actor:
-        wr.notify_assigned(task, actor)
+    if "assignee" in fields:
+        wr.drop_assign_requests(task, keep_user=ask)
+        if task.assignee != actor:
+            wr.notify_assigned(task, actor)
     for f in TRACKED:
         if f in fields:
             _log(
@@ -473,6 +475,8 @@ def transition(
         fields["completed_at"] = None
     old_status, old_completed, old_reason = task.status, task.completed_at, task.stop_reason
     _apply(task, expected_version, fields)
+    if closing:
+        wr.drop_assign_requests(task)
     _log(
         task,
         "status",
@@ -559,7 +563,11 @@ def delete_task(task, *, actor, source: str = "web") -> None:
     require_admin(actor, task.project.org)
     _ai_check(task.project.org, "ai.delete", "삭제", source, "task")
     if task.decision_records.exists():
-        raise ServiceError({"task": "의사결정 기록이 있는 태스크는 삭제할 수 없습니다. 취소하거나 프로젝트를 보관해 주세요."})
+        raise ServiceError(
+            {
+                "task": "의사결정 기록이 있는 태스크는 삭제할 수 없습니다. 취소하거나 프로젝트를 보관해 주세요."
+            }
+        )
     ChangeLog.objects.create(
         target_type="org",
         target_id=task.project.org_id,
@@ -569,6 +577,7 @@ def delete_task(task, *, actor, source: str = "web") -> None:
         actor=actor,
         source=source,
     )
+    wr.drop_assign_requests(task)
     task.delete()
 
 
