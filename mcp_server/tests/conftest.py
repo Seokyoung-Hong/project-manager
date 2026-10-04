@@ -217,6 +217,8 @@ class FakeCore:
             )
         if p == "/api/projects/404":
             return httpx.Response(404, text="<h1>Not Found</h1>")
+        if request.method == "POST" and p in ("/api/projects", "/api/orgs/1/teams"):
+            return httpx.Response(201, json={"id": 1})  # 보낸 본문만 본다
         return httpx.Response(404, json={"detail": "x"})
 
 

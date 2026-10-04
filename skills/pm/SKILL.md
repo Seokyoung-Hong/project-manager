@@ -117,13 +117,13 @@ PM apidoc 12 put openapi.json                         # 프로젝트 API 문서 
 | 오늘 할 일 자동 채움 | `PATCH /api/today/settings` `{"auto_pull_days"}` (기한이 이 일수 안에 든 태스크를 자동으로 담는다. 0·1·3·5·7·14, 0은 끄기) |
 | 프로젝트 문서 쓰기 | `POST /api/project-docs` `{"project_id", "title", "body_md"}` · `PATCH /api/project-docs/{id}` `{"version", "title"?, "body_md"?}` |
 | ✋ 프로젝트 API 문서 올리기 | `PM apidoc {id} put <파일\|URL>` — 통째로 바뀐다 |
-| ✋ 프로젝트 만들기·고치기 | `POST /api/projects` `{"org_id", "name", "purpose", "owner_ids", "team_ids", "status"}` · `PATCH /api/projects/{id}` (`version` 필수) |
+| ✋ 프로젝트 만들기·고치기 | `POST /api/projects` `{"org_id", "name", "purpose", "owner_ids", "team_ids", "status", "dev_tools", "visibility"}` (`dev_tools` 비우면 조직 기본값 · `visibility` `org`|`teams`, teams는 조직 관리자만) · `PATCH /api/projects/{id}` (`version` 필수) |
 | ✋ 프로젝트 지우기 | `DELETE /api/projects/{id}` — 조직 관리자만. 웹에서 먼저 보관한 프로젝트만 되고(보관은 API에 없다), 결정 기록이 있으면 안 된다 |
 | ✋ 저장소 연결 | `POST /api/projects/{id}/repo` `{"url"}` (후보는 `GET /api/orgs/{org}/repos`) |
 | ✋ Discord 프로젝트 채널 | `PUT /api/projects/{id}/discord-channel` `{"channel_id"}` (빈 값이면 해제, 조직 관리자) |
 | ✋ 프로젝트 설정 | `PUT /api/projects/{id}/settings` — 조직이 덮어쓰기를 허용한 키만. `GET`의 응답에서 키를 확인한다 |
 | ✋ 내 설정 | `PUT /api/me/settings` — `GET /api/me/settings`의 키만 |
-| ✋ 팀 만들기·지우기 | `POST /api/orgs/{org}/teams` `{"name", "purpose"}` · `DELETE /api/orgs/teams/{team_id}` |
+| ✋ 팀 만들기·지우기 | `POST /api/orgs/{org}/teams` `{"name", "purpose", "dev_tools", "is_private"}` (`dev_tools=false` 비개발 팀 · `is_private=true` 팀 화면 팀원·관리자만) · `DELETE /api/orgs/teams/{team_id}` |
 | ✋ 팀원 넣기·빼기 | `POST /api/orgs/teams/{team_id}/members` `{"user_id"}` · `DELETE /api/orgs/teams/{team_id}/members/{user_id}` |
 | ✋ 초대 링크 | `POST /api/orgs/{org}/invites` `{"days"}` · 취소 `DELETE /api/orgs/invites/{invite_id}` — 링크를 가진 누구나 조직에 들어온다 |
 | 포트폴리오 초안 | `POST /api/me/portfolio-drafts` · `PATCH /api/me/portfolio-drafts/{id}` `{"version", "title"?, "body_md"?, "source_ids"?}` |
