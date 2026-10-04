@@ -57,8 +57,11 @@ def test_channel_services_require_admin_and_clear_on_empty(team, project, admin,
         set_team_channel(team, "123", member)
     with pytest.raises(ServiceError):
         set_project_channel(project, "123", member)
-    assert set_team_channel(team, " 123 ", admin).discord_channel_id == "123"
-    assert set_project_channel(project, "456", admin).discord_channel_id == "456"
+    # 새 채널은 권한 밖 확인(orgs.channels.connect)을 거쳐야 한다 — 직접 적으면 거절한다
+    with pytest.raises(ServiceError):
+        set_team_channel(team, "123", admin)
+    assert set_team_channel(team, " 123 ", admin, checked=True).discord_channel_id == "123"
+    assert set_project_channel(project, "456", admin, checked=True).discord_channel_id == "456"
     assert set_team_channel(team, "", admin).discord_channel_id == ""
     assert set_project_channel(project, "", admin).discord_channel_id == ""
 
@@ -176,10 +179,17 @@ def test_channel_save_is_admin_only(post, team, project, org, member, admin):
     assert (team.discord_channel_id, project.discord_channel_id) == ("", "")
 
     OrgMembership.objects.filter(org=org, user=member).update(role="admin")
+    # 관리자여도 이 경로로는 새 채널을 못 적는다(권한 밖 확인 우회 방지). 같은 값 쓰기·해제만 된다
+    r = post(f"/teams/{team.pk}/channel", {"channel_id": "5551"})
+    assert r.status_code == 400
+    assert post(f"/teams/{team.pk}/channel", {}).json()["discord_channel_id"] == ""
+    r = post(
+        "/channel-check",
+        {"kind": "team", "target_id": team.pk, "channel_id": "5551", "created": True},
+    )
+    assert r.json()["linked"] is True
     r = post(f"/teams/{team.pk}/channel", {"channel_id": "5551"})
     assert r.json() == {"id": team.pk, "name": "백엔드", "discord_channel_id": "5551"}
-    r = post(f"/projects/{project.pk}/channel", {"channel_id": "5552"})
-    assert r.json()["discord_channel_id"] == "5552"
     # 빈 문자열은 연결 해제
     assert post(f"/projects/{project.pk}/channel", {}).json()["discord_channel_id"] == ""
 

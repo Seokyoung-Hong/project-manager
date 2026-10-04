@@ -41,8 +41,19 @@ class FakeChannel:
         del self.guild.channels[self.id]
 
 
+class Obj:
+    """오버라이드 딕셔너리의 키가 되려면 해시 가능해야 한다(SimpleNamespace는 아니다)."""
+
+    def __init__(self, **kw):
+        self.__dict__.update(kw)
+
+
 class FakeGuild:
     def __init__(self, categories=(), forbidden=False):
+        self.id = 1
+        self.default_role = Obj(name="@everyone")
+        self.me = Obj(id=9, bot=True)
+        self.members = {111: Obj(id=111, bot=False)}
         self.channels: dict[int, FakeChannel] = {}
         self.categories = [SimpleNamespace(name=c) for c in categories]
         self.forbidden = forbidden
@@ -52,10 +63,16 @@ class FakeGuild:
     def get_channel(self, cid: int):
         return self.channels.get(cid)
 
-    async def create_text_channel(self, name, *, category=None, topic=None):
+    def get_member(self, uid):
+        return self.members.get(uid)
+
+    async def create_text_channel(
+        self, name, *, category=None, topic=None, overwrites=None, reason=None
+    ):
         if self.forbidden:
             raise _forbidden()
         ch = FakeChannel(self, self.next_id, name, category, topic)
+        ch.overwrites = overwrites
         self.next_id += 1
         self.channels[ch.id] = ch
         self.created.append(ch)
@@ -84,10 +101,16 @@ def test_creates_links_and_replies(fake):
     ch = g.created[0]
     assert (ch.name, ch.topic, ch.category) == ("백엔드", "산돌이 업무 · 팀 백엔드", None)
     assert fake.channels["team"] == str(ch.id)
-    assert reply == f"<#{ch.id}> 채널을 만들고 백엔드 팀에 연결했습니다."
-    # 인가 선확인(같은 값 되쓰기) → 생성 → 되적기 순서
-    assert fake.paths() == ["teams", "teams/1/channel", "teams/1/channel"]
+    assert reply == f"<#{ch.id}> 비공개 채널을 만들고 백엔드 팀에 연결했습니다."
+    # 인가 선확인(같은 값 되쓰기) → 허용 집합 조회 → 생성 → 연결 확인(created)
+    assert fake.paths() == ["teams", "teams/1/channel", "channel-check"]
     assert fake.calls[1][1]["channel_id"] == ""
+    assert fake.calls[2][1]["created"] is True and fake.calls[2][1]["managed"] is True
+    # 비공개: @everyone은 보기 거부, 봇과 허용 집합의 연결 계정만 허용
+    ow = ch.overwrites
+    assert ow[g.default_role].pair()[1].view_channel is True  # deny에 view_channel
+    assert ow[g.me].view_channel is True and ow[g.members[111]].send_messages is True
+    assert len(ow) == 3
 
 
 def test_project_channel_uses_the_project_endpoints(fake):
@@ -96,7 +119,7 @@ def test_project_channel_uses_the_project_endpoints(fake):
     assert g.created[0].name == "학식 API"
     assert fake.channels["project"] == str(g.created[0].id)
     assert "학식 API 프로젝트에 연결했습니다" in reply
-    assert "projects/1/channel" in fake.paths()
+    assert "projects/1/channel" in fake.paths() and "channel-check" in fake.paths()
 
 
 def test_invoker_without_manage_channels_is_refused_before_core(fake):

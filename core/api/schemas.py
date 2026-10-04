@@ -366,6 +366,41 @@ class DiscordChannelIn(Schema):
     channel_id: str = ""
 
 
+class DiscordViewer(Schema):
+    id: str
+    name: str = ""
+
+
+class DiscordChannelCheckIn(Schema):
+    """채널 연결 전 확인. viewers=None이면 봇이 채널을 보는 사람을 알 수 없다(멤버 인텐트 꺼짐)."""
+
+    discord_user_id: str
+    kind: str  # team | project
+    target_id: int
+    channel_id: str
+    viewers: list[DiscordViewer] | None = None
+    allow_outsiders: bool = False
+    managed: bool | None = None
+    created: bool = False  # 봇이 방금 비공개로 만든 채널
+
+
+class DiscordAlertChannelIn(Schema):
+    channel_id: str
+    outsiders: list[DiscordViewer] = []
+    missing: list[DiscordViewer] | None = None
+
+
+class DiscordAlertsIn(Schema):
+    guild_id: str
+    channels: list[DiscordAlertChannelIn]
+
+
+class DiscordGuildReportIn(Schema):
+    guild_id: str
+    permissions: int | None = None
+    watching: bool = False
+
+
 class ProjectDiscordChannelIn(Schema):
     channel_id: str = ""
 

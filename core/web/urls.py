@@ -204,6 +204,12 @@ urlpatterns = [
     path("orgs/<int:org_id>/discord", discord.org_discord, name="org_discord"),
     path("orgs/<int:org_id>/discord/connect", discord.discord_connect, name="discord_connect"),
     path("orgs/<int:org_id>/discord/unlink", discord.discord_unlink, name="discord_unlink"),
+    path("orgs/<int:org_id>/discord/managed", discord.discord_managed, name="discord_managed"),
+    path(
+        "orgs/<int:org_id>/discord/alerts/<int:alert_id>/<str:action>",
+        discord.discord_alert,
+        name="discord_alert",
+    ),
     path("orgs/discord/installed", discord.discord_installed, name="discord_installed"),
     path("orgs/<int:org_id>/issues", github.org_issues, name="org_issues"),
     path("orgs/<int:org_id>/issues/sync", github.org_issues_sync, name="org_issues_sync"),

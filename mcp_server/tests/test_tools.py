@@ -64,6 +64,10 @@ TOOL_NAMES = {
     "reorder_today",
     "set_today_auto_pull",
     "list_teams",
+    "list_requests",
+    "get_request",
+    "create_request",
+    "answer_request",
     "create_team",
     "add_team_member",
     "remove_team_member",
@@ -167,7 +171,7 @@ def test_list_tasks_forwards_incremental_and_archived_filters(fake_core, with_to
     fn("list_tasks")(updated_since="2026-09-22T12:00:00+09:00", include_archived=True)
     _, path, _, _ = fake_core.calls[-1]
     assert "updated_since=2026-09-22T12%3A00%3A00%2B09%3A00" in path
-    assert "include_archived=True" in path
+    assert "include_archived=true" in path  # core(Ninja)가 읽는 소문자 불리언
 
 
 def test_append_note_appends_with_version(fake_core, with_token):
@@ -190,6 +194,21 @@ def test_create_task_idempotency_header(fake_core, with_token):
     method, path, headers, content = fake_core.calls[-1]
     assert headers["idempotency-key"] == "r1"
     assert json.loads(content)["priority"] == 5
+
+
+def test_request_tools(fake_core, with_token):
+    fn("list_requests")(status="pending")
+    assert "box=received" in fake_core.calls[-1][1] and "status=pending" in fake_core.calls[-1][1]
+    fn("create_request")(1, "로그 확인", to_user_id=3, idempotency_key="r1")
+    assert fake_core.calls[-1][2]["idempotency-key"] == "r1"
+    fn("answer_request")(5, "accept", project_id=1)
+    assert fake_core.calls[-1][1] == "/api/requests/5/accept"
+    assert last_body(fake_core)["project_id"] == 1
+    fn("answer_request")(5, "cancel")
+    assert last_body(fake_core) == {}
+    with pytest.raises(CoreError):
+        fn("answer_request")(5, "approve")
+    assert "사용자에게 확인받은 뒤에만" in fn("answer_request").__doc__
 
 
 def test_search_fetch_shape(fake_core, with_token):
@@ -236,7 +255,7 @@ async def test_tool_names_registered(fake_core):
     finally:
         current_token.reset(tok)
     assert {t.name for t in tools} == TOOL_NAMES
-    assert len(TOOL_NAMES) == 67
+    assert len(TOOL_NAMES) == 71
 
 
 def test_governance_tool(fake_core, with_token):

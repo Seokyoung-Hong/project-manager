@@ -133,6 +133,33 @@ class FakeCore:
         self.org_admins_data: dict[int, list[dict]] = {}
         self.org_channels: dict[str, str] = {}  # guild_id -> channel_id (/알림채널)
         self.weekly_by_org: dict[int, dict] = {}  # 비어 있으면 weekly_data(단일 조직 시절과 같다)
+        # 채널 관리(IMPL-PLAN-5 B). 허용 집합은 팀원 111 하나.
+        self.targets = [
+            {
+                "org_id": 1,
+                "guild_id": "1",
+                "kind": "team",
+                "id": 1,
+                "name": "백엔드",
+                "channel_id": "",
+                "managed": False,
+                "allowed_ids": ["111"],
+                "grant_ids": ["111"],
+            },
+            {
+                "org_id": 1,
+                "guild_id": "1",
+                "kind": "project",
+                "id": 1,
+                "name": "학식 API",
+                "channel_id": "",
+                "managed": False,
+                "allowed_ids": ["111"],
+                "grant_ids": ["111"],
+            },
+        ]
+        self.alert_reports: list[dict] = []
+        self.guild_reports: list[dict] = []
 
     # --- 조회 도움말 ---
     def paths(self) -> list[str]:
@@ -174,6 +201,8 @@ class FakeCore:
         m = re.fullmatch(r"/api/integrations/discord/projects/(\d+)/owners", path)
         if m:
             return httpx.Response(200, json=self.project_owners_data.get(int(m.group(1)), []))
+        if path == BOT_PREFIX + "channels":
+            return httpx.Response(200, json=self.targets)
         if path == BOT_PREFIX + "status":
             self.status_reports.append(json.loads(request.content))
             return httpx.Response(204)
@@ -231,6 +260,28 @@ class FakeCore:
             )
         if cmd == "mytasks":
             return httpx.Response(200, json=[t for t in self.tasks.values() if t["status"] in OPEN])
+        if cmd == "channel-alerts":
+            self.alert_reports.append(body)
+            return httpx.Response(200, json={"ok": True})
+        if cmd == "guild-report":
+            self.guild_reports.append(body)
+            return httpx.Response(200, json={"ok": True})
+        if cmd == "channel-check":
+            if not self.admin:
+                return httpx.Response(
+                    400, json={"detail": {"org": "조직 관리자만 할 수 있습니다."}}
+                )
+            if body["created"] and self.channel_save_fail:
+                return httpx.Response(500, json={"detail": "boom"})
+            viewers = body["viewers"]
+            unknown = viewers is None and not body["created"]
+            outs = [v for v in (viewers or []) if v["id"] != "111"] if not body["created"] else []
+            if (unknown or outs) and not body["allow_outsiders"]:
+                return httpx.Response(
+                    200, json={"linked": False, "unknown": unknown, "outsiders": outs}
+                )
+            self.channels[body["kind"]] = body["channel_id"]
+            return httpx.Response(200, json={"linked": True, "unknown": unknown, "outsiders": outs})
         if cmd == "orgs/channel":
             if not self.admin:
                 return httpx.Response(

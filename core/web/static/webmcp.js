@@ -47,8 +47,11 @@
     return s ? "?" + s : "";
   }
 
-  function api(method, path, data) {
+  function api(method, path, data, headers) {
     var opt = { method: method, credentials: "same-origin", headers: { "X-CSRFToken": csrf } };
+    Object.keys(headers || {}).forEach(function (k) {
+      opt.headers[k] = headers[k];
+    });
     if (data !== undefined) {
       opt.headers["Content-Type"] = "application/json";
       opt.body = JSON.stringify(data);
@@ -76,7 +79,10 @@
       return encodeURIComponent(args[k]);
     });
     var rest = {};
+    // 본문이 아니라 헤더로 간다. 같은 키로 재시도하면 서버가 처음 결과를 돌려준다(MCP 도구와 같은 규칙).
+    var headers = args.idempotency_key ? { "Idempotency-Key": String(args.idempotency_key) } : {};
     Object.keys(args).forEach(function (k) {
+      if (k === "idempotency_key") return;
       if (t.path.indexOf("{" + k + "}") >= 0 || args[k] === undefined) return;
       if (method !== "GET") {
         rest[k] = args[k]; // 본문에서는 null이 "비운다"는 뜻이라 살려 보낸다
@@ -85,7 +91,7 @@
       if (args[k] === null) return; // 쿼리에서 null은 뜻이 없다
       rest[QUERY_ALIAS[k] || k] = args[k];
     });
-    return method === "GET" ? api("GET", path + qs(rest)) : api(method, path, rest);
+    return method === "GET" ? api("GET", path + qs(rest)) : api(method, path, rest, headers);
   }
 
   // 에이전트가 고친 결과가 화면에도 보이게 본문만 다시 그린다.
@@ -300,6 +306,7 @@
         to_user_id: "integer 받을 사람 id. list_members로 찾는다",
         kind: "work,general 기본 work",
         body: "string 내용",
+        idempotency_key: "string 재시도용 키. 같은 값이면 요청이 두 번 가지 않는다",
       },
     },
     {

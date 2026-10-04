@@ -19,13 +19,14 @@ from django.shortcuts import redirect, render
 from django.views.decorators.http import require_POST
 
 from common.errors import ServiceError
+from orgs import channels
 from orgs import discord as dc
 
 from .common import not_admin, org_or_404
 
-# VIEW_CHANNEL | SEND_MESSAGES | MANAGE_CHANNELS. 봇이 사람의 권한을 넘겨받는 통로가 되면 안 되므로
-# 이 셋만 받는다(IMPL-PLAN-3 §채널 명령).
-BOT_PERMISSIONS = "3088"
+# VIEW_CHANNEL | SEND_MESSAGES | MANAGE_CHANNELS | MANAGE_ROLES. 봇이 사람의 권한을 넘겨받는 통로가 되면
+# 안 되므로 이 넷만 받는다(IMPL-PLAN-3 §채널 명령). Manage Roles는 자동 관리(IMPL-PLAN-5 사용자 결정 3)용이다.
+BOT_PERMISSIONS = str(channels.REQUIRED_PERMISSIONS)
 AUTHORIZE = "https://discord.com/oauth2/authorize"
 
 
@@ -43,8 +44,52 @@ def org_discord(request, org_id):
     return render(
         request,
         "orgs/discord.html",
-        {"org": org, "is_admin": True, "tab": "discord"},
+        {
+            "org": org,
+            "is_admin": True,
+            "tab": "discord",
+            "rows": channels.overview(org),
+            "watching": channels.watching(org),
+            "reauthorize": channels.needs_reauthorization(org),
+        },
     )
+
+
+@login_required
+@require_POST
+def discord_alert(request, org_id, alert_id, action):
+    """경고 [허용]·허용 [철회]. 철회하면 행이 지워지고 다음 감시에서 아직 보이면 다시 경고가 된다."""
+    _enabled_or_404()
+    org = org_or_404(request.user, org_id)
+    if denied := not_admin(request, org, "Discord 연동"):
+        return denied
+    if action not in ("allow", "revoke"):
+        raise Http404
+    try:
+        channels.resolve(org, alert_id, action, request.user)
+    except ServiceError as e:
+        messages.error(request, " ".join(e.errors.values()))
+    return redirect("org_discord", org_id=org.pk)
+
+
+@login_required
+@require_POST
+def discord_managed(request, org_id):
+    """채널 자동 관리 토글. 켜면 봇이 허용 집합 멤버에게 채널 보기·쓰기 권한을 맞춘다."""
+    _enabled_or_404()
+    org = org_or_404(request.user, org_id)
+    if denied := not_admin(request, org, "Discord 연동"):
+        return denied
+    kind = request.POST.get("kind")
+    if kind not in ("team", "project") or not request.POST.get("id", "").isdecimal():
+        raise Http404
+    try:
+        channels.set_managed(
+            org, kind, int(request.POST["id"]), request.POST.get("managed") == "1", request.user
+        )
+    except ServiceError as e:
+        messages.error(request, " ".join(e.errors.values()))
+    return redirect("org_discord", org_id=org.pk)
 
 
 @login_required

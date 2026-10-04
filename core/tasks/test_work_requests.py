@@ -204,3 +204,14 @@ def test_pending_and_mark_sent(project, member, mate):
     ids = [n.pk for n in wr.pending_notices()]
     assert wr.mark_sent(ids) == 1
     assert wr.pending_notices() == []
+
+
+def test_same_request_within_window_is_not_duplicated(org, member, mate):
+    """AI가 키 없이 재시도해도 같은 요청이 두 번 가지 않는다(알림도 한 번)."""
+    kw = dict(org=org, kind="general", title="리뷰", actor=member, source="mcp", to_user=mate)
+    a = wr.create_request(**kw)
+    b = wr.create_request(**kw)
+    assert a.pk == b.pk
+    assert Notice.objects.filter(user=mate).count() == 1
+    wr.cancel(a, member)
+    assert wr.create_request(**kw).pk != a.pk  # 처리된 뒤에는 다시 보낼 수 있다

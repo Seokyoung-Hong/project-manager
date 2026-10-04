@@ -160,6 +160,51 @@ class CoreClient:
             {"discord_user_id": did, "channel_id": channel_id},
         )
 
+    # --- 채널 관리(IMPL-PLAN-5 B). core는 Discord로 나가지 않고 봇이 올린 값만 비교한다 ---
+
+    def channel_targets(self) -> list[dict]:
+        """감시·조정 대상 전부(연결 안 된 팀·프로젝트 포함). `allowed_ids`는 권한 밖 비교용,
+        `grant_ids`는 자동 관리가 덮어쓰기를 넣을 계정이다."""
+        r = self.http.get("/api/integrations/discord/channels")
+        r.raise_for_status()
+        return r.json()
+
+    def channel_check(
+        self,
+        did: str,
+        kind: str,
+        target_id: int,
+        channel_id: str,
+        viewers: list[dict] | None,
+        allow_outsiders: bool = False,
+        managed: bool | None = None,
+        created: bool = False,
+    ) -> dict:
+        """채널 연결의 유일한 문. `viewers=None`은 보는 사람을 알 수 없다는 뜻(확인 불가).
+        `{"linked": bool, "unknown": bool, "outsiders": [{"id","name"}]}`."""
+        return self._bot(
+            "/channel-check",
+            {
+                "discord_user_id": did,
+                "kind": kind,
+                "target_id": target_id,
+                "channel_id": channel_id,
+                "viewers": viewers,
+                "allow_outsiders": allow_outsiders,
+                "managed": managed,
+                "created": created,
+            },
+        )
+
+    def channel_alerts(self, guild_id: str, channels: list[dict]) -> dict:
+        return self._bot("/channel-alerts", {"guild_id": guild_id, "channels": channels})
+
+    def guild_report(self, guild_id: str, permissions: int | None, watching: bool) -> dict:
+        return self._bot(
+            "/guild-report",
+            {"guild_id": guild_id, "permissions": permissions, "watching": watching},
+        )
+
     # --- 요청(팀·사람에게 보내는 일). 행위자는 연결된 사람 ---
 
     def create_request(self, did: str, fields: dict) -> dict:

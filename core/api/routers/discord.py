@@ -12,6 +12,7 @@ from ninja.errors import HttpError
 
 from accounts.models import User
 from accounts.services import link_discord, unlink_discord_by_id, user_by_discord_id
+from orgs import channels as org_channels
 from orgs import discord as org_discord
 from orgs import settings as org_settings
 from orgs.models import OrgMembership, Team
@@ -36,8 +37,11 @@ from tasks.services import (
 from ..auth import BotTokenAuth
 from ..schemas import (
     DiscordActorIn,
+    DiscordAlertsIn,
+    DiscordChannelCheckIn,
     DiscordChannelIn,
     DiscordExtendIn,
+    DiscordGuildReportIn,
     DiscordLinkIn,
     DiscordNoteIn,
     DiscordNoticeAckIn,
@@ -346,6 +350,87 @@ def project_channel(request, project_id: int, payload: DiscordChannelIn):
         "name": project.name,
         "discord_channel_id": project.discord_channel_id,
     }
+
+
+# ---------- 채널 관리(IMPL-PLAN-5 B). core는 Discord로 나가지 않고 봇이 올린 값만 비교한다 ----------
+
+
+@router.get("/channels", response=list[dict])
+def channel_targets(request):
+    """봇이 감시·조정할 대상 전부(연결 안 된 팀·프로젝트 포함 — 비공개 생성이 허용 집합을 여기서 읽는다).
+
+    `allowed_ids` = 허용 집합 ∪ 명시적 허용(권한 밖 비교용). `grant_ids` = 허용 집합(자동 관리가 덮어쓰기를 넣을 계정).
+    """
+    out = []
+    for org in org_discord.bound_orgs():
+        for kind, obj in org_channels.targets(org):
+            base = org_channels.base_allowed(kind, obj)
+            cid = obj.discord_channel_id
+            out.append(
+                {
+                    "org_id": org.pk,
+                    "guild_id": org.discord_guild_id,
+                    "kind": kind,
+                    "id": obj.pk,
+                    "name": obj.name,
+                    "channel_id": cid,
+                    "managed": obj.discord_channel_managed,
+                    "allowed_ids": sorted(base | (org_channels.explicit_allowed(cid) if cid else set())),
+                    "grant_ids": sorted(base),
+                }
+            )
+    return out
+
+
+@router.post("/channel-check", response=dict)
+def channel_check(request, payload: DiscordChannelCheckIn):
+    """채널 연결의 유일한 문. 권한 밖 인원이 있거나 확인 불가면 `allow_outsiders` 없이는 연결하지 않는다."""
+    actor = _actor(payload.discord_user_id)
+    if payload.kind == "team":
+        obj = Team.objects.filter(pk=payload.target_id, org__in=orgs_of(actor)).first()
+    elif payload.kind == "project":
+        obj = Project.objects.filter(pk=payload.target_id, org__in=orgs_of(actor)).first()
+    else:
+        raise HttpError(400, "kind는 team 또는 project여야 합니다.")
+    if obj is None:
+        raise HttpError(404, "대상을 찾을 수 없습니다.")
+    viewers = None if payload.viewers is None else [v.dict() for v in payload.viewers]
+    return org_channels.connect(
+        payload.kind,
+        obj,
+        payload.channel_id,
+        actor,
+        viewers=viewers,
+        allow_outsiders=payload.allow_outsiders,
+        managed=payload.managed,
+        created=payload.created,
+    )
+
+
+@router.post("/channel-alerts", response=dict)
+def channel_alerts(request, payload: DiscordAlertsIn):
+    """채널별 **현재** 권한 밖 인원 전체. 새로 보인 사람만 조직 관리자에게 DM으로 알린다."""
+    org = org_discord.org_by_guild(payload.guild_id)
+    if org is None:
+        raise HttpError(404, "이 서버는 조직에 연결되지 않았습니다.")
+    for ch in payload.channels:
+        org_channels.sync_alerts(
+            org,
+            ch.channel_id,
+            [v.dict() for v in ch.outsiders],
+            None if ch.missing is None else [v.dict() for v in ch.missing],
+        )
+    return {"ok": True}
+
+
+@router.post("/guild-report", response=dict)
+def guild_report(request, payload: DiscordGuildReportIn):
+    """봇이 이 길드에서 가진 권한과 감시 여부. 권한이 모자라면 웹이 재승인을 안내한다."""
+    org = org_discord.org_by_guild(payload.guild_id)
+    if org is None:
+        raise HttpError(404, "이 서버는 조직에 연결되지 않았습니다.")
+    org_channels.record_guild_report(org, payload.permissions, payload.watching)
+    return {"ok": True}
 
 
 # ---------- 요청 (/요청). 팀 채널에서 치면 그 팀으로 간다 ----------

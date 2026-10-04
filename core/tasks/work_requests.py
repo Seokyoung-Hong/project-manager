@@ -5,6 +5,8 @@
 tasks/services.py가 이 모듈을 불러 처리한다.
 """
 
+from datetime import timedelta
+
 from django.conf import settings
 from django.db import transaction
 from django.db.models import Q
@@ -19,6 +21,8 @@ from . import services as ts
 from .models import Notice, WorkRequest
 
 RESPONSE_MAX = 300
+# 같은 요청을 이 안에 다시 보내면 새로 만들지 않는다. AI 재시도·두 번 누르기를 클라이언트의 협조 없이 막는다.
+DUPLICATE_WINDOW = timedelta(minutes=10)
 
 
 def can_assign_directly(actor, assignee, org, source: str = "") -> bool:
@@ -163,11 +167,25 @@ def create_request(
             raise ServiceError({"to_user": "받는 사람은 이 조직의 활성 멤버여야 합니다."})
         if to_user == actor:
             raise ServiceError({"to_user": "자기 자신에게는 요청할 수 없습니다."})
+    body = (body or "").strip()
+    same = WorkRequest.objects.filter(
+        org=org,
+        kind=kind,
+        title=title,
+        body=body,
+        requested_by=actor,
+        team=team,
+        to_user=to_user,
+        status="pending",
+        created_at__gte=timezone.now() - DUPLICATE_WINDOW,
+    ).first()
+    if same:
+        return same
     req = WorkRequest.objects.create(
         org=org,
         kind=kind,
         title=title,
-        body=(body or "").strip(),
+        body=body,
         requested_by=actor,
         team=team,
         to_user=to_user,

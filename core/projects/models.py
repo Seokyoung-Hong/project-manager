@@ -35,6 +35,7 @@ class Project(models.Model):
     )
     status = models.CharField("상태", max_length=10, choices=STATUSES, default="preparing")
     discord_channel_id = models.CharField("Discord 채널", max_length=32, blank=True)
+    discord_channel_managed = models.BooleanField("채널 자동 관리", default=False)
     is_archived = models.BooleanField(default=False)
     archived_at = models.DateTimeField(null=True, blank=True)
     version = models.PositiveIntegerField(default=1)

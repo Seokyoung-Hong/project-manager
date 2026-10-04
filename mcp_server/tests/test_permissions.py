@@ -38,6 +38,11 @@ def test_needs_table_covers_every_tool():
         "list_projects",
         "get_project",
         "get_org",
+        "list_discord_channels",
+        "plan_project_channel_assignments",
+        "assign_project_channel",
+        "unlink_project_channel",
+        "create_project_channel",
         "update_project",
         "create_project",
         "get_project_api_spec",
@@ -80,6 +85,10 @@ def test_needs_table_covers_every_tool():
         "reorder_today",
         "set_today_auto_pull",
         "list_teams",
+        "list_requests",
+        "get_request",
+        "create_request",
+        "answer_request",
         "create_team",
         "add_team_member",
         "remove_team_member",
@@ -102,6 +111,9 @@ def test_needs_table_covers_every_tool():
         "revoke_invite",
         "update_governance",
         "update_org_settings",
+        "assign_project_channel",
+        "unlink_project_channel",
+        "create_project_channel",
     }
 
 
