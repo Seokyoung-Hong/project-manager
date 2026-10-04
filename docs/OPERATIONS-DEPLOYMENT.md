@@ -55,7 +55,17 @@ Discord 슬래시 명령 `/프로젝트채널`도 `기존채널` 옵션으로 �
 
 ## 라운드 7 배포 조건 (IMPL-PLAN-7)
 
-- **Discord 봇 토큰의 주인은 조직 관리자여야 한다.** `.env.discord`의 봇 토큰을 발급한 Discord 앱(Developer Portal)은 PM 조직 관리자 계정이 소유한다. 개인 팀원 계정의 앱이면 그 사람이 떠날 때 봇·명령·DM이 함께 멈춘다.
-- **새 환경변수 `DISCORD_CLIENT_SECRET`**(`.env`, web): Developer Portal → OAuth2 → Client Secret. 서버 연결 때 Discord가 준 code를 교환해 실제 설치된 서버를 확인한다. 비우면 Discord 서버 연결이 거절된다(`.env.example` 참고). 값은 로그·응답에 출력하지 않는다.
+- **`CORE_TOKEN`을 발급한 PM 계정이 조직 관리자여야 한다.** `discord_service`는 `.env.discord`의 `CORE_TOKEN`으로 core를 부르고, `/api/orgs/{id}/tasks`는 `visible_tasks(request.auth)`로 그 토큰 주인이 볼 수 있는 태스크만 준다. 토큰 주인이 조직 관리자가 아니면 비공개 프로젝트의 막힘·검토 독촉이 나가지 않는다. 위 "운영 준비 조건"의 전용 `discord-bot` 계정을 각 조직의 관리자로 넣는다(개인 팀원 계정의 토큰이면 그 사람이 떠날 때 봇도 함께 멈춘다).
+- **web 포트 8000은 리버스 프록시 IP에만 연다.** `web`은 `0.0.0.0:8000`에 gunicorn `--forwarded-allow-ips="*"`로 뜨고, 로그인 잠금은 `X-Forwarded-For`의 맨 오른쪽 값을 IP로 센다. 다른 호스트가 8000에 직접 닿으면 헤더를 지어내 IP 잠금을 우회한다. 방화벽에서 프록시(NPM) IP만 8000을 허용한다.
+- **로그인 잠금**: 아이디 5회/15분 실패 → 15분, IP 30회/15분 → 1시간, 가입 IP 10회/시간 → 1시간. 잠긴 목록은 `/ops`(staff)의 "로그인 잠금" 표에서 보고 [해제]한다. 셸에서는 `docker compose exec web python manage.py unlock_login <아이디|IP>`. `/admin/login/`도 `/login`으로 보내져 같은 잠금을 거친다.
+- **gunicorn threads 32**(`core/entrypoint.sh`, workers 2): 동시 연결은 최대 64다. SSE(`/events`)가 스레드를 하나씩 붙잡으므로 접속자가 이 수에 가까워지면 늘린다.
+- **새 환경변수 `DISCORD_CLIENT_SECRET`**(`.env`, web): Developer Portal → OAuth2 → Client Secret. 서버 연결 때 Discord가 준 code를 교환해 실제 설치된 서버를 확인한다. 비우면 Discord 서버(길드) 연결이 거절된다(fail closed, `.env.example` 참고). 개인 계정의 Discord 연결(코드 교환)은 이 값과 무관하다. 값은 로그·응답에 출력하지 않는다.
 - **첨부 업로드 한도**: 파일 하나가 25MB까지이므로 앞단 리버스 프록시의 요청 본문 한도를 25MB보다 크게 둔다(nginx면 `client_max_body_size 26m;`, Nginx Proxy Manager는 해당 프록시 호스트의 Advanced 설정). 기본값(1MB)이면 큰 첨부가 413으로 막힌다.
 - **`media_data` 볼륨과 백업**: 첨부 파일은 `web`의 `/data/media`(볼륨 `media_data`)에 저장된다. DB와 함께 백업해야 복구된다. 볼륨을 지우지 않으며, 백업·복구는 `scripts/backup.sh`·`scripts/restore-test.sh`와 `docs/BACKUP.md`의 절차를 따른다.
+
+배포 후 점검(`docker compose exec web python manage.py shell -c "<쿼리>"`, 읽기만 한다):
+
+- **소유 검증 이전에 저장된 GitHub 설치**: 설치 소유 검증(`643b35c`) 전에는 남의 설치 번호를 조직에 붙일 수 있었다. 그 배포 시각 이전 행을 뽑아 각 조직 관리자에게 GitHub 쪽 설치 주인이 맞는지 확인받고, 아니면 웹에서 연결을 해제한다.
+  `from github.models import GitHubInstallation as G; print(list(G.objects.filter(installed_at__lt="<소유 검증 배포 시각, 예: 2026-10-05T00:00+09:00>").values_list("org__name", "account_login", "account_type", "installed_by__username")))`
+- **프로젝트 밖 문서 연결**: 태스크를 다른 프로젝트로 옮기면 예전 프로젝트의 문서 연결이 남았을 수 있다. 0건이어야 한다. 있으면 해당 연결을 웹에서 해제한다.
+  `from django.db.models import F; from projects.models import ProjectDoc; print(list(ProjectDoc.tasks.through.objects.exclude(task__project_id=F("projectdoc__project_id")).values_list("projectdoc_id", "task_id")))`

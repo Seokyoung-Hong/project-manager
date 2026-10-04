@@ -2021,3 +2021,35 @@ def test_reviewer_select_and_reject_reason_panel(logged, org, admin, task, clien
     )
     task.refresh_from_db()
     assert task.status == "doing"
+
+
+def test_admin_login_goes_through_the_lockout_path(client, admin):
+    """/admin/login/ 폼은 시도 제한을 거치지 않는다 — /login으로 돌려보낸다."""
+    User.objects.filter(pk=admin.pk).update(is_staff=True, is_superuser=True)
+    r = client.get("/admin/")
+    assert r.status_code == 302 and r.headers["Location"].startswith("/admin/login/")
+    r = client.get("/admin/login/?next=/admin/")
+    assert r.status_code == 302 and r.headers["Location"] == "/login?next=/admin/"
+
+    for _ in range(5):
+        _login(client, username="admin1", password="wrong")
+    # 잠긴 계정이 admin 폼으로 올바른 비밀번호를 내도 들어가지 못한다.
+    r = client.post("/admin/login/", {"username": "admin1", "password": "pw12345678"})
+    assert r.status_code == 302 and r.headers["Location"].startswith("/login")
+    assert "_auth_user_id" not in client.session
+    assert "로그인 시도가 너무 많습니다." in _login(client, username="admin1").content.decode()
+
+
+def test_admin_login_and_logout_use_our_session_path(client, admin):
+    User.objects.filter(pk=admin.pk).update(is_staff=True, is_superuser=True)
+    r = client.post("/login", {"username": "admin1", "password": "pw12345678", "next": "/admin/"})
+    assert r.headers["Location"] == "/admin/"
+    assert client.session["auth_method"] == "password"
+    assert client.get("/admin/").status_code == 200
+    assert client.get("/admin/login/").status_code == 302  # staff는 그대로 admin으로
+    # 로그인한 사람이 admin 폼으로 다른 계정 비밀번호를 맞혀 보는 길도 막는다.
+    r = client.post("/admin/login/", {"username": "x", "password": "y"})
+    assert r.headers["Location"].startswith("/login")
+    r = client.post("/admin/logout/")
+    assert r.status_code == 302 and r.headers["Location"] == "/login"
+    assert "_auth_user_id" not in client.session
