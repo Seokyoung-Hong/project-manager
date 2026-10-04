@@ -348,11 +348,35 @@ def _check_ai_manage_repo(org, source: str):
         raise ServiceError({"url": ai_denied("저장소 연결")})
 
 
-def connect_repo(*, project, url, actor, source: str = "web") -> RepoConnection:
+def shared_repo_warning(project, full_name: str) -> str:
+    """같은 조직의 다른 프로젝트가 이미 이 저장소에 이어져 있으면 경고 문구. 막지는 않는다.
+
+    개인 계정 설치는 자동 가져오기를 끄므로 이슈가 겹쳐 생기지 않는다 — 경고하지 않는다.
+    """
+    if is_user_install(project.org):
+        return ""
+    names = list(
+        RepoConnection.objects.filter(project__org=project.org, full_name__iexact=full_name)
+        .exclude(project=project)
+        .values_list("project__name", flat=True)
+    )
+    if not names:
+        return ""
+    return (
+        f"이 저장소는 이미 {', '.join(names)} 프로젝트에 연결돼 있습니다. 두 프로젝트 모두 "
+        "새 이슈 자동 가져오기를 켜면 이슈 하나가 프로젝트마다 태스크로 생깁니다."
+    )
+
+
+def connect_repo(
+    *, project, url, actor, source: str = "web", confirm_shared: bool = True
+) -> RepoConnection:
     """저장소를 프로젝트에 잇는다. 그 사람이 볼 수 있는 저장소여야 한다.
 
     등급·AI 정책 검사가 맨 앞이다 — MCP로도 이 함수를 부르게 될 것이므로 강제는 여기
     있어야 한다(IMPL-PLAN-4 원칙 3).
+    confirm_shared=False면 다른 프로젝트와 겹치는 저장소에서 멈추고 경고를
+    ServiceError({"confirm_shared": …})로 올린다 — 화면이 한 번 더 묻는 데 쓴다.
     """
     require_level(actor, project, effective("project.settings_by", org=project.org), "url")
     _check_ai_manage_repo(project.org, source)
@@ -363,6 +387,8 @@ def connect_repo(*, project, url, actor, source: str = "web") -> RepoConnection:
         raise ServiceError(
             {"url": "그 저장소에 접근할 수 없습니다. GitHub 연결과 권한을 확인하세요."}
         )
+    if not confirm_shared and (warning := shared_repo_warning(project, full_name)):
+        raise ServiceError({"confirm_shared": warning})
     conn, _ = RepoConnection.objects.update_or_create(
         project=project,
         defaults={"url": url.strip()[:300], "full_name": full_name, "created_by": actor},
@@ -391,6 +417,8 @@ def update_repo_settings(conn, changes: dict, *, actor, source: str = "web", tok
     project = conn.project
     require_level(actor, project, effective("project.settings_by", org=project.org), "repo")
     _check_ai_manage_repo(project.org, source)
+    if is_user_install(project.org):
+        changes = {**changes, "auto_import": False}  # 개인 계정 설치는 자동 가져오기를 강제로 끈다
     changed = []
     for field, new in changes.items():
         if field not in REPO_SETTING_FIELDS or getattr(conn, field) == new:
@@ -861,7 +889,12 @@ def _on_issues(conn, delivery, payload):
             row.task, "done", actor=user_for_sender(payload), actor_login=_sender_login(payload)
         )
         task = row.task
-    elif action == "opened" and conn.rule_issue and conn.auto_import:
+    elif (
+        action == "opened"
+        and conn.rule_issue
+        and conn.auto_import
+        and not is_user_install(conn.project.org)
+    ):
         if row.task_id is not None:
             result = "이미 가져옴"
         elif conn.import_label and conn.import_label not in labels:

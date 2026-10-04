@@ -294,15 +294,21 @@ def _repo_teams(conn):
 def project_repo(request, project_id):
     _gh_enabled_or_404()
     project = project_or_404(request.user, project_id)
-    error = None
+    error = shared_warning = None
     if request.method == "POST":
         try:
             gh_services.connect_repo(
-                project=project, url=request.POST.get("url", ""), actor=request.user
+                project=project,
+                url=request.POST.get("url", ""),
+                actor=request.user,
+                confirm_shared=request.POST.get("confirm_shared") == "1",
             )
             return redirect("project_repo", project_id=project.pk)
         except ServiceError as e:
-            error = " ".join(e.errors.values())
+            if "confirm_shared" in e.errors:
+                shared_warning = e.errors["confirm_shared"]
+            else:
+                error = " ".join(e.errors.values())
     state = gh_services.repo_state(request.user, project)
     ctx = {
         "project": project,
@@ -311,6 +317,9 @@ def project_repo(request, project_id):
         "is_admin": can_admin(request.user, project.org),
         "can_settings": _can_edit_project_settings(request.user, project),
         "error": error,
+        "shared_warning": shared_warning,
+        "pending_url": request.POST.get("url", "") if shared_warning else "",
+        "user_install": gh_services.is_user_install(project.org),
     }
     if state["state"] == "none":
         if getattr(project.org, "github", None) is None:

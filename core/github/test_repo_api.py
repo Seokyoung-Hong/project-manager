@@ -83,3 +83,24 @@ def test_person_token_without_the_header_is_not_ai(
         headers=_auth(write_token),
     )
     assert r.status_code == 200
+
+
+def test_connect_warns_when_repo_is_shared(
+    client, gh, org, admin, project, member, write_token, viewable
+):
+    from github.models import RepoConnection
+    from projects.services import create_project
+
+    p2 = create_project(org=org, name="옆 프로젝트", actor=admin, owners=[admin], status="active")
+    RepoConnection.objects.create(
+        project=p2, url="x", full_name="teamSANDOL/sandol-api", created_by=admin
+    )
+    project.owners.add(member)
+    r = client.post(
+        f"/api/projects/{project.pk}/repo",
+        {"url": "https://github.com/teamSANDOL/sandol-api"},
+        content_type="application/json",
+        headers=_auth(write_token),
+    )
+    assert r.status_code == 200, r.content
+    assert "옆 프로젝트" in r.json()["warning"]  # 막지 않고 경고만

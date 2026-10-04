@@ -167,7 +167,7 @@ def get_repo(request, project_id: int):
         "connected": True,
         "full_name": conn.full_name,
         "url": conn.url,
-        "auto_import": conn.auto_import,
+        "auto_import": conn.auto_import and not gh_services.is_user_install(project.org),
         "import_label": conn.import_label,
     }
 
@@ -184,7 +184,13 @@ def connect_repo(request, project_id: int, payload: RepoConnectIn):
     conn = gh_services.connect_repo(
         project=project, url=payload.url, actor=c["actor"], source=c["source"]
     )
-    return {"connected": True, "full_name": conn.full_name, "url": conn.url}
+    # 같은 조직의 다른 프로젝트가 이미 이 저장소를 쓰면 막지 않고 경고만 돌려준다.
+    return {
+        "connected": True,
+        "full_name": conn.full_name,
+        "url": conn.url,
+        "warning": gh_services.shared_repo_warning(project, conn.full_name),
+    }
 
 
 def _repo_or_error(request, project):

@@ -37,7 +37,11 @@
     <div class="row">
       <label class="field">라벨 필터<input class="input" name="import_label" value="{{ repo_state.conn.import_label }}" placeholder="task"></label>
     </div>
+    {% if project.org.github.account_type == "User" %}
+    <p class="muted t12">개인 계정 설치 조직은 이슈를 자동으로 가져오지 않습니다. GitHub 탭에서 손으로 가져오세요.</p>
+    {% else %}
     <label class="row"><input type="checkbox" name="auto_import" {% if repo_state.conn.auto_import %}checked{% endif %}> 새 이슈 자동 가져오기</label>
+    {% endif %}
     <div class="stack t13">
       <label class="row"><input type="checkbox" name="rule_issue" {% if repo_state.conn.rule_issue %}checked{% endif %}> 이슈 → 태스크</label>
       <label class="row"><input type="checkbox" name="rule_branch" {% if repo_state.conn.rule_branch %}checked{% endif %}> 브랜치 연결 → 진행 중</label>
@@ -49,7 +53,7 @@
   </form>
   <p class="muted t13">저장소 연결·해제와 이슈 가져오기는 <a href="{% url 'project_repo' project.pk %}">GitHub 탭</a>에서 합니다.</p>
   {% else %}
-  <p class="muted t13">라벨 필터 {{ repo_state.conn.import_label|default:"없음" }} · 자동 가져오기 {% if repo_state.conn.auto_import %}켬{% else %}끔{% endif %}</p>
+  <p class="muted t13">라벨 필터 {{ repo_state.conn.import_label|default:"없음" }} · 자동 가져오기 {% if repo_state.conn.auto_import and project.org.github.account_type != "User" %}켬{% else %}끔{% endif %}</p>
   {% endif %}
 </section>
 {% endif %}

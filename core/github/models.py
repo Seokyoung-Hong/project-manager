@@ -53,8 +53,8 @@ class RepoConnection(models.Model):
     # 기본값은 비움 = 라벨로 거르지 않는다. "task"가 기본이면 그 라벨을 안 쓰는
     # 저장소에서 이슈가 하나도 안 보인다.
     import_label = models.CharField(max_length=50, blank=True, default="")
-    # ponytail: 더 이상 읽지 않는 열이다. 자동 가져오기는 배정된 멤버만 담당자로 삼으므로 선택지가
-    # 없어졌다. 설정 라운드(IMPL-PLAN-4)에서 마이그레이션과 함께 지운다.
+    # 새 이슈 자동 가져오기 스위치. 웹훅 `_on_issues`가 문턱으로 읽는다(배정된 멤버가 있는 이슈만
+    # 가져온다). 개인 계정 설치 조직에서는 services가 강제로 끄고 읽지도 않는다.
     auto_import = models.BooleanField(default=False)
     rule_issue = models.BooleanField(default=True)
     rule_branch = models.BooleanField(default=True)

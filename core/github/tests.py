@@ -699,3 +699,67 @@ def test_org_issues_tab_only_with_install(gh, client, org, admin):
         org=org, installation_id=7, account_login="acme", installed_by=admin
     )
     assert f"/orgs/{org.pk}/issues" in client.get(f"/orgs/{org.pk}/teams").content.decode()
+
+
+# ---------- 개인 계정 설치: 이슈 자동 가져오기 금지 ----------
+
+
+def test_user_install_never_auto_imports(gh, client, org, admin, project, member, fake_user_github):
+    from github.test_writes import _identity
+
+    _user_install(org, admin)
+    conn = RepoConnection.objects.create(
+        project=project,
+        url="https://github.com/solo-dev/app",
+        full_name="solo-dev/app",
+        created_by=admin,
+        auto_import=True,  # 예전에 켜 둔 값이 남아 있어도 읽지 않는다
+    )
+    _identity(member, "member-gh")
+    issue = {"number": 1, "title": "t", "state": "open", "assignee": {"login": "member-gh"}}
+    payload = {"repository": {"full_name": "solo-dev/app"}, "action": "opened", "issue": issue}
+    assert signed(client, payload, "issues", "ua-1").status_code == 200
+    assert RepoIssue.objects.get(connection=conn, number=1).task_id is None
+    ghs.update_repo_settings(conn, {"auto_import": True}, actor=admin)
+    conn.refresh_from_db()
+    assert conn.auto_import is False
+    admin.github.repos = ["solo-dev/app"]
+    admin.github.save(update_fields=["repos"])
+    body = _login(client).get(f"/projects/{project.pk}/repo").content.decode()
+    assert 'name="auto_import"' not in body and "내 태스크로 가져오기" in body
+
+
+# ---------- Organization 설치: 이미 다른 프로젝트에 연결된 저장소 ----------
+
+
+def test_org_install_confirms_before_connecting_shared_repo(
+    gh, client, org, admin, project, monkeypatch
+):
+    from github.test_writes import _identity
+    from projects.services import create_project
+
+    GitHubInstallation.objects.create(
+        org=org,
+        installation_id=7,
+        account_login="o",
+        account_type="Organization",
+        installed_by=admin,
+    )
+    RepoConnection.objects.create(
+        project=project, url="https://github.com/o/r.git", full_name="o/r", created_by=admin
+    )
+    p2 = create_project(org=org, name="P2", actor=admin, owners=[admin], status="active")
+    identity = _identity(admin, "admin-gh")
+    identity.repos, identity.repos_checked_at = ["o/r"], timezone.now()  # 요청 중 재조회 막기
+    identity.save(update_fields=["repos", "repos_checked_at"])
+    monkeypatch.setattr("github.client.installation_token", lambda iid: "tok")
+    monkeypatch.setattr("github.client.request", lambda *a, **kw: {"repositories": []})
+    _login(client)
+    r = client.post(f"/projects/{p2.pk}/repo", {"url": "https://github.com/o/r"})
+    body = r.content.decode()
+    assert r.status_code == 200 and project.name in body and "그래도 연결" in body
+    assert not RepoConnection.objects.filter(project=p2).exists()
+    r = client.post(
+        f"/projects/{p2.pk}/repo", {"url": "https://github.com/o/r", "confirm_shared": "1"}
+    )
+    assert r.status_code == 302 and RepoConnection.objects.filter(project=p2).exists()
