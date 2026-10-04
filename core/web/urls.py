@@ -108,6 +108,7 @@ urlpatterns = [
     path("projects", projects.project_index, name="project_index"),
     path("projects/new", projects.project_new, name="project_new"),
     path("projects/<int:project_id>", projects.project_detail, name="project_detail"),
+    path("projects/<int:project_id>/calendar", projects.project_calendar, name="project_calendar"),
     path("projects/<int:project_id>/edit", projects.project_edit, name="project_edit"),
     path("projects/<int:project_id>/settings", projects.project_settings, name="project_settings"),
     path("projects/<int:project_id>/docs", docs.project_docs, name="project_docs"),

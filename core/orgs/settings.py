@@ -284,7 +284,7 @@ SPECS: dict[str, Spec] = {
             "project",
             "프로젝트 첫 화면",
             "",
-            choices=(("list", "목록"), ("board", "보드")),
+            choices=(("list", "목록"), ("board", "보드"), ("calendar", "달력")),
         ),
         Spec(
             "project.dev_tools",
