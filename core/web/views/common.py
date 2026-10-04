@@ -4,6 +4,7 @@ from datetime import date, timedelta
 from urllib.parse import urlencode
 
 from django.contrib import messages
+from django.db.models import prefetch_related_objects
 from django.http import Http404, HttpResponse
 from django.shortcuts import redirect, render
 from django.urls import reverse
@@ -142,8 +143,8 @@ def version_of(request) -> int:
 
 
 def _overdue(task) -> bool:
-    """유예를 적용한 초과 여부. `Task.is_overdue`는 사실이고, 화면은 조직 설정을 본다."""
-    return bool(task.due_date) and task.due_date < overdue_before(task.project.org)
+    """유예를 적용한 초과 여부. `Task.is_overdue`는 사실이고, 화면은 프로젝트(없으면 조직) 설정을 본다."""
+    return bool(task.due_date) and task.due_date < overdue_before(task.project.org, task.project)
 
 
 def due_label(task) -> str:
@@ -276,6 +277,9 @@ def row_ctx(user, task, opts: str = "", membership: dict | None = None, selected
 
 
 def rows_for(user, tasks, opts: str = "", selected_id=None) -> list[dict]:
+    tasks = list(tasks)
+    # 행마다 체크리스트를 따로 읽지 않게 한 번에 붙인다(이미 붙어 있으면 건너뛴다).
+    prefetch_related_objects(tasks, "checklist")
     m = today_membership(user)
     return [row_ctx(user, t, opts, m, selected_id) for t in tasks]
 

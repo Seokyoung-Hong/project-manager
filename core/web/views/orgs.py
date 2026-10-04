@@ -1,7 +1,7 @@
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.db.models import Count
+from django.db.models import Count, Prefetch
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
@@ -13,9 +13,9 @@ from github import writes as gh_writes
 from orgs import requests as creq
 from orgs import services as osv
 from orgs.governance import governance_text
-from orgs.models import ChangeRequest, Invite, OrgMembership
+from orgs.models import ChangeRequest, Invite, OrgMembership, TeamMembership
 from orgs.settings import GROUPS, SPECS, display, effective, enforced, locked_keys, specs_for
-from projects.services import project_stats, visible_projects
+from projects.services import project_stats_bulk, visible_projects
 from reports.services import org_status
 
 from ..forms import InviteForm, OrgForm
@@ -81,17 +81,22 @@ def org_detail(request, org_id):
         ("완료", c["done"], f"{me_url}?member=0&status=done_7d", False),
     ]
     projects = (
-        visible_projects(request.user, org).prefetch_related("owners", "teams").order_by("name")
+        visible_projects(request.user, org)
+        .select_related("org")
+        .prefetch_related("owners", "teams")
+        .order_by("name")
     )
     if not include_archived:
         projects = projects.filter(is_archived=False)
+    projects = list(projects)
+    stats = project_stats_bulk(projects)
     return render(
         request,
         "orgs/detail.html",
         {
             "org": org,
             "tiles": tiles,
-            "project_rows": [(p, project_stats(p)) for p in projects],
+            "project_rows": [(p, stats[p.pk]) for p in projects],
             "by_assignee": st["by_assignee"],
             "me_url": me_url,
             "include_archived": include_archived,
@@ -106,17 +111,20 @@ def _member_teams(request, org):
     mine = set(request.user.team_memberships.values_list("team_id", flat=True))
     # 비공개 팀은 이름만 보인다 — 인원·팀장은 볼 수 있는 팀에서만 센다.
     visible = set(osv.visible_teams(request.user, org).values_list("pk", flat=True))
+    leads = Prefetch(
+        "memberships",
+        queryset=TeamMembership.objects.filter(is_lead=True).select_related("user"),
+        to_attr="leads",
+    )
     rows = [
         {
             "team": t,
             "mine": t.pk in mine,
             "visible": t.pk in visible,
-            "member_count": t.members.count() if t.pk in visible else None,
-            "leads": [m.user for m in t.memberships.filter(is_lead=True).select_related("user")]
-            if t.pk in visible
-            else [],
+            "member_count": t.member_count if t.pk in visible else None,
+            "leads": [m.user for m in t.leads] if t.pk in visible else [],
         }
-        for t in org.teams.all()
+        for t in org.teams.annotate(member_count=Count("members")).prefetch_related(leads)
     ]
     rows.sort(key=lambda r: (not r["mine"], r["team"].name))
     return render(
@@ -131,7 +139,11 @@ def org_teams(request, org_id):
     if not can_admin(request.user, org):
         return _member_teams(request, org)
     load = {r["assignee_id"]: r for r in org_status(org, viewer=request.user)["by_assignee"]}
-    memberships = list(org.memberships.select_related("user").order_by("user__display_name"))
+    memberships = list(
+        org.memberships.select_related("user")
+        .prefetch_related("user__teams")  # 표의 소속 팀 배지
+        .order_by("user__display_name")
+    )
     # 마지막 관리자는 services.remove_member가 거부한다 — 버튼도 그 규칙을 그대로 보여 준다
     last_admin = sum(1 for m in memberships if m.role == "admin") <= 1
     rows = [
@@ -145,11 +157,14 @@ def org_teams(request, org_id):
     teams = [
         {
             "team": t,
-            "member_count": t.members.count(),
-            "project_count": t.projects.count(),
+            "member_count": t.member_count,
+            "project_count": t.project_count,
             "github": getattr(t, "github", None),
         }
-        for t in org.teams.all()
+        for t in org.teams.select_related("github").annotate(
+            member_count=Count("members", distinct=True),
+            project_count=Count("projects", distinct=True),
+        )
     ]
     return render(
         request,

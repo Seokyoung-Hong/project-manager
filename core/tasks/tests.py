@@ -554,7 +554,7 @@ def test_me_view_groups_by_due(five, member, project):
 def test_me_view_omits_empty_week_group_on_sunday(project, member, monkeypatch):
     sunday = date(2026, 9, 20)
     monkeypatch.setattr(ts, "today_kst", lambda: sunday)
-    monkeypatch.setattr(ts, "overdue_before", lambda org: sunday)
+    monkeypatch.setattr(ts, "overdue_before", lambda org, project=None: sunday)
     create_task(
         project=project,
         title="일요일 마감 A",

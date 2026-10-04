@@ -3,7 +3,7 @@ from datetime import date, timedelta
 
 from django.db.models import Count, Q
 
-from common.dates import kst_week_range, overdue_before, today_kst, week_bounds
+from common.dates import kst_week_range, overdue_q, today_kst, week_bounds
 from orgs.models import Team, TeamMembership
 from orgs.services import visible_teams
 from projects.services import visible_projects
@@ -36,8 +36,10 @@ def org_status(org, *, viewer=None) -> dict:
     """
     shown_projects = _projects(org, viewer)
     today = today_kst()
-    # 초과 판정만 유예(task.overdue_grace_days)를 본다. 화면 배지·알림과 같은 기준이다.
-    overdue_day = overdue_before(org)
+    # 초과 판정만 유예(task.overdue_grace_days, 프로젝트가 덮어쓸 수 있다)를 본다.
+    # 화면 배지·알림과 같은 기준이다.
+    live = list(shown_projects.filter(is_archived=False).select_related("org"))
+    is_overdue = overdue_q(live)
     monday, sunday = week_bounds(today)
     open_qs = _open_qs(org, viewer)
     counts = {
@@ -45,7 +47,7 @@ def org_status(org, *, viewer=None) -> dict:
         "doing": open_qs.filter(status="doing").count(),
         "review": open_qs.filter(status="review").count(),
         "blocked": open_qs.filter(status="blocked").count(),
-        "overdue": open_qs.filter(due_date__lt=overdue_day).count(),
+        "overdue": open_qs.filter(is_overdue).count(),
         "due_this_week": open_qs.filter(due_date__gte=monday, due_date__lte=sunday).count(),
         "no_due": open_qs.filter(due_date__isnull=True).count(),
         "done": Task.objects.filter(
@@ -59,7 +61,9 @@ def org_status(org, *, viewer=None) -> dict:
         .annotate(
             open_count=Count("tasks", filter=Q(tasks__status__in=Task.OPEN)),
             overdue_count=Count(
-                "tasks", filter=Q(tasks__status__in=Task.OPEN, tasks__due_date__lt=overdue_day)
+                "tasks",
+                filter=Q(tasks__status__in=Task.OPEN)
+                & overdue_q(live, due="tasks__due_date", project_id="pk"),
             ),
             review_count=Count("tasks", filter=Q(tasks__status="review")),
             blocked_count=Count("tasks", filter=Q(tasks__status="blocked")),
@@ -89,7 +93,7 @@ def org_status(org, *, viewer=None) -> dict:
         .annotate(
             open=Count("id"),
             doing=Count("id", filter=Q(status="doing")),
-            overdue=Count("id", filter=Q(due_date__lt=overdue_day)),
+            overdue=Count("id", filter=is_overdue),
             review=Count("id", filter=Q(status="review")),
             blocked=Count("id", filter=Q(status="blocked")),
         )
@@ -192,14 +196,13 @@ def weekly(org, week_start: date, *, viewer=None) -> dict:
             "due_date", "id"
         )
     ]
-    overdue_day = overdue_before(org)  # 화면 배지와 같은 유예 기준
-    overdue = [
-        task_brief(t) for t in open_qs.filter(due_date__lt=overdue_day).order_by("due_date", "id")
-    ]
+    shown = list(shown_projects.filter(is_archived=False).select_related("org").order_by("name"))
+    is_overdue = overdue_q(shown)  # 화면 배지와 같은 유예 기준(프로젝트별)
+    overdue = [task_brief(t) for t in open_qs.filter(is_overdue).order_by("due_date", "id")]
     blocked = [task_brief(t) for t in open_qs.filter(status="blocked").order_by("id")]
 
     by_project = []
-    for p in shown_projects.filter(is_archived=False).order_by("name"):
+    for p in shown:
         p_ids = set(Task.objects.filter(project=p).values_list("id", flat=True))
         by_project.append(
             {
@@ -207,7 +210,7 @@ def weekly(org, week_start: date, *, viewer=None) -> dict:
                 "completed": len(completed_ids & p_ids),
                 "reopened": len(reopened_ids & p_ids),
                 "open": open_qs.filter(project=p).count(),
-                "overdue": open_qs.filter(project=p, due_date__lt=overdue_day).count(),
+                "overdue": open_qs.filter(is_overdue, project=p).count(),
                 "blocked": open_qs.filter(project=p, status="blocked").count(),
             }
         )

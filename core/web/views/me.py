@@ -6,9 +6,8 @@ from accounts.models import User
 from orgs.services import orgs_of
 from projects.services import visible_projects
 from tasks import services as ts
-from tasks.services import today_membership
 
-from .common import project_or_404, row_ctx
+from .common import project_or_404, rows_for
 
 
 @login_required
@@ -56,11 +55,13 @@ def me(request):
         priority=f["priority"],
     )
     opts = "ro,notoday" if member is not None else "noassignee"
-    m = today_membership(request.user)
+    # 같은 태스크가 묶음과 하위 묶음에 두 번 나온다. 행 정보는 태스크마다 한 번만 만든다.
+    tasks = {t.pk: t for grp in view["groups"] for t in grp["tasks"]}
+    rows = dict(zip(tasks, rows_for(request.user, tasks.values(), opts), strict=True))
     for grp in view["groups"]:
-        grp["rows"] = [row_ctx(request.user, t, opts, m) for t in grp["tasks"]]
+        grp["rows"] = [rows[t.pk] for t in grp["tasks"]]
         for p in grp["projects"]:
-            p["rows"] = [row_ctx(request.user, t, opts, m) for t in p["tasks"]]
+            p["rows"] = [rows[t.pk] for t in p["tasks"]]
             p["count_label"] = f"완료 {p['done']}/{p['total']}"
     return render(
         request,

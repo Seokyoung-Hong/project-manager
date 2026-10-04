@@ -9,7 +9,7 @@ from common.dates import kst_day_range, overdue_before, today_kst, week_bounds
 from common.errors import ConflictError, ServiceError
 from orgs.services import ai_denied, is_admin, is_member, require_admin
 from orgs.settings import effective
-from projects.services import can_view_project, is_owner, project_stats, visible_projects
+from projects.services import can_view_project, is_owner, project_stats_bulk, visible_projects
 
 from . import work_requests as wr
 from .models import ChangeLog, ChecklistItem, Link, Task, TodayItem
@@ -928,7 +928,7 @@ def today_view(user, day: date | None = None) -> dict:
         i.task
         for i in today_items(user, day)
         .filter(excluded=False)
-        .select_related("task__project", "task__assignee")
+        .select_related("task__project__org", "task__assignee")
         .order_by("position", "id")
     ]
     # 조직에서 빠진 뒤에도 담당으로 남은 태스크가 새는 것을 막는다(다른 읽기 경로와 같은 범위).
@@ -963,11 +963,11 @@ def today_view(user, day: date | None = None) -> dict:
         ).count(),
         "my_open": my_open.count(),
         "due_today": my_open.filter(due_date=day).count(),
-        # 조직별 유예를 보므로 쿼리셋 필터가 아니라 파이썬에서 task.project.org별로 판정한다.
+        # 프로젝트별 유예를 보므로 쿼리셋 필터가 아니라 파이썬에서 태스크마다 판정한다.
         "overdue": sum(
             1
             for t in my_open
-            if t.due_date is not None and t.due_date < overdue_before(t.project.org)
+            if t.due_date is not None and t.due_date < overdue_before(t.project.org, t.project)
         ),
         "review": my_open.filter(status="review").count(),
         "blocked": my_open.filter(status="blocked").count(),
@@ -988,8 +988,10 @@ def today_view(user, day: date | None = None) -> dict:
 def _due_preds(today: date) -> dict:
     monday, sunday = week_bounds(today)
     return {
-        # 초과는 today가 아니라 조직별 유예(task.overdue_grace_days)를 더한 기준일로 본다.
-        "overdue": lambda t: t.due_date is not None and t.due_date < overdue_before(t.project.org),
+        # 초과는 today가 아니라 프로젝트별 유예(task.overdue_grace_days)를 더한 기준일로 본다.
+        "overdue": lambda t: (
+            t.due_date is not None and t.due_date < overdue_before(t.project.org, t.project)
+        ),
         "today": lambda t: t.due_date == today,
         "week": lambda t: t.due_date is not None and today < t.due_date <= sunday,
         "this_week": lambda t: t.due_date is not None and monday <= t.due_date <= sunday,
@@ -1049,6 +1051,8 @@ def me_view(
             seen.setdefault(t.project_id, t.project)
         return sorted(seen.values(), key=lambda p: p.name)
 
+    stats = {}  # 프로젝트 묶음 진행률. 처음 필요할 때 한 번에 센다
+
     def grp(title, pred, empty_text="", flat=False):
         ts = [t for t in tasks if pred(t)]
         g = {
@@ -1061,7 +1065,9 @@ def me_view(
         }
         if not flat:
             for p in projects_of(ts):
-                st = project_stats(p)
+                if not stats:
+                    stats.update(project_stats_bulk(projects_of(tasks)))
+                st = stats[p.pk]
                 pct = round(st["done"] / st["total"] * 100) if st["total"] else 0
                 g["projects"].append(
                     {
