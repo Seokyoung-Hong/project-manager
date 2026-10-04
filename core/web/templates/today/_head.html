@@ -1,6 +1,7 @@
 <div id="today-head" class="card today-head-card" hx-get="{% url 'today' %}?part=head" hx-trigger="task-changed from:body, task-updated from:body, today-changed from:body" hx-swap="outerHTML">
   <div class="card-head today-overview-head">
-    <div><h1 class="t17">{{ date_label }}</h1><div class="muted t13">{{ today_hint }}</div></div>
+    <span class="studio-sprout" aria-hidden="true"></span>
+    <div><p class="studio-greeting">오늘도, 하나씩 함께.</p><h1 class="t17">{{ date_label }}</h1><div class="muted t13">{{ today_hint }}</div></div>
     <div class="today-metrics" aria-label="전체 조직 내 담당 태스크 지표">
       <span class="today-scope-label">전체 조직 · 내 담당 태스크</span>
       <div class="stats">
