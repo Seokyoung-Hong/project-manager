@@ -196,3 +196,24 @@ def pkce_challenge(verifier: str) -> str:
     """RFC 7636 S256. verifier가 비어 있어도 절대 맞지 않는 값을 돌려준다."""
     digest = hashlib.sha256((verifier or "").encode()).digest()
     return base64.urlsafe_b64encode(digest).rstrip(b"=").decode()
+
+
+class LoginLock(models.Model):
+    """로그인·가입 시도 카운터와 잠금. 규칙은 accounts/auth.py(LOCK_POLICY).
+
+    캐시가 아니라 표인 이유: 캐시 백엔드가 LocMem이라 gunicorn 워커마다 따로 센다.
+    표는 워커 공통이고 재시작에 살아남으며 /ops에서 보고 풀 수 있다.
+    """
+
+    kind = models.CharField(max_length=10)
+    key = models.CharField(max_length=150)
+    failures = models.PositiveSmallIntegerField(default=0)
+    window_started_at = models.DateTimeField()
+    locked_until = models.DateTimeField(null=True, blank=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=["kind", "key"], name="loginlock_kind_key")]
+
+    def __str__(self):
+        return f"{self.kind}:{self.key}"

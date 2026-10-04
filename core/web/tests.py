@@ -1624,6 +1624,11 @@ def test_oauth_full_flow_issues_a_working_token(client, logged, member):
     token = ApiToken.authenticate(body["access_token"])
     assert token is not None and token.user == member and token.scope == "write"
     assert token.for_ai  # OAuth 클라이언트는 전부 AI 도구다
+    # 커넥터 토큰은 90일 뒤 만료된다(refresh_token 없이 다시 연결).
+    from django.utils import timezone
+
+    assert body["expires_in"] == 90 * 24 * 3600
+    assert timedelta(days=89) < token.expires_at - timezone.now() <= timedelta(days=90)
 
     # 같은 코드를 두 번 쓰지 못한다.
     again = client.post(
@@ -1707,3 +1712,86 @@ def test_oauth_deny_sends_access_denied(logged, client):
         },
     )
     assert "error=access_denied" in r.headers["Location"]
+
+
+# ---------- 로그인·로그인 시도 제한 (IMPL-PLAN-7 §4.5) ----------
+
+
+def _login(client, username="member1", password="pw12345678"):
+    return client.post("/login", {"username": username, "password": password})
+
+
+def test_password_login_sets_auth_method_and_start_page(client, member):
+    member.settings = {"user.start_page": "me"}
+    member.save(update_fields=["settings"])
+    r = _login(client)
+    assert r.status_code == 302 and r.headers["Location"] == "/me"
+    assert client.session["auth_method"] == "password"
+
+
+def test_login_follows_safe_next_only(client, member):
+    r = client.post(
+        "/login?next=/orgs", {"username": "member1", "password": "pw12345678", "next": "/orgs"}
+    )
+    assert r.headers["Location"] == "/orgs"
+    client.post("/logout")
+    r = client.post(
+        "/login", {"username": "member1", "password": "pw12345678", "next": "https://evil.example/"}
+    )
+    assert r.headers["Location"] == "/today"
+
+
+def test_sixth_attempt_is_locked_even_with_right_password(client, member):
+    for _ in range(5):
+        body = _login(client, password="wrong").content.decode()
+        assert "아이디 또는 비밀번호가 맞지 않습니다." in body
+    r = _login(client)
+    assert r.status_code == 200
+    assert "로그인 시도가 너무 많습니다. 15분 뒤 다시 시도해 주세요." in r.content.decode()
+    assert "_auth_user_id" not in client.session
+
+
+def test_unknown_username_gets_the_same_message(client, db):
+    body = _login(client, username="nobody").content.decode()
+    assert "아이디 또는 비밀번호가 맞지 않습니다." in body
+
+
+def test_logout_needs_post(logged):
+    assert logged.get("/logout").status_code == 405
+    r = logged.post("/logout")
+    assert r.status_code == 302 and r.headers["Location"] == "/login"
+    assert "_auth_user_id" not in logged.session
+
+
+def test_eleventh_signup_from_one_ip_is_refused(client, db):
+    def signup(i):
+        return client.post(
+            "/signup",
+            {
+                "username": f"user{i}",
+                "display_name": "",
+                "password1": "verysecret123",
+                "password2": "verysecret123",
+            },
+        )
+
+    for i in range(10):
+        assert signup(i).status_code == 302
+        client.post("/logout")
+    r = signup(10)
+    assert r.status_code == 200 and "로그인 시도가 너무 많습니다." in r.content.decode()
+    assert not User.objects.filter(username="user10").exists()
+
+
+def test_ops_lists_and_releases_locks(client, member, admin):
+    for _ in range(5):
+        _login(client, username="admin1", password="wrong")
+    User.objects.filter(pk=member.pk).update(is_staff=True, is_superuser=True)
+    client.force_login(member)
+    body = client.get("/ops").content.decode()
+    assert "로그인 잠금" in body and "admin1" in body
+    assert client.get("/ops/unlock").status_code == 405
+    assert client.post("/ops/unlock", {"key": "admin1"}).status_code == 302
+    assert "admin1" not in client.get("/ops").content.decode()
+    client.post("/logout")
+    assert _login(client, username="admin1").status_code == 302

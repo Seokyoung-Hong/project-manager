@@ -108,6 +108,9 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 LOGIN_URL = "/login"
 LOGIN_REDIRECT_URL = "/today"
 LOGOUT_REDIRECT_URL = "/login"
+# 세션은 Django DB 세션. OIDC를 붙여도 세션은 그대로이고 로그아웃만 IdP로 넘긴다.
+SESSION_COOKIE_AGE = 14 * 24 * 3600
+SESSION_COOKIE_HTTPONLY = True  # 기본값을 명시해 둔다
 
 # ---- 리버스 프록시 뒤에서 ----
 # 앞단(NginxProxyManager·Cloudflare Tunnel)이 TLS를 끝내고 평문 HTTP로 넘긴다. 이 헤더가

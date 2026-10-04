@@ -134,3 +134,99 @@ def test_user_by_discord_id_needs_a_proven_active_link(admin):
     link_discord(issue_link_code(admin), "222")
     User.objects.filter(pk=admin.pk).update(is_active=False)
     assert user_by_discord_id("222") is None
+
+
+# ---------- 인증·시도 제한·외부 식별자 (IMPL-PLAN-7 §4.5) ----------
+
+
+def _req(ip="10.0.0.1", xff=None):
+    from django.test import RequestFactory
+
+    extra = {"REMOTE_ADDR": ip}
+    if xff:
+        extra["HTTP_X_FORWARDED_FOR"] = xff
+    return RequestFactory().post("/login", **extra)
+
+
+def test_client_ip_takes_the_rightmost_forwarded_value():
+    from accounts.auth import client_ip
+
+    assert client_ip(_req(xff="a, b")) == "b"  # 왼쪽 a는 클라이언트가 지어낼 수 있다
+    assert client_ip(_req(ip="10.0.0.9")) == "10.0.0.9"
+
+
+def test_success_clears_the_user_counter(admin):
+    from accounts.auth import authenticate_password
+    from accounts.models import LoginLock
+
+    for _ in range(4):
+        assert authenticate_password(_req(), "Admin1", "wrong") is None  # 대소문자 무관하게 센다
+    assert LoginLock.objects.get(kind="user", key="admin1").failures == 4
+    assert authenticate_password(_req(), "admin1", "pw12345678") == admin
+    assert not LoginLock.objects.filter(kind="user").exists()
+    assert LoginLock.objects.get(kind="ip").failures == 4  # IP 카운터는 성공으로 지우지 않는다
+
+
+def test_unknown_username_is_counted_and_locked(db):
+    from accounts.auth import LockedOut, authenticate_password
+
+    for _ in range(5):
+        authenticate_password(_req(), "ghost", "x")
+    with pytest.raises(LockedOut) as e:
+        authenticate_password(_req(), "ghost", "x")
+    assert e.value.retry_after_minutes == 15
+
+
+def test_window_resets_after_fifteen_minutes(admin):
+    from accounts.auth import authenticate_password
+    from accounts.models import LoginLock
+
+    for _ in range(4):
+        authenticate_password(_req(), "admin1", "wrong")
+    LoginLock.objects.update(window_started_at=timezone.now() - timedelta(minutes=16))
+    authenticate_password(_req(), "admin1", "wrong")
+    lock = LoginLock.objects.get(kind="user")
+    assert lock.failures == 1 and lock.locked_until is None
+
+
+def test_ip_locks_after_thirty_failures_across_usernames(admin):
+    from accounts.auth import LockedOut, authenticate_password
+
+    for i in range(30):
+        authenticate_password(_req(xff="1.2.3.4"), f"u{i}", "x")
+    with pytest.raises(LockedOut) as e:
+        authenticate_password(_req(xff="1.2.3.4"), "admin1", "pw12345678")
+    assert e.value.retry_after_minutes == 60
+    assert authenticate_password(_req(xff="5.6.7.8"), "admin1", "pw12345678") == admin
+
+
+def test_unlock_login_command_deletes_rows(admin):
+    from django.core.management import call_command
+
+    from accounts.auth import LockedOut, authenticate_password
+    from accounts.models import LoginLock
+
+    for _ in range(5):
+        authenticate_password(_req(), "admin1", "wrong")
+    with pytest.raises(LockedOut):
+        authenticate_password(_req(), "admin1", "pw12345678")
+    call_command("unlock_login", "ADMIN1")
+    assert not LoginLock.objects.filter(kind="user").exists()
+    assert authenticate_password(_req(), "admin1", "pw12345678") == admin
+
+
+def test_identity_resolves_both_providers(member, admin):
+    from accounts import identity
+    from github.models import GitHubIdentity
+
+    GitHubIdentity.objects.create(user=admin, github_id=42, login="octo")
+    assert identity.resolve("github", "42") == admin
+    assert identity.resolve("github", "nope") is None
+    assert identity.resolve("discord", "111") == member
+    assert identity.resolve("discord", "") is None
+    assert identity.identities(admin) == {"github": "@octo"}
+    assert identity.identities(member) == {"discord": "111"}
+    User.objects.filter(pk=admin.pk).update(is_active=False)
+    assert identity.resolve("github", "42") is None
+    with pytest.raises(ValueError):
+        identity.resolve("oidc", "x")

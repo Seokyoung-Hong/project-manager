@@ -1,9 +1,12 @@
+from django.contrib import messages
 from django.contrib.admin.views.decorators import staff_member_required
 from django.core import serializers
 from django.db import connection
 from django.http import HttpResponse, JsonResponse
-from django.shortcuts import render
+from django.shortcuts import redirect, render
+from django.views.decorators.http import require_POST
 
+from accounts.auth import active_locks, unlock
 from accounts.models import User
 from api.models import IntegrationStatus
 from orgs.models import Invite, Organization, OrgMembership, Team, TeamMembership
@@ -19,7 +22,19 @@ def healthz(request):
 
 @staff_member_required
 def ops(request):
-    return render(request, "ops.html", {"statuses": IntegrationStatus.objects.order_by("name")})
+    return render(
+        request,
+        "ops.html",
+        {"statuses": IntegrationStatus.objects.order_by("name"), "locks": active_locks()},
+    )
+
+
+@staff_member_required
+@require_POST
+def unlock_login(request):
+    n = unlock(request.POST.get("key", ""))
+    messages.success(request, f"잠금을 풀었습니다({n}건).")
+    return redirect("ops")
 
 
 @staff_member_required

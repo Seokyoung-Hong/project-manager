@@ -13,4 +13,16 @@
     </tbody>
   </table>
 </section>
+<section class="card">
+  <div class="card-head"><h2>로그인 잠금</h2></div>
+  <p class="muted t13">아이디 5회/15분 실패 → 15분, IP 30회/15분 → 1시간, 가입 IP 10회/시간 → 1시간 잠깁니다. 셸에서는 <code>manage.py unlock_login &lt;아이디|IP&gt;</code>.</p>
+  <table class="grid">
+    <thead><tr><th>종류</th><th>대상</th><th>풀리는 시각</th><th></th></tr></thead>
+    <tbody>
+    {% for l in locks %}
+    <tr><td>{{ l.kind }}</td><td>{{ l.key }}</td><td>{{ l.locked_until|date:"Y-m-d H:i" }}</td><td><form method="post" action="{% url 'ops_unlock' %}">{% csrf_token %}<input type="hidden" name="key" value="{{ l.key }}"><button class="btn sm">해제</button></form></td></tr>
+    {% empty %}<tr><td colspan="4" class="muted">잠긴 계정·IP가 없습니다.</td></tr>{% endfor %}
+    </tbody>
+  </table>
+</section>
 {% endblock %}
