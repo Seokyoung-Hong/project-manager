@@ -380,7 +380,10 @@ def test_actor_none_only_from_github_services():
     outside = [
         h
         for h in hits
-        if not h.startswith("github/") and "tests.py" not in h and "/tests/" not in h
+        if not h.startswith("github/")
+        and "tests.py" not in h
+        and "/tests/" not in h
+        and "/test_" not in h
     ]
     assert outside == [], outside
 
