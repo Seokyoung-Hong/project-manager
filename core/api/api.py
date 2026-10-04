@@ -17,6 +17,7 @@ from .routers import (
     pr_context,
     projects,
     reports,
+    requests,
     settings,
     tasks,
     today,
@@ -92,6 +93,7 @@ api.add_router("/tasks", pr_context.router)
 api.add_router("/me", portfolio_router)
 api.add_router("/today", today.router)
 api.add_router("/reports", reports.router)
+api.add_router("/requests", requests.router)
 # 고정 경로를 먼저. /integrations/{name}/status가 /integrations/discord/...를 삼키지 않게 한다.
 api.add_router("/integrations/discord", discord.router)
 api.add_router("/integrations/github", github.router)

@@ -146,6 +146,7 @@ def create_request(
     posted_in: str = "",
 ) -> WorkRequest:
     """posted_in: Discord에서 명령을 친 채널. 받는 팀의 채널이면 봇이 거기 이미 알렸다."""
+    ts._ai_check(org, "ai.create_request", "요청 보내기", source, "request")
     if kind not in ("work", "general"):
         raise ServiceError({"kind": "작업 요청이나 일반 요청만 직접 만들 수 있습니다."})
     if not is_member(actor, org):
@@ -247,6 +248,7 @@ def accept(
 ) -> WorkRequest:
     """work는 project가 필요하다. assignee가 수락한 사람이 아니면 태스크 생성 규칙대로
     (팀장이면 바로, 아니면 그 사람에게 다시 담당 요청이 간다) 처리된다."""
+    ts._ai_check(req.org, "ai.answer_request", "요청 수락", source, "request")
     req = _lock_open(req, actor)
     if req.kind == "assign":
         _accept_assign(req, actor, source)
@@ -291,7 +293,8 @@ def _task_from_request(req, actor, source, project, assignee, due_date):
 
 
 @transaction.atomic
-def decline(req, actor, note: str = "") -> WorkRequest:
+def decline(req, actor, note: str = "", *, source: str = "web") -> WorkRequest:
+    ts._ai_check(req.org, "ai.answer_request", "요청 거절", source, "request")
     req = _lock_open(req, actor)
     _close(req, actor, "declined", note)
     _notify_requester(req, actor, "거절")
@@ -299,7 +302,8 @@ def decline(req, actor, note: str = "") -> WorkRequest:
 
 
 @transaction.atomic
-def cancel(req, actor) -> WorkRequest:
+def cancel(req, actor, *, source: str = "web") -> WorkRequest:
+    ts._ai_check(req.org, "ai.create_request", "요청 취소", source, "request")
     req = WorkRequest.objects.select_for_update().get(pk=req.pk)
     if req.requested_by_id != actor.pk:
         raise ServiceError({"request": "요청한 사람만 취소할 수 있습니다."})
@@ -310,8 +314,9 @@ def cancel(req, actor) -> WorkRequest:
 
 
 @transaction.atomic
-def complete(req, actor, note: str = "") -> WorkRequest:
+def complete(req, actor, note: str = "", *, source: str = "web") -> WorkRequest:
     """수락한 일반 요청을 끝낸다. 답한 사람(또는 받는 쪽 팀원)이 닫는다."""
+    ts._ai_check(req.org, "ai.answer_request", "요청 완료", source, "request")
     req = WorkRequest.objects.select_for_update().select_related("team").get(pk=req.pk)
     if req.kind != "general" or req.status != "accepted":
         raise ServiceError({"request": "수락한 일반 요청만 완료할 수 있습니다."})
