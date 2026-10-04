@@ -152,9 +152,7 @@ class TaskDecisionRecord(models.Model):
     ]
     SOURCES = [("web", "웹"), ("api", "API"), ("mcp", "MCP")]
 
-    task = models.ForeignKey(
-        Task, on_delete=models.PROTECT, related_name="decision_records"
-    )
+    task = models.ForeignKey(Task, on_delete=models.PROTECT, related_name="decision_records")
     kind = models.CharField(max_length=11, choices=KINDS)
     input_type = models.CharField(max_length=26, choices=INPUT_TYPES, null=True, blank=True)
     status = models.CharField(max_length=10, choices=STATUSES)
@@ -185,9 +183,7 @@ class TaskDecisionRecord(models.Model):
         null=True,
         blank=True,
     )
-    evidence_basis = models.CharField(
-        max_length=20, choices=EVIDENCE_BASES, null=True, blank=True
-    )
+    evidence_basis = models.CharField(max_length=20, choices=EVIDENCE_BASES, null=True, blank=True)
     source = models.CharField(max_length=3, choices=SOURCES)
     client_name = models.CharField(max_length=80, blank=True)
     session_ref = models.CharField(max_length=200, blank=True)
@@ -208,9 +204,7 @@ class TaskDecisionRecord(models.Model):
     class Meta:
         ordering = ["created_at", "id"]
         constraints = [
-            models.CheckConstraint(
-                condition=~Q(summary=""), name="decision_summary_nonempty"
-            ),
+            models.CheckConstraint(condition=~Q(summary=""), name="decision_summary_nonempty"),
             models.CheckConstraint(
                 condition=(
                     Q(
@@ -233,9 +227,7 @@ class TaskDecisionRecord(models.Model):
                     Q(
                         kind="user_input",
                         status__in=["captured", "proposed", "confirmed", "rejected", "superseded"],
-                        evidence_basis__in=[
-                            "explicit_reply", "explicit_instruction", "inferred"
-                        ],
+                        evidence_basis__in=["explicit_reply", "explicit_instruction", "inferred"],
                     )
                     | Q(
                         kind="ai_judgment",

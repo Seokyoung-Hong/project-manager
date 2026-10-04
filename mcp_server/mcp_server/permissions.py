@@ -50,7 +50,7 @@ NEEDS: dict[str, str] = {
     "revoke_invite": "admin",
     "update_governance": "admin",
     "get_today": "read",
-    "add_today": "write",
+    "add_to_today": "write",
     "exclude_today": "write",
     "restore_excluded_today": "write",
     "reorder_today": "write",

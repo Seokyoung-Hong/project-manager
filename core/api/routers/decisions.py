@@ -33,6 +33,7 @@ def _has_browser_session(request) -> bool:
     auth = getattr(request, "auth", None)
     return (
         getattr(request, "api_token", None) is None
+        and request.headers.get("X-Source", "").lower() not in ("mcp", "ai")  # WebMCP는 AI다
         and bool(request.COOKIES.get("sessionid"))
         and bool(getattr(user, "is_authenticated", False))
         and getattr(auth, "pk", None) == getattr(user, "pk", None)
@@ -85,9 +86,7 @@ def get_task_decisions(
         total = records.count()
         page = records.order_by("created_at", "id")[page_offset : page_offset + page_limit]
     else:
-        page, total = list_records(
-            task, actor=c["actor"], limit=page_limit, offset=page_offset
-        )
+        page, total = list_records(task, actor=c["actor"], limit=page_limit, offset=page_offset)
     return {
         "items": [_record_out(record) for record in page],
         "total": total,
@@ -117,9 +116,7 @@ def create_task_decision(request, task_id: int, payload: DecisionCreateIn):
     return 201, _record_out(record)
 
 
-@router.post(
-    "/{task_id}/decisions/{record_id}/confirm", response=DecisionRecordOut
-)
+@router.post("/{task_id}/decisions/{record_id}/confirm", response=DecisionRecordOut)
 def confirm_task_decision(request, task_id: int, record_id: int):
     task = task_or_404(request, task_id)
     c = ctx(request)
@@ -137,12 +134,8 @@ def confirm_task_decision(request, task_id: int, record_id: int):
     return _record_out(record)
 
 
-@router.post(
-    "/{task_id}/decisions/{record_id}/reject", response=DecisionRecordOut
-)
-def reject_task_decision(
-    request, task_id: int, record_id: int, payload: DecisionRejectIn
-):
+@router.post("/{task_id}/decisions/{record_id}/reject", response=DecisionRecordOut)
+def reject_task_decision(request, task_id: int, record_id: int, payload: DecisionRejectIn):
     task = task_or_404(request, task_id)
     c = ctx(request)
     if not _has_browser_session(request):

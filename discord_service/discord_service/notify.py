@@ -3,7 +3,7 @@ from collections import defaultdict
 from datetime import date, timedelta
 
 from .core_client import CoreClient
-from .discord import Bot, ChannelOpenFailed, DmBlocked, UnknownResult
+from .discord import Bot, ChannelOpenFailed, DmBlocked, RetryExhausted, UnknownResult
 from .messages import deadline_message, dm_blocked_message
 from .store import Store
 
@@ -74,6 +74,7 @@ def run_deadlines(
         # 자리를 놓아준 것들. 하루 1회 문턱(claim_daily)을 다시 열어야 실제로 재시도된다.
         "open_failed": 0,
         "recheck_failed": 0,
+        "send_retry": 0,  # 429·5xx 3회 실패. 그날 영구 누락되지 않게 놓아준다
     }
     unlinked_names: list[str] = []
     candidates = core.open_tasks(org_id, due_to=(today + timedelta(days=3)).isoformat())
@@ -164,6 +165,10 @@ def _send_dm(bot, store, did, text, key, day, result, org_id, channel_id):
         result["failed"] += 1
         log.error("DM 거부: %s %s", key, e)
         _notify_channel_once(bot, store, did, day, org_id, channel_id)
+    except RetryExhausted as e:
+        store.release(0, key, day)
+        result["send_retry"] += 1
+        log.warning("일시 장애로 발송 실패, 다음 틱에 재시도: %s: %s", key, e)
     except UnknownResult as e:
         store.mark(0, key, day, "unknown", str(e))
         result["unknown"] += 1

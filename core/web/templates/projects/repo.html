@@ -43,6 +43,7 @@
   <div class="row"><a class="btn sm" target="_blank" rel="noopener" href="https://github.com/{{ state.conn.full_name }}/settings/access">GitHub에서 변경</a></div>
 
   <h3 class="t15">이슈 가져오기</h3>
+  {% if can_settings %}
   <form method="post" action="{% url 'repo_settings' project.pk %}" class="stack">{% csrf_token %}
     <div class="row">
       <label class="field">라벨 필터<input class="input" name="import_label" value="{{ state.conn.import_label }}" placeholder="비우면 전체"></label>
@@ -58,6 +59,7 @@
     </div>
     <button class="btn sm primary">규칙 저장</button>
   </form>
+  {% endif %}
   <p class="muted t12">이슈는 웹훅으로 바로, 웹훅이 끊기면 서버가 10분마다 알아서 맞춥니다. 아래 단추는 지금 당장 확인할 때만 쓰세요.{% if state.conn.issues_synced_at %} 마지막 확인 {{ state.conn.issues_synced_at|date:"n/j H:i" }}.{% endif %}</p>
   <form method="post" action="{% url 'repo_issues_sync' project.pk %}">{% csrf_token %}<button class="btn sm">지금 확인</button></form>
   <table class="grid">

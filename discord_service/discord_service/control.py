@@ -4,9 +4,9 @@ The MCP container has no Discord secret. This service uses the bot's gateway cac
 requires and forwards the caller's ProjectManager bearer token for every read or write.
 """
 
+import discord
 import httpx
 from aiohttp import web
-import discord
 
 
 def _token(request: web.Request) -> str:
@@ -19,7 +19,9 @@ def _token(request: web.Request) -> str:
 async def _org(request: web.Request, org_id: int, token: str) -> dict:
     core_url = request.app["core_url"]
     async with httpx.AsyncClient(base_url=core_url, timeout=10) as http:
-        response = await http.get(f"/api/orgs/{org_id}", headers={"Authorization": f"Bearer {token}"})
+        response = await http.get(
+            f"/api/orgs/{org_id}", headers={"Authorization": f"Bearer {token}"}
+        )
     if response.status_code == 401:
         raise web.HTTPUnauthorized(text="ProjectManager 토큰이 유효하지 않습니다.")
     if response.status_code >= 400:
@@ -51,14 +53,23 @@ async def list_channels(request: web.Request) -> web.Response:
     org = await _org(request, int(request.match_info["org_id"]), token)
     guild = _guild(request, org["discord_guild_id"])
     channels = [
-        {"id": str(c.id), "name": c.name, "category_id": str(c.category_id) if c.category_id else None,
-         "category_name": c.category.name if c.category else None, "type": "text"}
+        {
+            "id": str(c.id),
+            "name": c.name,
+            "category_id": str(c.category_id) if c.category_id else None,
+            "category_name": c.category.name if c.category else None,
+            "type": "text",
+        }
         for c in guild.text_channels
     ]
     categories = [{"id": str(c.id), "name": c.name} for c in guild.categories]
     projects = [
-        {"id": p["id"], "name": p["name"], "purpose": p.get("purpose", ""),
-         "discord_channel_id": p.get("discord_channel_id") or ""}
+        {
+            "id": p["id"],
+            "name": p["name"],
+            "purpose": p.get("purpose", ""),
+            "discord_channel_id": p.get("discord_channel_id") or "",
+        }
         for p in org["projects"]
     ]
     by_name_all: dict[str, list[str]] = {}
@@ -76,9 +87,16 @@ async def list_channels(request: web.Request) -> web.Response:
             if label in by_name:
                 label = f"{label} #{channel['id']}"
             by_name[label] = channel["id"]
-    return web.json_response({"guild_id": str(guild.id), "channels": channels,
-                              "channels_by_name": by_name, "channels_by_name_all": by_name_all,
-                              "categories": categories, "projects": projects})
+    return web.json_response(
+        {
+            "guild_id": str(guild.id),
+            "channels": channels,
+            "channels_by_name": by_name,
+            "channels_by_name_all": by_name_all,
+            "categories": categories,
+            "projects": projects,
+        }
+    )
 
 
 async def assign_channel(request: web.Request) -> web.Response:
@@ -128,7 +146,9 @@ async def create_project_channel(request: web.Request) -> web.Response:
         category = discord.utils.get(guild.categories, name=new_category_name)
         if category is None:
             try:
-                category = await guild.create_category(new_category_name, reason="ProjectManager 프로젝트 채널")
+                category = await guild.create_category(
+                    new_category_name, reason="ProjectManager 프로젝트 채널"
+                )
                 created_category = category
             except discord.Forbidden:
                 raise web.HTTPForbidden(text="봇에게 카테고리 생성 권한이 없습니다.") from None
@@ -156,7 +176,9 @@ async def create_project_channel(request: web.Request) -> web.Response:
         if created_category and not created_category.channels:
             await created_category.delete(reason="연결 실패로 빈 카테고리 되돌림")
         raise web.HTTPBadRequest(text=response.text[:1000])
-    return web.json_response({**response.json(), "category_id": str(category.id) if category else None})
+    return web.json_response(
+        {**response.json(), "category_id": str(category.id) if category else None}
+    )
 
 
 async def start_control_server(client: discord.Client, core_url: str, port: int) -> web.AppRunner:

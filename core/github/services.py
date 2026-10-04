@@ -8,11 +8,14 @@
 `actor=None`은 웹훅 경로에서만 쓴다. 이 파일 밖에서 `tasks.services`에 None을 넘기지 않는다.
 """
 
+import logging
 import re
 from datetime import datetime, timedelta
 from urllib.parse import quote, urlencode
 
 from django.conf import settings
+from django.core.cache import cache
+from django.db import transaction
 from django.db.models import Q
 from django.utils import timezone
 
@@ -20,7 +23,7 @@ from common.errors import ConflictError, ServiceError
 from orgs.models import TeamMembership
 from orgs.services import ai_denied, is_member, orgs_of
 from orgs.settings import effective
-from projects.services import require_level
+from projects.services import _log, require_level
 from tasks.models import ChangeLog, Task
 from tasks.services import create_task, transition
 
@@ -37,7 +40,10 @@ from .models import (
     TaskGitLink,
 )
 
+log = logging.getLogger(__name__)
+
 REPO_TTL = timedelta(hours=6)
+REPO_RETRY_SECONDS = 300
 ISSUE_TTL = timedelta(minutes=10)
 EVENT_KEEP = 50
 
@@ -175,10 +181,15 @@ def refresh_github_access(request):
     last = identity.repos_checked_at
     if last and timezone.now() - last < REPO_TTL:
         return
+    # 실패해도 매 요청 다시 묻지 않는다. GitHub 장애가 모든 화면을 시간 초과만큼 붙잡기 때문이다.
+    # ponytail: 프로세스별 캐시라 워커마다 한 번씩은 다시 묻는다. 거슬리면 DB에 시각을 둔다.
+    retry_key = f"gh-repos-retry:{identity.pk}"
+    if cache.get(retry_key):
+        return
     try:
         sync_repos(identity)
     except (GitHubError, ServiceError):
-        pass
+        cache.set(retry_key, 1, REPO_RETRY_SECONDS)
 
 
 def backfill_actor(identity):
@@ -259,7 +270,39 @@ def connect_repo(*, project, url, actor, source: str = "web") -> RepoConnection:
         project=project,
         defaults={"url": url.strip()[:300], "full_name": full_name, "created_by": actor},
     )
-    sync_issues_if_stale(conn)
+    try:
+        sync_issues_if_stale(conn)
+    except Exception:
+        # 연결은 이미 저장됐다. 이슈는 다음 동기화에 맞춰지므로 화면을 500으로 깨지 않는다.
+        log.exception("저장소 연결 직후 이슈 동기화에 실패했습니다: %s", full_name)
+    return conn
+
+
+REPO_SETTING_FIELDS = (
+    "import_label",
+    "auto_import",
+    "rule_issue",
+    "rule_branch",
+    "rule_commit",
+    "rule_pr",
+    "rule_merge",
+)
+
+
+def update_repo_settings(conn, changes: dict, *, actor, source: str = "web", token=None):
+    """저장소 규칙·가져오기 설정을 바꾼다. connect_repo와 같은 등급·AI 검사를 받는다."""
+    project = conn.project
+    require_level(actor, project, effective("project.settings_by", org=project.org), "repo")
+    _check_ai_manage_repo(project.org, source)
+    changed = []
+    for field, new in changes.items():
+        if field not in REPO_SETTING_FIELDS or getattr(conn, field) == new:
+            continue
+        _log(project, f"repo.{field}", getattr(conn, field), new, actor, source, token)
+        setattr(conn, field, new)
+        changed.append(field)
+    if changed:
+        conn.save(update_fields=changed)
     return conn
 
 
@@ -471,6 +514,9 @@ def _apply(task, status, *, actor, actor_login, note=""):
     """규칙이 상태를 바꾸는 유일한 통로. 실패해도 연결은 남기고 사유만 기록한다."""
     if task.status == status:
         return "변경 없음"
+    if not task.is_open:
+        # 완료·취소한 태스크를 GitHub 이벤트가 다시 열지 않는다.
+        return "닫힌 태스크"
     try:
         transition(
             task,
@@ -538,7 +584,7 @@ def _on_create(conn, delivery, payload):
 
 
 def _on_push(conn, delivery, payload):
-    branch = (payload.get("ref") or "").rsplit("/", 1)[-1]
+    branch = (payload.get("ref") or "").removeprefix("refs/heads/")
     commits = payload.get("commits") or []
     matched = 0
     last_task = None
@@ -559,8 +605,10 @@ def _on_push(conn, delivery, payload):
             "at": (c.get("timestamp") or ""),
         }
         # ponytail: JSON 목록 100건. 커밋 전체 이력이 필요해지면 별도 표로.
-        link.commits = ([*(link.commits or []), entry])[-COMMIT_KEEP:]
-        link.save(update_fields=["commits"])
+        # 같은 커밋이 여러 브랜치로 다시 push되면 sha가 같다. 한 번만 쌓는다.
+        if not any(entry["sha"] and x.get("sha") == entry["sha"] for x in link.commits or []):
+            link.commits = ([*(link.commits or []), entry])[-COMMIT_KEEP:]
+            link.save(update_fields=["commits"])
         if item:
             _check_item(task, item)
     record_event(
@@ -679,7 +727,10 @@ def _on_issues(conn, delivery, payload):
         number=number,
         defaults={
             "title": (issue.get("title") or "")[:300],
-            "state": "closed" if action == "closed" else "open",
+            # labeled·edited 같은 action도 오므로 action이 아니라 이슈의 실제 상태를 따른다.
+            "state": issue.get("state")
+            if issue.get("state") in ("open", "closed")
+            else ("closed" if action == "closed" else "open"),
             "assignee_login": ((issue.get("assignee") or {}).get("login")) or "",
             "author_login": ((issue.get("user") or {}).get("login")) or "",
             "body": (issue.get("body") or "")[:5000],
@@ -695,7 +746,9 @@ def _on_issues(conn, delivery, payload):
         )
         task = row.task
     elif action == "opened" and conn.rule_issue and conn.auto_import:
-        if conn.import_label and conn.import_label not in labels:
+        if row.task_id is not None:
+            result = "이미 가져옴"
+        elif conn.import_label and conn.import_label not in labels:
             result = "라벨 불일치"
         else:
             member = _assigned_member(conn, issue)
@@ -785,8 +838,15 @@ def import_issue(issue, actor, *, source="web"):
     갈라진다. GitHub 이슈에는 기한이 없으므로 고정 사유를 채운다(`create_task`가 열린 태스크에
     기한이나 사유 중 하나를 요구한다).
     """
-    if issue.task_id is not None:
-        return issue.task
+    with transaction.atomic():
+        # 두 사람이 동시에 누르면 태스크가 둘 생긴다. 행을 잠근 뒤 다시 본다.
+        issue = RepoIssue.objects.select_for_update().select_related("connection").get(pk=issue.pk)
+        if issue.task_id is not None:
+            return issue.task
+        return _import_locked(issue, actor, source)
+
+
+def _import_locked(issue, actor, source):
     conn = issue.connection
     task = create_task(
         project=conn.project,
@@ -857,6 +917,24 @@ def sync_issues_if_stale(conn):
         sync_issues(conn)
     except (ServiceError, GitHubError):
         pass
+
+
+def link_issue(task, issue):
+    """이미 동기화된 이슈를 태스크에 손으로 잇는다. 다른 태스크의 이슈는 빼앗지 않는다."""
+    if issue.task_id not in (None, task.pk):
+        raise ServiceError({"issue": f"이미 {issue.task.number}에 연결된 이슈입니다."})
+    link = getattr(task, "git", None)
+    if link is not None and link.issue_number and link.issue_number != issue.number:
+        unlink(task, "issue")  # 전에 잇던 이슈를 놓아 다른 태스크가 가져갈 수 있게 한다
+    link = _link_for(issue.connection, task)
+    link.issue_number = issue.number
+    link.issue_title = issue.title
+    link.issue_state = issue.state
+    link.save(update_fields=["issue_number", "issue_title", "issue_state"])
+    issue.task = task
+    issue.save(update_fields=["task"])
+    task._state.fields_cache.pop("git", None)
+    return link
 
 
 UNLINK_FIELDS = {

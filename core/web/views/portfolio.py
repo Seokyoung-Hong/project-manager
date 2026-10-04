@@ -15,6 +15,8 @@ from portfolio import drafts as draft_services
 from portfolio import sources as source_services
 from projects.models import Project
 
+from .common import org_or_404
+
 PORTFOLIO_PROMPT_VERSION = "v1"
 
 
@@ -25,13 +27,6 @@ def _as_date(value):
         return date.fromisoformat(value)
     except (TypeError, ValueError):
         return None
-
-
-def _org_or_404(user, org_id):
-    org = orgs_of(user).filter(pk=org_id).first()
-    if org is None:
-        raise Http404
-    return org
 
 
 def _source_filters(request):
@@ -63,7 +58,14 @@ def _source_filters(request):
     from_date = _as_date(params.get("from", ""))
     to_date = _as_date(params.get("to", ""))
     input_type = params.get("input_type", "") or None
-    if input_type not in {"major_choice", "requirement", "answer", "steer", "implementation_instruction", "ai_workflow_instruction"}:
+    if input_type not in {
+        "major_choice",
+        "requirement",
+        "answer",
+        "steer",
+        "implementation_instruction",
+        "ai_workflow_instruction",
+    }:
         input_type = None
     return {
         "orgs": orgs,
@@ -131,7 +133,9 @@ def _generation_prompt(records):
 """
 
 
-def _page_context(filters, records, *, draft=None, generation_prompt="", selected_ids=None, error=""):
+def _page_context(
+    filters, records, *, draft=None, generation_prompt="", selected_ids=None, error=""
+):
     return {
         **filters,
         "records": records,
@@ -223,7 +227,7 @@ def portfolio_create(request):
     org_id = request.POST.get("org", "")
     if not org_id.isdecimal():
         raise Http404
-    org = _org_or_404(request.user, int(org_id))
+    org = org_or_404(request.user, org_id)
     try:
         draft = draft_services.create_draft(
             request.user,
@@ -273,7 +277,9 @@ def portfolio_save(request, draft_id):
         )
         context["form_title"] = request.POST.get("title", latest.title)
         context["form_body"] = request.POST.get("body_md", "")
-        context["conflict_message"] = "다른 저장 내용이 먼저 반영되었습니다. 최신 버전을 확인하고 저장 내용을 다시 검토하세요."
+        context["conflict_message"] = (
+            "다른 저장 내용이 먼저 반영되었습니다. 최신 버전을 확인하고 저장 내용을 다시 검토하세요."
+        )
         return render(request, "portfolio/index.html", context, status=409)
     except ServiceError as exc:
         messages.error(request, "; ".join(exc.errors.values()))

@@ -29,6 +29,11 @@ READ_TOOLS = {n for n, need in perm.NEEDS.items() if need == "read"}
 def test_needs_table_covers_every_tool():
     assert set(perm.NEEDS) == {
         "get_guide",
+        "list_discord_channels",
+        "plan_project_channel_assignments",
+        "assign_project_channel",
+        "unlink_project_channel",
+        "create_project_channel",
         "list_orgs",
         "list_org_repos",
         "connect_repo",
@@ -74,7 +79,7 @@ def test_needs_table_covers_every_tool():
         "revoke_invite",
         "update_governance",
         "get_today",
-        "add_today",
+        "add_to_today",
         "exclude_today",
         "restore_excluded_today",
         "reorder_today",
@@ -102,6 +107,9 @@ def test_needs_table_covers_every_tool():
         "revoke_invite",
         "update_governance",
         "update_org_settings",
+        "assign_project_channel",
+        "unlink_project_channel",
+        "create_project_channel",
     }
 
 

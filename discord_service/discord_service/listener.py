@@ -18,8 +18,8 @@ import discord
 from discord import app_commands
 
 from .commands import RATE, handle, too_fast  # noqa: F401  (RATE·too_fast는 기존 import 경로 유지)
-from .core_client import CoreClient
 from .control import start_control_server
+from .core_client import CoreClient
 from .discord import chunk
 from .slash import register
 
@@ -54,7 +54,14 @@ def run(cfg, core: CoreClient):
         # 길드 범위 동기화는 즉시 반영된다(전역은 최대 1시간). on_ready는 재접속마다 다시
         # 불리므로 거기서 하면 매번 API를 때린다.
         for guild in guilds:
-            await tree.sync(guild=guild)
+            # 길드 하나의 거절(Forbidden 등)이 setup_hook 밖으로 나가면 봇 전체가 재기동을
+            # 반복합니다. 그 길드만 건너뛰고 나머지 길드와 DM은 계속 동작하게 합니다.
+            try:
+                await tree.sync(guild=guild)
+            except discord.HTTPException as e:
+                log.warning(
+                    "슬래시 명령 동기화 실패, 이 길드는 건너뜁니다 (guild=%s): %s", guild.id, e
+                )
         # MCP와 같은 내부 Compose 네트워크 전용. Discord 봇 토큰은 이 컨테이너 밖으로 나가지 않는다.
         port = int(os.environ.get("DISCORD_CONTROL_PORT", "8081"))
         client.control_runner = await start_control_server(client, cfg.core_url, port)

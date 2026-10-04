@@ -83,8 +83,15 @@ def get_project(request, project_id: int):
 @router.put("/{project_id}/discord-channel", response=dict)
 def set_discord_channel(request, project_id: int, payload: ProjectDiscordChannelIn):
     """조직 관리자가 Discord 프로젝트 채널 ID를 연결하거나 해제한다."""
-    project = set_project_channel(_project_or_404(request, project_id), payload.channel_id, request.auth)
-    return {"id": project.pk, "name": project.name, "discord_channel_id": project.discord_channel_id}
+    c = ctx(request)
+    project = set_project_channel(
+        _project_or_404(request, project_id), payload.channel_id, c["actor"], source=c["source"]
+    )
+    return {
+        "id": project.pk,
+        "name": project.name,
+        "discord_channel_id": project.discord_channel_id,
+    }
 
 
 @router.post("", response={201: ProjectOut, 400: ErrorOut})
@@ -137,7 +144,8 @@ def get_api_spec(request, project_id: int):
 def put_api_spec(request, project_id: int, payload: ApiSpecIn):
     p = _project_or_404(request, project_id)
     spec = parse_spec(json.dumps(payload.spec).encode(), source=payload.source_url or "요청 본문")
-    obj = set_api_spec(p, spec, source_url=payload.source_url, actor=request.auth)
+    c = ctx(request)
+    obj = set_api_spec(p, spec, source_url=payload.source_url, actor=c["actor"], source=c["source"])
     return {"ok": True, "fetched_at": obj.fetched_at}
 
 

@@ -97,7 +97,7 @@ def test_all_commands_are_guild_scoped_with_the_shared_vocabulary():
     }
     assert tree.get_commands(guild=None) == []
     vocab = {"번호", "프로젝트", "팀", "담당자", "기한", "기한미정사유", "중요도", "상태", "사유"}
-    vocab |= {"내용", "제목", "다음행동", "카테고리", "코드"}
+    vocab |= {"내용", "제목", "다음행동", "코드", "기존카테고리", "새카테고리만들기", "기존채널"}
     for c in tree.get_commands(guild=GUILD):
         for p in c.parameters:
             assert p.display_name in vocab, (c.name, p.display_name)
@@ -274,11 +274,14 @@ def test_task_autocomplete_shows_label_and_submits_id():
 
 
 def test_other_autocompletes_use_their_own_lists():
-    tree = _tree(_fake())
+    fake = _fake()
+    fake.orgs_data = [org(1, guild_id="1")]
+    tree = _tree(fake)
     assert [
         c.name for c in run(_ac(tree, "태스크만들기", "프로젝트")(FakeInteraction(), "산"))
     ] == ["산돌이 봇"]
-    assert [c.value for c in run(_ac(tree, "팀채널", "팀")(FakeInteraction(), ""))] == [1]
+    here = FakeInteraction(guild=SimpleNamespace(id=1))
+    assert [c.value for c in run(_ac(tree, "팀채널", "팀")(here, ""))] == [1]
     assert [c.name for c in run(_ac(tree, "태스크수정", "담당자")(FakeInteraction(), "팀"))] == [
         "팀원"
     ]
@@ -389,3 +392,27 @@ def test_dm_commands_still_work_unchanged():
     fake = _fake()
     assert "완료로 바꿨습니다" in handle(make_core(fake), DID, "완료 12")
     assert fake.paths() == ["tasks/12/done"]
+
+
+def test_channel_autocomplete_hides_other_guilds_orgs():
+    fake = _fake()
+    fake.orgs_data = [org(1, guild_id="999999")]  # 조직 1은 다른 길드에 묶여 있습니다
+    tree = _tree(fake)
+    i = FakeInteraction(guild=SimpleNamespace(id=1))
+    assert run(_ac(tree, "프로젝트채널", "프로젝트")(i, "")) == []
+    assert run(_ac(tree, "팀채널", "팀")(i, "")) == []
+    fake.orgs_data = [org(1, guild_id="1")]
+    tree = _tree(fake)
+    assert [c.value for c in run(_ac(tree, "프로젝트채널", "프로젝트")(i, ""))] == [1, 2]
+
+
+def test_selected_channel_relays_core_refusal():
+    """기존 채널 연결이 core에서 거절되면 그 문구를 그대로 돌려줍니다(_error_reply 경로)."""
+    fake = _fake()
+    fake.orgs_data = [org(1, guild_id="1")]
+    fake.admin = False
+    tree = _tree(fake)
+    i = FakeInteraction(guild=SimpleNamespace(id=1))
+    selected = SimpleNamespace(id=777, guild=SimpleNamespace(id=1))
+    run(_cmd(tree, "프로젝트채널").callback(i, project=1, selected=selected))
+    assert i.reply == "조직 관리자만 할 수 있습니다."

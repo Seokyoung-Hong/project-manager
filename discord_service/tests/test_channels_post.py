@@ -104,3 +104,13 @@ def test_two_orgs_do_not_mix_seen_status_or_channels(store, fake_bot, bot):
     run_channel_events(core_b, bot, store, 2, DAY, SINCE, events={"created"})
     assert sorted(m["channel"] for m in fake_bot.messages) == ["chan-a", "chan-b"]
     assert store.seen_status(1, 1) == "todo" and store.seen_status(2, 1) == "todo"
+
+
+def test_first_sighting_of_an_old_task_is_a_change_not_created(store, fake_bot, bot):
+    """created_at이 조회 창 밖이면 처음 봐도 '새 태스크'가 아니라 상태 변경으로 다룹니다."""
+    t = task(1, "2026-09-10", status="blocked", project=CH_PROJECT)
+    t["created_at"] = "2026-09-01T09:00:00+09:00"
+    core = make_core(FakeCore([t]))
+    r = run_channel_events(core, bot, store, 1, DAY, SINCE, events={"created", "blocked"})
+    assert r["posted"] == 1
+    assert "막힘" in fake_bot.sent[-1] and "새 태스크" not in fake_bot.sent[-1]

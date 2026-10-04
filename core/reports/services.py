@@ -39,7 +39,7 @@ def org_status(org) -> dict:
         .annotate(
             open_count=Count("tasks", filter=Q(tasks__status__in=Task.OPEN)),
             overdue_count=Count(
-                "tasks", filter=Q(tasks__status__in=Task.OPEN, tasks__due_date__lt=today)
+                "tasks", filter=Q(tasks__status__in=Task.OPEN, tasks__due_date__lt=overdue_day)
             ),
             review_count=Count("tasks", filter=Q(tasks__status="review")),
             blocked_count=Count("tasks", filter=Q(tasks__status="blocked")),
@@ -133,7 +133,6 @@ def weekly(org, week_start: date) -> dict:
     start, end = kst_week_range(week_start)
     period_end = week_start + timedelta(days=7)
     this_monday, this_sunday = week_bounds(period_end)
-    today = today_kst()
 
     org_task_ids = Task.objects.filter(project__org=org).values("id")
     logs = ChangeLog.objects.filter(
@@ -165,7 +164,10 @@ def weekly(org, week_start: date) -> dict:
             "due_date", "id"
         )
     ]
-    overdue = [task_brief(t) for t in open_qs.filter(due_date__lt=today).order_by("due_date", "id")]
+    overdue_day = overdue_before(org)  # 화면 배지와 같은 유예 기준
+    overdue = [
+        task_brief(t) for t in open_qs.filter(due_date__lt=overdue_day).order_by("due_date", "id")
+    ]
     blocked = [task_brief(t) for t in open_qs.filter(status="blocked").order_by("id")]
 
     by_project = []
@@ -177,7 +179,7 @@ def weekly(org, week_start: date) -> dict:
                 "completed": len(completed_ids & p_ids),
                 "reopened": len(reopened_ids & p_ids),
                 "open": open_qs.filter(project=p).count(),
-                "overdue": open_qs.filter(project=p, due_date__lt=today).count(),
+                "overdue": open_qs.filter(project=p, due_date__lt=overdue_day).count(),
                 "blocked": open_qs.filter(project=p, status="blocked").count(),
             }
         )

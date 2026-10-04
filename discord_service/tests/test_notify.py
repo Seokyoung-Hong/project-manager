@@ -211,11 +211,21 @@ def test_no_backfill_for_missed_days(store, fake_bot, bot):
 
 
 def test_failed_send_recorded(store, fake_bot, bot):
-    fake_bot.errors["*"] = [500, 500, 500]
+    fake_bot.errors["*"] = [400]
     core = make_core(FakeCore([task(1, "2026-09-12")]))
     r = run_deadlines(core, bot, store, 1, TODAY)
     assert r["failed"] == 1
     assert store.recent()["sent"][0]["status"] == "failed"
+
+
+def test_exhausted_5xx_releases_the_claim_for_a_later_tick(store, fake_bot, bot):
+    """429·5xx 3회 실패는 failed로 굳히지 않고 놓아줍니다. 다음 실행이 다시 보냅니다."""
+    fake_bot.errors["*"] = [500, 500, 500]
+    core = make_core(FakeCore([task(1, "2026-09-12")]))
+    r = run_deadlines(core, bot, store, 1, TODAY)
+    assert r["send_retry"] == 1 and r["failed"] == 0
+    assert store.recent()["sent"] == []
+    assert run_deadlines(core, bot, store, 1, TODAY)["sent"] == 1
 
 
 def test_retry_on_429_then_success(store, fake_bot, bot):
@@ -368,3 +378,22 @@ def test_reopening_the_day_is_bounded(tmp_path, store, fake_bot, bot, monkeypatc
             reopened.append(r[0]["reopened"])
     assert reopened == [True, True, True, False]  # 첫 훑기 + 재훑기 3회로 끝
     assert fake_bot.messages == []
+
+
+def test_cli_deadlines_passes_the_same_notify_map(tmp_path, monkeypatch):
+    """CLI `deadlines --org`도 스케줄러처럼 DM 거부자 맵을 넘깁니다."""
+    import sys
+
+    from conftest import notify_member
+
+    from discord_service import __main__ as cli
+
+    fake = FakeCore([])
+    fake.org_members_data = {1: [notify_member(did="111", notify_dm=False)]}
+    got = {}
+    monkeypatch.setattr(cli.Config, "from_env", classmethod(lambda c: _cfg(tmp_path)))
+    monkeypatch.setattr(cli, "CoreClient", lambda *a: make_core(fake))
+    monkeypatch.setattr(cli, "run_deadlines", lambda *a, **k: got.update(k))
+    monkeypatch.setattr(sys, "argv", ["x", "deadlines", "--org", "1", "--date", "2026-09-09"])
+    cli.main()
+    assert got["notify"]["111"]["notify_dm"] is False

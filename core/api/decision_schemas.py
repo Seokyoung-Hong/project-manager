@@ -21,9 +21,7 @@ DecisionInputType = Literal[
     "ai_workflow_instruction",
 ]
 EvidenceBasis = Literal["explicit_reply", "explicit_instruction", "inferred"]
-DecisionStatus = Literal[
-    "captured", "proposed", "confirmed", "rejected", "recorded", "superseded"
-]
+DecisionStatus = Literal["captured", "proposed", "confirmed", "rejected", "recorded", "superseded"]
 
 
 class DecisionCreateIn(Schema):

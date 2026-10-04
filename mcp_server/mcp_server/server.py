@@ -4,7 +4,6 @@ import re
 from pathlib import Path
 
 import httpx
-
 from mcp.server.fastmcp import FastMCP
 from mcp.server.transport_security import TransportSecuritySettings
 
@@ -95,7 +94,9 @@ def _discord_control(method: str, path: str, body: dict | None = None) -> dict:
             timeout=20,
         )
     except httpx.HTTPError as exc:
-        raise CoreError("Discord 봇이 실행 중인지 확인하세요. 채널 목록 조회에 실패했습니다.") from exc
+        raise CoreError(
+            "Discord 봇이 실행 중인지 확인하세요. 채널 목록 조회에 실패했습니다."
+        ) from exc
     if response.status_code >= 400:
         try:
             detail = response.json().get("detail") or response.json().get("message")
@@ -128,31 +129,54 @@ def plan_project_channel_assignments(org_id: int) -> dict:
     for project in projects:
         linked = next((c for c in channels if c["id"] == str(project["discord_channel_id"])), None)
         exact = [c for c in channels if key(c["name"]) == key(project["name"])]
-        partial = [c for c in channels if key(project["name"]) and
-                   (key(project["name"]) in key(c["name"]) or key(c["name"]) in key(project["name"]))]
+        partial = [
+            c
+            for c in channels
+            if key(project["name"])
+            and (key(project["name"]) in key(c["name"]) or key(c["name"]) in key(project["name"]))
+        ]
         candidates = exact or partial
         if linked:
-            item = {"project_id": project["id"], "project_name": project["name"],
-                    "project_purpose": project.get("purpose", ""),
-                    "action": "keep", "channel_id": linked["id"], "channel_name": linked["name"],
-                    "reason": "현재 연결된 채널이 서버에 있습니다."}
+            item = {
+                "project_id": project["id"],
+                "project_name": project["name"],
+                "project_purpose": project.get("purpose", ""),
+                "action": "keep",
+                "channel_id": linked["id"],
+                "channel_name": linked["name"],
+                "reason": "현재 연결된 채널이 서버에 있습니다.",
+            }
         elif len(candidates) == 1:
             c = candidates[0]
-            item = {"project_id": project["id"], "project_name": project["name"],
-                    "project_purpose": project.get("purpose", ""),
-                    "action": "review_existing", "channel_id": c["id"], "channel_name": c["name"],
-                    "category_name": c["category_name"], "reason": "프로젝트명과 일치하는 기존 채널 후보입니다."}
+            item = {
+                "project_id": project["id"],
+                "project_name": project["name"],
+                "project_purpose": project.get("purpose", ""),
+                "action": "review_existing",
+                "channel_id": c["id"],
+                "channel_name": c["name"],
+                "category_name": c["category_name"],
+                "reason": "프로젝트명과 일치하는 기존 채널 후보입니다.",
+            }
         elif candidates:
-            item = {"project_id": project["id"], "project_name": project["name"],
-                    "project_purpose": project.get("purpose", ""),
-                    "action": "choose_existing", "candidates": candidates,
-                    "reason": "이름이 비슷한 채널이 여러 개라 선택이 필요합니다."}
+            item = {
+                "project_id": project["id"],
+                "project_name": project["name"],
+                "project_purpose": project.get("purpose", ""),
+                "action": "choose_existing",
+                "candidates": candidates,
+                "reason": "이름이 비슷한 채널이 여러 개라 선택이 필요합니다.",
+            }
         else:
-            item = {"project_id": project["id"], "project_name": project["name"],
-                    "project_purpose": project.get("purpose", ""),
-                    "action": "propose_new", "suggested_channel_name": key(project["name"]),
-                    "categories": data["categories"],
-                    "reason": "적합한 기존 채널을 찾지 못했습니다. 먼저 기존 카테고리 중 하나를 고르세요."}
+            item = {
+                "project_id": project["id"],
+                "project_name": project["name"],
+                "project_purpose": project.get("purpose", ""),
+                "action": "propose_new",
+                "suggested_channel_name": key(project["name"]),
+                "categories": data["categories"],
+                "reason": "적합한 기존 채널을 찾지 못했습니다. 먼저 기존 카테고리 중 하나를 고르세요.",
+            }
         plan.append(item)
     return {"guild_id": data["guild_id"], "plan": plan, "categories": data["categories"]}
 
@@ -161,15 +185,17 @@ def plan_project_channel_assignments(org_id: int) -> dict:
 def assign_project_channel(org_id: int, project_id: int, channel_id: str) -> dict:
     """선택한 기존 Discord 텍스트 채널을 프로젝트에 연결한다. 조직 관리자만 가능하다.
     먼저 list_discord_channels와 plan_project_channel_assignments로 서버·채널을 확인한다."""
-    return _discord_control("POST", f"/projects/{project_id}/assign",
-                            {"org_id": org_id, "channel_id": str(channel_id)})
+    return _discord_control(
+        "POST", f"/projects/{project_id}/assign", {"org_id": org_id, "channel_id": str(channel_id)}
+    )
 
 
 @mcp.tool()
 def unlink_project_channel(org_id: int, project_id: int) -> dict:
     """프로젝트와 Discord 채널의 연결만 해제한다. Discord 채널 자체는 삭제하지 않는다."""
-    return _discord_control("POST", f"/projects/{project_id}/assign",
-                            {"org_id": org_id, "channel_id": ""})
+    return _discord_control(
+        "POST", f"/projects/{project_id}/assign", {"org_id": org_id, "channel_id": ""}
+    )
 
 
 @mcp.tool()
@@ -184,9 +210,14 @@ def create_project_channel(
     기존 카테고리를 우선 선택하고, 기존 카테고리가 적합하지 않을 때만 new_category_name을 지정한다.
     채널 또는 카테고리를 새로 만드는 작업은 실행 전에 이름과 위치를 사용자에게 제시한다."""
     return _discord_control(
-        "POST", f"/orgs/{org_id}/projects/{project_id}/channels",
-        {"org_id": org_id, "channel_name": channel_name,
-         "category_id": category_id, "new_category_name": new_category_name},
+        "POST",
+        f"/orgs/{org_id}/projects/{project_id}/channels",
+        {
+            "org_id": org_id,
+            "channel_name": channel_name,
+            "category_id": category_id,
+            "new_category_name": new_category_name,
+        },
     )
 
 
@@ -228,26 +259,50 @@ def get_org(org_id: int) -> dict:
 
 
 @mcp.tool()
-def update_project(project_id: int, version: int, name: str | None = None,
-                   purpose: str | None = None, owner_ids: list[int] | None = None,
-                   team_ids: list[int] | None = None, status: str | None = None) -> dict:
+def update_project(
+    project_id: int,
+    version: int,
+    name: str | None = None,
+    purpose: str | None = None,
+    owner_ids: list[int] | None = None,
+    team_ids: list[int] | None = None,
+    status: str | None = None,
+) -> dict:
     """프로젝트 정보를 수정한다. get_project에서 읽은 최신 version을 보낸다."""
     body = {"version": version}
-    for key, value in {"name": name, "purpose": purpose, "owner_ids": owner_ids,
-                       "team_ids": team_ids, "status": status}.items():
+    for key, value in {
+        "name": name,
+        "purpose": purpose,
+        "owner_ids": owner_ids,
+        "team_ids": team_ids,
+        "status": status,
+    }.items():
         if value is not None:
             body[key] = value
     return _core().patch(f"/api/projects/{project_id}", body)
 
 
 @mcp.tool()
-def create_project(org_id: int, name: str, purpose: str = "", owner_ids: list[int] | None = None,
-                   team_ids: list[int] | None = None, status: str = "preparing") -> dict:
+def create_project(
+    org_id: int,
+    name: str,
+    purpose: str = "",
+    owner_ids: list[int] | None = None,
+    team_ids: list[int] | None = None,
+    status: str = "preparing",
+) -> dict:
     """프로젝트를 만든다. 조직·관리자·팀 id는 목록에서 확인한다."""
-    return _core().post("/api/projects", {
-        "org_id": org_id, "name": name, "purpose": purpose,
-        "owner_ids": owner_ids or [], "team_ids": team_ids or [], "status": status,
-    })
+    return _core().post(
+        "/api/projects",
+        {
+            "org_id": org_id,
+            "name": name,
+            "purpose": purpose,
+            "owner_ids": owner_ids or [],
+            "team_ids": team_ids or [],
+            "status": status,
+        },
+    )
 
 
 @mcp.tool()
@@ -259,7 +314,9 @@ def get_project_api_spec(project_id: int) -> dict:
 @mcp.tool()
 def set_project_api_spec(project_id: int, spec: dict, source_url: str = "") -> dict:
     """프로젝트 API 명세를 등록하거나 교체한다."""
-    return _core().put(f"/api/projects/{project_id}/api-spec", {"spec": spec, "source_url": source_url})
+    return _core().put(
+        f"/api/projects/{project_id}/api-spec", {"spec": spec, "source_url": source_url}
+    )
 
 
 @mcp.tool()
@@ -319,7 +376,9 @@ def get_task(task_id: int, include_history: bool = False) -> dict:
 
 
 @mcp.tool()
-def list_task_decisions(task_id: int, effective_only: bool = False, limit: int = 50, offset: int = 0) -> dict:
+def list_task_decisions(
+    task_id: int, effective_only: bool = False, limit: int = 50, offset: int = 0
+) -> dict:
     """태스크의 의사결정 요지와 AI 판단을 조회한다. 확인 상태와 출처를 구분한다."""
     return decision_tools.list_task_decisions(_core(), task_id, effective_only, limit, offset)
 
@@ -343,9 +402,20 @@ def record_task_decision(
     """대화 원문 대신 짧고 중립적인 의사 요지만 제출한다. 사적 말투·긴 인용·비밀값을 보내지 않는다.
     명시적 답변·지시는 user_input, inferred는 확인 대기, AI 자율 판단은 ai_judgment로 구분한다."""
     return decision_tools.record_task_decision(
-        _core(), task_id, kind, summary, input_type, question_summary, reason_summary,
-        alternatives, impact_summary, evidence_basis, client_name, session_ref,
-        supersedes_id, client_request_id,
+        _core(),
+        task_id,
+        kind,
+        summary,
+        input_type,
+        question_summary,
+        reason_summary,
+        alternatives,
+        impact_summary,
+        evidence_basis,
+        client_name,
+        session_ref,
+        supersedes_id,
+        client_request_id,
     )
 
 
@@ -357,24 +427,43 @@ def get_pr_context(task_id: int) -> dict:
 
 @mcp.tool()
 def list_portfolio_sources(
-    org_id: int | None = None, project_id: int | None = None,
-    from_date: str | None = None, to_date: str | None = None,
+    org_id: int | None = None,
+    project_id: int | None = None,
+    from_date: str | None = None,
+    to_date: str | None = None,
     input_type: portfolio_tools.PortfolioInputType | None = None,
-    limit: int = 50, offset: int = 0,
+    limit: int = 50,
+    offset: int = 0,
 ) -> dict:
     """본인 의사결정 요지와 접근 가능한 AI 판단을 포트폴리오 출처로 조회한다. 대화 원문은 포함하지 않는다."""
     return portfolio_tools.list_portfolio_sources(
-        _core(), org_id, project_id, from_date, to_date, input_type, limit, offset,
+        _core(),
+        org_id,
+        project_id,
+        from_date,
+        to_date,
+        input_type,
+        limit,
+        offset,
     )
 
 
 @mcp.tool()
 def create_portfolio_draft(
-    org_id: int, title: str, body_md: str, source_ids: list[int], scope_json: dict | None = None,
+    org_id: int,
+    title: str,
+    body_md: str,
+    source_ids: list[int],
+    scope_json: dict | None = None,
 ) -> dict:
     """선택한 출처 요지만 근거로 비공개 Markdown 초안을 저장한다. 대화 전문이나 근거 없는 성과를 넣지 않는다."""
     return portfolio_tools.create_portfolio_draft(
-        _core(), org_id, title, body_md, source_ids, scope_json,
+        _core(),
+        org_id,
+        title,
+        body_md,
+        source_ids,
+        scope_json,
     )
 
 
@@ -386,12 +475,20 @@ def get_portfolio_draft(draft_id: int) -> dict:
 
 @mcp.tool()
 def update_portfolio_draft(
-    draft_id: int, version: int, title: str | None = None,
-    body_md: str | None = None, source_ids: list[int] | None = None,
+    draft_id: int,
+    version: int,
+    title: str | None = None,
+    body_md: str | None = None,
+    source_ids: list[int] | None = None,
 ) -> dict:
     """본인 초안을 버전 검사와 함께 편집한다. 사용자가 편집한 본문은 자동으로 덮어쓰지 않는다."""
     return portfolio_tools.update_portfolio_draft(
-        _core(), draft_id, version, title, body_md, source_ids,
+        _core(),
+        draft_id,
+        version,
+        title,
+        body_md,
+        source_ids,
     )
 
 
@@ -399,6 +496,8 @@ def update_portfolio_draft(
 def export_portfolio_markdown(draft_id: int) -> dict:
     """출처 접근권을 다시 확인한 뒤 본인 초안의 Markdown을 가져온다. 외부에 게시하지 않는다."""
     return portfolio_tools.export_portfolio_markdown(_core(), draft_id)
+
+
 @mcp.tool()
 def get_task_github(task_id: int) -> dict:
     """연결된 GitHub 이슈·브랜치·PR·커밋을 읽는다. 사용자의 저장소 권한을 확인하고 실시간 이슈와 캐시를 함께 제공한다."""
@@ -494,22 +593,27 @@ def update_task(
 
 
 @mcp.tool()
-def transition_task(task_id: int, status: str, version: int, stop_reason: str = "") -> dict:
+def transition_task(task_id: int, status: str, version: int, reason: str = "") -> dict:
     """상태 변경. status: todo|doing|paused|blocked|review|done|cancelled.
-    blocked로 바꾸려면 stop_reason 필수(막힘 사유). paused는 stop_reason 선택. doing으로 바꾸려면 기한이 있어야 한다.
+    blocked로 바꾸려면 reason 필수(막힘 사유). paused는 reason 선택. doing으로 바꾸려면 기한이 있어야 한다.
     완료·취소된 태스크는 todo 또는 doing으로만 다시 열 수 있다."""
     return _core().post(
         f"/api/tasks/{task_id}/transition",
-        {"status": status, "version": version, "reason": stop_reason},
+        {"status": status, "version": version, "reason": reason},
     )
 
 
 @mcp.tool()
 def extend_task(task_id: int, due_date: str, reason: str, version: int) -> dict:
     """태스크 기한을 연장한다. 최신 version과 사유를 제공한다."""
-    return _core().post(f"/api/tasks/{task_id}/extend", {
-        "due_date": due_date, "reason": reason, "version": version,
-    })
+    return _core().post(
+        f"/api/tasks/{task_id}/extend",
+        {
+            "due_date": due_date,
+            "reason": reason,
+            "version": version,
+        },
+    )
 
 
 @mcp.tool()
@@ -545,7 +649,9 @@ def update_org_settings(org_id: int, values: dict, reason: str = "") -> dict:
     AI 정책(ai.*)이 바뀌는 변경은 바로 반영되지 않고 {status: "pending", approve_url}이 온다 —
     그 링크를 사용자에게 그대로 보여 주고, 조직 관리자가 허용할 때까지 다시 시도하지 않는다.
     reason: 왜 바꾸려는지(500자). AI 정책을 바꿀 때는 필수 — 사람이 허용할지 판단하는 근거다."""
-    return _core().put(f"/api/orgs/{org_id}/settings", values, params={"reason": reason} if reason else None)
+    return _core().put(
+        f"/api/orgs/{org_id}/settings", values, params={"reason": reason} if reason else None
+    )
 
 
 @mcp.tool()
@@ -590,7 +696,11 @@ def update_governance(org_id: int, text: str, reason: str = "") -> dict:
     바로 반영되지 않고 {status: "pending", approve_url}이 온다 — 링크를 사용자에게 보여 주고,
     조직 관리자가 허용할 때까지 다시 시도하지 않는다.
     reason: 왜 바꾸려는지(500자, 필수) — 사람이 허용할지 판단하는 근거다."""
-    return _core().put(f"/api/orgs/{org_id}/governance", {"text": text}, params={"reason": reason} if reason else None)
+    return _core().put(
+        f"/api/orgs/{org_id}/governance",
+        {"text": text},
+        params={"reason": reason} if reason else None,
+    )
 
 
 @mcp.tool()
@@ -600,7 +710,7 @@ def get_today() -> dict:
 
 
 @mcp.tool()
-def add_today(task_id: int) -> dict:
+def add_to_today(task_id: int) -> dict:
     """태스크를 내 오늘 목록에 담는다."""
     return _core().post("/api/today", {"task_id": task_id})
 

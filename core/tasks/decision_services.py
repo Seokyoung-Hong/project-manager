@@ -72,7 +72,9 @@ def _clean_summary(field, value, max_length, *, required=False):
     if len(cleaned) > max_length:
         raise ServiceError({field: f"{max_length}자 이내로 요지를 입력해 주세요."})
     if any(pattern.search(cleaned) for pattern in _SECRET_PATTERNS):
-        raise ServiceError({field: "비밀값으로 보이는 내용은 기록할 수 없습니다. 의사 요지만 입력해 주세요."})
+        raise ServiceError(
+            {field: "비밀값으로 보이는 내용은 기록할 수 없습니다. 의사 요지만 입력해 주세요."}
+        )
     return cleaned
 
 
@@ -87,11 +89,7 @@ def _clean_alternatives(value):
 
 
 def _find_record(task, record_id, actor):
-    record = (
-        TaskDecisionRecord.objects.select_for_update()
-        .filter(pk=record_id, task=task)
-        .first()
-    )
+    record = TaskDecisionRecord.objects.select_for_update().filter(pk=record_id, task=task).first()
     if record is None:
         raise ServiceError({"record": "이 태스크의 기록을 찾을 수 없습니다."})
     _require_member(task, actor)
@@ -120,8 +118,10 @@ def _matches_idempotent_retry(
     # original capture. For user input the original status is deterministic:
     # inferred evidence is proposed, explicit evidence is captured.
     initial_status = (
-        "proposed" if evidence_basis == "inferred" else "captured"
-    ) if kind == "user_input" else "recorded"
+        ("proposed" if evidence_basis == "inferred" else "captured")
+        if kind == "user_input"
+        else "recorded"
+    )
     reason_matches = existing.reason_summary == reason_summary
     stable_fields_match = (
         existing.kind == kind
@@ -184,9 +184,13 @@ def create_record(
             raise ServiceError({"evidence_basis": "입력 근거 유형이 올바르지 않습니다."})
         status = status or ("proposed" if evidence_basis == "inferred" else "captured")
         if status not in _USER_STATUSES:
-            raise ServiceError({"status": "새 사용자 입력은 captured 또는 proposed로 기록해야 합니다."})
+            raise ServiceError(
+                {"status": "새 사용자 입력은 captured 또는 proposed로 기록해야 합니다."}
+            )
         if evidence_basis == "inferred" and status != "proposed":
-            raise ServiceError({"status": "AI가 추론한 입력은 사용자가 확인하기 전까지 proposed 상태여야 합니다."})
+            raise ServiceError(
+                {"status": "AI가 추론한 입력은 사용자가 확인하기 전까지 proposed 상태여야 합니다."}
+            )
         if evidence_basis != "inferred" and status != "captured":
             raise ServiceError({"status": "명시적 사용자 입력은 captured 상태로 기록해야 합니다."})
         stored_input_type = input_type
@@ -196,7 +200,9 @@ def create_record(
         # AI judgment is an independent record type and can never be promoted
         # to user input by an MCP-supplied input_type/status.
         if input_type not in (None, "") or evidence_basis not in (None, ""):
-            raise ServiceError({"kind": "AI 판단에는 사용자 입력 유형이나 답변 근거를 지정할 수 없습니다."})
+            raise ServiceError(
+                {"kind": "AI 판단에는 사용자 입력 유형이나 답변 근거를 지정할 수 없습니다."}
+            )
         status = status or "recorded"
         if status != "recorded":
             raise ServiceError({"status": "새 AI 판단은 recorded 상태로만 기록할 수 있습니다."})
@@ -217,7 +223,9 @@ def create_record(
         try:
             request_uuid = uuid.UUID(str(client_request_id))
         except (ValueError, TypeError, AttributeError):
-            raise ServiceError({"client_request_id": "요청 중복 방지 ID가 UUID 형식이 아닙니다."}) from None
+            raise ServiceError(
+                {"client_request_id": "요청 중복 방지 ID가 UUID 형식이 아닙니다."}
+            ) from None
 
     with transaction.atomic():
         # Resolve retries before checking the target's current status: a prior
@@ -249,13 +257,17 @@ def create_record(
 
         prior = None
         if supersedes_id is not None:
-            prior = TaskDecisionRecord.objects.select_for_update().filter(
-                pk=supersedes_id, task=task
-            ).first()
+            prior = (
+                TaskDecisionRecord.objects.select_for_update()
+                .filter(pk=supersedes_id, task=task)
+                .first()
+            )
             if prior is None:
                 raise ServiceError({"supersedes_id": "같은 태스크의 대체 대상 기록이 필요합니다."})
             if prior.kind != kind or prior.status in {"rejected", "superseded"}:
-                raise ServiceError({"supersedes_id": "같은 종류의 유효한 기록만 대체할 수 있습니다."})
+                raise ServiceError(
+                    {"supersedes_id": "같은 종류의 유효한 기록만 대체할 수 있습니다."}
+                )
             if prior.subject_user_id != getattr(subject_user, "pk", None):
                 raise ServiceError({"supersedes_id": "본인에게 귀속된 기록만 대체할 수 있습니다."})
 

@@ -105,3 +105,33 @@ def test_two_orgs_scheduled_together_post_to_their_own_channel(tmp_path, store, 
     assert sorted(m["channel"] for m in fake_bot.messages) == ["111ch", "222ch"]
     assert store.weekly_sent(1, last_monday(monday.date()).isoformat())
     assert store.weekly_sent(2, last_monday(monday.date()).isoformat())
+
+
+def test_unknown_weekly_is_not_reposted_on_the_next_tick(tmp_path, store, bot, monkeypatch):
+    """결과를 모르는(unknown) 주간 보고는 매 분 다시 게시하지 않습니다 — 하루 1회 자리 잡기."""
+    from discord_service.discord import UnknownResult
+
+    calls = []
+
+    def unknown(text, channel_id=None):
+        calls.append(channel_id)
+        raise UnknownResult("timeout")
+
+    monkeypatch.setattr(bot, "send_channel", unknown)
+    fake = FakeCore([], weekly=weekly_data(), orgs=[org(1, channel_id="111ch")])
+    cfg = Config(
+        core_url="http://core",
+        core_token="pm_test",
+        bot_token="botsecret",
+        tz=KST,
+        send_hour=9,
+        weekly_weekday=0,
+        weekly_hour=9,
+        llm_provider="",
+        db_path=str(tmp_path / "s.sqlite"),
+        site_name="산돌이 업무",
+    )
+    monday = datetime(2026, 8, 31, 10, tzinfo=KST)
+    tick(cfg, make_core(fake), bot, store, monday)
+    tick(cfg, make_core(fake), bot, store, monday + timedelta(minutes=1))
+    assert calls == ["111ch"]

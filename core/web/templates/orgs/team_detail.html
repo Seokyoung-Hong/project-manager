@@ -32,7 +32,7 @@
     </select>
     <button class="btn sm">연결</button>
   </form>
-  <form method="post" action="{% url 'team_github_create' team.pk %}"><button class="btn sm">GitHub에 새 팀 만들기</button></form>
+  <form method="post" action="{% url 'team_github_create' team.pk %}">{% csrf_token %}<button class="btn sm">GitHub에 새 팀 만들기</button></form>
   {% endif %}
 </section>
 {% endif %}

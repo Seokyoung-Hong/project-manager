@@ -7,12 +7,12 @@ from urllib.parse import urlparse
 from urllib.request import HTTPRedirectHandler, Request, build_opener
 
 from django.db import transaction
-from django.db.models import Count, Q
+from django.db.models import Count, F, Q
 from django.utils import timezone
 
 from common.dates import fmt_md, today_kst
 from common.errors import ConflictError, ServiceError
-from orgs.services import ai_denied, is_admin, is_member, require_admin
+from orgs.services import ai_denied, is_admin, is_member, require_admin, require_ai_enabled
 from orgs.settings import SPECS, clean, display, effective, locked_keys
 
 from .models import ApiSpec, Milestone, Project, ProjectDependency
@@ -118,6 +118,7 @@ def create_project(
         raise ServiceError({"org": "프로젝트 생성은 조직 관리자만 할 수 있습니다."})
     owners = list(owners)
     teams = list(teams)
+    require_ai_enabled(org, source, "프로젝트 만들기")
     if effective("project.owner_required", org=org) and not owners:
         raise ServiceError({"owners": "프로젝트 관리자가 최소 1명 있어야 합니다."})
     _validate(org, name, owners, status)
@@ -148,11 +149,16 @@ def update_project(
 ):
     if not is_member(actor, project.org):
         raise ServiceError({"org": "이 조직의 멤버가 아닙니다."})
+    require_ai_enabled(project.org, source, "프로젝트 고치기")
     unknown = set(changes) - EDITABLE
     if unknown:
         raise ServiceError({k: "수정할 수 없는 항목입니다." for k in sorted(unknown)})
     if {"name", "purpose", "teams"} & set(changes):
         require_level(actor, project, effective("project.edit_by", org=project.org), "name")
+    if "owners" in changes:
+        # 관리자 목록은 project.settings_by로 보호되는 모든 설정의 열쇠라 같은 등급(기본 owner)으로 지킨다.
+        # 멤버 누구나 자기를 넣을 수 있으면 등급 설정 전체가 무의미해진다.
+        require_level(actor, project, effective("project.settings_by", org=project.org), "owners")
     if "status" in changes:
         require_level(actor, project, effective("project.status_by", org=project.org), "status")
     old_owners = list(project.owners.all())
@@ -218,6 +224,7 @@ def archive_project(project, *, actor, source="web", token=None, cancel_open=Fal
     from tasks.services import transition
 
     require_level(actor, project, effective("project.archive_by", org=project.org), "project")
+    require_ai_enabled(project.org, source, "프로젝트 보관")
     open_tasks = list(Task.objects.filter(project=project, status__in=Task.OPEN).order_by("id"))
     if open_tasks and not cancel_open:
         raise ServiceError({"tasks": ", ".join(t.number for t in open_tasks)})
@@ -233,8 +240,9 @@ def archive_project(project, *, actor, source="web", token=None, cancel_open=Fal
         )
     if project.is_archived:
         return project
+    # 메모리의 version에 1을 더하면 그사이 오른 DB 값을 되돌려 오래된 PATCH가 통과한다.
     Project.objects.filter(pk=project.pk).update(
-        is_archived=True, archived_at=timezone.now(), version=project.version + 1
+        is_archived=True, archived_at=timezone.now(), version=F("version") + 1
     )
     project.refresh_from_db()
     _log(project, "is_archived", False, True, actor, source, token)
@@ -244,10 +252,11 @@ def archive_project(project, *, actor, source="web", token=None, cancel_open=Fal
 @transaction.atomic
 def restore_project(project, *, actor, source="web", token=None):
     require_level(actor, project, effective("project.archive_by", org=project.org), "project")
+    require_ai_enabled(project.org, source, "프로젝트 복원")
     if not project.is_archived:
         return project
     Project.objects.filter(pk=project.pk).update(
-        is_archived=False, archived_at=None, version=project.version + 1
+        is_archived=False, archived_at=None, version=F("version") + 1
     )
     project.refresh_from_db()
     _log(project, "is_archived", True, False, actor, source, token)
@@ -264,7 +273,11 @@ def delete_project(project, *, actor, source: str = "web"):
     from tasks.models import ChangeLog, Task, TaskDecisionRecord
 
     if TaskDecisionRecord.objects.filter(task__project=project).exists():
-        raise ServiceError({"project": "의사결정 기록이 있는 프로젝트는 삭제할 수 없습니다. 보관 상태로 유지해 주세요."})
+        raise ServiceError(
+            {
+                "project": "의사결정 기록이 있는 프로젝트는 삭제할 수 없습니다. 보관 상태로 유지해 주세요."
+            }
+        )
 
     ChangeLog.objects.create(
         target_type="org",
@@ -290,6 +303,7 @@ def _display_or_default(key: str, value) -> str:
 def set_project_settings(project, data: dict, *, actor, source="web", token=None) -> Project:
     """저장소 규칙 등 프로젝트 설정을 통째로 교체한다. 조직이 잠근 키는 거부한다."""
     require_level(actor, project, effective("project.settings_by", org=project.org), "settings")
+    require_ai_enabled(project.org, source, "프로젝트 설정 변경")
     cleaned = clean("project", data)
     locked = locked_keys(project.org)
     bad = {k: "조직에서 잠근 설정입니다." for k in cleaned if k in locked}
@@ -327,9 +341,10 @@ def set_governance_extra(project, text: str, *, actor) -> Project:
     return project
 
 
-def set_project_channel(project, channel_id: str, actor) -> Project:
+def set_project_channel(project, channel_id: str, actor, *, source: str = "web") -> Project:
     """봇이 만든 채널 id를 적는다. 빈 문자열이면 연결을 끊는다(Discord에서 지워졌을 때)."""
     require_admin(actor, project.org)
+    require_ai_enabled(project.org, source, "Discord 채널 연결")
     Project.objects.filter(pk=project.pk).update(discord_channel_id=(channel_id or "").strip()[:32])
     project.refresh_from_db()
     return project
@@ -557,9 +572,10 @@ def fetch_spec(url: str) -> dict:
     return parse_spec(raw, source=url)
 
 
-def set_api_spec(project, spec: dict, *, source_url: str, actor) -> ApiSpec:
+def set_api_spec(project, spec: dict, *, source_url: str, actor, source: str = "web") -> ApiSpec:
     if not is_member(actor, project.org):
         raise ServiceError({"org": "이 조직의 멤버가 아닙니다."})
+    require_ai_enabled(project.org, source, "API 문서 등록")
     obj, _ = ApiSpec.objects.update_or_create(
         project=project,
         defaults={"spec": spec, "source_url": source_url[:500], "uploaded_by": actor},

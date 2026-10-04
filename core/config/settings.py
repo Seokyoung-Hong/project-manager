@@ -8,6 +8,9 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = os.environ.get("SECRET_KEY", "dev-only-insecure-key")
 DEBUG = os.environ.get("DEBUG", "1") == "1"
+if not DEBUG and SECRET_KEY == "dev-only-insecure-key":
+    # 운영(DEBUG=0)에서 개발 키로 뜨면 세션·CSRF 서명을 누구나 위조할 수 있다. 조용히 뜨지 않는다.
+    raise RuntimeError("운영에서는 SECRET_KEY를 .env에 넣어야 합니다.")
 ALLOWED_HOSTS = [h for h in os.environ.get("ALLOWED_HOSTS", "localhost,127.0.0.1").split(",") if h]
 CSRF_TRUSTED_ORIGINS = [o for o in os.environ.get("CSRF_TRUSTED_ORIGINS", "").split(",") if o]
 SITE_URL = os.environ.get("SITE_URL", "http://localhost:8000").rstrip("/")

@@ -73,12 +73,9 @@ def _needed_hours(cfg: Config, settings: dict, members: list[dict]) -> set[int]:
     return hours
 
 
-def _run_deadline_job(cfg, core, bot, store, org, today, day, now, results):
-    org_id, settings = org["org_id"], org.get("settings") or {}
-    channel_id = org.get("channel_id") or ""
-    org_hour = int(_setting(settings, "notify.send_hour", cfg.send_hour))
-    members = org.get("_members", [])
-    notify_map = {
+def notify_prefs(members: list[dict]) -> dict:
+    """discord_user_id -> DM 수신 여부·시각. 스케줄러와 CLI `deadlines`가 같은 맵을 씁니다."""
+    return {
         m["discord_user_id"]: {
             "notify_dm": m.get("notify_dm", True),
             "notify_hour": m.get("notify_hour"),
@@ -86,6 +83,14 @@ def _run_deadline_job(cfg, core, bot, store, org, today, day, now, results):
         for m in members
         if m.get("discord_user_id")
     }
+
+
+def _run_deadline_job(cfg, core, bot, store, org, today, day, now, results):
+    org_id, settings = org["org_id"], org.get("settings") or {}
+    channel_id = org.get("channel_id") or ""
+    org_hour = int(_setting(settings, "notify.send_hour", cfg.send_hour))
+    members = org.get("_members", [])
+    notify_map = notify_prefs(members)
     # 사람마다 시각이 다를 수 있다(§4.6 user.notify_hour). 필요한 시각마다 따로 묶어 부른다 —
     # 틱이 60초라 시각별로 부르는 비용이 감당된다. 조직이 시각을 하나도 안 건드리면 이 집합은
     # {org_hour} 하나라 기존(단일 시각) 동작과 같다.
@@ -107,7 +112,7 @@ def _run_deadline_job(cfg, core, bot, store, org, today, day, now, results):
                 channel_id=channel_id,
                 notify=notify_map,
             )
-            retry_later = r["open_failed"] + r["recheck_failed"]
+            retry_later = r["open_failed"] + r["recheck_failed"] + r["send_retry"]
             ok = r["failed"] == 0 and retry_later == 0
             if retry_later:
                 r["reopened"] = _reopen(store, org_id, kind, day)
@@ -130,16 +135,21 @@ def _run_weekly_job(cfg, core, bot, store, org, today, now, results):
     if now.weekday() != weekday or now.hour < hour:
         return
     ws = last_monday(today)
-    if store.weekly_sent(org_id, ws.isoformat()):
+    # 마감 DM과 같은 자리 잡기입니다. sent가 아니라는 이유로 매 분 다시 돌면 unknown(실제로는
+    # 게시됐을 수 있음)이 중복 게시됩니다. 확실히 안 나간 failed만 RETRY_SWEEPS번 다시 엽니다.
+    if not store.claim_daily(org_id, "weekly", ws.isoformat()):
         return
     try:
         r = run_weekly(
             core, bot, store, org_id, ws, cfg.llm_provider, enabled=enabled, channel_id=channel_id
         )
+        if r["status"] == "failed":
+            _reopen(store, org_id, "weekly", ws.isoformat())
         store.record_run("weekly", r["status"] == "sent", str(r))
         core.report_status(r["status"] == "sent", {"job": "weekly", "org_id": org_id, **r})
         results.append({"job": "weekly", "org_id": org_id, **r})
     except Exception as e:  # noqa: BLE001
+        store.release_daily(org_id, "weekly", ws.isoformat())  # 보내기 전에 실패했으니 다시 시도
         store.record_run("weekly", False, str(e))
         core.report_status(False, {"job": "weekly", "org_id": org_id, "error": str(e)})
         log.exception("weekly job failed (org=%s)", org_id)

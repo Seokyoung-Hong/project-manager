@@ -49,14 +49,19 @@ def test_read_token_cannot_write(client, read_token, task, org):
     assert client.get(f"/api/tasks/{task.pk}", headers=_h(read_token)).status_code == 200
 
 
-def test_read_token_can_report_integration_status(client, read_token, member):
-    r = client.post(
-        "/api/integrations/discord/status",
-        data={"ok": True, "detail": {}},
-        content_type="application/json",
-        headers=_h(read_token),
-    )
-    assert r.status_code == 204
+def test_only_bot_token_can_report_integration_status(client, read_token, bot_token, member):
+    def post(token):
+        return client.post(
+            "/api/integrations/discord/status",
+            data={"ok": True, "detail": {}},
+            content_type="application/json",
+            headers=_h(token),
+        )
+
+    # 아무 멤버의 토큰으로 "정상"을 덮어쓰면 실제 장애가 운영 화면에서 가려진다.
+    assert post(read_token).status_code == 403
+    assert IntegrationStatus.objects.count() == 0
+    assert post(bot_token).status_code == 204
     assert IntegrationStatus.objects.count() == 1
 
 
@@ -743,9 +748,14 @@ def test_person_token_can_be_raised_to_ai_by_header(client, admin, org):
     _, raw = ApiToken.issue(admin, "p", "write", for_ai=False)
     url = f"/api/orgs/{org.pk}/settings?reason=테스트"
     body = {"ai.create_task": "deny"}
-    r = client.put(url, data=body, content_type="application/json", headers={**_h(raw), "X-Source": "mcp"})
+    r = client.put(
+        url, data=body, content_type="application/json", headers={**_h(raw), "X-Source": "mcp"}
+    )
     assert r.status_code == 202
-    assert client.put(url, data=body, content_type="application/json", headers=_h(raw)).status_code == 200
+    assert (
+        client.put(url, data=body, content_type="application/json", headers=_h(raw)).status_code
+        == 200
+    )
 
 
 def test_ai_cannot_change_governance(client, admin, org):
