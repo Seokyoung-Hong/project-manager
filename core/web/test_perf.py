@@ -85,7 +85,13 @@ WEB = [
     "/orgs/{org}/capacity",
     "/search?q=할",
 ]
-API = ["/api/projects", "/api/orgs/{org}", "/api/orgs/{org}/teams", "/api/today"]
+API = [
+    "/api/projects",
+    "/api/orgs/{org}",
+    "/api/orgs/{org}/teams",
+    "/api/today",
+    "/api/reports/weekly?org={org}&week_start={monday}",  # 주간 보고 by_project
+]
 
 
 @pytest.mark.parametrize("who", ["member", "admin"])
@@ -95,7 +101,8 @@ def test_query_count_flat(client, org, admin, member, who, url):
     from accounts.models import ApiToken
 
     user = member if who == "member" else admin
-    url = url.format(org=org.pk)
+    today = today_kst()
+    url = url.format(org=org.pk, monday=today - timedelta(days=today.weekday()))
     headers = None
     if url.startswith("/api/"):
         _, raw = ApiToken.issue(user, "t", "read", for_ai=False)
