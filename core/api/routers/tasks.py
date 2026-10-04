@@ -7,7 +7,7 @@ from ninja import Router
 from ninja.errors import HttpError
 
 from accounts.models import User
-from common.errors import ServiceError
+from common.errors import ConflictError, ServiceError
 from github import client as github_client
 from github import writes as gh_writes
 from github.client import GitHubError
@@ -150,9 +150,8 @@ def get_task_github(request, task_id: int):
             "assignee_login": ((live_issue or {}).get("assignee") or {}).get(
                 "login", issue.assignee_login if issue else ""
             ),
-            "updated_at": (live_issue or {}).get("updated_at") or (
-                issue.updated_at if issue else None
-            ),
+            "updated_at": (live_issue or {}).get("updated_at")
+            or (issue.updated_at if issue else None),
             "source": "github" if live_issue else "cache",
         }
     return {
@@ -194,11 +193,15 @@ def create_task_issue(request, task_id: int):
         raise ServiceError({"github": ai_denied("GitHub 이슈 생성")})
     state = repo_state(request.auth, task.project)["state"]
     if state != "ok":
-        raise ServiceError({"github": {
-            "none": "프로젝트에 연결된 저장소가 없습니다.",
-            "unlinked": "GitHub 계정을 먼저 연결해야 합니다.",
-            "denied": "이 저장소에 접근할 권한이 없습니다.",
-        }[state]})
+        raise ServiceError(
+            {
+                "github": {
+                    "none": "프로젝트에 연결된 저장소가 없습니다.",
+                    "unlinked": "GitHub 계정을 먼저 연결해야 합니다.",
+                    "denied": "이 저장소에 접근할 권한이 없습니다.",
+                }[state]
+            }
+        )
     if TaskGitLink.objects.filter(task=task).exclude(issue_number=None).exists():
         raise ServiceError({"github": "이미 이슈가 연결된 태스크입니다."})
     try:
@@ -245,7 +248,9 @@ def create_task_ep(request, payload: TaskCreateIn):
         **c,
     )
     if payload.checklist is not None and not task.checklist.exists():
-        replace_checklist(task, [i.dict() for i in payload.checklist], actor=c["actor"])
+        replace_checklist(
+            task, [i.dict() for i in payload.checklist], actor=c["actor"], source=c["source"]
+        )
     return 201, task_out(task)
 
 
@@ -276,7 +281,10 @@ def patch_task(request, task_id: int, payload: TaskPatchIn):
     if data:
         task = update_task(task, data, expected_version=version, **c)
     if checklist is not None:
-        replace_checklist(task, checklist, actor=c["actor"])
+        # 체크리스트만 바꿀 때도 version은 본다. 안 그러면 오래된 화면이 남의 수정을 통째로 덮는다.
+        if not data and task.version != version:
+            raise ConflictError(task)
+        replace_checklist(task, checklist, actor=c["actor"], source=c["source"])
     return task_out(task)
 
 

@@ -93,9 +93,15 @@ def doc_save(request, doc_id):
             source="web",
         )
     except ServiceError as e:
-        return JsonResponse({"error": " ".join(e.errors.values())}, status=400, json_dumps_params={"ensure_ascii": False})
+        return JsonResponse(
+            {"error": " ".join(e.errors.values())},
+            status=400,
+            json_dumps_params={"ensure_ascii": False},
+        )
     except ConflictError:
-        return JsonResponse({"error": CONFLICT_MSG}, status=409, json_dumps_params={"ensure_ascii": False})
+        return JsonResponse(
+            {"error": CONFLICT_MSG}, status=409, json_dumps_params={"ensure_ascii": False}
+        )
     resp = HttpResponse(status=204)
     resp["X-Note-Version"] = str(doc.version)
     return trigger(resp, "saved")

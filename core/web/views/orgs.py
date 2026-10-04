@@ -267,8 +267,9 @@ def org_governance(request, org_id):
 
 def _pending(org, kind):
     return list(
-        org.change_requests.filter(kind=kind, status="pending", expires_at__gt=timezone.now())
-        .select_related("requested_by")
+        org.change_requests.filter(
+            kind=kind, status="pending", expires_at__gt=timezone.now()
+        ).select_related("requested_by")
     )
 
 
@@ -279,7 +280,9 @@ def change_request(request, org_id, req_id):
     if resp := not_admin(request, org, "AI 변경 요청"):
         return resp
     req = get_object_or_404(
-        ChangeRequest.objects.select_related("requested_by", "token", "reviewed_by"), pk=req_id, org=org
+        ChangeRequest.objects.select_related("requested_by", "token", "reviewed_by"),
+        pk=req_id,
+        org=org,
     )
     if request.method == "POST":
         try:

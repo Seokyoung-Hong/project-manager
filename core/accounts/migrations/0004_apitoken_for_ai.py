@@ -10,7 +10,6 @@ def bot_tokens_are_not_ai(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("accounts", "0003_oauthclient_oauthcode"),
     ]

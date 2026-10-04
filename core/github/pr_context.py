@@ -121,9 +121,7 @@ def build_pr_context(task, *, actor):
     issue_url = f"https://github.com/{issue_repo_name}/issues/{issue_number}"
     cached_issue = None
     if repo is not None:
-        cached_issue = RepoIssue.objects.filter(
-            connection=repo, number=issue_number
-        ).first()
+        cached_issue = RepoIssue.objects.filter(connection=repo, number=issue_number).first()
     if cached_issue is not None:
         issue_title = issue_title or cached_issue.title
         issue_state = issue_state or cached_issue.state

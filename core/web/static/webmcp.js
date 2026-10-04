@@ -48,7 +48,8 @@
   }
 
   function api(method, path, data) {
-    var opt = { method: method, credentials: "same-origin", headers: { "X-CSRFToken": csrf } };
+    // X-Source: ai — 세션으로 들어와도 AI의 요청임을 서버가 알아야 AI 정책·승인 흐름이 적용된다.
+    var opt = { method: method, credentials: "same-origin", headers: { "X-CSRFToken": csrf, "X-Source": "ai" } };
     if (data !== undefined) {
       opt.headers["Content-Type"] = "application/json";
       opt.body = JSON.stringify(data);

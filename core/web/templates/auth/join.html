@@ -7,6 +7,7 @@
 <div class="notice"><span aria-hidden="true">ⓘ</span><span class="grow"><b>{{ org.name }}</b> 조직에 초대되었습니다.<br>로그인하거나 가입한 뒤 이 조직에 참여할 수 있습니다. 가입 후 조직 참여를 확인하세요.</span></div>
 <div class="stack">
   <a class="btn primary" href="{% url 'signup' %}?next={{ request.path }}">계정 만들기</a>
+  {% if github_enabled %}<a class="btn" href="{% url 'github_login' %}?next={{ request.path|urlencode }}">GitHub로 계정 만들기</a>{% endif %}
   <a class="btn" href="{% url 'login' %}?next={{ request.path }}">이미 계정이 있습니다 · 로그인</a>
 </div>
 {% else %}

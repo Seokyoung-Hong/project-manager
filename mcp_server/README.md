@@ -98,7 +98,7 @@ MCP_ALLOWED_HOSTS=project.sio2.kr
   `set_project_teams` `create_invite` `revoke_invite`
 - 설정·개인화: `get_governance` `update_governance` `get_settings` `update_org_settings`
   `get_project_settings` `update_project_settings` `get_my_settings` `update_my_settings`
-- 오늘 목록·현황: `get_today` `add_today` `exclude_today` `restore_excluded_today` `reorder_today`
+- 오늘 목록·현황: `get_today` `add_to_today` `exclude_today` `restore_excluded_today` `reorder_today`
   `set_today_auto_pull` `get_org_status` `get_weekly_report_data`
 - ChatGPT 커넥터 호환 별칭: `search` `fetch`
 

@@ -37,12 +37,10 @@ class Spec:
             fallback = "조직 설정 따름" if self.scope == "user" else "서버 기본값"
             return [(-1, fallback)] + [(n, f"{n:02d}:00") for n in range(24)]
         if self.key == "notify.weekly_weekday":
-            return [(-1, "서버 기본 요일")] + [(n, day + "요일") for n, day in enumerate("월화수목금토일")]
+            return [(-1, "서버 기본 요일")] + [
+                (n, day + "요일") for n, day in enumerate("월화수목금토일")
+            ]
         return []
-
-
-def _s(*a, **kw):
-    return Spec(*a, **kw)
 
 
 ALARM_KINDS = (("d3", "3일 전"), ("d1", "하루 전"), ("d0", "당일"), ("overdue", "기한 초과"))
@@ -53,7 +51,7 @@ SPECS: dict[str, Spec] = {
     s.key: s
     for s in [
         # --- 4.1 태스크 규칙 ---
-        _s(
+        Spec(
             "task.default_priority",
             "int",
             5,
@@ -65,7 +63,7 @@ SPECS: dict[str, Spec] = {
             lo=1,
             hi=10,
         ),
-        _s(
+        Spec(
             "task.priority_cap",
             "int",
             0,
@@ -77,7 +75,7 @@ SPECS: dict[str, Spec] = {
             lo=0,
             hi=10,
         ),
-        _s(
+        Spec(
             "task.require_done_when",
             "bool",
             False,
@@ -87,7 +85,7 @@ SPECS: dict[str, Spec] = {
             "완료 조건 필수",
             "켜면 완료 조건을 입력해야 태스크를 만들 수 있습니다.",
         ),
-        _s(
+        Spec(
             "task.due_required",
             "bool",
             False,
@@ -97,7 +95,7 @@ SPECS: dict[str, Spec] = {
             "기한 필수",
             "켜면 기한을 입력해야 하며, 기한 미정 사유로 대신할 수 없습니다.",
         ),
-        _s(
+        Spec(
             "task.default_due_days",
             "int",
             0,
@@ -109,7 +107,7 @@ SPECS: dict[str, Spec] = {
             lo=0,
             hi=30,
         ),
-        _s(
+        Spec(
             "task.doing_limit",
             "int",
             0,
@@ -121,7 +119,7 @@ SPECS: dict[str, Spec] = {
             lo=0,
             hi=10,
         ),
-        _s(
+        Spec(
             "task.doing_limit_mode",
             "choice",
             "warn",
@@ -132,7 +130,7 @@ SPECS: dict[str, Spec] = {
             "경고면 숫자만 보여 주고, 차단이면 진행 중으로 바꾸지 못하게 막습니다.",
             choices=(("warn", "경고만"), ("block", "차단")),
         ),
-        _s(
+        Spec(
             "task.review_required",
             "bool",
             False,
@@ -142,7 +140,7 @@ SPECS: dict[str, Spec] = {
             "검토 대기 필수",
             "켜면 검토 대기를 거쳐야 완료할 수 있습니다.",
         ),
-        _s(
+        Spec(
             "task.self_review",
             "bool",
             True,
@@ -152,7 +150,7 @@ SPECS: dict[str, Spec] = {
             "본인 검토 허용",
             "끄면 담당자 본인이 검토 대기에서 완료로 바꿀 수 없습니다.",
         ),
-        _s(
+        Spec(
             "task.reopen_reason_required",
             "bool",
             False,
@@ -162,8 +160,10 @@ SPECS: dict[str, Spec] = {
             "재개 사유 필수",
             "켜면 완료·취소한 태스크를 되돌릴 때 사유를 입력해야 합니다.",
         ),
-        _s("task.cancel_reason_required", "bool", False, "org", True, "task", "취소 사유 필수", ""),
-        _s(
+        Spec(
+            "task.cancel_reason_required", "bool", False, "org", True, "task", "취소 사유 필수", ""
+        ),
+        Spec(
             "task.assignee_change_reason",
             "bool",
             False,
@@ -173,7 +173,7 @@ SPECS: dict[str, Spec] = {
             "담당자 변경 사유 필수",
             "켜면 담당자 변경 사유를 입력해야 하며, 사유는 이력에 남습니다.",
         ),
-        _s(
+        Spec(
             "task.due_change_reason",
             "bool",
             False,
@@ -183,7 +183,7 @@ SPECS: dict[str, Spec] = {
             "기한 변경 사유 필수",
             "켜면 기한 단축·삭제에도 사유를 입력해야 합니다. 기한 연장은 이 설정과 관계없이 사유를 받습니다.",
         ),
-        _s(
+        Spec(
             "task.overdue_grace_days",
             "int",
             0,
@@ -196,7 +196,7 @@ SPECS: dict[str, Spec] = {
             hi=14,
         ),
         # --- 4.2 프로젝트 규칙 ---
-        _s(
+        Spec(
             "project.create_by",
             "choice",
             "member",
@@ -207,7 +207,7 @@ SPECS: dict[str, Spec] = {
             "",
             choices=(("member", "멤버 누구나"), ("admin", "조직 관리자만")),
         ),
-        _s(
+        Spec(
             "project.edit_by",
             "choice",
             "member",
@@ -218,7 +218,7 @@ SPECS: dict[str, Spec] = {
             "",
             choices=LEVELS,
         ),
-        _s(
+        Spec(
             "project.status_by",
             "choice",
             "member",
@@ -229,7 +229,7 @@ SPECS: dict[str, Spec] = {
             "",
             choices=LEVELS,
         ),
-        _s(
+        Spec(
             "project.archive_by",
             "choice",
             "admin",
@@ -240,7 +240,7 @@ SPECS: dict[str, Spec] = {
             "",
             choices=(("owner", "프로젝트 관리자"), ("admin", "조직 관리자만")),
         ),
-        _s(
+        Spec(
             "project.settings_by",
             "choice",
             "owner",
@@ -251,7 +251,7 @@ SPECS: dict[str, Spec] = {
             "저장소 규칙과 프로젝트 거버넌스 문단을 포함합니다.",
             choices=(("owner", "프로젝트 관리자"), ("admin", "조직 관리자만")),
         ),
-        _s(
+        Spec(
             "project.roadmap_by",
             "choice",
             "member",
@@ -262,7 +262,7 @@ SPECS: dict[str, Spec] = {
             "",
             choices=LEVELS,
         ),
-        _s(
+        Spec(
             "project.owner_required",
             "bool",
             False,
@@ -272,7 +272,7 @@ SPECS: dict[str, Spec] = {
             "프로젝트 관리자 1명 이상",
             "켜면 관리자가 없는 프로젝트를 만들거나 마지막 관리자를 뺄 수 없습니다. 이미 관리자가 없는 프로젝트는 그대로 둡니다.",
         ),
-        _s(
+        Spec(
             "project.default_view",
             "choice",
             "list",
@@ -284,8 +284,10 @@ SPECS: dict[str, Spec] = {
             choices=(("list", "목록"), ("board", "보드")),
         ),
         # --- 4.3 조직 운영 ---
-        _s("org.invite_days", "int", 7, "org", False, "org", "초대 링크 만료(일)", "", lo=1, hi=90),
-        _s(
+        Spec(
+            "org.invite_days", "int", 7, "org", False, "org", "초대 링크 만료(일)", "", lo=1, hi=90
+        ),
+        Spec(
             "org.invite_max_uses",
             "int",
             0,
@@ -297,7 +299,7 @@ SPECS: dict[str, Spec] = {
             lo=0,
             hi=100,
         ),
-        _s(
+        Spec(
             "org.tags_by",
             "choice",
             "admin",
@@ -308,7 +310,7 @@ SPECS: dict[str, Spec] = {
             "",
             choices=(("admin", "조직 관리자만"), ("self", "본인도 가능")),
         ),
-        _s(
+        Spec(
             "org.team_join_self",
             "bool",
             False,
@@ -319,7 +321,7 @@ SPECS: dict[str, Spec] = {
             "켜면 멤버가 스스로 팀에 들어가고 나갈 수 있습니다.",
         ),
         # --- 4.4 AI 정책 (source == "mcp" 에만) ---
-        _s(
+        Spec(
             "ai.enabled",
             "bool",
             True,
@@ -330,7 +332,7 @@ SPECS: dict[str, Spec] = {
             "끄면 이 조직에 대한 AI의 모든 쓰기를 막습니다. 읽기는 남습니다.",
             ai_only=True,
         ),
-        _s(
+        Spec(
             "ai.create_task",
             "choice",
             "allow",
@@ -342,7 +344,7 @@ SPECS: dict[str, Spec] = {
             choices=ALLOW_DENY,
             ai_only=True,
         ),
-        _s(
+        Spec(
             "ai.edit_text",
             "choice",
             "allow",
@@ -354,7 +356,7 @@ SPECS: dict[str, Spec] = {
             choices=ALLOW_DENY,
             ai_only=True,
         ),
-        _s(
+        Spec(
             "ai.record_work",
             "choice",
             "allow",
@@ -366,7 +368,7 @@ SPECS: dict[str, Spec] = {
             choices=ALLOW_DENY,
             ai_only=True,
         ),
-        _s(
+        Spec(
             "ai.change_assignee",
             "choice",
             "allow",
@@ -378,7 +380,7 @@ SPECS: dict[str, Spec] = {
             choices=ALLOW_DENY,
             ai_only=True,
         ),
-        _s(
+        Spec(
             "ai.change_due",
             "choice",
             "allow",
@@ -390,7 +392,7 @@ SPECS: dict[str, Spec] = {
             choices=ALLOW_DENY,
             ai_only=True,
         ),
-        _s(
+        Spec(
             "ai.change_priority",
             "choice",
             "allow",
@@ -402,7 +404,7 @@ SPECS: dict[str, Spec] = {
             choices=ALLOW_DENY,
             ai_only=True,
         ),
-        _s(
+        Spec(
             "ai.priority_cap",
             "int",
             7,
@@ -415,7 +417,7 @@ SPECS: dict[str, Spec] = {
             hi=10,
             ai_only=True,
         ),
-        _s(
+        Spec(
             "ai.transition_open",
             "choice",
             "allow",
@@ -427,7 +429,7 @@ SPECS: dict[str, Spec] = {
             choices=ALLOW_DENY,
             ai_only=True,
         ),
-        _s(
+        Spec(
             "ai.close_task",
             "choice",
             "allow",
@@ -439,7 +441,7 @@ SPECS: dict[str, Spec] = {
             choices=ALLOW_DENY,
             ai_only=True,
         ),
-        _s(
+        Spec(
             "ai.reopen_task",
             "choice",
             "allow",
@@ -451,7 +453,7 @@ SPECS: dict[str, Spec] = {
             choices=ALLOW_DENY,
             ai_only=True,
         ),
-        _s(
+        Spec(
             "ai.delete",
             "choice",
             "deny",
@@ -463,7 +465,7 @@ SPECS: dict[str, Spec] = {
             choices=ALLOW_DENY,
             ai_only=True,
         ),
-        _s(
+        Spec(
             "ai.manage_repo",
             "choice",
             "allow",
@@ -475,7 +477,7 @@ SPECS: dict[str, Spec] = {
             choices=ALLOW_DENY,
             ai_only=True,
         ),
-        _s(
+        Spec(
             "ai.manage_teams",
             "choice",
             "allow",
@@ -488,7 +490,7 @@ SPECS: dict[str, Spec] = {
             ai_only=True,
         ),
         # --- 4.5 알림 ---
-        _s(
+        Spec(
             "notify.deadline_kinds",
             "set",
             ("d3", "d1", "d0", "overdue"),
@@ -499,7 +501,7 @@ SPECS: dict[str, Spec] = {
             "",
             choices=ALARM_KINDS,
         ),
-        _s(
+        Spec(
             "notify.send_hour",
             "int",
             -1,
@@ -511,7 +513,7 @@ SPECS: dict[str, Spec] = {
             lo=-1,
             hi=23,
         ),
-        _s(
+        Spec(
             "notify.overdue_repeat",
             "choice",
             "daily",
@@ -527,7 +529,7 @@ SPECS: dict[str, Spec] = {
                 ("never", "한 번만"),
             ),
         ),
-        _s(
+        Spec(
             "notify.quiet_weekend",
             "bool",
             False,
@@ -537,8 +539,8 @@ SPECS: dict[str, Spec] = {
             "주말에는 보내지 않기",
             "켜면 토·일에는 마감 DM을 보내지 않습니다.",
         ),
-        _s("notify.weekly_enabled", "bool", True, "org", False, "notify", "주간 보고", ""),
-        _s(
+        Spec("notify.weekly_enabled", "bool", True, "org", False, "notify", "주간 보고", ""),
+        Spec(
             "notify.weekly_weekday",
             "int",
             -1,
@@ -550,7 +552,7 @@ SPECS: dict[str, Spec] = {
             lo=-1,
             hi=6,
         ),
-        _s(
+        Spec(
             "notify.weekly_hour",
             "int",
             -1,
@@ -562,7 +564,7 @@ SPECS: dict[str, Spec] = {
             lo=-1,
             hi=23,
         ),
-        _s(
+        Spec(
             "notify.blocked_escalate_days",
             "int",
             0,
@@ -574,7 +576,7 @@ SPECS: dict[str, Spec] = {
             lo=0,
             hi=14,
         ),
-        _s(
+        Spec(
             "notify.review_nudge_days",
             "int",
             0,
@@ -586,7 +588,7 @@ SPECS: dict[str, Spec] = {
             lo=0,
             hi=14,
         ),
-        _s(
+        Spec(
             "notify.project_channel_events",
             "set",
             (),
@@ -603,7 +605,7 @@ SPECS: dict[str, Spec] = {
                 ("milestone_due", "마일스톤 임박"),
             ),
         ),
-        _s(
+        Spec(
             "notify.team_channel_weekly",
             "bool",
             False,
@@ -614,7 +616,7 @@ SPECS: dict[str, Spec] = {
             "켜면 조직 채널 외에 팀 채널에도 그 팀 담당 프로젝트만 추려 보냅니다.",
         ),
         # --- 4.6 개인 설정 ---
-        _s(
+        Spec(
             "user.notify_dm",
             "bool",
             True,
@@ -624,7 +626,7 @@ SPECS: dict[str, Spec] = {
             "개인 DM 받기",
             "끄면 마감·막힘·검토 대기 관리자 알림 DM을 받지 않습니다. 채널 주간 보고는 그대로입니다.",
         ),
-        _s(
+        Spec(
             "user.notify_kinds",
             "set",
             ("d3", "d1", "d0", "overdue"),
@@ -635,7 +637,7 @@ SPECS: dict[str, Spec] = {
             "조직이 끈 종류는 켤 수 없습니다.",
             choices=ALARM_KINDS,
         ),
-        _s(
+        Spec(
             "user.notify_hour",
             "int",
             -1,
@@ -647,7 +649,7 @@ SPECS: dict[str, Spec] = {
             lo=-1,
             hi=23,
         ),
-        _s(
+        Spec(
             "user.start_page",
             "choice",
             "today",
@@ -658,7 +660,7 @@ SPECS: dict[str, Spec] = {
             "",
             choices=(("today", "오늘"), ("me", "내 태스크")),
         ),
-        _s(
+        Spec(
             "user.me_group",
             "choice",
             "due",
@@ -674,7 +676,7 @@ SPECS: dict[str, Spec] = {
                 ("none", "묶지 않음"),
             ),
         ),
-        _s(
+        Spec(
             "user.me_sort",
             "choice",
             "due",
@@ -685,7 +687,7 @@ SPECS: dict[str, Spec] = {
             "",
             choices=(("due", "기한"), ("priority", "중요도"), ("updated", "최근 수정")),
         ),
-        _s(
+        Spec(
             "user.board_default",
             "bool",
             False,
@@ -830,9 +832,18 @@ def display(key: str, value) -> str:
         return "조직 설정 따름" if spec.scope == "user" else "서버 기본값"
     if spec.input_choices:
         return dict(spec.input_choices).get(value, str(value))
-    if value == 0 and key in ("task.default_due_days", "notify.blocked_escalate_days", "notify.review_nudge_days"):
+    if value == 0 and key in (
+        "task.default_due_days",
+        "notify.blocked_escalate_days",
+        "notify.review_nudge_days",
+    ):
         return "사용 안 함"
-    if value == 0 and key in ("task.doing_limit", "task.priority_cap", "ai.priority_cap", "org.invite_max_uses"):
+    if value == 0 and key in (
+        "task.doing_limit",
+        "task.priority_cap",
+        "ai.priority_cap",
+        "org.invite_max_uses",
+    ):
         return "제한 없음"
     return str(value)
 

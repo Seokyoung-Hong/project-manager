@@ -8,7 +8,6 @@ import orgs.models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("accounts", "0004_apitoken_for_ai"),
         ("orgs", "0004_settings_and_discord_binding"),
@@ -57,9 +56,7 @@ class Migration(migrations.Migration):
                 ("reviewed_at", models.DateTimeField(blank=True, null=True)),
                 (
                     "reject_reason",
-                    models.CharField(
-                        blank=True, max_length=300, verbose_name="거절 사유"
-                    ),
+                    models.CharField(blank=True, max_length=300, verbose_name="거절 사유"),
                 ),
                 ("created_at", models.DateTimeField(auto_now_add=True)),
                 (

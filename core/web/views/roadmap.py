@@ -20,7 +20,7 @@ from projects.services import (
 )
 from reports.services import org_status
 
-from .common import can_admin, dialog, org_or_404
+from .common import can_admin, dialog, hx_redirect, org_or_404
 
 
 @login_required
@@ -135,7 +135,7 @@ def _milestone_dialog(request, org, ms=None, errors=None):
 def milestone_new(request, org_id):
     org = org_or_404(request.user, org_id)
     if request.method == "POST":
-        project = get_object_or_404(Project, pk=request.POST.get("project"), org=org)
+        project = get_object_or_404(Project, pk=request.POST.get("project") or 0, org=org)
         try:
             create_milestone(
                 project=project,
@@ -145,7 +145,8 @@ def milestone_new(request, org_id):
                 status=request.POST.get("status", "planned"),
                 actor=request.user,
             )
-            return redirect("org_roadmap", org_id=org.pk)
+            # 대화상자는 hx-target="#dialog"다. 302를 돌려주면 로드맵 전체가 대화상자 안에 끼워진다.
+            return hx_redirect(request, reverse("org_roadmap", args=[org.pk]))
         except ServiceError as e:
             return _milestone_dialog(request, org, errors=e.errors)
     return _milestone_dialog(request, org)
@@ -167,7 +168,7 @@ def milestone_edit(request, milestone_id):
                 },
                 actor=request.user,
             )
-            return redirect("org_roadmap", org_id=org.pk)
+            return hx_redirect(request, reverse("org_roadmap", args=[org.pk]))
         except ServiceError as e:
             return _milestone_dialog(request, org, ms=ms, errors=e.errors)
     return _milestone_dialog(request, org, ms=ms)
@@ -180,15 +181,15 @@ def milestone_delete(request, milestone_id):
     org_id = ms.project.org_id
     org_or_404(request.user, org_id)
     delete_milestone(ms, request.user)
-    return redirect("org_roadmap", org_id=org_id)
+    return hx_redirect(request, reverse("org_roadmap", args=[org_id]))
 
 
 @login_required
 @require_POST
 def dependency_add(request, org_id):
     org = org_or_404(request.user, org_id)
-    from_project = get_object_or_404(Project, pk=request.POST.get("from_project"), org=org)
-    to_project = get_object_or_404(Project, pk=request.POST.get("to_project"), org=org)
+    from_project = get_object_or_404(Project, pk=request.POST.get("from_project") or 0, org=org)
+    to_project = get_object_or_404(Project, pk=request.POST.get("to_project") or 0, org=org)
     try:
         create_dependency(
             from_project=from_project,

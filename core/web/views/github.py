@@ -1,14 +1,19 @@
 """GitHub 화면. 업무 규칙은 전부 github/services.py에 있다 — 여기서는 부르기만 한다."""
 
+import hmac
+import json
 import secrets
 from urllib.parse import urlencode
 
 from django.conf import settings
 from django.contrib import messages
+from django.contrib.auth import login
 from django.contrib.auth.decorators import login_required
+from django.core.exceptions import PermissionDenied
 from django.http import Http404
 from django.shortcuts import redirect, render
 from django.urls import reverse
+from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_POST
 
 from common.errors import ServiceError
@@ -16,16 +21,35 @@ from github import client
 from github import services as gh_services
 from github import writes as gh_writes
 from github.client import GitHubError
+from github.crypto import decrypt, encrypt
 from github.models import GitHubIdentity, RepoConnection, RepoIssue, TaskGitLink
 from tasks.models import Task
 
 from .common import can_admin, not_admin, org_or_404, project_or_404, task_or_404
+from .projects import _can_edit_project_settings
 from .tasks import _panel
 
 
 def _gh_enabled_or_404():
     if not settings.GITHUB_ENABLED:
         raise Http404
+
+
+def _state_ok(request, key) -> bool:
+    """세션에 넣어 둔 state와 같은가. 세션 값이 없으면(None == None) 통과시키지 않는다."""
+    expected = request.session.pop(key, None)
+    got = request.GET.get("state", "")
+    return bool(expected) and hmac.compare_digest(got.encode(), expected.encode())
+
+
+def _viewable_repo(user, project):
+    """API의 _repo_or_error와 같은 검사. 저장소가 없으면 404, 볼 수 없으면 403."""
+    state = gh_services.repo_state(user, project)
+    if state["state"] == "none":
+        raise Http404
+    if state["state"] != "ok":
+        raise PermissionDenied
+    return state["conn"]
 
 
 # ---------- 조직: 앱 설치 ----------
@@ -69,7 +93,7 @@ def github_install(request, org_id):
 def github_installed(request):
     """GitHub가 되돌려 주는 곳(앱 설정의 Setup URL). ?installation_id=&setup_action=&state="""
     _gh_enabled_or_404()
-    if request.GET.get("state") != request.session.pop("gh_state", None):
+    if not _state_ok(request, "gh_state"):
         raise Http404
     org_id = request.session.pop("gh_install_org", None)
     org = org_or_404(request.user, org_id)
@@ -91,9 +115,7 @@ def github_installed(request):
 # ---------- 사용자: 계정 연결 ----------
 
 
-@login_required
-def github_connect(request):
-    _gh_enabled_or_404()
+def _authorize(request):
     state = secrets.token_urlsafe(16)
     request.session["gh_oauth_state"] = state
     q = urlencode(
@@ -107,11 +129,61 @@ def github_connect(request):
 
 
 @login_required
+def github_connect(request):
+    _gh_enabled_or_404()
+    return _authorize(request)
+
+
+def github_login(request):
+    """GitHub로 로그인·가입. 콜백은 계정 연결과 같은 주소를 쓴다(GitHub에 등록한 주소 하나)."""
+    _gh_enabled_or_404()
+    if request.user.is_authenticated:
+        return redirect("today")
+    nxt = request.GET.get("next", "")
+    if url_has_allowed_host_and_scheme(nxt, allowed_hosts={request.get_host()}):
+        request.session["gh_login_next"] = nxt  # 초대 링크(/join/…)로 온 사람이 그대로 참여하게
+    return _authorize(request)
+
+
+def _finish_login(request, data: dict, info: dict):
+    try:
+        identity, created = gh_services.login_with_github(info, data)
+    except ServiceError as e:
+        messages.error(request, " ".join(e.errors.values()))
+        return redirect("login")
+    try:
+        gh_services.sync_repos(identity)
+    except (GitHubError, ServiceError):
+        pass  # 저장소 목록은 프로필에서 다시 확인할 수 있다. 로그인은 막지 않는다.
+    login(request, identity.user, backend="django.contrib.auth.backends.ModelBackend")
+    nxt = request.session.pop("gh_login_next", "")
+    if created:
+        messages.info(request, "가입되었습니다. 조직을 만들거나 초대 링크로 참여하세요.")
+    # 갓 가입한 사람은 조직이 없다 — signup과 같이 조직 목록으로 보낸다.
+    return redirect(nxt or ("org_list" if created else "today"))
+
+
+def github_login_confirm(request):
+    """같은 아이디·이메일의 기존 계정이 있을 때 신규 가입을 한 번 더 확인한다."""
+    _gh_enabled_or_404()
+    raw = request.session.get("gh_pending")
+    if request.user.is_authenticated or not raw:
+        return redirect("login")
+    if request.method == "POST":
+        text = decrypt(request.session.pop("gh_pending"))
+        if not text:  # 키를 갈아 복호화가 안 되면 처음부터 다시
+            return redirect("login")
+        pending = json.loads(text)
+        return _finish_login(request, pending["data"], pending["info"])
+    return render(request, "auth/github_confirm.html")
+
+
 def github_callback(request):
     _gh_enabled_or_404()
-    if request.GET.get("state") != request.session.pop("gh_oauth_state", None):
+    if not _state_ok(request, "gh_oauth_state"):
         raise Http404
     code = request.GET.get("code", "")
+    failed = "profile" if request.user.is_authenticated else "login"
     try:
         if not code:
             raise GitHubError(400, "코드가 없습니다.")
@@ -119,6 +191,17 @@ def github_callback(request):
         info = client.request("GET", "/user", data["access_token"])
     except GitHubError:
         messages.error(request, "GitHub 연결에 실패했습니다.")
+        return redirect(failed)
+    if not request.user.is_authenticated:
+        info["email"] = gh_services.github_email(info, data["access_token"])
+        new = not GitHubIdentity.objects.filter(github_id=info["id"]).exists()
+        if new and gh_services.lookalike_exists(info["login"], info["email"]):
+            # 기존 계정 주인이 실수로 새 계정을 만들지 않게 한 번 묻는다. 토큰이 있으니 암호화해 둔다.
+            request.session["gh_pending"] = encrypt(json.dumps({"data": data, "info": info}))
+            return redirect("github_login_confirm")
+        return _finish_login(request, data, info)
+    if GitHubIdentity.objects.filter(github_id=info["id"]).exclude(user=request.user).exists():
+        messages.error(request, "이 GitHub 계정은 이미 다른 사용자에게 연결되어 있습니다.")
         return redirect("profile")
     identity, _ = GitHubIdentity.objects.update_or_create(
         user=request.user,
@@ -192,6 +275,7 @@ def project_repo(request, project_id):
         "tab": "repo",
         "state": state,
         "is_admin": can_admin(request.user, project.org),
+        "can_settings": _can_edit_project_settings(request.user, project),
         "error": error,
     }
     if state["state"] == "none":
@@ -245,12 +329,14 @@ def repo_settings(request, project_id):
     conn = getattr(project, "repo", None)
     if conn is None:
         raise Http404
-    conn.import_label = request.POST.get("import_label", "")[:50]
-    conn.auto_import = request.POST.get("auto_import") == "on"
-    for field in ("rule_issue", "rule_branch", "rule_commit", "rule_pr", "rule_merge"):
-        setattr(conn, field, request.POST.get(field) == "on")
-    conn.save()
-    messages.success(request, "저장소 설정을 저장했습니다.")
+    changes = {"import_label": request.POST.get("import_label", "")[:50]}
+    for field in gh_services.REPO_SETTING_FIELDS[1:]:
+        changes[field] = request.POST.get(field) == "on"
+    try:
+        gh_services.update_repo_settings(conn, changes, actor=request.user)
+        messages.success(request, "저장소 설정을 저장했습니다.")
+    except ServiceError as e:
+        messages.error(request, " ".join(e.errors.values()))
     return redirect("project_repo", project_id=project.pk)
 
 
@@ -259,9 +345,7 @@ def repo_settings(request, project_id):
 def repo_issues_sync(request, project_id):
     _gh_enabled_or_404()
     project = project_or_404(request.user, project_id)
-    conn = getattr(project, "repo", None)
-    if conn is None:
-        raise Http404
+    conn = _viewable_repo(request.user, project)
     try:
         n = gh_services.sync_issues(conn)
         messages.success(request, f"열린 이슈 {n}건을 확인했습니다.")
@@ -275,9 +359,7 @@ def repo_issues_sync(request, project_id):
 def repo_issue_import(request, project_id, number):
     _gh_enabled_or_404()
     project = project_or_404(request.user, project_id)
-    conn = getattr(project, "repo", None)
-    if conn is None:
-        raise Http404
+    conn = _viewable_repo(request.user, project)
     issue = conn.issues.filter(number=number).first()
     if issue is None:
         raise Http404
@@ -299,10 +381,15 @@ def org_issues(request, org_id):
     state = request.GET.get("state") or "todo"  # todo=아직 안 가져온 것 | done | all
     query = (request.GET.get("q") or "").strip()
     imported = {"todo": False, "done": True}.get(state)
+    # GitHub에서 온 것은 GitHub 권한으로 본다 — 볼 수 없는 저장소의 이슈는 목록에서 뺀다.
+    repos = [
+        c
+        for c in RepoConnection.objects.filter(project__org=org).select_related("project")
+        if gh_services.can_view_repo(request.user, c.full_name)
+    ]
     issues = gh_services.org_issues(
         org, repo_id=int(repo_id) if repo_id.isdecimal() else None, imported=imported, query=query
-    )
-    repos = RepoConnection.objects.filter(project__org=org).select_related("project")
+    ).filter(connection__in=repos)
     return render(
         request,
         "github/issues.html",
@@ -328,9 +415,14 @@ def org_issues_sync(request, org_id):
     if failed:
         total = RepoConnection.objects.filter(project__org=org).count()
         if failed >= total:
-            messages.error(request, f"연결된 저장소 {failed}곳 모두에서 이슈를 확인하지 못했습니다.")
+            messages.error(
+                request, f"연결된 저장소 {failed}곳 모두에서 이슈를 확인하지 못했습니다."
+            )
         else:
-            messages.warning(request, f"일부 저장소만 확인했습니다. 열린 이슈 {n}건을 확인했고, {failed}곳은 확인하지 못했습니다.")
+            messages.warning(
+                request,
+                f"일부 저장소만 확인했습니다. 열린 이슈 {n}건을 확인했고, {failed}곳은 확인하지 못했습니다.",
+            )
     else:
         messages.success(request, f"열린 이슈 {n}건을 확인했습니다.")
     return redirect(f"{reverse('org_issues', args=[org.pk])}?{request.POST.get('back', '')}")
@@ -343,7 +435,7 @@ def org_issue_import(request, org_id, issue_id):
     _gh_enabled_or_404()
     org = org_or_404(request.user, org_id)
     issue = RepoIssue.objects.filter(pk=issue_id, connection__project__org=org).first()
-    if issue is None:
+    if issue is None or not gh_services.can_view_repo(request.user, issue.connection.full_name):
         raise Http404
     if issue.task_id is None:
         task = gh_services.import_issue(issue, request.user)
@@ -359,14 +451,15 @@ def repo_event_link(request, project_id, event_id):
     """미매칭 이벤트(예: 번호 없는 커밋)를 손으로 태스크에 연결한다."""
     _gh_enabled_or_404()
     project = project_or_404(request.user, project_id)
-    conn = getattr(project, "repo", None)
-    if conn is None:
-        raise Http404
+    conn = _viewable_repo(request.user, project)
     event = conn.events.filter(pk=event_id).first()
     if event is None:
         raise Http404
-    task = project.tasks.filter(pk=request.POST.get("task_id")).first()
-    if task is not None:
+    task_id = request.POST.get("task_id", "")
+    task = project.tasks.filter(pk=task_id).first() if task_id.isdecimal() else None
+    if task is None:
+        messages.error(request, "연결할 태스크를 고르세요.")
+    else:
         event.task = task
         event.save(update_fields=["task"])
     return redirect("project_repo", project_id=project.pk)
@@ -382,9 +475,7 @@ def project_issues(request, project_id):
     """
     _gh_enabled_or_404()
     project = project_or_404(request.user, project_id)
-    conn = getattr(project, "repo", None)
-    if conn is None:
-        raise Http404
+    conn = _viewable_repo(request.user, project)
     state = request.GET.get("state") or "todo"  # todo=아직 안 가져온 것 | done | all
     query = (request.GET.get("q") or "").strip()
     imported = {"todo": False, "done": True}.get(state)
@@ -410,9 +501,7 @@ def project_issues(request, project_id):
 def project_issues_sync(request, project_id):
     _gh_enabled_or_404()
     project = project_or_404(request.user, project_id)
-    conn = getattr(project, "repo", None)
-    if conn is None:
-        raise Http404
+    conn = _viewable_repo(request.user, project)
     try:
         n = gh_services.sync_issues(conn)
         messages.success(request, f"열린 이슈 {n}건을 확인했습니다.")
@@ -428,9 +517,7 @@ def project_issue_import(request, project_id, issue_id):
     """이슈 하나를 내 태스크로. 담당자는 누른 사람이다."""
     _gh_enabled_or_404()
     project = project_or_404(request.user, project_id)
-    conn = getattr(project, "repo", None)
-    if conn is None:
-        raise Http404
+    conn = _viewable_repo(request.user, project)
     issue = conn.issues.filter(pk=issue_id).first()
     if issue is None:
         raise Http404
@@ -457,14 +544,10 @@ def git_issue(request, task_id):
     number = request.POST.get("number", "")
     issue = conn.issues.filter(number=number).first() if number.isdecimal() else None
     if issue is not None:
-        link, _ = TaskGitLink.objects.get_or_create(task=task, defaults={"connection": conn})
-        link.connection = conn
-        link.issue_number = issue.number
-        link.issue_title = issue.title
-        link.issue_state = issue.state
-        link.save()
-        issue.task = task
-        issue.save(update_fields=["task"])
+        try:
+            gh_services.link_issue(task, issue)
+        except ServiceError as e:
+            return _panel(request, task, error=_gh_write_error(e))
     return _panel(request, task)
 
 

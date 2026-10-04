@@ -1,3 +1,4 @@
+import json
 from datetime import date, timedelta
 
 from django.contrib import messages
@@ -174,12 +175,12 @@ def task_meta(request, task_id):
     org = task.project.org
     changes = {}
     if (pid := request.POST.get("project")) is not None:
-        project = Project.objects.filter(pk=pid, org=org, is_archived=False).first()
+        project = Project.objects.filter(pk=pid or 0, org=org, is_archived=False).first()
         if project is None:
             return _panel(request, task, error="그 프로젝트로 옮길 수 없습니다.")
         changes["project"] = project
     if (uid := request.POST.get("assignee")) is not None:
-        user = org.members.filter(pk=uid, is_active=True).first()
+        user = org.members.filter(pk=uid or 0, is_active=True).first()
         if user is None:
             return _panel(request, task, error="그 사람에게 맡길 수 없습니다.")
         changes["assignee"] = user
@@ -232,8 +233,15 @@ def task_text(request, task_id, field):
     try:
         ts.update_text(task, field, request.POST.get("value", ""), actor=request.user)
     except ServiceError as e:
-        return JsonResponse({"error": " ".join(e.errors.values())}, status=400, json_dumps_params={"ensure_ascii": False})
-    return trigger(HttpResponse(status=204), "saved")
+        return JsonResponse(
+            {"error": " ".join(e.errors.values())},
+            status=400,
+            json_dumps_params={"ensure_ascii": False},
+        )
+    # saved는 "자동 저장됨" 표시, task-changed는 목록·오늘 화면의 행이 새 제목으로 다시 그리게 한다.
+    r = HttpResponse(status=204)
+    r["HX-Trigger"] = json.dumps({"saved": {}, "task-changed": {"id": task.pk}})
+    return r
 
 
 @login_required

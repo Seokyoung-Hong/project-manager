@@ -21,7 +21,6 @@ from .services import (
     set_locks,
     set_org_settings,
     set_tags,
-    teams_of,
 )
 
 pytestmark = pytest.mark.django_db
@@ -107,7 +106,7 @@ def test_team_member_must_be_org_member(org, admin, outsider):
 def test_user_in_multiple_teams(team, org, admin, member):
     other = create_team(org=org, name="프론트엔드", actor=admin)
     add_team_member(other, member, admin)
-    names = set(teams_of(member, org).values_list("name", flat=True))
+    names = set(member.teams.filter(org=org).values_list("name", flat=True))
     assert names == {team.name, other.name}
 
 

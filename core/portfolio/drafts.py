@@ -69,7 +69,9 @@ def _selected_records(user, org_id, source_ids):
     try:
         records = get_allowed_records(user, ids)
     except ValidationError:
-        raise ServiceError({"source_ids": "선택한 출처 중 더 이상 사용할 수 없는 기록이 있습니다."}) from None
+        raise ServiceError(
+            {"source_ids": "선택한 출처 중 더 이상 사용할 수 없는 기록이 있습니다."}
+        ) from None
     if any(record.task.project.org_id != org_id for record in records):
         raise ServiceError({"source_ids": "같은 조직에서 사용할 수 있는 기록만 선택해 주세요."})
     return records
@@ -120,16 +122,19 @@ def _check_sources(user, draft):
     for source in sources:
         record = current.get(source.decision_record_id)
         if record is None or record.task.project.org_id != draft.org_id:
-            raise ServiceError({"source_ids": "초안의 출처 기록 중 더 이상 접근할 수 없는 기록이 있습니다."})
+            raise ServiceError(
+                {"source_ids": "초안의 출처 기록 중 더 이상 접근할 수 없는 기록이 있습니다."}
+            )
         if record.kind == "user_input":
-            visible = (
-                record.status in {"captured", "confirmed", "superseded"}
-                and (record.subject_user_id == user.pk or record.confirmed_by_id == user.pk)
+            visible = record.status in {"captured", "confirmed", "superseded"} and (
+                record.subject_user_id == user.pk or record.confirmed_by_id == user.pk
             )
         else:
             visible = record.status in {"recorded", "superseded"}
         if not visible:
-            raise ServiceError({"source_ids": "초안의 출처 기록 중 더 이상 접근할 수 없는 기록이 있습니다."})
+            raise ServiceError(
+                {"source_ids": "초안의 출처 기록 중 더 이상 접근할 수 없는 기록이 있습니다."}
+            )
         stale = (
             record.kind != source.record_kind
             or record.summary != source.record_summary
@@ -175,7 +180,9 @@ def _validate_scope(scope_json):
     try:
         encoded = json.dumps(scope_json, ensure_ascii=False, allow_nan=False)
     except (TypeError, ValueError):
-        raise ServiceError({"scope_json": "출처 선택 범위는 JSON으로 표현할 수 있어야 합니다."}) from None
+        raise ServiceError(
+            {"scope_json": "출처 선택 범위는 JSON으로 표현할 수 있어야 합니다."}
+        ) from None
     if len(encoded.encode("utf-8")) > 16 * 1024:
         raise ServiceError({"scope_json": "출처 선택 범위는 16KB 이내여야 합니다."})
     return scope_json
@@ -281,7 +288,12 @@ def update_draft(
     source_ids=None,
 ):
     """Edit an owned draft with optimistic locking; never rewrites markdown on refresh."""
-    draft = PortfolioDraft.objects.select_for_update().filter(pk=draft_id, owner=user).select_related("org").first()
+    draft = (
+        PortfolioDraft.objects.select_for_update()
+        .filter(pk=draft_id, owner=user)
+        .select_related("org")
+        .first()
+    )
     if draft is None:
         raise ServiceError({"draft": "포트폴리오 초안을 찾을 수 없습니다."})
     if not getattr(user, "is_active", False) or not is_member(user, draft.org):

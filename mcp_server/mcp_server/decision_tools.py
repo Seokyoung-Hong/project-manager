@@ -84,7 +84,9 @@ def record_task_decision(
         if len(value.strip()) > maximum:
             raise ValueError(f"{field} must be at most {maximum} characters; submit a shorter gist")
     if len(alternatives or []) > 10 or any(len(item.strip()) > 300 for item in alternatives or []):
-        raise ValueError("alternatives must contain at most 10 short summaries (300 characters each)")
+        raise ValueError(
+            "alternatives must contain at most 10 short summaries (300 characters each)"
+        )
 
     if kind == "user_input":
         if input_type is None:

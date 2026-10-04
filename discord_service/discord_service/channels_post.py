@@ -18,6 +18,7 @@
 """
 
 import logging
+from datetime import datetime
 
 from .core_client import CoreClient
 from .discord import Bot
@@ -28,6 +29,13 @@ log = logging.getLogger(__name__)
 CREATED, DONE, BLOCKED, OVERDUE_DAILY = "created", "done", "blocked", "overdue_daily"
 EVENTS = (CREATED, DONE, BLOCKED, OVERDUE_DAILY)
 LABEL = {CREATED: "새 태스크", DONE: "완료", BLOCKED: "막힘", OVERDUE_DAILY: "기한 초과"}
+
+
+def _created_since(t: dict, since: str) -> bool:
+    """처음 보는 태스크가 정말 이 창 안에서 만들어졌는가. 재기동·store 초기화 뒤 처음 보는 옛
+    태스크를 '새 태스크'로 올리지 않게 합니다. created_at이 없으면 옛 동작(새 태스크)을 따릅니다."""
+    c = t.get("created_at")
+    return not c or datetime.fromisoformat(c) >= datetime.fromisoformat(since)
 
 
 def _display(t: dict) -> str:
@@ -59,7 +67,7 @@ def run_channel_events(
         prev = store.seen_status(org_id, t["id"])
         store.mark_seen(org_id, t["id"], t["status"])
         kind = None
-        if prev is None:
+        if prev is None and _created_since(t, since):
             kind = CREATED
         elif t["status"] == "done" and prev != "done":
             kind = DONE

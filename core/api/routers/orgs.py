@@ -92,7 +92,8 @@ def status(request, org_id: int):
 @router.post("/{org_id}/invites", response={201: InviteOut, 400: ErrorOut})
 def create_invite_ep(request, org_id: int, payload: InviteIn):
     org = org_or_404(request, org_id)
-    inv = create_invite(org, ctx(request)["actor"], days=payload.days)
+    c = ctx(request)
+    inv = create_invite(org, c["actor"], days=payload.days, source=c["source"])
     return 201, invite_out(inv)
 
 
@@ -115,13 +116,19 @@ def get_governance(request, org_id: int):
     return {"text": governance_text(org), "is_default": not org.governance.strip()}
 
 
-@router.put("/{org_id}/governance", response={200: GovernanceOut, 202: dict, 400: ErrorOut, 403: ErrorOut})
+@router.put(
+    "/{org_id}/governance", response={200: GovernanceOut, 202: dict, 400: ErrorOut, 403: ErrorOut}
+)
 def put_governance(request, org_id: int, payload: GovernanceIn, reason: str = ""):
     org = org_or_404(request, org_id)
     # 거버넌스는 AI가 따르는 규칙이라 AI가 직접 고치지 않는다. 요청으로 남기고 사람이 허용한다.
     c = ctx(request)
     if c["source"] == "mcp":
-        return 202, pending_out(request_change(org, "governance", payload.text, actor=c["actor"], reason=reason, token=c["token"]))
+        return 202, pending_out(
+            request_change(
+                org, "governance", payload.text, actor=c["actor"], reason=reason, token=c["token"]
+            )
+        )
     org = set_governance(org, payload.text, request.auth)
     return {"text": governance_text(org), "is_default": not org.governance.strip()}
 
@@ -144,7 +151,10 @@ def _team_or_404(request, team_id: int) -> Team:
 @router.post("/{org_id}/teams", response={201: TeamOut, 400: ErrorOut})
 def create_team_ep(request, org_id: int, payload: TeamCreateIn):
     org = org_or_404(request, org_id)
-    team = create_team(org=org, name=payload.name, purpose=payload.purpose, actor=request.auth)
+    c = ctx(request)
+    team = create_team(
+        org=org, name=payload.name, purpose=payload.purpose, actor=c["actor"], source=c["source"]
+    )
     return 201, _team_out(team)
 
 
@@ -163,7 +173,8 @@ def add_team_member_ep(request, team_id: int, payload: TeamMemberIn):
     user = User.objects.filter(pk=payload.user_id).first()
     if user is None:
         raise HttpError(404, "사용자를 찾을 수 없습니다.")
-    add_team_member(team, user, request.auth)
+    c = ctx(request)
+    add_team_member(team, user, c["actor"], source=c["source"])
     return _team_out(team)
 
 
@@ -173,7 +184,8 @@ def remove_team_member_ep(request, team_id: int, user_id: int):
     user = User.objects.filter(pk=user_id).first()
     if user is None:
         raise HttpError(404, "사용자를 찾을 수 없습니다.")
-    remove_team_member(team, user, request.auth)
+    c = ctx(request)
+    remove_team_member(team, user, c["actor"], source=c["source"])
     return _team_out(team)
 
 
@@ -213,7 +225,16 @@ def org_tasks(
     if project is not None and not org.projects.filter(pk=project).exists():
         raise HttpError(404, "이 조직의 프로젝트가 아닙니다.")
     return list_tasks(
-        request, org=org.pk, project=project, assignee=assignee, status=status,
-        due_from=due_from, due_to=due_to, q=q, updated_since=updated_since,
-        include_archived=include_archived, limit=limit, offset=offset,
+        request,
+        org=org.pk,
+        project=project,
+        assignee=assignee,
+        status=status,
+        due_from=due_from,
+        due_to=due_to,
+        q=q,
+        updated_since=updated_since,
+        include_archived=include_archived,
+        limit=limit,
+        offset=offset,
     )

@@ -6,7 +6,6 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("tasks", "0002_settings_fields"),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
@@ -184,9 +183,7 @@ class Migration(migrations.Migration):
                                 ),
                                 ("kind", "user_input"),
                             ),
-                            models.Q(
-                                ("input_type__isnull", True), ("kind", "ai_judgment")
-                            ),
+                            models.Q(("input_type__isnull", True), ("kind", "ai_judgment")),
                             _connector="OR",
                         ),
                         name="decision_kind_input_type",

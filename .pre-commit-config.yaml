@@ -1,0 +1,11 @@
+# 설치: uvx pre-commit install
+# 각 서비스의 pyproject.toml에 있는 ruff 설정을 그대로 쓴다. 버전은 uv.lock의 ruff와 맞춘다.
+# CI(.github/workflows/ci.yml)와 같은 세 서비스만 검사한다.
+files: ^(core|discord_service|mcp_server)/
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.16.6
+    hooks:
+      - id: ruff-check
+        args: [--fix]
+      - id: ruff-format

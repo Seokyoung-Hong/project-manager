@@ -93,8 +93,14 @@ class Migration(migrations.Migration):
                     models.DateTimeField(verbose_name="기록 시각 스냅샷"),
                 ),
                 ("task_number", models.CharField(max_length=32, verbose_name="태스크 번호 스냅샷")),
-                ("project_name", models.CharField(max_length=100, verbose_name="프로젝트명 스냅샷")),
-                ("created_at", models.DateTimeField(auto_now_add=True, verbose_name="출처 추가 시각")),
+                (
+                    "project_name",
+                    models.CharField(max_length=100, verbose_name="프로젝트명 스냅샷"),
+                ),
+                (
+                    "created_at",
+                    models.DateTimeField(auto_now_add=True, verbose_name="출처 추가 시각"),
+                ),
                 (
                     "decision_record",
                     models.ForeignKey(

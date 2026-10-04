@@ -5,7 +5,7 @@
 
 import pytest
 
-from github.models import GitHubInstallation, RepoConnection, RepoIssue
+from github.models import GitHubIdentity, GitHubInstallation, RepoConnection, RepoIssue
 from github.services import installation_repos
 from github.test_writes import _identity
 
@@ -165,6 +165,10 @@ def test_direct_url_entry_still_works(client, gh, installed, project, admin, as_
 
 @pytest.fixture
 def conn(project, admin):
+    # 이슈 화면은 그 저장소를 GitHub에서 볼 수 있는 사람에게만 열린다.
+    GitHubIdentity.objects.create(
+        user=admin, github_id=777, login="admin-gh", repos=["teamSANDOL/sandol-api"]
+    )
     return RepoConnection.objects.create(
         project=project,
         url="https://github.com/teamSANDOL/sandol-api.git",
@@ -214,3 +218,21 @@ def test_project_issue_import(client, gh, conn, issue, as_admin, admin):
     issue.refresh_from_db()
     assert issue.task is not None
     assert issue.task.assignee == admin
+
+
+def test_connect_survives_unexpected_sync_error(
+    client, gh, installed, project, admin, as_admin, monkeypatch
+):
+    """연결 직후 이슈 동기화가 뜻밖의 예외를 내도 연결은 저장되고 500이 나지 않는다."""
+    admin.github.repos = ["teamSANDOL/sandol-api"]
+    admin.github.save(update_fields=["repos"])
+
+    def boom(iid):
+        raise RuntimeError("예상 밖")
+
+    monkeypatch.setattr("github.client.installation_token", boom)
+    r = as_admin.post(
+        f"/projects/{project.pk}/repo", {"url": "https://github.com/teamSANDOL/sandol-api.git"}
+    )
+    assert r.status_code == 302
+    assert RepoConnection.objects.filter(project=project).exists()

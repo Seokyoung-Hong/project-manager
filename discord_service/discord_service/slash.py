@@ -20,10 +20,11 @@ import httpx
 from discord import app_commands
 from discord.app_commands import Choice
 
-from .channels import NOT_A_MANAGER, can_manage_channels, link_channel
+from .channels import NOT_A_MANAGER, can_manage_channels, guild_org_ids, link_channel
 from .commands import (
     BAD_DATE,
     TOO_FAST,
+    _error_reply,
     create_reply,
     done_reply,
     extend_reply,
@@ -162,9 +163,27 @@ def register(tree: app_commands.CommandTree, guild, cfg, core: CoreClient, seen:
         items = await cached(core, cache, str(interaction.user.id), "projects")
         return choices(items, current, lambda p: p["name"])
 
+    async def in_guild(interaction: discord.Interaction, items: list[dict]) -> list[dict]:
+        """지금 길드에 묶인 조직의 것만 남깁니다. 다른 조직의 이름이 이 서버에 보이지 않게 합니다."""
+        if interaction.guild is None:
+            return []
+        key = (str(interaction.guild.id), "orgs")
+        hit = cache.get(key)
+        if not hit or hit[0] <= time.monotonic():
+            try:
+                ids = await guild_org_ids(core, interaction.guild.id)
+            except httpx.HTTPError:
+                return []
+            hit = cache[key] = (time.monotonic() + CACHE_TTL, ids)
+        return [i for i in items if i.get("org_id") in hit[1]]
+
+    async def ac_channel_project(interaction: discord.Interaction, current: str):
+        items = await cached(core, cache, str(interaction.user.id), "projects")
+        return choices(await in_guild(interaction, items), current, lambda p: p["name"])
+
     async def ac_team(interaction: discord.Interaction, current: str):
         items = await cached(core, cache, str(interaction.user.id), "teams")
-        return choices(items, current, lambda t: t["name"])
+        return choices(await in_guild(interaction, items), current, lambda t: t["name"])
 
     async def ac_member(interaction: discord.Interaction, current: str):
         items = await cached(core, cache, str(interaction.user.id), "members")
@@ -276,8 +295,12 @@ def register(tree: app_commands.CommandTree, guild, cfg, core: CoreClient, seen:
     # --- C단계: 채널 생성 (조직 관리자) ---
 
     async def channel_cmd(
-        interaction: discord.Interaction, kind: str, item_id: int, category,
-        create_category: bool = False, selected: discord.TextChannel | None = None,
+        interaction: discord.Interaction,
+        kind: str,
+        item_id: int,
+        category,
+        create_category: bool = False,
+        selected: discord.TextChannel | None = None,
     ):
         await interaction.response.defer(ephemeral=True)
         uid = str(interaction.user.id)
@@ -295,12 +318,19 @@ def register(tree: app_commands.CommandTree, guild, cfg, core: CoreClient, seen:
             else:
                 try:
                     projects = await asyncio.to_thread(core.projects, uid)
-                    project = next((p for p in projects if p["id"] == item_id), None)
+                    ids = await guild_org_ids(core, interaction.guild.id)
+                    project = next(
+                        (p for p in projects if p["id"] == item_id and p.get("org_id") in ids), None
+                    )
                     if project is None:
                         reply = "프로젝트를 찾을 수 없습니다."
                     else:
-                        await asyncio.to_thread(core.set_project_channel, uid, item_id, str(selected.id))
-                        reply = f"<#{selected.id}> 채널을 {project['name']} 프로젝트에 연결했습니다."
+                        await asyncio.to_thread(
+                            core.set_project_channel, uid, item_id, str(selected.id)
+                        )
+                        reply = (
+                            f"<#{selected.id}> 채널을 {project['name']} 프로젝트에 연결했습니다."
+                        )
                 except httpx.HTTPStatusError as e:
                     reply = _error_reply(e.response)
                 except httpx.HTTPError as e:
@@ -324,11 +354,13 @@ def register(tree: app_commands.CommandTree, guild, cfg, core: CoreClient, seen:
         name="팀채널", description="팀 채널을 만들고 연결합니다 (조직 관리자)", guild=guild
     )
     @app_commands.guild_only()
-    @app_commands.rename(team="팀", category="기존카테고리")
+    @app_commands.rename(team="팀", category="기존카테고리", create_category="새카테고리만들기")
     @app_commands.describe(team="팀 (입력하면 목록이 뜹니다)", category="넣을 기존 카테고리")
     @app_commands.autocomplete(team=ac_team)
     async def team_channel(
-        interaction: discord.Interaction, team: int, category: discord.CategoryChannel | None = None,
+        interaction: discord.Interaction,
+        team: int,
+        category: discord.CategoryChannel | None = None,
         create_category: bool = False,
     ):
         await channel_cmd(interaction, "team", team, category, create_category)
@@ -339,16 +371,25 @@ def register(tree: app_commands.CommandTree, guild, cfg, core: CoreClient, seen:
         guild=guild,
     )
     @app_commands.guild_only()
-    @app_commands.rename(project="프로젝트", category="기존카테고리", create_category="새카테고리만들기", selected="기존채널")
+    @app_commands.rename(
+        project="프로젝트",
+        category="기존카테고리",
+        create_category="새카테고리만들기",
+        selected="기존채널",
+    )
     @app_commands.describe(
-        project="프로젝트 (입력하면 목록이 뜹니다)", category="넣을 기존 카테고리",
+        project="프로젝트 (입력하면 목록이 뜹니다)",
+        category="넣을 기존 카테고리",
         create_category="카테고리가 없을 때 같은 이름으로 새 카테고리를 만듭니다",
         selected="기존 텍스트 채널을 선택하면 새 채널 대신 연결합니다",
     )
-    @app_commands.autocomplete(project=ac_project)
+    @app_commands.autocomplete(project=ac_channel_project)
     async def project_channel(
-        interaction: discord.Interaction, project: int, category: discord.CategoryChannel | None = None,
-        create_category: bool = False, selected: discord.TextChannel | None = None,
+        interaction: discord.Interaction,
+        project: int,
+        category: discord.CategoryChannel | None = None,
+        create_category: bool = False,
+        selected: discord.TextChannel | None = None,
     ):
         await channel_cmd(interaction, "project", project, category, create_category, selected)
 

@@ -2,7 +2,7 @@
 
 import pytest
 
-from github.models import RepoConnection, RepoIssue, TaskGitLink
+from github.models import GitHubIdentity, RepoConnection, RepoIssue, TaskGitLink
 from github.services import import_issue, org_issues
 
 pytestmark = pytest.mark.django_db
@@ -80,6 +80,9 @@ def test_import_twice_returns_the_same_task(issue, member, admin):
 
 
 def test_page_lists_and_imports(client, gh, org, conn, issue, member):
+    GitHubIdentity.objects.create(
+        user=member, github_id=321, login="m", repos=["teamSANDOL/sandol-api"]
+    )
     client.force_login(member)
     body = client.get(f"/orgs/{org.pk}/issues").content.decode()
     assert "#7" in body and issue.title in body and "내 태스크로 가져오기" in body
@@ -106,5 +109,19 @@ def test_import_rejects_other_orgs_issue(client, gh, org, conn, issue, outsider)
     client.force_login(outsider)
     r = client.post(f"/orgs/{org.pk}/issues/{issue.pk}/import")
     assert r.status_code == 404
+    issue.refresh_from_db()
+    assert issue.task is None
+
+
+def test_member_who_cannot_see_repo_gets_no_issues(client, gh, org, conn, issue, member):
+    """조직 멤버라도 GitHub에서 그 저장소를 볼 수 없으면 이슈가 보이지 않고 가져올 수도 없다."""
+    GitHubIdentity.objects.create(user=member, github_id=321, login="m", repos=["o/other"])
+    client.force_login(member)
+    body = client.get(f"/orgs/{org.pk}/issues").content.decode()
+    assert issue.title not in body
+    r = client.post(f"/orgs/{org.pk}/issues/{issue.pk}/import")
+    assert r.status_code == 404
+    project_id = conn.project.pk
+    assert client.get(f"/projects/{project_id}/issues").status_code == 403
     issue.refresh_from_db()
     assert issue.task is None
