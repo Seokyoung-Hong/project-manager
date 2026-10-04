@@ -554,7 +554,13 @@ class Attachment(models.Model):
                 condition=(Q(project__isnull=False) & Q(task__isnull=True))
                 | (Q(project__isnull=True) & Q(task__isnull=False)),
                 name="attachment_exactly_one_target",
-            )
+            ),
+            # 버전 체인은 갈라지지 않는다 — 한 파일을 대체하는 새 버전은 하나뿐이다.
+            models.UniqueConstraint(
+                fields=["replaces"],
+                condition=Q(replaces__isnull=False),
+                name="attachment_single_successor",
+            ),
         ]
 
     def __str__(self):
