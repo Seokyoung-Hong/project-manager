@@ -1,6 +1,8 @@
 from django.conf import settings
+from django.db.models import Count, Prefetch
 
-from projects.services import project_stats
+from orgs.models import Team
+from projects.services import project_stats, project_stats_bulk
 from tasks.attachments import attachments_of
 from tasks.brief import task_brief, user_brief
 from tasks.work_requests import pending_assignee
@@ -57,7 +59,8 @@ def task_out(t) -> dict:
     return d
 
 
-def project_out(p) -> dict:
+def project_out(p, stats=None) -> dict:
+    """stats를 넘기면(projects_out) 다시 세지 않는다."""
     return {
         "id": p.pk,
         "org_id": p.org_id,
@@ -66,7 +69,14 @@ def project_out(p) -> dict:
         "discord_channel_id": p.discord_channel_id,
         "owners": [user_brief(u) for u in p.owners.all()],
         "teams": [
-            {"id": t.pk, "name": t.name, "purpose": t.purpose, "member_count": t.members.count()}
+            {
+                "id": t.pk,
+                "name": t.name,
+                "purpose": t.purpose,
+                "member_count": t.member_count
+                if hasattr(t, "member_count")  # projects_out이 미리 센 값
+                else t.members.count(),
+            }
             for t in p.teams.all()
         ],
         "status": p.status,
@@ -75,10 +85,22 @@ def project_out(p) -> dict:
         "dev_tools": p.dev_tools,
         "visibility": p.visibility,
         "version": p.version,
-        "stats": project_stats(p),
+        "stats": stats if stats is not None else project_stats(p),
         "links": [link_out(link) for link in p.links.all()],
         "url": f"{settings.SITE_URL}/projects/{p.pk}",
     }
+
+
+def projects_out(qs) -> list[dict]:
+    """프로젝트 목록. 관리자·팀(인원 수)·링크·통계를 프로젝트 수와 무관하게 몇 번의 쿼리로 읽는다."""
+    teams = Team.objects.annotate(member_count=Count("members"))
+    ps = list(
+        qs.select_related("org", "repo")  # repo: dev_tools 속성이 읽는다
+        .prefetch_related(None)  # 호출자가 붙인 "teams"와 겹치지 않게 비우고 다시 붙인다
+        .prefetch_related("owners", "links", Prefetch("teams", queryset=teams))
+    )
+    stats = project_stats_bulk(ps)
+    return [project_out(p, stats[p.pk]) for p in ps]
 
 
 def invite_out(inv) -> dict:

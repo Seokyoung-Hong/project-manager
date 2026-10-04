@@ -10,7 +10,7 @@ from django.db import transaction
 from django.db.models import Count, Exists, F, OuterRef, Q
 from django.utils import timezone
 
-from common.dates import fmt_md, today_kst
+from common.dates import fmt_md, overdue_q, today_kst
 from common.errors import ConflictError, ServiceError
 from orgs.services import (
     ai_denied,
@@ -467,18 +467,37 @@ def set_project_channel(
 
 
 def project_stats(project) -> dict:
-    """{'total','open','overdue','review','blocked','done'}. total은 취소를 뺀 수."""
+    """{'total','open','overdue','review','blocked','done'}. total은 취소를 뺀 수.
+    초과는 화면 배지와 같은 유예 기준(`overdue_before`)이다."""
+    return project_stats_bulk([project])[project.pk]
+
+
+def project_stats_bulk(projects) -> dict:
+    """여러 프로젝트의 `project_stats`를 쿼리 한 번으로. {project_id: stats}.
+    projects는 org를 함께 읽어 둔 목록이 좋다(아니면 org를 프로젝트마다 읽는다)."""
     from tasks.models import Task
 
-    today = today_kst()
-    return Task.objects.filter(project=project, is_template=False).aggregate(
-        total=Count("id", filter=~Q(status="cancelled")),
-        open=Count("id", filter=Q(status__in=Task.OPEN)),
-        overdue=Count("id", filter=Q(status__in=Task.OPEN, due_date__lt=today)),
-        review=Count("id", filter=Q(status="review")),
-        blocked=Count("id", filter=Q(status="blocked")),
-        done=Count("id", filter=Q(status="done")),
+    projects = list(projects)
+    keys = ("total", "open", "overdue", "review", "blocked", "done")
+    out = {p.pk: dict.fromkeys(keys, 0) for p in projects}
+    if not projects:
+        return out
+    rows = (
+        Task.objects.filter(project__in=list(out), is_template=False)
+        .values("project_id")
+        .order_by()
+        .annotate(
+            total=Count("id", filter=~Q(status="cancelled")),
+            open=Count("id", filter=Q(status__in=Task.OPEN)),
+            overdue=Count("id", filter=Q(status__in=Task.OPEN) & overdue_q(projects)),
+            review=Count("id", filter=Q(status="review")),
+            blocked=Count("id", filter=Q(status="blocked")),
+            done=Count("id", filter=Q(status="done")),
+        )
     )
+    for r in rows:
+        out[r.pop("project_id")] = r
+    return out
 
 
 # ---------- 로드맵: 마일스톤 · 프로젝트 의존성 ----------
@@ -597,9 +616,12 @@ def roadmap(org, today=None, *, viewer=None) -> dict:
     span = (end - start).days
     months = [_add_month(start, i) for i in range(3)]
 
-    qs = Milestone.objects.filter(project__in=shown, project__is_archived=False).select_related(
-        "project"
+    qs = list(
+        Milestone.objects.filter(project__in=shown, project__is_archived=False).select_related(
+            "project__org"
+        )
     )
+    stats = project_stats_bulk({ms.project_id: ms.project for ms in qs}.values())
     rows, hidden = [], 0
     for ms in qs:
         s = min(ms.start_date or ms.target_date, ms.target_date)
@@ -607,7 +629,7 @@ def roadmap(org, today=None, *, viewer=None) -> dict:
             hidden += 1
             continue
         a, b = max(s, start), min(ms.target_date, end)
-        st = project_stats(ms.project)
+        st = stats[ms.project_id]
         rows.append(
             {
                 "ms": ms,

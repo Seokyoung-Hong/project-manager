@@ -32,7 +32,7 @@ from ..schemas import (
     RepoConnectIn,
     TaskOut,
 )
-from ..serialize import project_out, task_out
+from ..serialize import project_out, projects_out, task_out
 
 router = Router(tags=["projects"])
 
@@ -69,7 +69,7 @@ def list_projects(request, org: int | None = None, include_archived: bool = Fals
         qs = qs.filter(org_id=org)
     if not include_archived:
         qs = qs.filter(is_archived=False)
-    return [project_out(p) for p in qs.order_by("org__name", "name")]
+    return projects_out(qs.order_by("org__name", "name"))
 
 
 @router.get("/{project_id}", response=ProjectOut)

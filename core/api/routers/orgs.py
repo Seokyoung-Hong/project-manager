@@ -1,5 +1,6 @@
 from datetime import date
 
+from django.db.models import Count
 from ninja import Router
 from ninja.errors import HttpError
 
@@ -38,7 +39,7 @@ from ..schemas import (
     TeamOut,
     UserBrief,
 )
-from ..serialize import invite_out, project_out
+from ..serialize import invite_out, projects_out
 from .tasks import list_tasks
 
 router = Router(tags=["orgs"])
@@ -58,18 +59,14 @@ def discord_control_check(request, org_id: int):
 def get_org(request, org_id: int):
     org = org_or_404(request, org_id)
     role = OrgMembership.objects.get(org=org, user=request.auth).role
-    projects = (
-        visible_projects(request.auth, org)
-        .filter(is_archived=False)
-        .prefetch_related("owners", "teams")
-    )
+    projects = visible_projects(request.auth, org).filter(is_archived=False)
     return {
         "id": org.pk,
         "name": org.name,
         "purpose": org.purpose,
         "role": role,
         "discord_guild_id": org.discord_guild_id,
-        "projects": [project_out(p) for p in projects],
+        "projects": projects_out(projects),
         "teams": _teams_out(org, request.auth),
     }
 
@@ -138,11 +135,12 @@ def put_governance(request, org_id: int, payload: GovernanceIn, reason: str = ""
 
 
 def _team_out(t: Team, visible: bool = True) -> dict:
+    count = getattr(t, "member_count", None)  # _teams_out이 미리 센 값
     return {
         "id": t.pk,
         "name": t.name,
         "purpose": t.purpose,
-        "member_count": t.members.count() if visible else None,
+        "member_count": (t.members.count() if count is None else count) if visible else None,
         "dev_tools": t.dev_tools,
         "is_private": t.is_private,
     }
@@ -151,7 +149,8 @@ def _team_out(t: Team, visible: bool = True) -> dict:
 def _teams_out(org, user) -> list[dict]:
     """팀 목록. 볼 수 없는 비공개 팀은 이름만 — 인원은 null(`visible_teams`)."""
     visible = set(visible_teams(user, org).values_list("pk", flat=True))
-    return [_team_out(t, t.pk in visible) for t in org.teams.all()]
+    teams = org.teams.annotate(member_count=Count("members"))
+    return [_team_out(t, t.pk in visible) for t in teams]
 
 
 def _team_or_404(request, team_id: int) -> Team:
