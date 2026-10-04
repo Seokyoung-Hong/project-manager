@@ -52,3 +52,10 @@ Discord 슬래시 명령 `/프로젝트채널`도 `기존채널` 옵션으로 �
 동작 요약: 5분마다, 그리고 채널·역할·멤버 변경 이벤트가 오면 해당 서버를 다시 검사한다. 새로 보인 권한 밖 인원은 조직 관리자에게 DM으로 알리고(채널에는 올리지 않는다) 웹에서 `허용`·`철회`한다. 권한 밖 인원을 자동으로 쫓아내거나 서버 역할을 만들고 바꾸지는 않는다. 자동 관리가 켜진 채널에서 봇은 허용 집합의 연결 계정에게 멤버 단위 덮어쓰기(보기·쓰기·기록 읽기)만 넣고 뺀다.
 
 웹의 Discord 관리 동작(자동 관리 켜기·끄기, 권한 밖 인원 허용·철회, 서버 연결 해제)은 PM 조직 관리자 확인에 더해 그 사용자의 Discord 서버 권한을 확인한다. core는 Discord를 부르지 않으므로 봇이 5분 감시 때 연결된 사용자의 권한 비트를 보고하고, 15분보다 오래됐거나 없으면(멤버 인텐트 꺼짐 포함) 거절한다. 이 경우 Discord에서 명령으로 한다.
+
+## 라운드 7 배포 조건 (IMPL-PLAN-7)
+
+- **Discord 봇 토큰의 주인은 조직 관리자여야 한다.** `.env.discord`의 봇 토큰을 발급한 Discord 앱(Developer Portal)은 PM 조직 관리자 계정이 소유한다. 개인 팀원 계정의 앱이면 그 사람이 떠날 때 봇·명령·DM이 함께 멈춘다.
+- **새 환경변수 `DISCORD_CLIENT_SECRET`**(`.env`, web): Developer Portal → OAuth2 → Client Secret. 서버 연결 때 Discord가 준 code를 교환해 실제 설치된 서버를 확인한다. 비우면 Discord 서버 연결이 거절된다(`.env.example` 참고). 값은 로그·응답에 출력하지 않는다.
+- **첨부 업로드 한도**: 파일 하나가 25MB까지이므로 앞단 리버스 프록시의 요청 본문 한도를 25MB보다 크게 둔다(nginx면 `client_max_body_size 26m;`, Nginx Proxy Manager는 해당 프록시 호스트의 Advanced 설정). 기본값(1MB)이면 큰 첨부가 413으로 막힌다.
+- **`media_data` 볼륨과 백업**: 첨부 파일은 `web`의 `/data/media`(볼륨 `media_data`)에 저장된다. DB와 함께 백업해야 복구된다. 볼륨을 지우지 않으며, 백업·복구는 `scripts/backup.sh`·`scripts/restore-test.sh`와 `docs/BACKUP.md`의 절차를 따른다.
