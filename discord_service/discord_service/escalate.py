@@ -1,5 +1,6 @@
 """막힘·검토 대기가 오래 머문 태스크를 프로젝트 관리자에게 알린다 (§4.5 `notify.blocked_escalate_days`
 ·`notify.review_nudge_days`). 프로젝트 관리자가 0명이면 조직 관리자가 대신 받는다.
+검토 대기는 지정 검토자(Discord 연결됨)가 있으면 관리자 대신 그 사람이 받는다.
 
 중복 방지는 새 표를 만들지 않고 notify.py와 같은 `sent` 표를 쓴다(task_id=0, kind=조합 키).
 """
@@ -62,33 +63,43 @@ def run_escalations(
 
     for project_id, groups in by_project.items():
         for kind, items in groups.items():
-            if not items:
-                continue
-            key = f"{org_id}:escalate:{kind}:{project_id}"
-            if not store.claim(0, key, day):
-                result["skipped"] += 1
-                continue
-            recipients = core.project_owners(project_id) or core.org_admins(org_id)
-            if not recipients:
-                store.release(0, key, day)  # 보낼 사람이 없다. 관리자가 생기면 다시 시도한다
-                continue
-            text = _message(kind, items[0]["project"]["name"], items, today)
-            ok = True
-            for r in recipients:
-                did = r.get("discord_user_id")
-                if not did:
+            # 검토 대기는 지정 검토자(Discord 연결됨)가 먼저 받는다. 검토자가 없는 태스크만 관리자에게.
+            batches: dict[str | None, list[dict]] = {}
+            for t in items:
+                did = (t.get("reviewer") or {}).get("discord_user_id") if kind == REVIEW else None
+                batches.setdefault(did or None, []).append(t)
+            for reviewer_did, batch in batches.items():
+                key = f"{org_id}:escalate:{kind}:{project_id}"
+                if reviewer_did:
+                    key += f":{reviewer_did}"
+                if not store.claim(0, key, day):
+                    result["skipped"] += 1
                     continue
-                try:
-                    bot.send_dm(did, text)
-                    result["sent"] += 1
-                except (DmBlocked, UnknownResult) as e:
-                    ok = False
-                    log.warning("에스컬레이션 DM 실패: %s: %s", did, e)
-                except Exception as e:  # noqa: BLE001
-                    ok = False
-                    result["failed"] += 1
-                    log.error("에스컬레이션 DM 실패: %s: %s", did, e)
-            store.mark(0, key, day, "sent" if ok else "failed")
+                recipients = (
+                    [{"discord_user_id": reviewer_did}]
+                    if reviewer_did
+                    else core.project_owners(project_id) or core.org_admins(org_id)
+                )
+                if not recipients:
+                    store.release(0, key, day)  # 보낼 사람이 없다. 관리자가 생기면 다시 시도한다
+                    continue
+                text = _message(kind, batch[0]["project"]["name"], batch, today)
+                ok = True
+                for r in recipients:
+                    did = r.get("discord_user_id")
+                    if not did:
+                        continue
+                    try:
+                        bot.send_dm(did, text)
+                        result["sent"] += 1
+                    except (DmBlocked, UnknownResult) as e:
+                        ok = False
+                        log.warning("에스컬레이션 DM 실패: %s: %s", did, e)
+                    except Exception as e:  # noqa: BLE001
+                        ok = False
+                        result["failed"] += 1
+                        log.error("에스컬레이션 DM 실패: %s: %s", did, e)
+                store.mark(0, key, day, "sent" if ok else "failed")
     return result
 
 

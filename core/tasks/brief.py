@@ -20,6 +20,8 @@ def task_brief(t) -> dict:
             "discord_channel_id": t.project.discord_channel_id,
         },
         "assignee": user_brief(t.assignee),
+        # 지정 검토자. 검토 독촉(escalate)이 관리자보다 먼저 이 사람에게 보낸다.
+        "reviewer": user_brief(t.reviewer),
         "status": t.status,
         "priority": t.priority,
         "due_date": t.due_date.isoformat() if t.due_date else None,

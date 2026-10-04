@@ -150,8 +150,13 @@ def _update(core, uid, number, title, due, priority, assignee, next_action):
     return update_reply(core, uid, number, changes)
 
 
-def _request(core, uid, title, body, kind, team, to_user, channel_id):
+def _request(core, uid, title, body, kind, team, to_user, channel_id, due=None):
     fields = {"title": title, "body": body, "kind": kind, "channel_id": channel_id}
+    if due is not None:
+        d = parse_date(due)
+        if d is None:
+            return BAD_DATE
+        fields["due_date"] = d.isoformat()
     if team is not None:
         fields["team_id"] = team
     if to_user is not None:
@@ -354,9 +359,12 @@ def register(tree: app_commands.CommandTree, guild, cfg, core: CoreClient, seen:
     # --- 요청: 팀·사람에게 일을 부탁한다 ---
 
     @tree.command(name="요청", description="팀이나 사람에게 일을 요청합니다", guild=guild)
-    @app_commands.rename(title="제목", body="내용", kind="종류", team="팀", to_user="대상")
+    @app_commands.rename(
+        title="제목", body="내용", kind="종류", team="팀", to_user="대상", due="기한"
+    )
     @app_commands.describe(
         body="요청 내용",
+        due="희망 기한 YYYY-MM-DD (선택)",
         kind="작업(태스크가 됩니다) 또는 일반 (기본 작업)",
         team="받을 팀 (생략하면 이 채널의 팀)",
         to_user="특정 사람에게 보낼 때",
@@ -372,6 +380,7 @@ def register(tree: app_commands.CommandTree, guild, cfg, core: CoreClient, seen:
         kind: Choice[str] | None = None,
         team: int | None = None,
         to_user: int | None = None,
+        due: str | None = None,
     ):
         await interaction.response.defer(ephemeral=True)
         uid = str(interaction.user.id)
@@ -390,6 +399,7 @@ def register(tree: app_commands.CommandTree, guild, cfg, core: CoreClient, seen:
             team,
             to_user,
             channel_id,
+            due,
         )
         private, public = (out, None) if isinstance(out, str) else out
         await send(interaction, private)
