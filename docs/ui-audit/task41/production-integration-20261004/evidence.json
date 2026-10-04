@@ -1,0 +1,94 @@
+[
+  {
+    "name": "login",
+    "width": 1280,
+    "url": "https://project.sio2.kr/login",
+    "status": 200,
+    "text": "산돌이 태스크\n로그인\n아이디\n비밀번호\n로그인\nGitHub로 로그인\n\n계정이 없으면 가입하세요.",
+    "links": [
+      {
+        "text": "산돌이 태스크",
+        "href": "/today"
+      },
+      {
+        "text": "GitHub로 로그인",
+        "href": "/login/github?next="
+      },
+      {
+        "text": "가입",
+        "href": "/signup?next="
+      }
+    ],
+    "overflow": {
+      "scroll": 1280,
+      "viewport": 1280
+    },
+    "pageErrors": [],
+    "consoleErrors": []
+  },
+  {
+    "name": "login",
+    "width": 390,
+    "url": "https://project.sio2.kr/login",
+    "status": 200,
+    "text": "산돌이 태스크\n로그인\n아이디\n비밀번호\n로그인\nGitHub로 로그인\n\n계정이 없으면 가입하세요.",
+    "links": [
+      {
+        "text": "산돌이 태스크",
+        "href": "/today"
+      },
+      {
+        "text": "GitHub로 로그인",
+        "href": "/login/github?next="
+      },
+      {
+        "text": "가입",
+        "href": "/signup?next="
+      }
+    ],
+    "overflow": {
+      "scroll": 390,
+      "viewport": 390
+    },
+    "pageErrors": [],
+    "consoleErrors": []
+  },
+  {
+    "name": "healthz",
+    "url": "https://project.sio2.kr/healthz",
+    "status": 200,
+    "body": "{\"ok\": true}"
+  },
+  {
+    "name": "app.css",
+    "url": "https://project.sio2.kr/static/app.css",
+    "status": 200,
+    "length": 65491,
+    "local": "C:/Users/tjrdu/orca/workspaces/project-manager/integrations-discord-review/core/web/static/app.css",
+    "equalNormalized": true
+  },
+  {
+    "name": "app.js",
+    "url": "https://project.sio2.kr/static/app.js",
+    "status": 200,
+    "length": 16869,
+    "local": "C:/Users/tjrdu/orca/workspaces/project-manager/integrations-discord-review/core/web/static/app.js",
+    "equalNormalized": true
+  },
+  {
+    "name": "notes.js",
+    "url": "https://project.sio2.kr/static/notes.js",
+    "status": 200,
+    "length": 29293,
+    "local": "C:/Users/tjrdu/orca/workspaces/project-manager/integrations-discord-review/core/web/static/notes.js",
+    "equalNormalized": true
+  },
+  {
+    "name": "webmcp.js",
+    "url": "https://project.sio2.kr/static/webmcp.js",
+    "status": 200,
+    "length": 13696,
+    "local": "C:/Users/tjrdu/orca/workspaces/project-manager/integrations-discord-review/core/web/static/webmcp.js",
+    "equalNormalized": true
+  }
+]
