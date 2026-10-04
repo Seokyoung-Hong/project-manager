@@ -4,6 +4,7 @@
 """
 
 import pytest
+from django.utils import timezone
 
 from github.models import GitHubIdentity, GitHubInstallation, RepoConnection, RepoIssue
 from github.services import installation_repos
@@ -17,8 +18,13 @@ def installed(gh, org, admin):
     GitHubInstallation.objects.create(
         org=org, installation_id=99, account_login="acme", installed_by=admin
     )
-    _identity(admin, "admin-gh")
+    identity = _identity(admin, "admin-gh")
+    # 목록은 이 사람의 GitHub 접근 목록과 교집합이다. 요청 중 재조회로 비지 않게 시각도 채운다.
+    identity.repos = ["teamSANDOL/sandol-api", "teamSANDOL/web"]
+    identity.repos_checked_at = timezone.now()
+    identity.save(update_fields=["repos", "repos_checked_at"])
     org.refresh_from_db()
+    admin.refresh_from_db()
     return org
 
 
@@ -42,11 +48,11 @@ def _fake_repos(monkeypatch, repos):
 # ---------- services.installation_repos ----------
 
 
-def test_no_installation_returns_empty(gh, org):
-    assert installation_repos(org) == []
+def test_no_installation_returns_empty(gh, org, admin):
+    assert installation_repos(org, admin) == []
 
 
-def test_github_error_returns_empty(gh, installed, org, monkeypatch):
+def test_github_error_returns_empty(gh, installed, org, admin, monkeypatch):
     from github.client import GitHubError
 
     monkeypatch.setattr("github.client.installation_token", lambda iid: "tok")
@@ -55,10 +61,10 @@ def test_github_error_returns_empty(gh, installed, org, monkeypatch):
         raise GitHubError(403, "설치 권한 없음")
 
     monkeypatch.setattr("github.client.request", boom)
-    assert installation_repos(org) == []
+    assert installation_repos(org, admin) == []
 
 
-def test_lists_repos_from_installation(gh, installed, org, monkeypatch):
+def test_lists_repos_from_installation(gh, installed, org, admin, monkeypatch):
     _fake_repos(
         monkeypatch,
         [
@@ -74,10 +80,23 @@ def test_lists_repos_from_installation(gh, installed, org, monkeypatch):
             },
         ],
     )
-    repos = installation_repos(org)
+    repos = installation_repos(org, admin)
     assert [r["full_name"] for r in repos] == ["teamSANDOL/sandol-api", "teamSANDOL/web"]
     assert repos[0]["private"] is True
     assert repos[1]["clone_url"] == "https://github.com/teamSANDOL/web.git"
+
+
+def test_lists_only_repos_the_user_can_see(gh, installed, org, admin, member, monkeypatch):
+    """설치 토큰은 설치 범위 전부를 본다. GitHub 권한 없는 저장소 이름은 내보내지 않는다."""
+    _fake_repos(
+        monkeypatch,
+        [
+            {"full_name": "teamSANDOL/sandol-api", "clone_url": "", "private": True},
+            {"full_name": "teamSANDOL/secret", "clone_url": "", "private": True},
+        ],
+    )
+    assert [r["full_name"] for r in installation_repos(org, admin)] == ["teamSANDOL/sandol-api"]
+    assert installation_repos(org, member) == []  # GitHub 미연결 멤버
 
 
 # ---------- 화면 ----------

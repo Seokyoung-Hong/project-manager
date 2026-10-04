@@ -411,11 +411,14 @@ def fake_user_github(monkeypatch):
 
     def fake(method, path, token, *, body=None, **kw):
         calls.append((method, path))
-        if path.startswith("/user/installations?"):  # 설치 소유 확인
-            return {"installations": [{"id": 99}]}
         if path.startswith("/app/installations/"):
             return {
-                "account": {"login": "solo-dev", "type": "User"},
+                # 설치 계정 id = solo-dev 본인(test_writes._identity가 같은 식으로 만든다)
+                "account": {
+                    "login": "solo-dev",
+                    "type": "User",
+                    "id": abs(hash("solo-dev")) % 10**8,
+                },
                 "repository_selection": "selected",
             }
         if "/repositories" in path:  # 설치 목록과 /user/installations/{id}/repositories
@@ -641,39 +644,78 @@ def test_shared_repo_create_branch_and_disconnect(gh, shared, admin, monkeypatch
 # ---------- 설치 소유 확인: Setup URL의 installation_id를 믿지 않는다 ----------
 
 
-def _my_installs(monkeypatch, ids):
+def _install_of(monkeypatch, account, membership=None):
+    """GET /app/installations/{id}는 account를, /user/memberships/orgs/{login}은 membership을
+    돌려준다. membership이 None이면 GitHub처럼 404(그 조직 멤버가 아님)."""
+
     def fake(method, path, token, **kw):
-        if path.startswith("/user/installations?"):
-            return {"installations": [{"id": i} for i in ids]}
-        return {"account": {"login": "acme", "type": "Organization"}, "repository_selection": "all"}
+        if path.startswith("/user/memberships/orgs/"):
+            if membership is None:
+                raise GitHubError(404, "Not Found")
+            return membership
+        return {"account": account, "repository_selection": "all"}
 
     monkeypatch.setattr("github.client.request", fake)
     monkeypatch.setattr("github.client.app_jwt", lambda: "jwt")
 
 
-def test_install_rejects_installation_the_user_cannot_see(gh, org, admin, monkeypatch):
+def test_install_user_account_only_by_its_owner(gh, org, admin, monkeypatch):
+    """읽기 전용 협력자도 /user/installations에는 그 설치가 보인다 — 계정 id로 본인만 받는다."""
     from github.test_writes import _identity
 
-    _identity(admin, "admin-gh")
-    _my_installs(monkeypatch, [1])
+    me = _identity(admin, "collab")
+    _install_of(monkeypatch, {"login": "victim", "type": "User", "id": me.github_id + 1})
     with pytest.raises(ServiceError):
         ghs.save_installation(org, 2, actor=admin)
     assert not GitHubInstallation.objects.exists()
-    assert ghs.save_installation(org, 1, actor=admin).installation_id == 1
+    _install_of(monkeypatch, {"login": "collab", "type": "User", "id": me.github_id})
+    assert ghs.save_installation(org, 2, actor=admin).account_type == "User"
+
+
+@pytest.mark.parametrize(
+    "membership",
+    [None, {"role": "member", "state": "active"}, {"role": "admin", "state": "pending"}],
+)
+def test_install_org_rejects_non_admin(gh, org, admin, monkeypatch, membership):
+    from github.test_writes import _identity
+
+    _identity(admin, "outsider")
+    _install_of(monkeypatch, {"login": "acme", "type": "Organization", "id": 5}, membership)
+    with pytest.raises(ServiceError):
+        ghs.save_installation(org, 2, actor=admin)
+    assert not GitHubInstallation.objects.exists()
+
+
+def test_install_org_accepts_active_admin(gh, org, admin, monkeypatch):
+    from github.test_writes import _identity
+
+    _identity(admin, "owner")
+    _install_of(
+        monkeypatch,
+        {"login": "acme", "type": "Organization", "id": 5},
+        {"role": "admin", "state": "active"},
+    )
+    assert ghs.save_installation(org, 2, actor=admin).account_login == "acme"
 
 
 def test_install_requires_github_identity(gh, org, admin, monkeypatch):
-    _my_installs(monkeypatch, [1])
+    _install_of(monkeypatch, {"login": "acme", "type": "Organization", "id": 5})
     with pytest.raises(ServiceError):
         ghs.save_installation(org, 1, actor=admin)
     assert not GitHubInstallation.objects.exists()
 
 
-def test_installed_callback_ignores_forged_installation_id(gh, client, org, admin, monkeypatch):
+def test_installed_callback_rejects_install_the_user_does_not_own(
+    gh, client, org, admin, monkeypatch
+):
     from github.test_writes import _identity
 
     _identity(admin, "admin-gh")
-    _my_installs(monkeypatch, [1])
+    _install_of(
+        monkeypatch,
+        {"login": "acme", "type": "Organization", "id": 5},
+        {"role": "member", "state": "active"},
+    )
     _login(client)
     session = client.session
     session["gh_state"], session["gh_install_org"] = "st", org.pk

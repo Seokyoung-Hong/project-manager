@@ -11,7 +11,7 @@ pytestmark = pytest.mark.django_db
 def repos(monkeypatch):
     """설치 저장소 목록을 가짜로. GitHub을 부르지 않는다."""
 
-    def fake(org):
+    def fake(org, user):
         return [
             {
                 "full_name": "teamSANDOL/sandol-api",
