@@ -722,10 +722,14 @@ def test_admin_repo_settings_logged(gh, client, conn, admin):
     assert ChangeLog.objects.filter(target_type="project", field="repo.auto_import").exists()
 
 
-def test_oauth_callback_without_state_is_404(gh, client, admin):
+def test_oauth_callback_without_state_rejects_and_explains(gh, client, admin):
     client.force_login(admin)
-    assert client.get("/settings/github/callback?code=x").status_code == 404
-    assert client.get("/settings/github/callback?code=x&state=").status_code == 404
+    for query in ("?code=x", "?code=x&state="):
+        response = client.get("/settings/github/callback" + query)
+        assert response.status_code == 302
+        assert response.url == "/settings/profile"
+        assert not GitHubIdentity.objects.filter(user=admin).exists()
+        assert "oauth" in client.session["integration_problems"]
 
 
 def test_callback_rejects_github_account_of_another_user(gh, client, admin, member, monkeypatch):

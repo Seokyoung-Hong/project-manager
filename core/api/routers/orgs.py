@@ -13,6 +13,8 @@ from orgs.services import (
     create_team,
     delete_team,
     remove_team_member,
+    require_admin,
+    require_ai_enabled,
     revoke_invite,
     set_governance,
 )
@@ -37,6 +39,16 @@ from ..serialize import invite_out, project_out
 from .tasks import list_tasks
 
 router = Router(tags=["orgs"])
+
+
+@router.post("/{org_id}/discord-control-check", response=dict)
+def discord_control_check(request, org_id: int):
+    """사용자 토큰으로 Discord 변경 전 AI 정책을 확인한다. 읽기는 차단하지 않는다."""
+    org = org_or_404(request, org_id)
+    context = ctx(request)
+    require_admin(context["actor"], org)
+    require_ai_enabled(org, context["source"], "Discord 채널 관리")
+    return {"ok": True}
 
 
 @router.get("/{org_id}", response=OrgOut)

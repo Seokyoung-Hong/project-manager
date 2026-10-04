@@ -18,7 +18,7 @@ def test_window_resets_after_60s():
     assert len(seen["111"]) == 1  # 지난 창은 버린다
 
 
-def test_one_guild_sync_failure_does_not_crash_setup_hook(monkeypatch):
+def test_one_guild_sync_failure_does_not_crash_setup_hook(monkeypatch, tmp_path):
     """길드 하나의 tree.sync 거절은 로그만 남기고 다음 길드·제어 서버 기동으로 넘어갑니다."""
     import asyncio
     from types import SimpleNamespace
@@ -35,13 +35,23 @@ def test_one_guild_sync_failure_does_not_crash_setup_hook(monkeypatch):
             raise discord.Forbidden(SimpleNamespace(status=403, reason="Forbidden"), "x")
         synced.append(guild.id)
 
-    async def control(*_):
+    async def control(*_, **kwargs):
         return "runner"
 
     monkeypatch.setattr(app_commands.CommandTree, "sync", sync)
     monkeypatch.setattr(discord.Client, "run", lambda self, *a, **k: holder.setdefault("c", self))
     monkeypatch.setattr(listener, "start_control_server", control)
     core = SimpleNamespace(orgs=lambda: [{"guild_id": "1"}, {"guild_id": "2"}])
-    listener.run(SimpleNamespace(bot_token="t", core_url="http://core", site_name="x"), core)
+    listener.run(
+        SimpleNamespace(
+            bot_token="t",
+            core_url="http://core",
+            site_name="x",
+            members_intent=False,
+            db_path=str(tmp_path / "bot.sqlite"),
+            core_token="bot",
+        ),
+        core,
+    )
     asyncio.run(holder["c"].setup_hook())
     assert synced == [2] and holder["c"].control_runner == "runner"

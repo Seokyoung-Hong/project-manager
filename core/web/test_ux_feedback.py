@@ -154,7 +154,7 @@ def test_issue_sync_reports_complete_partial_and_total_failure(
             created_by=member,
         )
     monkeypatch.setattr(
-        "github.services.sync_org_issues", lambda org: (7 if failed < 2 else 0, failed)
+        "github.services.sync_org_issues", lambda org, **kwargs: (7 if failed < 2 else 0, failed)
     )
     response = signed.post(f"/orgs/{project.org_id}/issues/sync", follow=True)
     body = response.content.decode()

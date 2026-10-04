@@ -35,6 +35,12 @@ class Organization(models.Model):
     )
     discord_channel_id = models.CharField("알림 채널", max_length=32, blank=True)
     discord_linked_at = models.DateTimeField(null=True, blank=True)
+    # 봇이 길드 권한과 감시 시각을 보고한다(IMPL-PLAN-5 B). 권한이 모자라면 웹이 재설치를 안내하고,
+    # 감시 시각이 오래되면 "감시 꺼짐"으로 보인다.
+    discord_bot_permissions = models.BigIntegerField(null=True, blank=True)
+    discord_watch_at = models.DateTimeField(null=True, blank=True)
+    # 포털에서 Server Members 인텐트가 꺼져 봇이 인텐트 없이 다시 접속했다(감시 꺼짐의 원인).
+    discord_intent_denied = models.BooleanField(default=False)
     discord_linked_by = models.ForeignKey(
         settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
     )
@@ -83,6 +89,8 @@ class Team(models.Model):
     purpose = models.CharField("목적", max_length=200, blank=True)
     # 봇이 만든 팀 채널의 snowflake. 비밀이 아니고 core는 저장·표시만 한다(발송은 봇 전담).
     discord_channel_id = models.CharField("Discord 채널", max_length=32, blank=True)
+    # 봇이 허용 집합의 멤버 덮어쓰기를 맞춰 주는 채널인가(IMPL-PLAN-5 B, 사용자 결정 3).
+    discord_channel_managed = models.BooleanField("채널 자동 관리", default=False)
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="+"
     )
@@ -107,6 +115,8 @@ class TeamMembership(models.Model):
         settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="team_memberships"
     )
     joined_at = models.DateTimeField(auto_now_add=True)
+    # 팀장은 승인 없이 팀원에게 태스크를 맡길 수 있다. 팀장이 없는 팀도 있다.
+    is_lead = models.BooleanField("팀장", default=False)
 
     class Meta:
         constraints = [
@@ -186,3 +196,49 @@ class ChangeRequest(models.Model):
     @property
     def path(self) -> str:
         return f"/orgs/{self.org_id}/requests/{self.pk}"
+
+
+class DiscordChannelAlert(models.Model):
+    """채널을 볼 수 있는 권한 밖 인원. 허용하면 allowed로 남아 허용 목록 역할도 한다.
+
+    status: open(경고 중) | allowed(명시적 허용) | gone(경고 중에 사라짐)
+            | missing(허용 집합인데 채널을 못 보는 사람 — 자동 관리가 꺼진 채널의 안내용, 알림 없음)
+    """
+
+    STATUSES = [("open", "경고"), ("allowed", "허용"), ("gone", "사라짐"), ("missing", "접근 없음")]
+
+    org = models.ForeignKey(Organization, on_delete=models.CASCADE, related_name="+")
+    channel_id = models.CharField(max_length=32)
+    discord_user_id = models.CharField(max_length=32)
+    display_name = models.CharField(max_length=100, blank=True)
+    status = models.CharField(max_length=7, choices=STATUSES, default="open")
+    first_seen = models.DateTimeField(auto_now_add=True)
+    resolved_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
+    )
+    resolved_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["channel_id", "discord_user_id"], name="dcalert_channel_user"
+            ),
+        ]
+
+
+class DiscordMemberPermission(models.Model):
+    """봇이 보고한 PM 사용자의 Discord 서버 권한 비트(`member.guild_permissions.value`).
+
+    core는 Discord를 부르지 않으므로 웹의 Discord 관리 동작은 이 보고값으로 사용자의 서버 권한을 판정한다.
+    보고가 15분보다 오래됐으면 쓰지 않는다.
+    """
+
+    org = models.ForeignKey(Organization, on_delete=models.CASCADE, related_name="+")
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="+")
+    permissions = models.BigIntegerField()
+    reported_at = models.DateTimeField()
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["org", "user"], name="dcmemberperm_org_user"),
+        ]

@@ -132,3 +132,27 @@ def test_signup_next_must_stay_on_site(client):
     )
     assert r.status_code == 302
     assert "evil.example" not in r.headers["Location"]
+
+
+@pytest.mark.parametrize("for_ai,source", [(True, "web"), (False, "mcp")])
+def test_discord_control_preflight_blocks_ai_without_blocking_reads(
+    client, org, admin, for_ai, source
+):
+    set_org_settings(org, {"ai.enabled": False}, admin)
+    raw = ApiToken.issue(admin, "control", "write", for_ai=for_ai)[1]
+    headers = {**_h(raw), "X-Source": source}
+    response = client.post(f"/api/orgs/{org.pk}/discord-control-check", headers=headers)
+    assert response.status_code == 400 and "ai" in response.json()["detail"]
+    assert client.get(f"/api/orgs/{org.pk}", headers=headers).status_code == 200
+
+
+def test_discord_control_preflight_requires_admin_and_write_token(client, org, admin, member):
+    admin_raw = ApiToken.issue(admin, "control", "write")[1]
+    response = client.post(f"/api/orgs/{org.pk}/discord-control-check", headers=_h(admin_raw))
+    assert response.status_code == 200 and response.json() == {"ok": True}
+    for user, scope, expected in [(member, "write", 400), (admin, "read", 403)]:
+        raw = ApiToken.issue(user, "control", scope)[1]
+        assert (
+            client.post(f"/api/orgs/{org.pk}/discord-control-check", headers=_h(raw)).status_code
+            == expected
+        )

@@ -34,6 +34,11 @@ CREATE TABLE IF NOT EXISTS seen_status(
   org_id INTEGER NOT NULL, task_id INTEGER NOT NULL, status TEXT NOT NULL, seen_at TEXT NOT NULL,
   PRIMARY KEY(org_id, task_id)
 );
+-- 자동 관리가 채널에 넣은 멤버 덮어쓰기. 여기 있는 것만 봇이 지운다(사람이 넣은 것은 건드리지 않는다).
+CREATE TABLE IF NOT EXISTS grants(
+  channel_id TEXT NOT NULL, discord_user_id TEXT NOT NULL,
+  PRIMARY KEY(channel_id, discord_user_id)
+);
 """
 
 
@@ -199,6 +204,32 @@ class Store:
             c.execute(
                 "INSERT OR REPLACE INTO seen_status(org_id, task_id, status, seen_at) VALUES(?,?,?,?)",
                 (org_id, task_id, status, _now()),
+            )
+
+    # --- 자동 관리가 넣은 멤버 덮어쓰기 ---
+    def grants(self, channel_id: str) -> set[str]:
+        with self._conn() as c:
+            rows = c.execute(
+                "SELECT discord_user_id FROM grants WHERE channel_id=?", (str(channel_id),)
+            )
+            return {r["discord_user_id"] for r in rows}
+
+    def grant_channels(self) -> set[str]:
+        with self._conn() as c:
+            return {r["channel_id"] for r in c.execute("SELECT DISTINCT channel_id FROM grants")}
+
+    def add_grant(self, channel_id: str, discord_user_id: str):
+        with self._conn() as c:
+            c.execute(
+                "INSERT OR IGNORE INTO grants(channel_id, discord_user_id) VALUES(?,?)",
+                (str(channel_id), str(discord_user_id)),
+            )
+
+    def drop_grant(self, channel_id: str, discord_user_id: str):
+        with self._conn() as c:
+            c.execute(
+                "DELETE FROM grants WHERE channel_id=? AND discord_user_id=?",
+                (str(channel_id), str(discord_user_id)),
             )
 
     # --- 실행 기록 ---

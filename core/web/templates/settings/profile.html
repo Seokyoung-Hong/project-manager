@@ -29,6 +29,7 @@
 {% if github_enabled %}
 <div class="card">
   <h2>GitHub 연결</h2>
+  <p><a href="{% url 'integration_help' %}#oauth">연결·저장소 목록 문제 해결 및 질문 복사</a></p>
   {% if user.github %}
   <p class="row">연결됨 · @{{ user.github.login }}
     <form method="post" action="{% url 'github_unlink' %}">{% csrf_token %}<button class="btn sm danger">GitHub 계정 연결 해제</button></form>

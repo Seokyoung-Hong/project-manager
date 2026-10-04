@@ -3,8 +3,10 @@
 {% include "projects/_tabs.html" %}
 <div class="card">
   <h2>저장소</h2>
+  <p class="t13"><a href="{% url 'integration_help' %}#repositories">앱 설치·저장소 접근 문제 해결 및 질문 복사</a></p>
   {% if error %}<p class="error">{{ error }}</p>{% endif %}
   {% if state.state == "none" %}
+  <p class="muted t13">{{ repo_choices_status }}</p>
   <p class="muted t13">아직 연결된 저장소가 없습니다.</p>
   <form method="post" class="row">{% csrf_token %}
     <input class="input" name="url" placeholder="https://github.com/owner/repo.git" style="flex:1 1 260px"
@@ -20,7 +22,9 @@
   <p class="muted t13">GitHub를 연결하면 저장소 정보가 보입니다.</p>
   <a class="btn sm" href="{% url 'profile' %}">GitHub 연결</a>
   {% elif state.state == "denied" %}
-  <p>연결됨(접근 권한 없음)</p>
+  <p>현재 저장된 GitHub 계정의 접근 목록에서 이 저장소를 찾지 못했습니다.</p>
+  <p class="muted t13">권한을 최근에 바꿨다면 프로필에서 접근 가능한 저장소를 다시 확인하세요. 계속 보이지 않으면 GitHub 저장소 관리자에게 계정의 접근 권한을 문의하세요.</p>
+  <a class="btn sm" href="{% url 'profile' %}">GitHub 연결·접근 목록 확인</a>
   {% else %}
   <p class="row">연결됨 · <a href="https://github.com/{{ state.conn.full_name }}" target="_blank" rel="noopener">{{ state.conn.full_name }}</a>
     <span class="badge">{% if state.conn.last_event_at %}{{ state.conn.last_event_at|date:"Y-m-d H:i" }} 마지막 이벤트{% else %}이벤트 없음{% endif %}</span>
@@ -37,12 +41,30 @@
     {% for t in repo_teams %}<tr><td>{{ t.name }}</td><td>{{ t.permission }}</td></tr>{% endfor %}
     </tbody>
   </table>
+  {% elif repo_teams == None %}
+  <p class="notice bad t13"><span aria-hidden="true">⚠</span> <span class="grow">접근 팀을 조회하지 못했습니다 · {{ repo_teams_status }}. 아래 해결 절차에서 확인할 항목을 볼 수 있습니다.</span></p>
   {% else %}
-  <p class="notice bad t13"><span aria-hidden="true">⚠</span> <span class="grow">접근 팀 정보를 읽을 수 없습니다. GitHub 앱에 팀 읽기 권한이 없거나 조직 설정이 막고 있습니다.</span></p>
+  <p class="muted t13">조회에 성공했지만 앱에 보이는 접근 팀이 없습니다. 개인 계정의 접근 권한이나 조직의 모든 팀을 뜻하는 목록은 아닙니다.</p>
   {% endif %}
-  <div class="row"><a class="btn sm" target="_blank" rel="noopener" href="https://github.com/{{ state.conn.full_name }}/settings/access">GitHub에서 변경</a></div>
+  <details class="mt8">
+    <summary>접근 팀 조회 해결 절차 보기</summary>
+    <p class="t13">이 조회에는 GitHub 앱의 저장소 <b>Administration: Read-only</b> 권한이 필요합니다. 조직 Members 읽기 권한과는 다릅니다. ProjectManager의 기존 앱 설정 가이드는 Administration 권한을 요청하지 않으므로, 이 설정을 따랐다면 조회가 제한될 수 있습니다.</p>
+    <ol class="t13">
+      <li>앱 관리자에게 앱 설치 여부, 대상 저장소 선택 범위, 현재 권한과 설치의 변경 승인 상태를 확인해 달라고 요청하세요.</li>
+      <li>권한을 유지하려면 GitHub 저장소의 접근 관리 화면에서 팀을 확인하세요. 해당 화면은 저장소 관리자 권한이 필요할 수 있습니다.</li>
+      <li>웹에서 팀 목록이 필요하다면 앱 관리자가 Administration 읽기 권한 추가를 검토하고, 설치 관리자가 변경을 승인한 뒤 다시 조회하세요. 쓰기 권한은 이 조회에 필요하지 않습니다.</li>
+      <li>HTTP 401·403·404는 권한·인증·저장소 범위 등 여러 원인이 있을 수 있습니다. 네트워크 오류는 운영자에게 연결 상태 확인을 요청하세요.</li>
+    </ol>
+    <a target="_blank" rel="noopener" href="https://docs.github.com/en/rest/repos/repos#list-repository-teams">GitHub 공식 API 권한 설명</a>
+    · <a target="_blank" rel="noopener" href="https://docs.github.com/en/apps/maintaining-github-apps/modifying-a-github-app-registration#changing-the-permissions-of-a-github-app">앱 권한 변경·승인 절차</a>
+    <p class="muted t13">질문에는 저장소명과 조회 상태만 포함됩니다. 공유 전 저장소명 공개 범위를 확인하세요.</p>
+    <textarea id="repo-teams-prompt" class="input" rows="5" readonly aria-label="접근 팀 조회 질문 프롬프트">{{ repo_teams_prompt }}</textarea>
+    <button type="button" class="btn sm" data-copy-text="{{ repo_teams_prompt }}">질문 프롬프트 복사</button>
+  </details>
+  <div class="row"><a class="btn sm" target="_blank" rel="noopener" href="https://github.com/{{ state.conn.full_name }}/settings/access">GitHub에서 접근 권한 확인</a></div>
 
   <h3 class="t15">이슈 가져오기</h3>
+  <p class="t13"><a href="{% url 'integration_help' %}#issues">이슈 동기화 문제 해결 및 질문 복사</a></p>
   {% if can_settings %}
   <form method="post" action="{% url 'repo_settings' project.pk %}" class="stack">{% csrf_token %}
     <div class="row">

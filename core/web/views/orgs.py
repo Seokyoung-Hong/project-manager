@@ -19,6 +19,7 @@ from reports.services import org_status
 
 from ..forms import InviteForm, OrgForm
 from .common import apply_service_error, can_admin, current_org, not_admin, org_or_404
+from .github_retries import attempt
 
 
 @login_required
@@ -97,12 +98,30 @@ def org_detail(request, org_id):
     )
 
 
+def _member_teams(request, org):
+    """팀원이 보는 팀 목록. 관리 기능 없이 누가 어느 팀이고 누가 팀장인지만 보여 준다."""
+    mine = set(request.user.team_memberships.values_list("team_id", flat=True))
+    rows = [
+        {
+            "team": t,
+            "mine": t.pk in mine,
+            "member_count": t.members.count(),
+            "leads": [m.user for m in t.memberships.filter(is_lead=True).select_related("user")],
+        }
+        for t in org.teams.all()
+    ]
+    rows.sort(key=lambda r: (not r["mine"], r["team"].name))
+    return render(
+        request, "orgs/teams_member.html", {"org": org, "team_rows": rows, "tab": "teams"}
+    )
+
+
 @login_required
 def org_teams(request, org_id):
     """조직 → 팀. 멤버·태그·초대·팀을 한 화면에서 관리한다."""
     org = org_or_404(request.user, org_id)
-    if denied := not_admin(request, org, "팀·멤버 관리"):
-        return denied
+    if not can_admin(request.user, org):
+        return _member_teams(request, org)
     load = {r["assignee_id"]: r for r in org_status(org)["by_assignee"]}
     memberships = list(org.memberships.select_related("user").order_by("user__display_name"))
     # 마지막 관리자는 services.remove_member가 거부한다 — 버튼도 그 규칙을 그대로 보여 준다
@@ -179,9 +198,22 @@ def invite_create(request, org_id):
     if settings.GITHUB_ENABLED and form.is_valid() and form.cleaned_data["gh_invite"]:
         login = form.cleaned_data["gh_login"].strip()
         if login:
-            warn = gh_writes.try_write(gh_writes.invite_to_org, org, login, actor=request.user)
+            warn = attempt(
+                request,
+                gh_writes.invite_to_org,
+                org,
+                login,
+                actor=request.user,
+                retry={
+                    "kind": "invite",
+                    "org_id": org.pk,
+                    "invite_id": invite.pk,
+                    "login": login,
+                    "target": f"{org.name} · @{login}",
+                },
+            )
             if warn:
-                messages.warning(request, warn)
+                messages.warning(request, warn, extra_tags="integration-help")
             else:
                 messages.success(request, f"GitHub 조직에도 @{login}님을 초대했습니다.")
     return _member_redirect(request, org.pk)
@@ -228,9 +260,22 @@ def member_remove(request, membership_id):
     if settings.GITHUB_ENABLED and getattr(org, "github", None) is not None:
         login = gh_writes._login_of(user)
         if login:
-            warn = gh_writes.try_write(gh_writes.remove_from_org, org, login, actor=request.user)
+            warn = attempt(
+                request,
+                gh_writes.remove_from_org,
+                org,
+                login,
+                actor=request.user,
+                retry={
+                    "kind": "remove",
+                    "org_id": org.pk,
+                    "user_id": user.pk,
+                    "login": login,
+                    "target": f"{org.name} · @{login}",
+                },
+            )
             if warn:
-                messages.warning(request, warn)
+                messages.warning(request, warn, extra_tags="integration-help")
     return _member_redirect(request, org_id)
 
 

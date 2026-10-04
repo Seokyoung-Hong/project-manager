@@ -160,6 +160,103 @@ class CoreClient:
             {"discord_user_id": did, "channel_id": channel_id},
         )
 
+    # --- 채널 관리(IMPL-PLAN-5 B). core는 Discord로 나가지 않고 봇이 올린 값만 비교한다 ---
+
+    def channel_targets(self) -> list[dict]:
+        """감시·조정 대상 전부(연결 안 된 팀·프로젝트 포함). `allowed_ids`는 권한 밖 비교용,
+        `grant_ids`는 자동 관리가 덮어쓰기를 넣을 계정이다."""
+        r = self.http.get("/api/integrations/discord/channels")
+        r.raise_for_status()
+        return r.json()
+
+    def channel_check(
+        self,
+        did: str,
+        kind: str,
+        target_id: int,
+        channel_id: str,
+        viewers: list[dict] | None,
+        allow_outsiders: bool = False,
+        managed: bool | None = None,
+        created: bool = False,
+        guild_id: str = "",
+    ) -> dict:
+        """채널 연결의 유일한 문. `viewers=None`은 보는 사람을 알 수 없다는 뜻(확인 불가).
+        `{"linked": bool, "unknown": bool, "outsiders": [{"id","name"}]}`."""
+        return self._bot(
+            "/channel-check",
+            {
+                "discord_user_id": did,
+                "kind": kind,
+                "target_id": target_id,
+                "channel_id": channel_id,
+                "viewers": viewers,
+                "allow_outsiders": allow_outsiders,
+                "managed": managed,
+                "created": created,
+                "guild_id": guild_id,
+            },
+        )
+
+    def channel_alerts(self, guild_id: str, channels: list[dict]) -> dict:
+        return self._bot("/channel-alerts", {"guild_id": guild_id, "channels": channels})
+
+    def guild_report(
+        self, guild_id: str, permissions: int | None, watching: bool, intent_denied: bool = False
+    ) -> dict:
+        return self._bot(
+            "/guild-report",
+            {
+                "guild_id": guild_id,
+                "permissions": permissions,
+                "watching": watching,
+                "intent_denied": intent_denied,
+            },
+        )
+
+    def member_permissions(self, guild_id: str, members: list[dict]) -> dict:
+        """Discord를 연결한 PM 사용자들의 서버 권한 비트(`{"discord_user_id", "permissions"}`).
+        core가 웹의 Discord 관리 동작을 판정하는 근거다(15분이 지나면 못 쓴다)."""
+        return self._bot("/member-permissions", {"guild_id": guild_id, "members": members})
+
+    # --- 요청(팀·사람에게 보내는 일). 행위자는 연결된 사람 ---
+
+    def create_request(self, did: str, fields: dict) -> dict:
+        return self._bot("/requests", {"discord_user_id": did, **fields})["request"]
+
+    def my_requests(self, did: str) -> dict:
+        """`{"received": [...], "sent": [...]}`. received = 내가 답할 대기 + 내가 끝낼 수락한 일반 요청."""
+        return self._bot("/requests/mine", {"discord_user_id": did})
+
+    def received_requests(self, did: str) -> list[dict]:
+        return self.my_requests(did)["received"]
+
+    def request_projects(self, did: str, request_id: int) -> list[dict]:
+        return self._bot(f"/requests/{request_id}/projects", {"discord_user_id": did})
+
+    def accept_request(self, did: str, request_id: int, fields: dict) -> dict:
+        return self._bot(f"/requests/{request_id}/accept", {"discord_user_id": did, **fields})
+
+    def decline_request(self, did: str, request_id: int, note: str) -> dict:
+        return self._bot(f"/requests/{request_id}/decline", {"discord_user_id": did, "note": note})[
+            "request"
+        ]
+
+    def done_request(self, did: str, request_id: int, note: str) -> dict:
+        return self._bot(f"/requests/{request_id}/done", {"discord_user_id": did, "note": note})[
+            "request"
+        ]
+
+    # --- 알림 발송함. 행위자 없이 봇 토큰으로 ---
+
+    def notices(self) -> list[dict]:
+        r = self.http.get("/api/integrations/discord/notices")
+        r.raise_for_status()
+        return r.json()
+
+    def ack_notices(self, ids: list[int]) -> dict:
+        return self._bot("/notices/ack", {"ids": ids})
+
     def report_status(self, ok: bool, detail: dict):
         try:
             self.http.post("/api/integrations/discord/status", json={"ok": ok, "detail": detail})

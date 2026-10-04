@@ -121,8 +121,8 @@ def test_team_member_add_syncs_linked_user(installed, admin, member, team, as_ad
     team.members.remove(member)
     r = as_admin.post(f"/teams/{team.pk}/members", {"user": member.pk})
     assert r.status_code == 302
-    assert calls and calls[0]["method"] == "PUT"
-    assert calls[0]["path"].endswith("/teams/backend/memberships/member-gh")
+    assert [call["method"] for call in calls] == ["GET", "PUT"]
+    assert calls[-1]["path"].endswith("/teams/backend/memberships/member-gh")
 
 
 # ---------- 연결 해제·팀 삭제는 GitHub 팀을 남긴다 ----------

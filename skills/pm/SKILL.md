@@ -86,6 +86,7 @@ PM apidoc 12 put openapi.json                         # 프로젝트 API 문서 
 | 결정 기록 | `GET /api/tasks/{id}/decisions` |
 | PR 맥락 | `GET /api/tasks/{id}/pr-context` |
 | 오늘 할 일 | `GET /api/today` |
+| 요청 | `GET /api/requests` (`box`=received·sent·all, 기본 received · `status`=쉼표 목록 · `org`) · `GET /api/requests/{id}` (`can_answer` `can_cancel` `can_complete`) |
 | 주간 보고 데이터 | `GET /api/reports/weekly?org=` (`week_start` 선택) |
 | 프로젝트 문서 | `GET /api/project-docs?project=` (`org` `q`) · `GET /api/project-docs/{id}` |
 | 프로젝트 API 문서 | `PM apidoc {id}`(목록) · `PM apidoc {id} <경로 일부>`(스키마) |
@@ -105,6 +106,8 @@ PM apidoc 12 put openapi.json                         # 프로젝트 API 문서 
 | GitHub 이슈 만들고 잇기 | `POST /api/tasks/{id}/github/issue` (본문 없음) |
 | 이슈를 태스크로 | `POST /api/projects/{id}/issues/{number}/import` |
 | 결정 기록 남기기·바꾸기 | `POST /api/tasks/{id}/decisions` · 바뀐 결정은 `POST …/decisions/{rid}/supersede` (본문은 새 기록과 같다) |
+| ✋ 요청 보내기·취소 | `POST /api/requests` `{"org_id", "title", "kind"=work·general, "body", "team_id"또는"to_user_id"}` (`--key` 가능) · 취소 `POST /api/requests/{id}/cancel` — 조직 설정 `ai.create_request` |
+| ✋ 요청 수락·거절·완료 | `POST /api/requests/{id}/accept` `{"project_id"?, "assignee_id"?, "due_date"?, "note"}` · `/decline` `{"note"}` · `/done` `{"note"}` — **기본적으로 AI에게 막혀 있다(조직 설정 `ai.answer_request`).** 막히면 우회하지 말고 사람이 웹이나 Discord에서 답하게 안내한다. 풀려 있어도 사용자에게 확인받은 뒤에만 부른다 |
 | 오늘 할 일에 넣기·빼기 | `POST /api/today` `{"task_id"}` · `DELETE /api/today/{task_id}` · 뺀 것 모두 되돌리기 `DELETE /api/today/excluded` |
 | 오늘 할 일 순서 | `PATCH /api/today/order` `{"task_ids": [...]}` (보이는 순서 전체) |
 | 오늘 할 일 자동 채움 | `PATCH /api/today/settings` `{"auto_pull_days"}` (기한이 이 일수 안에 든 태스크를 자동으로 담는다. 0·1·3·5·7·14, 0은 끄기) |

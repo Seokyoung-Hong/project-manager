@@ -1,0 +1,21 @@
+{% extends "base.html" %}{% block title %}팀 · {{ org.name }}{% endblock %}
+{% block main %}
+{% include "orgs/_tabs.html" %}
+<section class="card">
+  <h2>팀</h2>
+  <table class="grid">
+    <thead><tr><th>팀</th><th>팀장</th><th>인원</th><th></th></tr></thead>
+    <tbody>
+    {% for r in team_rows %}
+    <tr>
+      <td><a href="{% url 'team_detail' r.team.pk %}">{{ r.team.name }}</a>{% if r.mine %} <span class="badge">내 팀</span>{% endif %}
+        {% if r.team.purpose %}<div class="muted t13">{{ r.team.purpose }}</div>{% endif %}</td>
+      <td>{% for u in r.leads %}{{ u.display_name }}{% if not forloop.last %}, {% endif %}{% empty %}<span class="muted">없음</span>{% endfor %}</td>
+      <td>{{ r.member_count }}명</td>
+      <td>{% if not r.mine %}<a class="btn sm" href="{% url 'request_new' %}?org={{ org.pk }}&amp;target=team&amp;team={{ r.team.pk }}">요청 보내기</a>{% endif %}</td>
+    </tr>
+    {% empty %}<tr><td colspan="4" class="muted">아직 팀이 없습니다.</td></tr>{% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endblock %}

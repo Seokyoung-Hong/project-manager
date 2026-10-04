@@ -61,11 +61,13 @@ services:
     environment:
       CORE_URL: http://web:8000
       DISCORD_CONTROL_PORT: "8081"
+      DB_PATH: /data/bot.sqlite      # 채널 자동 관리가 넣은 덮어쓰기 기록. 발송 프로세스의 파일과 따로 쓴다
     command: ["python", "-m", "discord_service", "bot"]
+    volumes:
+      - discord_bot_data:/data
     depends_on:
       web:
         condition: service_healthy
-    # 볼륨 없음: 리스너는 SQLite를 열지 않는다(발송 프로세스가 단일 writer로 남는다).
     expose:
       - "8081"                    # MCP 내부 채널 관리 브리지. 호스트 포트로 공개하지 않는다.
     restart: unless-stopped
@@ -102,3 +104,4 @@ services:
 volumes:
   pgdata:
   discord_data:
+  discord_bot_data:

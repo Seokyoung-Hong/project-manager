@@ -53,7 +53,8 @@ def try_write(fn, *args, **kwargs) -> str:
         fn(*args, **kwargs)
         return ""
     except GitHubError as e:
-        return f"GitHub에 반영하지 못했습니다 ({e.status}: {e.message}). PM에만 적용됐습니다."
+        status = f"HTTP {e.status}" if e.status else "네트워크 연결 실패"
+        return f"GitHub에 반영하지 못했습니다 ({status}). PM에만 적용됐습니다. PM 작업을 반복하지 말고 연동 문제 해결에서 복구 방법을 확인하세요."
     except ServiceError as e:
         return " ".join(str(v) for v in e.errors.values()) + " PM에만 적용됐습니다."
 
@@ -88,23 +89,36 @@ def create_gh_team(team, *, actor) -> dict:
 
 
 def rename_gh_team(link, team, *, actor):
-    client.request(
+    data = client.request(
         "PATCH",
         f"/orgs/{_org_login(team.org)}/teams/{link.slug}",
         _actor_token(actor),
         body={"name": team.name, "description": team.purpose},
     )
+    if data and data.get("slug"):
+        link.slug = data["slug"]
+        link.name = data.get("name", team.name)
+        link.save(update_fields=["slug", "name"])
 
 
 def set_gh_team_member(link, org, login: str, *, actor, add: bool):
     path = f"/orgs/{_org_login(org)}/teams/{link.slug}/memberships/{login}"
+    token = _actor_token(actor)
     if add:
-        client.request("PUT", path, _actor_token(actor), body={"role": "member"})
+        try:
+            membership = client.request("GET", path, token)
+        except GitHubError as error:
+            if error.status != 404:
+                raise
+        else:
+            if membership and membership.get("state") in ("active", "pending"):
+                return
+        client.request("PUT", path, token, body={"role": "member"})
     else:
-        client.request("DELETE", path, _actor_token(actor))
+        client.request("DELETE", path, token)
 
 
-def reconcile_team(team, *, actor) -> tuple[int, list[str]]:
+def reconcile_team(team, *, actor, on_result=None) -> tuple[int, list[str]]:
     """PM 팀 멤버를 GitHub 팀에 맞춘다. 뺄 사람은 건드리지 않는다."""
     link = getattr(team, "github", None)
     if link is None:
@@ -116,6 +130,8 @@ def reconcile_team(team, *, actor) -> tuple[int, list[str]]:
             warns.append(f"{user.display_name}: GitHub 미연결")
             continue
         w = try_write(set_gh_team_member, link, team.org, login, actor=actor, add=True)
+        if on_result is not None:
+            on_result(user, login, w)
         if w:
             warns.append(f"{user.display_name}: {w}")
         else:

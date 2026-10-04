@@ -54,7 +54,7 @@ class FakeInteraction:
 def _tree(fake: FakeCore, seen=None):
     client = discord.Client(intents=discord.Intents.none())
     tree = app_commands.CommandTree(client)
-    cfg = SimpleNamespace(site_name="산돌이 업무", guild_id="1")
+    cfg = SimpleNamespace(site_name="산돌이 업무", guild_id="1", members_intent=False)
     slash.register(tree, GUILD, cfg, make_core(fake), {} if seen is None else seen)
     return tree
 
@@ -94,10 +94,16 @@ def test_all_commands_are_guild_scoped_with_the_shared_vocabulary():
         "팀채널",
         "프로젝트채널",
         "알림채널",
+        "요청",
+        "요청수락",
+        "요청거절",
+        "요청완료",
+        "요청목록",
     }
     assert tree.get_commands(guild=None) == []
     vocab = {"번호", "프로젝트", "팀", "담당자", "기한", "기한미정사유", "중요도", "상태", "사유"}
-    vocab |= {"내용", "제목", "다음행동", "코드", "기존카테고리", "새카테고리만들기", "기존채널"}
+    vocab |= {"내용", "제목", "다음행동", "카테고리", "코드", "종류", "대상", "메모"}
+    vocab |= {"기존카테고리", "새카테고리만들기", "기존채널", "권한밖허용", "자동관리"}
     for c in tree.get_commands(guild=GUILD):
         for p in c.parameters:
             assert p.display_name in vocab, (c.name, p.display_name)

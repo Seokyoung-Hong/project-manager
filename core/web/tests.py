@@ -190,7 +190,9 @@ def test_panel_edits_project_and_assignee_inline(logged, task, admin, org):
     )
     assert r.status_code == 200
     task.refresh_from_db()
-    assert task.assignee == admin
+    # 팀원이 남에게 넘기면 받는 사람이 수락할 때까지 담당자는 그대로다.
+    assert task.assignee != admin
+    assert task.requests.get(kind="assign").to_user == admin
 
 
 def test_panel_meta_rejects_outside_org(logged, task, outsider):
@@ -341,8 +343,12 @@ def test_token_purpose_is_chosen_at_issue(logged, member):
     from accounts.models import ApiToken
 
     logged.post("/settings/tokens", {"name": "ai", "scope": "write", "purpose": "ai"})
-    logged.post("/settings/tokens", {"name": "사람", "scope": "write", "purpose": "person"})
-    logged.post("/settings/tokens", {"name": "봇", "scope": "bot", "purpose": "person"})
+    # 사람용은 "AI에 넣지 않겠다"는 확인 없이는 발급되지 않는다.
+    r = logged.post("/settings/tokens", {"name": "확인없음", "scope": "write", "purpose": "person"})
+    assert "확인이 필요합니다" in r.content.decode()
+    ack = {"person_ack": "on"}
+    logged.post("/settings/tokens", {"name": "사람", "scope": "write", "purpose": "person", **ack})
+    logged.post("/settings/tokens", {"name": "봇", "scope": "bot", "purpose": "person", **ack})
     assert dict(member.tokens.values_list("name", "for_ai")) == {"ai": True, "사람": False}
     assert not ApiToken.issue(member, "봇", "bot")[0].for_ai  # 봇 토큰은 사람 명령을 옮긴다
 
@@ -517,7 +523,7 @@ def test_admin_pages_explain_to_members(logged, org):
     예전에는 404였다. 멤버는 팀이 있다는 걸 이미 아는 사람이라 숨길 것이 없고,
     "없는 페이지"로 읽히면 권한 문제인지 알 수 없었다. 존재를 숨기는 404는 조직 밖 사람 몫이다.
     """
-    r = logged.get(f"/orgs/{org.pk}/teams")
+    r = logged.get(f"/orgs/{org.pk}/teams/new")
     assert r.status_code == 302 and r.url == f"/orgs/{org.pk}"
     page = logged.get(r.url)
     assert page.status_code == 200 and "조직 관리자만 접근할 수 있습니다" in page.content.decode()
@@ -626,12 +632,13 @@ def test_rail_close_handle_hides_list_completely(logged, project):
 
 def test_org_tabs_hidden_for_member(logged, org):
     body = logged.get(f"/orgs/{org.pk}").content.decode()
-    assert f"/orgs/{org.pk}/teams" not in body
+    assert f"/orgs/{org.pk}/settings" not in body
+    assert f"/orgs/{org.pk}/teams" in body  # 팀 탭은 팀원에게도 읽기 전용으로 보인다
 
 
 def test_org_teams_denial_is_htmx_aware(logged, org):
     """탭을 HTMX로 열다 거절되면 조각 대신 HX-Redirect로 조직 현황에 착지한다."""
-    r = logged.get(f"/orgs/{org.pk}/teams", headers={"HX-Request": "true"})
+    r = logged.get(f"/orgs/{org.pk}/teams/new", headers={"HX-Request": "true"})
     assert r.status_code == 204 and r.headers["HX-Redirect"] == f"/orgs/{org.pk}"
 
 

@@ -77,6 +77,10 @@ def link_guild(org, guild_id: str, actor, source: str = "web") -> Organization:
 @transaction.atomic
 def unlink_guild(org, actor, source: str = "web") -> Organization:
     require_admin(actor, org)
+    if source == "web":  # core는 Discord를 부르지 않는다. 봇이 보고한 서버 권한으로 판정한다
+        from .channels import require_discord
+
+        require_discord(actor, org, "unlink_guild")
     old = org.discord_guild_id
     org.discord_guild_id = None
     org.discord_channel_id = ""

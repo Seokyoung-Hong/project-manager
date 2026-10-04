@@ -57,8 +57,11 @@ def test_channel_services_require_admin_and_clear_on_empty(team, project, admin,
         set_team_channel(team, "123", member)
     with pytest.raises(ServiceError):
         set_project_channel(project, "123", member)
-    assert set_team_channel(team, " 123 ", admin).discord_channel_id == "123"
-    assert set_project_channel(project, "456", admin).discord_channel_id == "456"
+    # 새 채널은 권한 밖 확인(orgs.channels.connect)을 거쳐야 한다 — 직접 적으면 거절한다
+    with pytest.raises(ServiceError):
+        set_team_channel(team, "123", admin)
+    assert set_team_channel(team, " 123 ", admin, checked=True).discord_channel_id == "123"
+    assert set_project_channel(project, "456", admin, checked=True).discord_channel_id == "456"
     assert set_team_channel(team, "", admin).discord_channel_id == ""
     assert set_project_channel(project, "", admin).discord_channel_id == ""
 
@@ -130,7 +133,9 @@ def test_update_task_changes_only_what_was_sent(post, task, admin):
     r = post(f"/tasks/{task.pk}/update", {"priority": 8, "assignee_id": admin.pk, "제목": "무시"})
     assert r.status_code == 200
     t = r.json()["task"]
-    assert (t["priority"], t["assignee"]["id"], t["title"]) == (8, admin.pk, task.title)
+    # 팀원이 남에게 넘기면 바로 바뀌지 않고 받는 사람의 수락을 기다린다.
+    assert (t["priority"], t["assignee"]["id"], t["title"]) == (8, task.assignee_id, task.title)
+    assert t["pending_assignee"]["id"] == admin.pk
     assert t["version"] == 2
     r = post(f"/tasks/{task.pk}/update", {"title": "새 제목", "next_action": "다음"})
     assert (r.json()["task"]["title"], r.json()["task"]["version"]) == ("새 제목", 2)
@@ -174,10 +179,25 @@ def test_channel_save_is_admin_only(post, team, project, org, member, admin):
     assert (team.discord_channel_id, project.discord_channel_id) == ("", "")
 
     OrgMembership.objects.filter(org=org, user=member).update(role="admin")
+    org.discord_guild_id = "9001"
+    org.save(update_fields=["discord_guild_id"])
+    # 관리자여도 이 경로로는 새 채널을 못 적는다(권한 밖 확인 우회 방지). 같은 값 쓰기·해제만 된다
+    r = post(f"/teams/{team.pk}/channel", {"channel_id": "5551"})
+    assert r.status_code == 400
+    assert post(f"/teams/{team.pk}/channel", {}).json()["discord_channel_id"] == ""
+    r = post(
+        "/channel-check",
+        {
+            "kind": "team",
+            "guild_id": "9001",
+            "target_id": team.pk,
+            "channel_id": "5551",
+            "created": True,
+        },
+    )
+    assert r.json()["linked"] is True
     r = post(f"/teams/{team.pk}/channel", {"channel_id": "5551"})
     assert r.json() == {"id": team.pk, "name": "백엔드", "discord_channel_id": "5551"}
-    r = post(f"/projects/{project.pk}/channel", {"channel_id": "5552"})
-    assert r.json()["discord_channel_id"] == "5552"
     # 빈 문자열은 연결 해제
     assert post(f"/projects/{project.pk}/channel", {}).json()["discord_channel_id"] == ""
 
@@ -196,3 +216,51 @@ def test_slash_endpoints_need_the_bot_scope(client, task, team, write_token):
     for path in ("/projects", "/mytasks", f"/tasks/{task.pk}/note", f"/teams/{team.pk}/channel"):
         r = client.post(f"{DC}{path}", data=BODY, content_type="application/json", headers=h)
         assert r.status_code == 403
+
+
+# ---------- 요청 ----------
+
+
+def test_request_in_team_channel_goes_to_that_team(post, client, bot_token, team, admin, project):
+    team.discord_channel_id = "555"
+    team.save()
+    # member(111)가 자기 팀 채널에서 /요청. 받는 쪽도 그 팀이다.
+    r = post("/requests", {"title": "결제 오류 확인", "channel_id": "555"})
+    assert r.status_code == 200
+    req = r.json()["request"]
+    assert (req["team"]["id"], req["status"], req["kind"]) == (team.pk, "pending", "work")
+
+    r = post(f"/requests/{req['id']}/projects")
+    assert [p["id"] for p in r.json()] == [project.pk]
+    r = post(f"/requests/{req['id']}/accept")
+    assert r.status_code == 400  # 프로젝트 필수
+    r = post(f"/requests/{req['id']}/accept", {"project_id": project.pk})
+    assert r.status_code == 200
+    assert r.json()["task"]["assignee"]["id"] == r.json()["request"]["requested_by"]["id"]
+
+
+def test_request_without_team_channel_is_400(post, member):
+    assert post("/requests", {"title": "x", "channel_id": "nope"}).status_code == 400
+
+
+def test_request_to_person_and_notices(post, client, bot_token, admin, member, org):
+    admin.discord_user_id, admin.discord_linked_at = "999", member.discord_linked_at
+    admin.save()
+    r = post("/requests", {"title": "리뷰", "kind": "general", "to_user_id": admin.pk})
+    rid = r.json()["request"]["id"]
+    h = {"Authorization": f"Bearer {bot_token}"}
+    notes = client.get(f"{DC}/notices", headers=h).json()
+    assert [n["discord_user_id"] for n in notes] == ["999"]
+    r = client.post(
+        f"{DC}/notices/ack", {"ids": [notes[0]["id"]]}, content_type="application/json", headers=h
+    )
+    assert r.json() == {"acked": 1}
+    assert client.get(f"{DC}/notices", headers=h).json() == []
+
+    # admin이 수락하고 완료한다. member는 받는 사람이 아니라 답하지 못한다.
+    assert post(f"/requests/{rid}/accept").status_code == 400
+    admin_post = {"discord_user_id": "999"}
+    assert post(f"/requests/{rid}/accept", admin_post).status_code == 200
+    mine = post("/requests/mine", admin_post).json()
+    assert [x["id"] for x in mine["received"]] == [rid]
+    assert post(f"/requests/{rid}/done", admin_post).json()["request"]["status"] == "done"
