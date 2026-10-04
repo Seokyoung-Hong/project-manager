@@ -32,8 +32,9 @@ def _fake_repos(monkeypatch, repos):
     monkeypatch.setattr("github.client.installation_token", lambda iid: "tok")
     monkeypatch.setattr(
         "github.client.request",
-        # 저장소 목록만 감싼 응답이다. 연결 직후의 이슈 조회(/issues)에는 빈 목록을 준다.
-        lambda method, path, token, **kw: [] if "/issues" in path else {"repositories": repos},
+        lambda method, path, token, **kw: (
+            {"repositories": repos} if path.startswith("/installation/repositories") else []
+        ),
     )
 
 

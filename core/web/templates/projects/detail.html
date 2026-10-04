@@ -20,7 +20,7 @@
     </div>
   </div>
   {% include "projects/_task_form.html" %}
-  <div class="tiles five project-kpis" tabindex="0" role="region" aria-label="프로젝트 태스크 요약, 좌우로 스크롤 가능">
+  <div class="tiles five project-kpis" tabindex="0" role="region" aria-label="프로젝트 태스크 요약">
     <div class="tile"><b>{{ stats.done }}/{{ stats.total }}</b><span>완료</span></div>
     <div class="tile"><b>{{ stats.open }}</b><span>미완료</span></div>
     <div class="tile"><b{% if stats.overdue %} class="danger"{% endif %}>{{ stats.overdue }}</b><span>기한 초과</span></div>
@@ -49,11 +49,12 @@
 <section class="card">
   <h2>참고 링크</h2>
   <ul class="links">{% for l in links %}<li class="row"><span class="badge">{{ l.get_kind_display }}</span><a href="{{ l.url }}" target="_blank" rel="noopener">{{ l.title }}</a><form method="post" action="{% url 'link_delete' l.pk %}">{% csrf_token %}<button class="btn link danger">삭제</button></form></li>{% empty %}<li class="muted t13">링크 없음</li>{% endfor %}</ul>
-  <button type="button" class="btn sm" data-action="toggle" data-target="#link-form" data-alt="취소">＋ 링크 추가</button>
-  <form id="link-form" hidden method="post" action="{% url 'project_link_add' project.pk %}" class="row">{% csrf_token %}
-    <select name="kind" class="select auto">{% for code, label in link_form.fields.kind.choices %}<option value="{{ code }}">{{ label }}</option>{% endfor %}</select>
-    <input class="input" name="title" placeholder="제목" style="flex:1" required><input class="input" name="url" type="url" placeholder="https://" style="flex:2" required>
-    <button class="btn sm">추가</button>
+  <button type="button" class="btn sm" data-action="toggle" data-target="#link-form" data-alt="입력 닫기">＋ 링크 추가</button>
+  <form id="link-form"{% if not link_open %} hidden{% endif %} method="post" action="{% url 'project_link_add' project.pk %}" class="row">{% csrf_token %}
+    <select name="kind" class="select auto" aria-label="링크 종류">{% for code, label in link_form.fields.kind.choices %}<option value="{{ code }}"{% if link_form.kind.value == code %} selected{% endif %}>{{ label }}</option>{% endfor %}</select>
+    <label class="field" style="flex:1">제목<input class="input" name="title" value="{{ link_form.title.value|default:'' }}" required>{{ link_form.title.errors }}</label><label class="field" style="flex:2">URL<input class="input" name="url" type="url" value="{{ link_form.url.value|default:'' }}" placeholder="https://" required>{{ link_form.url.errors }}</label>
+    {{ link_form.kind.errors }}{{ link_form.non_field_errors }}
+    <button class="btn sm">링크 추가</button>
   </form>
 </section>
 {% endblock %}

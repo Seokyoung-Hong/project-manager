@@ -3,12 +3,13 @@
   {{ form.idem }}
   <input class="input lg" name="title" value="{{ form.title.value|default:'' }}" placeholder="무엇을 할까요?" required autofocus>
   <div class="row">
-    <label class="field">프로젝트<select class="select auto" name="project">{% for p in form.fields.project.queryset %}<option value="{{ p.pk }}"{% if form.project.value|stringformat:"s" == p.pk|stringformat:"s" %} selected{% endif %}>{{ p.name }}</option>{% endfor %}</select></label>
+    <label class="field">프로젝트<select class="select auto" name="project" data-due-suggestions>{% for p in form.fields.project.queryset %}<option value="{{ p.pk }}" data-due-suggestion="{{ p.suggested_due_date }}"{% if form.project.value|stringformat:"s" == p.pk|stringformat:"s" %} selected{% endif %}>{{ p.name }}</option>{% endfor %}</select></label>
     <label class="field">중요도 (1~10)<select class="select auto" name="priority">{% for v, label in form.fields.priority.choices %}<option value="{{ v }}"{% if form.priority.value|stringformat:"s" == v|stringformat:"s" %} selected{% endif %}>{{ label }}</option>{% endfor %}</select></label>
-    <label class="field">목표 기한<input class="input" type="date" name="due_date" value="{{ form.due_date.value|default:'' }}"></label>
+    <label class="field">목표일<input class="input" type="date" name="due_date" value="{{ form.due_date.value|default:'' }}"></label>
   </div>
-  <label class="field">기한 미정 사유 (기한이 없을 때만)<input class="input" name="no_due_reason" value="{{ form.no_due_reason.value|default:'' }}"></label>
+  <div class="row" data-quick-due-suggestion hidden><span class="muted t13" data-due-suggestion-label></span><button type="button" class="btn sm" data-action="use-due-suggestion">제안한 목표일 사용</button></div>
+  <label class="field">목표일 미정 사유 (목표일이 없을 때만)<input class="input" name="no_due_reason" value="{{ form.no_due_reason.value|default:'' }}"></label>
   {% for e in form.non_field_errors %}<div class="error">{{ e }}</div>{% endfor %}
   {% for f in form %}{% for e in f.errors %}<div class="error">{{ f.label }}: {{ e }}</div>{% endfor %}{% endfor %}
-  <div class="row"><button class="btn primary">추가</button><button type="button" class="btn" data-action="toggle" data-target="#quick">취소</button><span class="muted t13">담당자 본인 · 시작 전 · 오늘 목록에 담깁니다</span></div>
+  <div class="row"><button class="btn primary">태스크 만들고 오늘에 추가</button><button type="button" class="btn" data-action="toggle" data-target="#quick">입력 닫기</button><span class="muted t13">담당자 본인 · 시작 전 · 오늘 목록에 추가됩니다</span></div>
 </form>

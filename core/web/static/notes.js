@@ -550,8 +550,16 @@
 
     function pendingCount() { return Object.keys(pendingFields).length; }
 
+    var savedFields = Object.create(null);
+    Array.prototype.forEach.call(scope.querySelectorAll("[data-note-field]"), function (el) {
+      savedFields[el.dataset.noteField] = el.value;
+    });
+
     function hasUnsaved() {
-      return Boolean(timer || bodyDirty || worker || pendingCount());
+      var fieldDirty = Array.prototype.some.call(scope.querySelectorAll("[data-note-field]"), function (el) {
+        return el.value !== savedFields[el.dataset.noteField];
+      });
+      return Boolean(timer || bodyDirty || worker || pendingCount() || fieldDirty);
     }
 
     function maybeShowSaved() {
@@ -569,18 +577,33 @@
       return fetch(doc.dataset.url, {
         method: "POST", headers: { "X-CSRFToken": csrf }, body: data, credentials: "same-origin",
       }).then(function (r) {
-        if (r.status === 409) {
-          dead = true;
-          if (conflictEl) conflictEl.hidden = false;
-          flash("저장하지 못했습니다", "error");
+        if (!r.ok) {
+          if (r.status === 409) {
+            dead = true;
+            if (conflictEl) conflictEl.hidden = false;
+          }
+          return r.json().catch(function () { return {}; }).then(function (data) {
+            data = data || {};
+            var reason = typeof data.detail === "string" ? data.detail : typeof data.error === "string" ? data.error : "";
+            var fallback = r.status === 409 ? "다른 사람이 먼저 수정해 저장하지 못했습니다." :
+              r.status === 403 ? "저장 권한을 확인하세요." : "요청을 처리하지 못했습니다. (" + r.status + ")";
+            flash((reason || fallback) + (r.status === 409 ?
+              " 작성 중인 내용을 복사한 뒤 새로고침하고 변경 내용을 확인하세요." :
+              " 작성 중인 내용은 이 화면에 남아 있습니다. 내용을 복사해 보관한 뒤 다시 시도하세요."), "error");
+            return false;
+          });
+        }
+        var savedVersion = Number(r.headers.get("X-Note-Version"));
+        if (r.redirected || r.status !== 204 || !Number.isInteger(savedVersion) || savedVersion <= 0) {
+          flash("저장 완료를 확인하지 못했습니다. 로그인 상태를 확인하세요. 작성 중인 내용은 이 화면에 남아 있습니다. 내용을 복사해 보관한 뒤 다시 시도하세요.", "error");
           return false;
         }
-        if (!r.ok) throw new Error(String(r.status));
-        version = Number(r.headers.get("X-Note-Version")) || version + 1;
+        version = savedVersion;
         doc.dataset.version = String(version);
+        savedFields[field] = value;
         return true;
       }).catch(function () {
-        flash("저장 실패 · 새로고침하세요", "error");
+        flash("네트워크 연결을 확인하세요. 작성 중인 내용은 이 화면에 남아 있습니다. 내용을 복사해 보관한 뒤 다시 시도하세요.", "error");
         return false;
       });
     }
@@ -597,8 +620,9 @@
     // 필드별 최신 값을 outbox에 남긴다. 실패한 항목은 지우지 않으므로 다른 필드가
     // 나중에 성공해도 전체가 저장됐다고 거짓 표시하지 않는다.
     function stage(field, value) {
-      if (dead || !doc.dataset.url) return Promise.resolve(false);
+      if (!doc.dataset.url) return Promise.resolve(false);
       pendingFields[field] = { field: field, value: value, seq: ++pendingSeq };
+      if (dead) return Promise.resolve(false);
       flash("저장 대기…", "pending");
       return runQueue();
     }
@@ -606,6 +630,7 @@
     // 요청은 하나씩 보낸다. 성공 응답의 version을 다음 항목이 이어 받고, 전송 중 같은
     // 필드가 다시 바뀌면 캡처했던 항목만 지우고 최신 항목은 다음 차례에 보낸다.
     function runQueue() {
+      if (dead) return Promise.resolve(false);
       if (worker) return worker;
       if (!nextPending()) { maybeShowSaved(); return Promise.resolve(true); }
       worker = new Promise(function (resolve) {

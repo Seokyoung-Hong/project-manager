@@ -26,7 +26,7 @@
     <span class="badge">{% if state.conn.last_event_at %}{{ state.conn.last_event_at|date:"Y-m-d H:i" }} 마지막 이벤트{% else %}이벤트 없음{% endif %}</span>
   </p>
   <div class="row">
-    <form method="post" action="{% url 'repo_disconnect' project.pk %}" onsubmit="return confirm('저장소 연결을 해제할까요?')">{% csrf_token %}<button class="btn sm danger">연결 해제</button></form>
+    <form method="post" action="{% url 'repo_disconnect' project.pk %}" onsubmit="return confirm('저장소 연결을 해제할까요? GitHub 저장소는 유지됩니다.')">{% csrf_token %}<button class="btn sm danger">저장소 연결 해제</button></form>
   </div>
 
   <h3 class="t15">접근 팀</h3>
@@ -57,11 +57,11 @@
       <label class="row"><input type="checkbox" name="rule_pr" {% if state.conn.rule_pr %}checked{% endif %}> PR 오픈 → 검토 대기</label>
       <label class="row"><input type="checkbox" name="rule_merge" {% if state.conn.rule_merge %}checked{% endif %}> 머지 → 완료</label>
     </div>
-    <button class="btn sm primary">규칙 저장</button>
+    <button class="btn sm primary">저장소 규칙 저장</button>
   </form>
   {% endif %}
   <p class="muted t12">이슈는 웹훅으로 바로, 웹훅이 끊기면 서버가 10분마다 알아서 맞춥니다. 아래 단추는 지금 당장 확인할 때만 쓰세요.{% if state.conn.issues_synced_at %} 마지막 확인 {{ state.conn.issues_synced_at|date:"n/j H:i" }}.{% endif %}</p>
-  <form method="post" action="{% url 'repo_issues_sync' project.pk %}">{% csrf_token %}<button class="btn sm">지금 확인</button></form>
+  <form method="post" action="{% url 'repo_issues_sync' project.pk %}">{% csrf_token %}<button class="btn sm">저장소 이슈 동기화</button></form>
   <table class="grid">
     <thead><tr><th>#</th><th>제목</th><th>담당자</th><th></th></tr></thead>
     <tbody>
@@ -72,7 +72,7 @@
       <td class="t13">{{ i.assignee_login|default:"-" }}</td>
       <td>
         {% if i.task %}<span class="badge">{{ i.task.number }}로 가져옴</span>
-        {% else %}<form method="post" action="{% url 'repo_issue_import' project.pk i.number %}">{% csrf_token %}<button class="btn sm">태스크로 가져오기</button></form>{% endif %}
+        {% else %}<form method="post" action="{% url 'repo_issue_import' project.pk i.number %}">{% csrf_token %}<button class="btn sm">내 태스크로 가져오기</button></form>{% endif %}
       </td>
     </tr>
     {% empty %}<tr><td colspan="4" class="muted">열린 이슈가 없습니다.</td></tr>{% endfor %}
@@ -89,13 +89,13 @@
       <td class="t13">{{ e.summary }}</td>
       <td>{% if e.task %}<a href="{% url 'task_detail' e.task_id %}">{{ e.task.number }}</a>{% else %}
         <details class="link-fold">
-          <summary class="btn sm">연결</summary>
+          <summary class="btn sm">연결할 태스크 선택</summary>
           <form method="post" action="{% url 'repo_event_link' project.pk e.pk %}" class="row">{% csrf_token %}
             <select name="task_id" class="select auto">
               <option value="">태스크 선택</option>
               {% for t in open_tasks %}<option value="{{ t.pk }}">{{ t.number }} {{ t.title }}</option>{% endfor %}
             </select>
-            <button class="btn sm primary">연결</button>
+            <button class="btn sm primary">태스크에 이벤트 연결</button>
           </form>
         </details>
       {% endif %}</td>

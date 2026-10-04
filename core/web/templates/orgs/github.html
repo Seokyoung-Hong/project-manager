@@ -22,7 +22,8 @@
   {% if identity %}
   <p class="row">연결됨 · @{{ identity.login }} · 접근 가능 저장소 {{ identity.repos|length }}개</p>
   <p class="muted t13">{% if identity.repos_checked_at %}{{ identity.repos_checked_at|date:"Y-m-d H:i" }} 마지막 확인{% else %}아직 확인하지 않았습니다.{% endif %}</p>
-  <form method="post" action="{% url 'github_refresh' %}">{% csrf_token %}<button class="btn sm">다시 확인</button></form>
+  <form method="post" action="{% url 'github_refresh' %}">{% csrf_token %}<button class="btn sm">접근 가능한 저장소 다시 확인</button></form>
+  <p class="muted t13">확인 후 내 프로필 화면으로 이동합니다.</p>
   {% else %}
   <p class="muted t13">GitHub 계정을 연결하지 않았습니다.</p>
   <a class="btn sm" href="{% url 'profile' %}">프로필에서 연결</a>

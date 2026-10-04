@@ -1,0 +1,33 @@
+Browser tab: 2, Title: "프로필", URL: "http://127.0.0.1:8017/settings/profile".
+1 AXWebArea 프로필, URL: 127.0.0.1:8017/settings/profile
+	2 container
+		3 button (collapsed) Description: 조직 전환, Help: 산돌이, Secondary Actions: Expand
+			4 text 산돌이
+		5 container 주 메뉴
+			6 link Description: 오늘, Value: 127.0.0.1:8017/today
+			7 link Description: 내 태스크, Value: 127.0.0.1:8017/me
+			8 link Description: 프로젝트, Value: 127.0.0.1:8017/projects
+			9 link Description: 조직, Value: 127.0.0.1:8017/org
+			10 link Description: 검색, Value: 127.0.0.1:8017/search
+		11 link Description: 빠른 추가, Value: 127.0.0.1:8017/today?quick=1
+		12 button (collapsed) Description: 내 메뉴, Help: 김, Secondary Actions: Expand
+			13 text 김
+		14 heading 설정, Value: 1
+			15 text 설정
+		16 container 설정 메뉴
+			17 link Description: 프로필, Value: 127.0.0.1:8017/settings/profile
+			18 link Description: 환경설정, Value: 127.0.0.1:8017/settings/preferences
+			19 link Description: API 토큰, Value: 127.0.0.1:8017/settings/tokens
+		20 heading 프로필, Value: 2
+			21 text 프로필
+		22 container
+			23 text 표시 이름
+			24 text field (settable) 표시 이름, Value: 김하늘, ID: id_display_name
+			25 button 저장
+		26 heading Discord 연결, Value: 2
+			27 text Discord 연결
+		28 text 연결하면 마감 알림(D-3 · D-1 · 당일 · 기한 초과)을 개인 DM으로 받고, 봇에게 DM으로 태스크를 처리할 수 있습니다.
+		29 button Discord 연결
+		30 text 봇과 같은 서버에 있어야 하고, 서버 우클릭 → 개인정보 보호 설정에서 ‘서버 멤버의 DM 허용’이 켜져 있어야 DM이 도착합니다.
+
+The focused UI element is 1 AXWebArea 프로필, URL: 127.0.0.1:8017/settings/profile

@@ -3,7 +3,7 @@
 <div class="card">
   <div class="card-head">
     <div><h1 class="t24">{{ view.title }}</h1><div class="muted t13">{{ view.hint }}</div></div>
-    <select name="member" form="me-filter" class="select auto" aria-label="팀원" onchange="this.form.requestSubmit()">
+    <select name="member" form="me-filter" class="select auto" aria-label="담당자" onchange="this.form.requestSubmit()">
       <option value="0"{% if member_id == 0 %} selected{% endif %}>조직 전체</option>
       {% for m in members %}<option value="{{ m.pk }}"{% if m.pk == member_id %} selected{% endif %}>{% if m.pk == user.pk %}나{% else %}{{ m.display_name }}{% endif %}</option>{% endfor %}
     </select>
@@ -32,7 +32,7 @@
         <select name="project" class="select auto" aria-label="프로젝트" onchange="this.form.requestSubmit()"><option value="">모든 프로젝트</option>{% for p in projects %}<option value="{{ p.pk }}"{% if p.pk|stringformat:"s" == f.project %} selected{% endif %}>{{ p.name }}</option>{% endfor %}</select>
         <select name="status" class="select auto" aria-label="상태" onchange="this.form.requestSubmit()">{% for code, label in status_options %}<option value="{{ code }}"{% if code == f.status %} selected{% endif %}>{{ label }}</option>{% endfor %}</select>
         <select name="priority" class="select auto" aria-label="중요도" onchange="this.form.requestSubmit()">{% for code, label in priority_options %}<option value="{{ code }}"{% if code == f.priority %} selected{% endif %}>{{ label }}</option>{% endfor %}</select>
-        {% if has_filter %}<a class="btn sm" href="{% url 'me' %}?member={{ member_id }}&group={{ group }}&sort={{ sort }}">필터 지우기</a>{% endif %}
+        {% if has_filter %}<a class="btn sm" href="{% url 'me' %}?member={{ member_id }}&group={{ group }}&sort={{ sort }}">추가 필터 지우기</a>{% endif %}
       </div>
     </details>
   </form>

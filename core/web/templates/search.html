@@ -3,7 +3,7 @@
 <div class="card">
   <h1 class="t24">검색</h1>
   <form method="get" class="stack">
-    <input class="input lg" name="q" value="{{ q }}" placeholder="예: TASK-121, 메뉴, 챗봇" autofocus>
+    <input class="input lg" name="q" value="{{ q }}" placeholder="예: TASK-121, 메뉴, 챗봇" aria-label="태스크 번호·제목·프로젝트 이름 검색" autofocus>
     <div class="row">
       <label class="check muted t13"><input type="checkbox" name="include_closed" value="1"{% if include_closed %} checked{% endif %}> 완료·취소 포함</label>
       <label class="check muted t13"><input type="checkbox" name="include_archived" value="1"{% if include_archived %} checked{% endif %}> 보관 포함</label>
@@ -13,6 +13,6 @@
 </div>
 <section class="card">
   <h2>결과 <span class="muted">{{ count }}</span></h2>
-  <ul class="tasks">{% for r in rows %}{% task_row r %}{% empty %}<li class="muted">검색 결과가 없습니다. 위의 “완료·취소 포함”과 “보관 포함”을 켜고 다시 찾아보세요.</li>{% endfor %}</ul>
+  <ul class="tasks">{% for r in rows %}{% task_row r %}{% empty %}<li class="muted">{% if q %}검색 결과가 없습니다. 위의 “완료·취소 포함”과 “보관 포함”을 켜고 다시 찾아보세요.{% else %}태스크 번호·제목·프로젝트 이름으로 검색하세요.{% endif %}</li>{% endfor %}</ul>
 </section>
 {% endblock %}

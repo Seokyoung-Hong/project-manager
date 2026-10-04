@@ -5,14 +5,14 @@
   <div class="row">
     <label class="field">담당자 (1명)<select class="select auto" name="assignee">{% for u in form.fields.assignee.queryset %}<option value="{{ u.pk }}"{% if form.assignee.value|stringformat:"s" == u.pk|stringformat:"s" %} selected{% endif %}>{% if u.pk == user.pk %}나 ({{ u.display_name }}){% else %}{{ u.display_name }}{% endif %}</option>{% endfor %}</select></label>
     <label class="field">중요도 (1~10)<select class="select auto" name="priority">{% for v, label in form.fields.priority.choices %}<option value="{{ v }}"{% if form.priority.value|stringformat:"s" == v|stringformat:"s" %} selected{% endif %}>{{ label }}</option>{% endfor %}</select></label>
-    <label class="field">목표 기한<input class="input" type="date" name="due_date" value="{{ form.due_date.value|default:'' }}"></label>
+    <label class="field">목표일<input class="input" type="date" name="due_date" value="{{ form.due_date.value|default:'' }}">{% if form.suggested_due_date %}<span class="muted t13">설정에 따른 제안: {{ form.suggested_due_date }} (월~금 기준)</span><button type="button" class="btn sm" onclick="this.closest('label').querySelector('input').value='{{ form.suggested_due_date }}'">제안한 목표일 사용</button>{% endif %}</label>
   </div>
-  <label class="field">기한 미정 사유 (기한이 없을 때만)<input class="input" name="no_due_reason" value="{{ form.no_due_reason.value|default:'' }}"></label>
+  <label class="field">목표일 미정 사유 (목표일이 없을 때만)<input class="input" name="no_due_reason" value="{{ form.no_due_reason.value|default:'' }}"></label>
   {% for e in form.non_field_errors %}<div class="error">{{ e }}</div>{% endfor %}
   {% for f in form %}{% for e in f.errors %}<div class="error">{{ f.label }}: {{ e }}</div>{% endfor %}{% endfor %}
   <div class="row">
     <button class="btn primary">태스크 만들기</button>
-    <button type="button" class="btn" data-action="toggle" data-target="#task-form">취소</button>
+    <button type="button" class="btn" data-action="toggle" data-target="#task-form">입력 닫기</button>
     <span class="muted t13">상태는 시작 전으로 저장됩니다. 담당자는 한 명만 지정할 수 있습니다.</span>
   </div>
 </form>

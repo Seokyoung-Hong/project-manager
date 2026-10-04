@@ -20,7 +20,7 @@
       <td>{{ t.get_scope_display }}</td>
       <td>{% if t.for_ai %}AI{% else %}사람{% endif %}</td>
       <td>{{ t.expires_at|date:"Y-m-d"|default:"없음" }}</td>
-      <td>{% if not t.revoked_at %}<form method="post" action="{% url 'token_revoke' t.pk %}">{% csrf_token %}<button class="btn sm danger">폐기</button></form>{% endif %}</td>
+      <td>{% if not t.revoked_at %}<form method="post" action="{% url 'token_revoke' t.pk %}">{% csrf_token %}<button class="btn sm danger">토큰 폐기</button></form>{% endif %}</td>
     </tr>
     {% empty %}<tr><td colspan="6" class="muted">토큰이 없습니다.</td></tr>{% endfor %}
     </tbody>
@@ -43,6 +43,7 @@
     <label class="field">{{ form.purpose.label }}{{ form.purpose }}</label>
     <button class="btn primary">토큰 발급</button>
   </form>
+  <p class="muted t13">AI 도구에는 AI용 토큰을 사용하세요. AI용 토큰에는 조직의 AI 정책이 적용됩니다.</p>
 </section>
 <section class="card">
   <h2>AI 클라이언트 연결</h2>
@@ -58,13 +59,13 @@
       <tr>
         <td>Claude 앱 / claude.ai<br><span class="muted t13">OAuth</span></td>
         <td>설정 → 커넥터 → 커스텀 커넥터 추가 → URL <code>{{ mcp_url }}/mcp</code>
-          <button type="button" class="btn sm" data-copy-text="{{ mcp_url }}/mcp" data-copy-label="주소 복사됨">복사</button><br>
-          <span class="muted t13">'연결'을 누르면 이 사이트의 로그인·허용 화면이 뜹니다. 허용하면 토큰이 자동으로 발급돼 아래 목록에 나타납니다 — 위에서 따로 발급하지 않아도 됩니다.</span></td>
+          <button type="button" class="btn sm" data-copy-text="{{ mcp_url }}/mcp" data-copy-label="주소 복사됨">서버 주소 복사</button><br>
+          <span class="muted t13">'연결'을 누르면 이 사이트의 로그인·허용 화면이 뜹니다. 허용하면 토큰이 자동으로 발급돼 API 토큰 목록에 추가됩니다 — 위에서 따로 발급하지 않아도 됩니다.</span></td>
       </tr>
       <tr>
         <td>Claude Code<br><span class="muted t13">MCP · 헤더</span></td>
         <td><code>claude mcp add --transport http sandol {{ mcp_url }}/mcp --header "Authorization: Bearer &lt;TOKEN&gt;"</code>
-          <button type="button" class="btn sm" data-copy-text='claude mcp add --transport http sandol {{ mcp_url }}/mcp --header "Authorization: Bearer &lt;TOKEN&gt;"' data-copy-label="명령 복사됨">복사</button></td>
+          <button type="button" class="btn sm" data-copy-text='claude mcp add --transport http sandol {{ mcp_url }}/mcp --header "Authorization: Bearer &lt;TOKEN&gt;"' data-copy-label="명령 복사됨">설정 명령 복사</button></td>
       </tr>
       <tr>
         <td>Codex CLI<br><span class="muted t13">헤더</span></td>
@@ -72,7 +73,7 @@
       </tr>
       <tr>
         <td>그 밖의 클라이언트<br><span class="muted t13">개인 비밀 URL</span></td>
-        <td>OAuth도 헤더도 못 넣는 곳이면 URL에 토큰을 넣습니다: <code>{{ mcp_url }}/u/&lt;TOKEN&gt;/mcp</code>, 인증 없음</td>
+        <td>OAuth도 헤더도 못 넣는 곳이면 URL에 토큰을 넣습니다: <code>{{ mcp_url }}/u/&lt;TOKEN&gt;/mcp</code> — 클라이언트의 별도 인증 설정은 필요하지 않습니다. URL에 포함된 토큰으로 인증합니다.</td>
       </tr>
     </tbody>
   </table>

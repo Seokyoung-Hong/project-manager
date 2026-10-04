@@ -1,0 +1,95 @@
+Browser tab: 2, Title: "회의록", URL: "http://127.0.0.1:8017/orgs/1/notes".
+1 AXWebArea 회의록, URL: 127.0.0.1:8017/orgs/1/notes
+	2 container
+		3 button (collapsed) Description: 조직 전환, Help: 산돌이, Secondary Actions: Expand
+			4 text 산돌이
+		5 container 주 메뉴
+			6 link Description: 오늘, Value: 127.0.0.1:8017/today
+			7 link Description: 내 태스크, Value: 127.0.0.1:8017/me
+			8 link Description: 프로젝트, Value: 127.0.0.1:8017/projects
+			9 link Description: 조직, Value: 127.0.0.1:8017/org
+			10 link Description: 검색, Value: 127.0.0.1:8017/search
+		11 link Description: 빠른 추가, Value: 127.0.0.1:8017/today?quick=1
+		12 button (collapsed) Description: 내 메뉴, Help: 김, Secondary Actions: Expand
+			13 text 김
+		14 heading 산돌이, Value: 1
+			15 text 산돌이
+		16 container 조직 메뉴
+			17 link Description: 개요, Value: 127.0.0.1:8017/orgs/1
+			18 link Description: 팀, Value: 127.0.0.1:8017/orgs/1/teams
+			19 link Description: 부하 현황, Value: 127.0.0.1:8017/orgs/1/capacity
+			20 link Description: 로드맵, Value: 127.0.0.1:8017/orgs/1/roadmap
+			21 link Description: 거버넌스, Value: 127.0.0.1:8017/orgs/1/governance
+			22 link Description: 회의록, Value: 127.0.0.1:8017/orgs/1/notes
+			23 link Description: 설정, Value: 127.0.0.1:8017/orgs/1/settings
+		24 container note-list
+			25 heading 회의록, Value: 1
+				26 text 회의록
+			27 container
+				28 button .md 올리기, ID: note-upload-file
+				29 text .md 올리기
+			30 button 새 회의록
+			31 container
+				32 text 범위
+				33 pop up button (collapsed, settable) 범위, Value: 전체, Secondary Actions: Expand
+					34 menu
+						35 (selected) 전체
+						36 팀 공통
+						37 ProjectManager
+						38 강의실 시간표
+						39 공지 알림
+						40 학식 API
+			41 text 공지 알림 · 1건
+			42 link Description: 공지 알림 주간 회의 김하늘 · v1 · 10/4, Value: 127.0.0.1:8017/orgs/1/notes?scope=all&note=4
+			43 text 강의실 시간표 · 1건
+			44 link Description: 강의실 시간표 주간 회의 김하늘 · v1 · 10/4, Value: 127.0.0.1:8017/orgs/1/notes?scope=all&note=3
+			45 text 학식 API · 1건
+			46 link Description: 학식 API 주간 회의 김하늘 · v1 · 10/4, Value: 127.0.0.1:8017/orgs/1/notes?scope=all&note=2
+			47 text ProjectManager · 1건
+			48 link Description: ProjectManager 주간 회의 김하늘 · v1 · 10/4, Value: 127.0.0.1:8017/orgs/1/notes?scope=all&note=1
+			49 text 회의록은 프로젝트에 붙일 수도 있고 팀 공통으로 남길 수도 있습니다. 올린 .md는 본문 텍스트만 읽어 저장합니다. 파일 자체와 이미지 첨부는 저장되지 않습니다.
+		50 container note-editor
+			51 text 저장됨 · v1 · 10/4 00:02
+			52 text field (settable) Description: 제목, Value: 공지 알림 주간 회의
+			53 container
+				54 text 프로젝트
+				55 pop up button (collapsed, settable) Description: 프로젝트, Value: 공지 알림, Secondary Actions: Expand
+					56 menu
+						57 팀 공통 (프로젝트 없음)
+						58 ProjectManager
+						59 강의실 시간표
+						60 (selected) 공지 알림
+						61 학식 API
+			62 text 작성자 김하늘
+			63 container
+				64 text 회의 일시
+				65 date field (settable) 회의 일시
+					66 container
+						67 stepper
+						68 stepper
+						69 stepper
+						70 stepper
+						71 stepper
+						72 stepper
+					73 pop up button 현지 날짜 및 시간 선택도구 표시 현지 날짜 및 시간 선택도구 표시
+			74 container
+				75 text 태그
+				76 text field (settable) 태그
+			77 container doc-form
+				78 button 본문 편집
+				79 text Enter로 시작 · Esc로 나가기
+				80 container doc-body
+					81 heading 이번 주 목표, Value: 1
+						82 text 이번 주 목표
+					83 text 업무 흐름과 안내를 명확하게 정리합니다.
+					84 heading 결정 사항, Value: 2
+						85 text 결정 사항
+					86 container
+						87 text • 주요 화면의 일관성을 우선합니다.
+					88 container
+						89 text • 변경 후 실제 동작을 확인합니다.
+			90 button (collapsed) 쓰는 법, Secondary Actions: Expand
+				91 text 쓰는 법
+			92 button 삭제
+
+The focused UI element is 1 AXWebArea 회의록, URL: 127.0.0.1:8017/orgs/1/notes

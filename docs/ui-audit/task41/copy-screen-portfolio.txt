@@ -1,0 +1,68 @@
+Browser tab: 2, Title: "내 포트폴리오", URL: "http://127.0.0.1:8017/portfolio".
+1 AXWebArea 내 포트폴리오, URL: 127.0.0.1:8017/portfolio
+	2 container
+		3 button (collapsed) Description: 조직 전환, Help: 산돌이, Secondary Actions: Expand
+			4 text 산돌이
+		5 container 주 메뉴
+			6 link Description: 오늘, Value: 127.0.0.1:8017/today
+			7 link Description: 내 태스크, Value: 127.0.0.1:8017/me
+			8 link Description: 프로젝트, Value: 127.0.0.1:8017/projects
+			9 link Description: 조직, Value: 127.0.0.1:8017/org
+			10 link Description: 검색, Value: 127.0.0.1:8017/search
+		11 link Description: 빠른 추가, Value: 127.0.0.1:8017/today?quick=1
+		12 button (collapsed) Description: 내 메뉴, Help: 김, Secondary Actions: Expand
+			13 text 김
+		14 container
+			15 heading 내 포트폴리오, Value: 1
+				16 text 내 포트폴리오
+			17 text 기록된 의사결정과 AI 작업 판단에서 출처를 선택해 Markdown 초안을 만듭니다.
+			18 container
+				19 text 조직
+				20 pop up button (collapsed, settable) 조직, Value: 산돌이, Secondary Actions: Expand
+					21 menu
+						22 (selected) 산돌이
+			23 container
+				24 text 프로젝트
+				25 pop up button (collapsed, settable) 프로젝트, Value: 모든 프로젝트, Secondary Actions: Expand
+					26 menu
+						27 (selected) 모든 프로젝트
+						28 ProjectManager
+						29 강의실 시간표
+						30 공지 알림
+						31 학식 API
+			32 container
+				33 text 시작일
+				34 date field (settable) 시작일
+					35 container
+						36 stepper
+						37 stepper
+						38 stepper
+					39 pop up button 날짜 선택도구 표시 날짜 선택도구 표시
+			40 container
+				41 text 종료일
+				42 date field (settable) 종료일
+					43 container
+						44 stepper
+						45 stepper
+						46 stepper
+					47 pop up button 날짜 선택도구 표시 날짜 선택도구 표시
+			48 container
+				49 text 사용자 기록 종류
+				50 pop up button (collapsed, settable) 사용자 기록 종류, Value: 전체 기록, Secondary Actions: Expand
+					51 menu
+						52 (selected) 전체 기록
+						53 주요 선택
+						54 요구·제약
+						55 명시적 답변
+						56 방향 수정
+						57 구현 방식 지시
+						58 AI 협업 방식
+			59 button 출처 보기
+			60 heading 포트폴리오 출처, Value: 2
+				61 text 포트폴리오 출처
+			62 text 사용자 기록과 AI 판단을 구분해 표시합니다. 현재 조건 0건 / 전체 0건
+			63 content list
+				64 text 선택한 조건에 해당하는 출처가 없습니다. 사용자 입력은 본인에게 귀속된 확인 또는 세션 수집 기록만 표시됩니다.
+			65 button 선택한 출처로 AI 프롬프트 만들기
+
+The focused UI element is 1 AXWebArea 내 포트폴리오, URL: 127.0.0.1:8017/portfolio

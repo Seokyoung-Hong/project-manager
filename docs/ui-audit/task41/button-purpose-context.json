@@ -1,0 +1,706 @@
+{
+  "selfInfo": {
+    "B003": {
+      "purpose": "초대받은 조직에 참여",
+      "effect": "POST join_by_token으로 실제 참여 후 오늘 이동",
+      "recommendation": "조직에 참여하기",
+      "evidence": "core/web/views/auth.py:29"
+    },
+    "B004": {
+      "purpose": "계정 로그인",
+      "effect": "POST Django LoginView 세션 로그인",
+      "recommendation": "로그인",
+      "evidence": "core/web/urls.py:39"
+    },
+    "B006": {
+      "purpose": "새 계정 가입",
+      "effect": "POST 계정 생성·로그인 후 next/조직 목록 이동",
+      "recommendation": "가입",
+      "evidence": "core/web/views/auth.py:15"
+    },
+    "B032": {
+      "purpose": "원하는 GitHub 이슈 좁히기",
+      "effect": "GET repo/state/q 조건으로 목록 조회",
+      "recommendation": "저장소·가져온 상태 라벨, 검색",
+      "evidence": "core/web/views/github.py:291"
+    },
+    "B033": {
+      "purpose": "원하는 GitHub 이슈 좁히기",
+      "effect": "GET repo/state/q 조건으로 목록 조회",
+      "recommendation": "저장소·가져온 상태 라벨, 검색",
+      "evidence": "core/web/views/github.py:291"
+    },
+    "B034": {
+      "purpose": "원하는 GitHub 이슈 좁히기",
+      "effect": "GET repo/state/q 조건으로 목록 조회",
+      "recommendation": "저장소·가져온 상태 라벨, 검색",
+      "evidence": "core/web/views/github.py:291"
+    },
+    "B040": {
+      "purpose": "담당자·묶음·정렬·필터 조정",
+      "effect": "GET me 조회; member=0은 조직 전체, group/sort는 목록 표현",
+      "recommendation": "조건명 유지; 담당 범위 aria-label을 담당자로",
+      "evidence": "core/web/views/me.py:15"
+    },
+    "B041": {
+      "purpose": "담당자·묶음·정렬·필터 조정",
+      "effect": "GET me 조회; member=0은 조직 전체, group/sort는 목록 표현",
+      "recommendation": "조건명 유지; 담당 범위 aria-label을 담당자로",
+      "evidence": "core/web/views/me.py:15"
+    },
+    "B042": {
+      "purpose": "담당자·묶음·정렬·필터 조정",
+      "effect": "GET me 조회; member=0은 조직 전체, group/sort는 목록 표현",
+      "recommendation": "조건명 유지; 담당 범위 aria-label을 담당자로",
+      "evidence": "core/web/views/me.py:15"
+    },
+    "B044": {
+      "purpose": "담당자·묶음·정렬·필터 조정",
+      "effect": "GET me 조회; member=0은 조직 전체, group/sort는 목록 표현",
+      "recommendation": "조건명 유지; 담당 범위 aria-label을 담당자로",
+      "evidence": "core/web/views/me.py:15"
+    },
+    "B045": {
+      "purpose": "담당자·묶음·정렬·필터 조정",
+      "effect": "GET me 조회; member=0은 조직 전체, group/sort는 목록 표현",
+      "recommendation": "조건명 유지; 담당 범위 aria-label을 담당자로",
+      "evidence": "core/web/views/me.py:15"
+    },
+    "B046": {
+      "purpose": "담당자·묶음·정렬·필터 조정",
+      "effect": "GET me 조회; member=0은 조직 전체, group/sort는 목록 표현",
+      "recommendation": "조건명 유지; 담당 범위 aria-label을 담당자로",
+      "evidence": "core/web/views/me.py:15"
+    },
+    "B047": {
+      "purpose": "담당자·묶음·정렬·필터 조정",
+      "effect": "GET me 조회; member=0은 조직 전체, group/sort는 목록 표현",
+      "recommendation": "조건명 유지; 담당 범위 aria-label을 담당자로",
+      "evidence": "core/web/views/me.py:15"
+    },
+    "B053": {
+      "purpose": "회의록 프로젝트 범위 좁히기",
+      "effect": "GET scope로 프로젝트 또는 조직 공통 회의록 필터",
+      "recommendation": "조직 공통(프로젝트 미지정)",
+      "evidence": "core/web/views/notes.py:33"
+    },
+    "B054": {
+      "purpose": "회의록 검색 조건 적용",
+      "effect": "GET scope/q 조건 조회",
+      "recommendation": "적용 유지",
+      "evidence": "core/web/views/notes.py:33"
+    },
+    "B082": {
+      "purpose": "원하는 팀 부하 확인",
+      "effect": "GET team 필터; KPI는 조직 전체",
+      "recommendation": "팀 필터 유지 + 조직 전체 KPI 범위 안내",
+      "evidence": "core/web/views/roadmap.py:27"
+    },
+    "B090": {
+      "purpose": "보관한 프로젝트도 조회",
+      "effect": "GET include_archived=1 포함 조회",
+      "recommendation": "보관 포함 유지",
+      "evidence": "core/web/views/orgs.py:65"
+    },
+    "B169": {
+      "purpose": "종료 태스크도 조회",
+      "effect": "GET include_closed=1 포함 조회",
+      "recommendation": "완료·취소 포함 유지",
+      "evidence": "core/web/views/projects.py:182"
+    },
+    "B063": {
+      "purpose": "AI 클라이언트 접근 허용",
+      "effect": "POST 선택 scope로 OAuth 코드 발급 후 등록 redirect_uri 이동",
+      "recommendation": "접근 허용",
+      "evidence": "core/web/views/oauth.py:131"
+    },
+    "B064": {
+      "purpose": "AI 연결 요청 거절",
+      "effect": "POST access_denied로 클라이언트 복귀",
+      "recommendation": "연결 취소",
+      "evidence": "core/web/views/oauth.py:132"
+    },
+    "B087": {
+      "purpose": "AI 요청한 변경 적용",
+      "effect": "POST action=approve 변경 허용 및 즉시 반영",
+      "recommendation": "변경 허용하고 반영",
+      "evidence": "core/web/views/orgs.py:283"
+    },
+    "B088": {
+      "purpose": "AI 변경 요청 거절",
+      "effect": "POST action=reject 요청 거절·사유 기록",
+      "recommendation": "요청 거절",
+      "evidence": "core/web/views/orgs.py:286"
+    },
+    "B102": {
+      "purpose": "조직 합의 편집 내용 저장",
+      "effect": "POST 거버넌스 본문 저장",
+      "recommendation": "거버넌스 저장",
+      "evidence": "core/web/views/orgs.py:235"
+    },
+    "B103": {
+      "purpose": "조직 합의를 기본안으로 교체",
+      "effect": "확인 후 POST reset=1 기존 본문을 기본안으로 교체",
+      "recommendation": "기본안으로 되돌리기 유지; 현재 본문 교체 안내",
+      "evidence": "core/web/views/orgs.py:235"
+    },
+    "B107": {
+      "purpose": "새 조직 만들기",
+      "effect": "POST 조직 생성",
+      "recommendation": "조직 만들기",
+      "evidence": "core/web/views/orgs.py:51"
+    },
+    "B113": {
+      "purpose": "조직 설정·잠금 저장",
+      "effect": "POST 조직 값과 잠금 함께 저장",
+      "recommendation": "조직 설정 저장",
+      "evidence": "core/web/views/orgs.py:350"
+    },
+    "B160": {
+      "purpose": "주소의 OpenAPI 정의를 프로젝트에 저장",
+      "effect": "POST url의 JSON 조회·검증 후 set_api_spec 저장",
+      "recommendation": "주소에서 API 문서 불러오기",
+      "evidence": "core/web/views/projects.py:323"
+    },
+    "B161": {
+      "purpose": "JSON 파일을 API 정의로 저장",
+      "effect": "파일 선택 change 즉시 POST 업로드·검증·저장",
+      "recommendation": "OpenAPI JSON 파일 올리기; 선택 즉시 저장 안내",
+      "evidence": "core/web/views/projects.py:328"
+    },
+    "B162": {
+      "purpose": "파일로 API 정의 가져오기",
+      "effect": "연결된 file input 선택창; 선택하면 즉시 POST 저장",
+      "recommendation": "OpenAPI JSON 파일 올리기",
+      "evidence": "core/web/templates/projects/api.html:23"
+    },
+    "B184": {
+      "purpose": "프로젝트를 기존 저장소에 연결",
+      "effect": "POST connect_repo; 성공 시 저장소 화면 복귀",
+      "recommendation": "저장소 연결",
+      "evidence": "core/web/views/github.py:177"
+    },
+    "B196": {
+      "purpose": "프로젝트 규칙 변경 저장",
+      "effect": "POST 잠금 제외 프로젝트 설정 저장",
+      "recommendation": "프로젝트 설정 저장",
+      "evidence": "core/web/views/projects.py:369"
+    },
+    "B204": {
+      "purpose": "프로젝트 추가 합의 저장",
+      "effect": "POST action=governance_extra 본문 저장",
+      "recommendation": "프로젝트 거버넌스 저장",
+      "evidence": "core/web/views/projects.py:379"
+    },
+    "B205": {
+      "purpose": "태스크 찾기",
+      "effect": "GET q 검색; 번호·제목·프로젝트명 대상",
+      "recommendation": "검색 유지; 검색 범위 안내",
+      "evidence": "core/web/views/search.py:10"
+    },
+    "B211": {
+      "purpose": "개인 설정 저장",
+      "effect": "POST 개인 환경설정 값 저장",
+      "recommendation": "환경설정 저장",
+      "evidence": "core/web/views/settings.py:82"
+    },
+    "B212": {
+      "purpose": "표시 이름 변경",
+      "effect": "POST display_name만 저장",
+      "recommendation": "표시 이름 저장",
+      "evidence": "core/web/views/settings.py:16"
+    },
+    "B220": {
+      "purpose": "연결 자격 발급",
+      "effect": "POST scope와 purpose로 토큰 발급; 원문 한 번 표시",
+      "recommendation": "토큰 발급 유지 + AI용 정책·권한 안내",
+      "evidence": "core/web/views/settings.py:49"
+    },
+    "B128": {
+      "purpose": "조직 멤버 제거",
+      "effect": "disabled로 요청 안함; 마지막 관리자 제한",
+      "recommendation": "조직에서 제거; 비활성 사유 유지",
+      "evidence": "core/web/templates/orgs/teams.html:36"
+    },
+    "B131": {
+      "purpose": "조직 초대에 GitHub 초대도 포함",
+      "effect": "체크박스는 입력칸 표시만 바꿈; 초대 발급 시 처리",
+      "recommendation": "GitHub 조직에도 초대 유지; 체크만으로 발급 아님",
+      "evidence": "core/web/templates/orgs/teams.html:67"
+    },
+    "B083": {
+      "purpose": "멤버 담당 태스크 열기",
+      "effect": "GET me?member=id",
+      "recommendation": "멤버 이름 유지",
+      "evidence": "core/web/views/roadmap.py:27"
+    },
+    "B093": {
+      "purpose": "담당자 업무 확인",
+      "effect": "GET me?member=id",
+      "recommendation": "담당자 이름 유지",
+      "evidence": "core/web/views/orgs.py:65"
+    },
+    "B069": {
+      "purpose": "AI 변경 요청 상세 확인",
+      "effect": "ChangeRequest.path로 GET 상세 이동",
+      "recommendation": "변경 종류와 요청 번호 유지",
+      "evidence": "core/web/templates/orgs/_pending_requests.html:6"
+    },
+    "B089": {
+      "purpose": "KPI 해당 태스크 확인",
+      "effect": "뷰가 만든 url의 조건으로 GET 태스크 조회",
+      "recommendation": "숫자+범위 라벨 유지",
+      "evidence": "core/web/views/orgs.py:65"
+    },
+    "B084": {
+      "purpose": "기술 태그로 부하 좁히기",
+      "effect": "GET tags 추가/제외 필터, 데이터 변경 없음",
+      "recommendation": "기술 태그 유지",
+      "evidence": "core/web/views/roadmap.py:27"
+    },
+    "B085": {
+      "purpose": "기술 태그로 부하 좁히기",
+      "effect": "GET tags 추가/제외 필터, 데이터 변경 없음",
+      "recommendation": "기술 태그 유지",
+      "evidence": "core/web/views/roadmap.py:27"
+    },
+    "B055": {
+      "purpose": "회의록 선택 또는 태그로 찾기",
+      "effect": "GET scope/tag/note로 목록·선택 문서 갱신",
+      "recommendation": "태그·회의록 제목 유지",
+      "evidence": "core/web/views/notes.py:33"
+    },
+    "B056": {
+      "purpose": "회의록 선택 또는 태그로 찾기",
+      "effect": "GET scope/tag/note로 목록·선택 문서 갱신",
+      "recommendation": "태그·회의록 제목 유지",
+      "evidence": "core/web/views/notes.py:33"
+    },
+    "B057": {
+      "purpose": "회의록 선택 또는 태그로 찾기",
+      "effect": "GET scope/tag/note로 목록·선택 문서 갱신",
+      "recommendation": "태그·회의록 제목 유지",
+      "evidence": "core/web/views/notes.py:33"
+    },
+    "B058": {
+      "purpose": "회의록 목록으로 돌아가기",
+      "effect": "GET 선택 해제; JS는 미저장 상태 flush 성공 후 이동",
+      "recommendation": "회의록 목록 유지",
+      "evidence": "core/web/static/notes.js:686"
+    },
+    "B177": {
+      "purpose": "기존 문서 열기",
+      "effect": "GET ?doc=id로 선택 문서 표시",
+      "recommendation": "문서 제목 유지",
+      "evidence": "core/web/views/docs.py:24"
+    },
+    "B167": {
+      "purpose": "태스크 표시 방식 선택",
+      "effect": "GET view=list/board; 태스크 데이터 변경 없음",
+      "recommendation": "목록 / 보드 유지",
+      "evidence": "core/web/views/projects.py:182"
+    },
+    "B168": {
+      "purpose": "태스크 표시 방식 선택",
+      "effect": "GET view=list/board; 태스크 데이터 변경 없음",
+      "recommendation": "목록 / 보드 유지",
+      "evidence": "core/web/views/projects.py:182"
+    },
+    "B299": {
+      "purpose": "달력 월·날짜 이동",
+      "effect": "GET 오늘 페이지의 cal/day 조건 변경",
+      "recommendation": "이전 달 / 다음 달 / 이번 달 / 날짜 접근성 이름 유지",
+      "evidence": "core/web/views/today.py:69"
+    },
+    "B300": {
+      "purpose": "달력 월·날짜 이동",
+      "effect": "GET 오늘 페이지의 cal/day 조건 변경",
+      "recommendation": "이전 달 / 다음 달 / 이번 달 / 날짜 접근성 이름 유지",
+      "evidence": "core/web/views/today.py:69"
+    },
+    "B301": {
+      "purpose": "달력 월·날짜 이동",
+      "effect": "GET 오늘 페이지의 cal/day 조건 변경",
+      "recommendation": "이전 달 / 다음 달 / 이번 달 / 날짜 접근성 이름 유지",
+      "evidence": "core/web/views/today.py:69"
+    },
+    "B303": {
+      "purpose": "달력 월·날짜 이동",
+      "effect": "GET 오늘 페이지의 cal/day 조건 변경",
+      "recommendation": "이전 달 / 다음 달 / 이번 달 / 날짜 접근성 이름 유지",
+      "evidence": "core/web/views/today.py:69"
+    }
+  },
+  "perControl": {
+    "B001": {
+      "purpose": "계정을 만들고 초대 조직 참여 준비",
+      "effect": "GET signup?next=join → 가입 후 참여 확인 페이지; 즉시 조직 참여 아님",
+      "recommendation": "가입 후 참여하기 / 계정 만들기 + 후속 참여 안내",
+      "evidence": "core/web/views/auth.py:15"
+    },
+    "B014": {
+      "purpose": "현재 프로젝트 작업 열기",
+      "effect": "GET project_index는 최근/첫 프로젝트로 이동; 프로젝트 전체 목록 아님",
+      "recommendation": "프로젝트 유지 + 현재 프로젝트 전환 손잡이; 목록이라고 안내 금지",
+      "evidence": "core/web/views/projects.py:67"
+    },
+    "B017": {
+      "purpose": "새 태스크 입력 시작",
+      "effect": "JS 빠른 추가 폼 펼침; 아직 생성 안함",
+      "recommendation": "태스크 빠른 추가 / 입력 닫기",
+      "evidence": "core/web/static/app.js:213"
+    },
+    "B018": {
+      "purpose": "새 태스크 입력 시작",
+      "effect": "GET today?quick=1 빠른 추가 폼 표시",
+      "recommendation": "태스크 빠른 추가",
+      "evidence": "core/web/views/today.py:139"
+    },
+    "B022": {
+      "purpose": "AI·자동화 연결 설정 찾기",
+      "effect": "GET 토큰 관리 + 연결 안내",
+      "recommendation": "API 토큰 유지; AI 연결 안내 진입을 보조 링크로",
+      "evidence": "core/web/views/settings.py:49"
+    },
+    "B037": {
+      "purpose": "이슈 내용 확인",
+      "effect": "HTML details 본문 펼침; 외부 이슈 이동 아님",
+      "recommendation": "본문 보기 유지",
+      "evidence": "core/web/templates/github/issues.html:44"
+    },
+    "B048": {
+      "purpose": "추가 필터 해제",
+      "effect": "GET member/group/sort 유지하고 due/project/status/priority 제거",
+      "recommendation": "추가 필터 지우기; 담당자·묶음·정렬 유지 설명",
+      "evidence": "core/web/templates/me.html:35"
+    },
+    "B059": {
+      "purpose": "회의록 본문 작성 시작",
+      "effect": "JS beginEditing; POST 저장 버튼 아님",
+      "recommendation": "본문 편집 유지; 자동 저장 상태 안내",
+      "evidence": "core/web/static/notes.js:436"
+    },
+    "B060": {
+      "purpose": "회의록 수동 저장(JS 미실행)",
+      "effect": "JS 초기화 후 숨김; fallback 폼 POST로 저장",
+      "recommendation": "fallback 회의록 저장; 실제 화면 주 버튼으로 집계 안함",
+      "evidence": "core/web/static/notes.js:149"
+    },
+    "B068": {
+      "purpose": "마일스톤 편집 중단",
+      "effect": "JS dialog 닫기; 폼 POST 안함",
+      "recommendation": "취소 유지",
+      "evidence": "core/web/static/app.js:193"
+    },
+    "B081": {
+      "purpose": "팀 편집 중단",
+      "effect": "JS dialog 닫기; 폼 POST 안함",
+      "recommendation": "취소 유지",
+      "evidence": "core/web/static/app.js:193"
+    },
+    "B098": {
+      "purpose": "조직에서 접근 가능한 저장소 확인",
+      "effect": "POST 개인 저장소 갱신 후 프로필 이동; 조직 설치 갱신 아님",
+      "recommendation": "내 접근 저장소 다시 확인; 화면 복귀 동작 개선 검토",
+      "evidence": "core/web/views/github.py:139"
+    },
+    "B122": {
+      "purpose": "PM 팀 구성원 제외",
+      "effect": "POST 팀 제거와 조건부 GitHub 팀 제거 요청; 외부 성공 보장 안함",
+      "recommendation": "팀에서 제거; GitHub 반영 요청 조건 안내",
+      "evidence": "core/web/views/teams.py:149"
+    },
+    "B123": {
+      "purpose": "PM 팀에 구성원 추가",
+      "effect": "POST 팀 추가와 조건부 GitHub 팀 추가 요청",
+      "recommendation": "팀 멤버 추가; 외부 반영 결과 확인 안내",
+      "evidence": "core/web/views/teams.py:131"
+    },
+    "B129": {
+      "purpose": "초대 주소 전달",
+      "effect": "JS 초대 URL 클립보드 복사; 실패 fallback 후에도 성공 안내 문제",
+      "recommendation": "초대 링크 복사 + 성공 분기 수정 필요",
+      "evidence": "core/web/static/app.js:131"
+    },
+    "B137": {
+      "purpose": "다음 포트폴리오 작성 준비",
+      "effect": "GET 출처 선택 화면; 비공개 초안 생성 안함",
+      "recommendation": "새 초안 준비하기",
+      "evidence": "core/web/views/portfolio.py:157"
+    },
+    "B138": {
+      "purpose": "저장한 초안 다시 열기",
+      "effect": "GET portfolio?draft=id 기존 초안 표시",
+      "recommendation": "초안 제목 유지",
+      "evidence": "core/web/views/portfolio.py:159"
+    },
+    "B141": {
+      "purpose": "포트폴리오 출처 조직 선택",
+      "effect": "GET 조직 필터 새 조회; 초안 생성 아님",
+      "recommendation": "조직 라벨 유지",
+      "evidence": "core/web/views/portfolio.py:157"
+    },
+    "B142": {
+      "purpose": "조건에 맞는 출처 찾기",
+      "effect": "GET 프로젝트·기간·기록 종류로 출처 조회",
+      "recommendation": "출처 보기 유지",
+      "evidence": "core/web/views/portfolio.py:175"
+    },
+    "B144": {
+      "purpose": "외부 AI에 작성 요청 전달",
+      "effect": "JS clipboard.writeText; 성공·실패 피드백 없음",
+      "recommendation": "AI 작성 요청 복사 + 피드백·fallback",
+      "evidence": "core/web/templates/portfolio/index.html:103"
+    },
+    "B149": {
+      "purpose": "프로젝트 편집 중단",
+      "effect": "JS dialog 닫기; 폼 POST 없음",
+      "recommendation": "취소 유지",
+      "evidence": "core/web/static/app.js:193"
+    },
+    "B159": {
+      "purpose": "새 태스크 입력 닫기",
+      "effect": "JS 폼 숨김; 필드 내용 초기화·생성 취소 요청 아님",
+      "recommendation": "입력 닫기; 기존 값 유지 안내",
+      "evidence": "core/web/static/app.js:213"
+    },
+    "B166": {
+      "purpose": "프로젝트 태스크 입력 시작·닫기",
+      "effect": "JS #task-form hidden 토글; 생성은 하단 제출",
+      "recommendation": "새 태스크 입력 / 입력 닫기",
+      "evidence": "core/web/static/app.js:213"
+    },
+    "B178": {
+      "purpose": "문서 본문 작성 시작",
+      "effect": "JS beginEditing; POST 저장 아님",
+      "recommendation": "본문 편집 유지; 자동 저장 상태 안내",
+      "evidence": "core/web/static/notes.js:436"
+    },
+    "B179": {
+      "purpose": "문서 수동 저장(JS 미실행)",
+      "effect": "JS 초기화 후 숨김; fallback 폼 POST 저장",
+      "recommendation": "fallback 문서 저장; 실제 화면 주 버튼 집계 안함",
+      "evidence": "core/web/static/notes.js:149"
+    },
+    "B185": {
+      "purpose": "개인 GitHub 연결 단계 찾기",
+      "effect": "GET 프로필; OAuth 바로 시작 아님",
+      "recommendation": "프로필에서 GitHub 연결",
+      "evidence": "core/web/templates/projects/repo.html:21"
+    },
+    "B193": {
+      "purpose": "이벤트를 연결할 태스크 선택",
+      "effect": "HTML details 선택 폼 열기; 아직 연결 저장 아님",
+      "recommendation": "연결할 태스크 선택",
+      "evidence": "core/web/templates/projects/repo.html:89"
+    },
+    "B203": {
+      "purpose": "프로젝트 종료와 미완료 태스크 처리",
+      "effect": "POST cancel_open=1 미완료 태스크 취소 후 보관",
+      "recommendation": "미완료 태스크를 취소하고 프로젝트 보관; 확인에 대상 범위 안내",
+      "evidence": "core/web/views/projects.py:252"
+    },
+    "B213": {
+      "purpose": "개인 Discord 연결·알림 중단",
+      "effect": "POST 개인 Discord 계정 해제, 마감 알림 DM 중단",
+      "recommendation": "Discord 계정 연결 해제",
+      "evidence": "core/web/views/settings.py:42"
+    },
+    "B094": {
+      "purpose": "조직 Discord 서버 연결 중단",
+      "effect": "POST 조직 Discord 연결 해제",
+      "recommendation": "Discord 서버 연결 해제",
+      "evidence": "core/web/views/discord.py:94"
+    },
+    "B221": {
+      "purpose": "AI 클라이언트 서버 주소 전달",
+      "effect": "JS mcp_url/mcp 복사",
+      "recommendation": "서버 주소 복사",
+      "evidence": "core/web/templates/settings/tokens.html:61"
+    },
+    "B222": {
+      "purpose": "클라이언트 설정 명령 준비",
+      "effect": "JS TOKEN placeholder를 포함한 명령 복사; 토큰 자동 삽입 안함",
+      "recommendation": "설정 명령 복사; 토큰 교체 안내 유지",
+      "evidence": "core/web/templates/settings/tokens.html:67"
+    },
+    "B224": {
+      "purpose": "체크 항목 순서 올리기",
+      "effect": "POST checklist_action up",
+      "recommendation": "체크 항목 위로 이동 aria-label",
+      "evidence": "core/web/templates/tasks/_checklist.html:11"
+    },
+    "B225": {
+      "purpose": "체크 항목 순서 내리기",
+      "effect": "POST checklist_action down",
+      "recommendation": "체크 항목 아래로 이동 aria-label",
+      "evidence": "core/web/templates/tasks/_checklist.html:12"
+    },
+    "B226": {
+      "purpose": "체크 항목 제거",
+      "effect": "POST checklist_action delete",
+      "recommendation": "체크 항목 삭제 aria-label",
+      "evidence": "core/web/templates/tasks/_checklist.html:13"
+    },
+    "B234": {
+      "purpose": "개인 GitHub 연결 준비",
+      "effect": "GET 프로필; 직접 OAuth 시작 아님",
+      "recommendation": "프로필에서 GitHub 연결",
+      "evidence": "core/web/templates/tasks/_git.html:7"
+    },
+    "B242": {
+      "purpose": "연결된 PR 읽기",
+      "effect": "GET 기존 gh.pr_url 외부 웹페이지; PR 생성·재개 아님",
+      "recommendation": "GitHub에서 PR 보기",
+      "evidence": "core/web/templates/tasks/_git.html:59"
+    },
+    "B244": {
+      "purpose": "이 태스크의 외부 참조 전부 해제",
+      "effect": "POST what=all 태스크 Git 연결 제거; 개인 계정·프로젝트 저장소 해제 아님",
+      "recommendation": "이 태스크의 GitHub 연결 모두 해제",
+      "evidence": "core/web/views/github.py:485"
+    },
+    "B255": {
+      "purpose": "목표일 지정·연장 입력 시작",
+      "effect": "JS 연장 폼 펼침; POST 날짜 저장 아님",
+      "recommendation": "목표일 정하기 / 목표일 연장하기 / 입력 닫기",
+      "evidence": "core/web/templates/tasks/_panel.html:68"
+    },
+    "B265": {
+      "purpose": "태스크 문서 참조 제거",
+      "effect": "POST 연결 해제; 문서 본문 유지",
+      "recommendation": "aria-label: 문서 이름 + 연결 해제",
+      "evidence": "core/web/views/docs.py:134"
+    },
+    "B267": {
+      "purpose": "태스크 회의록 참조 제거",
+      "effect": "POST 연결 해제; 회의록 유지",
+      "recommendation": "aria-label: 회의록 이름 + 연결 해제",
+      "evidence": "core/web/views/notes.py:176"
+    },
+    "B278": {
+      "purpose": "태스크 바로가기 전달",
+      "effect": "JS /tasks/id 주소 클립보드 복사",
+      "recommendation": "태스크 링크 복사; 실패 fallback 성공 안내 수정",
+      "evidence": "core/web/static/app.js:142"
+    },
+    "B282": {
+      "purpose": "막힘 상태로 바꾸기 취소",
+      "effect": "GET task_panel 재조회; 상태 변경 POST 안함",
+      "recommendation": "취소 유지",
+      "evidence": "core/web/views/tasks.py:142"
+    },
+    "B284": {
+      "purpose": "최근 완료 태스크 확인",
+      "effect": "GET me?status=done_7d",
+      "recommendation": "최근 7일 완료",
+      "evidence": "core/web/templates/today/_head.html:8"
+    },
+    "B286": {
+      "purpose": "집중 태스크 시작 또는 완료",
+      "effect": "POST task_status가 focus 태스크 전체 상태 전환; 다음 행동만 완료 아님",
+      "recommendation": "태스크 완료로 표시 / 태스크 진행 시작",
+      "evidence": "core/web/views/tasks.py:207"
+    },
+    "B287": {
+      "purpose": "진행 메모 이어 쓰기",
+      "effect": "GET task_panel?focus=notes 편집 가능한 태스크 패널·메모 포커스",
+      "recommendation": "진행 메모 열기 유지",
+      "evidence": "core/web/views/tasks.py:142"
+    },
+    "B288": {
+      "purpose": "집중 태스크 상세 확인",
+      "effect": "GET task_panel 패널 표시; 상세 페이지 전체 이동 아님",
+      "recommendation": "자세히 보기 유지(집중 태스크 문맥); 필요 시 태스크 상세 열기 후보",
+      "evidence": "core/web/views/tasks.py:142"
+    },
+    "B289": {
+      "purpose": "월별 목표일 일정 확인·숨김",
+      "effect": "GET cal 파라미터로 달력 표시/해제",
+      "recommendation": "일정 보기 / 일정 닫기 유지",
+      "evidence": "core/web/views/today.py:69"
+    },
+    "B295": {
+      "purpose": "제외한 태스크를 다시 오늘 계획에 넣기",
+      "effect": "POST 본인 오늘 제외 항목 복원; 삭제 태스크 복구 아님",
+      "recommendation": "오늘 목록에 복원",
+      "evidence": "core/web/views/today.py:216"
+    },
+    "B298": {
+      "purpose": "빠른 추가 입력 닫기",
+      "effect": "JS 폼 숨김; 입력 내용 초기화 안함",
+      "recommendation": "입력 닫기",
+      "evidence": "core/web/static/app.js:213"
+    },
+    "B302": {
+      "purpose": "월별 일정 화면 닫기",
+      "effect": "GET today#today-list 캘린더 파라미터 제거",
+      "recommendation": "일정 닫기",
+      "evidence": "core/web/templates/today/_schedule.html:12"
+    },
+    "B176": {
+      "purpose": "새 문서 바로 작성",
+      "effect": "POST 빈 문서 생성 후 해당 문서 이동; UI-UX 빈 상태의 다른 생성 버튼과 중복",
+      "recommendation": "문서가 있을 때 새 문서 유지; 빈 상태는 첫 문서 만들기 하나만(F27)",
+      "evidence": "core/web/templates/projects/docs.html:14",
+      "status": "개별 검토"
+    },
+    "B182": {
+      "purpose": "첫 문서 바로 작성",
+      "effect": "POST 빈 문서 생성 후 해당 문서 이동; 빈 상태에서만 표시",
+      "recommendation": "첫 문서 만들기 유지; 빈 상태의 상단 중복 생성 버튼 제거 후보(F27)",
+      "evidence": "core/web/templates/projects/docs.html:68",
+      "status": "개별 검토"
+    }
+  },
+  "jsInfo": {
+    "toggle-rail": {
+      "purpose": "프로젝트 목록의 공간 조절",
+      "effect": "JS 레일 접힘/펼침과 localStorage 저장",
+      "recommendation": "프로젝트 목록 접기/펼치기",
+      "evidence": "core/web/static/app.js:29"
+    },
+    "dismiss": {
+      "purpose": "안내 메시지 숨기기",
+      "effect": "JS notice DOM 제거; 작업 취소 아님",
+      "recommendation": "안내 닫기",
+      "evidence": "core/web/static/app.js:125"
+    },
+    "toggle-wide": {
+      "purpose": "태스크 상세를 넓게 읽기",
+      "effect": "JS 패널 폭 변경·선호 저장; 글자 크기 변경 아님",
+      "recommendation": "패널 넓히기 / 패널 줄이기",
+      "evidence": "core/web/static/app.js:188"
+    },
+    "close-panel": {
+      "purpose": "태스크 패널 닫기",
+      "effect": "JS 패널 비우기·이전 URL/스크롤 복원; 저장·취소 요청 없음",
+      "recommendation": "태스크 상세 닫기; 자동 저장 상태 안내",
+      "evidence": "core/web/static/app.js:181"
+    },
+    "close-dialog": {
+      "purpose": "제출하지 않고 다이얼로그 닫기",
+      "effect": "JS dialog 닫고 폼 제거; POST 없음",
+      "recommendation": "취소 유지",
+      "evidence": "core/web/static/app.js:193"
+    },
+    "scroll-board": {
+      "purpose": "다른 상태 열 확인",
+      "effect": "JS 칸반을 이전/다음 열 방향으로 가로 스크롤",
+      "recommendation": "이전 상태 열 / 다음 상태 열; 기존 aria-label 대조",
+      "evidence": "core/web/static/app.js:222"
+    },
+    "open-settings-group": {
+      "purpose": "원하는 설정 묶음 찾기",
+      "effect": "JS 해당 섹션 열고 다른 섹션 닫기·스크롤; 저장 안함",
+      "recommendation": "섹션 제목 유지",
+      "evidence": "core/web/static/app.js:195"
+    },
+    "toggle": {
+      "purpose": "입력 폼 열기·닫기",
+      "effect": "JS data-target hidden 토글; 데이터 생성·취소·초기화 안함",
+      "recommendation": "대상+열기/닫기, 제출 결과와 구분",
+      "evidence": "core/web/static/app.js:213"
+    }
+  }
+}

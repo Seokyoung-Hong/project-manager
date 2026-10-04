@@ -11,12 +11,13 @@
       </select>
     </form>
   </div>
-  <div class="tiles five org-kpis" tabindex="0" role="region" aria-label="조직 부하 요약, 좌우로 스크롤 가능">
+  <div class="tiles five org-kpis" tabindex="0" role="region" aria-label="조직 부하 요약">
     {% for label, value, danger in tiles %}<div class="tile{% if danger and value %} danger{% endif %}"><b>{{ value }}</b><span>{{ label }}</span></div>{% endfor %}
   </div>
 </div>
 <section class="card">
   <h2>담당자별</h2>
+  <p class="muted t13">상단 요약은 팀 필터와 관계없이 조직 전체입니다. 아래 담당자 목록만 선택한 팀으로 좁혀집니다.</p>
   <div class="stack">
     {% for r in rows %}
     <div class="load-row">
@@ -26,12 +27,13 @@
           <div class="bar grow" role="img" aria-label="진행 중과 검토 대기 {{ r.load }}건, 조직 최대 {{ r.scale }}건">
             <i style="width:{{ r.bar }}%{% if r.over %};background:var(--danger){% endif %}"></i>
           </div>
-          <span class="t12 muted">{{ r.load }}/{{ r.scale }}</span>
+          <span class="t12 muted">진행·검토 {{ r.load }}건 · 조직 내 최대 {{ r.scale }}건</span>
         </div>
-        <span class="t12 muted">진행 중 {{ r.doing }} · 검토 대기 {{ r.review }} · 막힘 {{ r.blocked }} · 기한 초과 {{ r.overdue }}</span>
+        <span class="t13 muted">진행 중 {{ r.doing }} · 검토 대기 {{ r.review }} · 막힘 {{ r.blocked }} · <span{% if r.overdue %} class="danger"{% endif %}>기한 초과 {{ r.overdue }}</span></span>
       </div>
       <div class="chips load-tags">{% for t in r.tags %}<span class="tag">{{ t }}</span>{% endfor %}</div>
       <span class="badge load-verdict{% if r.over %} danger{% endif %}">{{ r.verdict }}</span>
+      {% if r.over %}<span class="t12 danger">{% if r.load >= 4 %}진행·검토 4건 이상{% endif %}{% if r.load >= 4 and r.overdue >= 2 %} · {% endif %}{% if r.overdue >= 2 %}기한 초과 2건 이상{% endif %}</span>{% endif %}
     </div>
     {% empty %}<p class="muted">멤버가 없습니다.</p>{% endfor %}
   </div>
@@ -39,7 +41,7 @@
 </section>
 <section class="card">
   <div class="card-head">
-    <h2>스킬 태그로 담당자 찾기</h2>
+    <h2>보유 기술 태그로 담당자 찾기</h2>
   </div>
   {% if all_tags %}
   <div class="chips">

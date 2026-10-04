@@ -4,16 +4,16 @@
     {% for d in docs %}
     <li class="row"><span class="badge">문서</span>
       <a href="{% url 'project_docs' d.project_id %}?doc={{ d.pk }}">{{ d.title }}</a>
-      <button type="button" class="btn link danger" hx-post="{% url 'task_doc_unlink' task.pk d.pk %}" hx-target="#refs" hx-swap="innerHTML" hx-confirm="연결을 끊을까요?">✕</button></li>
+      <button type="button" class="btn link danger" hx-post="{% url 'task_doc_unlink' task.pk d.pk %}" hx-target="#refs" hx-swap="innerHTML" hx-confirm="이 태스크에서 문서 연결을 해제할까요? 문서는 삭제되지 않습니다." aria-label="문서 {{ d.title }} 연결 해제">✕</button></li>
     {% endfor %}
     {% for n in notes %}
     <li class="row"><span class="badge">회의록</span>
       <a href="{% url 'org_notes' n.org_id %}?note={{ n.pk }}">{{ n.title }}</a>
-      <button type="button" class="btn link danger" hx-post="{% url 'task_note_unlink' task.pk n.pk %}" hx-target="#refs" hx-swap="innerHTML" hx-confirm="연결을 끊을까요?">✕</button></li>
+      <button type="button" class="btn link danger" hx-post="{% url 'task_note_unlink' task.pk n.pk %}" hx-target="#refs" hx-swap="innerHTML" hx-confirm="이 태스크에서 회의록 연결을 해제할까요? 회의록은 삭제되지 않습니다." aria-label="회의록 {{ n.title }} 연결 해제">✕</button></li>
     {% endfor %}
     {% for l in links %}
     <li class="row"><span class="badge">{{ l.get_kind_display }}</span><a href="{{ l.url }}" target="_blank" rel="noopener">{{ l.title }}</a>
-      <button type="button" class="btn link danger" hx-post="{% url 'link_delete' l.pk %}" hx-target="#refs" hx-swap="innerHTML" hx-confirm="링크를 지울까요?">삭제</button></li>
+      <button type="button" class="btn link danger" hx-post="{% url 'link_delete' l.pk %}" hx-target="#refs" hx-swap="innerHTML" hx-confirm="이 태스크의 외부 링크를 삭제할까요? 원본 자료는 삭제되지 않습니다." aria-label="외부 링크 {{ l.title }} 삭제">삭제</button></li>
     {% empty %}{% if not notes and not docs %}<li class="muted t13">참고 자료 없음</li>{% endif %}{% endfor %}
   </ul>
   {% if project_docs %}
@@ -22,7 +22,7 @@
       <option value="">프로젝트 문서에서 고르기…</option>
       {% for d in project_docs %}<option value="{{ d.pk }}">{{ d.title }}</option>{% endfor %}
     </select>
-    <button class="btn sm">연결</button>
+    <button class="btn sm">문서 연결</button>
   </form>
   {% endif %}
   <form class="row" hx-post="{% url 'task_note_link' task.pk %}" hx-target="#refs" hx-swap="innerHTML">
@@ -30,14 +30,18 @@
       <option value="">회의록에서 고르기…</option>
       {% for n in org_notes %}<option value="{{ n.pk }}">{{ n.title }}</option>{% endfor %}
     </select>
-    <button class="btn sm">연결</button>
+    <button class="btn sm">회의록 연결</button>
   </form>
   <button type="button" class="btn link" data-action="toggle" data-target="#link-form" data-alt="취소">＋ 외부 주소 추가</button>
   <form id="link-form" class="stack"{% if not link_open %} hidden{% endif %} hx-post="{% url 'task_link_add' task.pk %}" hx-target="#refs" hx-swap="innerHTML">
-    <select name="kind" class="select auto" aria-label="종류">{% for code, label in link_form.fields.kind.choices %}<option value="{{ code }}">{{ label }}</option>{% endfor %}</select>
-    <input class="input" name="title" placeholder="제목" required>
-    <input class="input" name="url" type="url" placeholder="https://" required>
-    <button class="btn sm primary">추가</button>
+    <select name="kind" class="select auto" aria-label="종류">{% for code, label in link_form.fields.kind.choices %}<option value="{{ code }}"{% if link_form.kind.value == code %} selected{% endif %}>{{ label }}</option>{% endfor %}</select>
+    {% for e in link_form.kind.errors %}<div class="error" role="alert">링크 종류: {{ e }}</div>{% endfor %}
+    <label class="field">링크 제목<input class="input" name="title" value="{{ link_form.title.value|default:'' }}" placeholder="제목" required{% if link_form.title.errors %} aria-invalid="true" aria-describedby="task-link-title-errors"{% endif %}></label>
+    {% if link_form.title.errors %}<div id="task-link-title-errors" class="error" role="alert">{{ link_form.title.errors }}</div>{% endif %}
+    <label class="field">링크 주소<input class="input" name="url" type="url" value="{{ link_form.url.value|default:'' }}" placeholder="https://" required{% if link_form.url.errors %} aria-invalid="true" aria-describedby="task-link-url-errors"{% endif %}></label>
+    {% if link_form.url.errors %}<div id="task-link-url-errors" class="error" role="alert">{{ link_form.url.errors }}</div>{% endif %}
+    {% for e in link_form.non_field_errors %}<div class="error" role="alert">{{ e }}</div>{% endfor %}
+    <button class="btn sm primary">외부 링크 추가</button>
   </form>
   {% if error %}<div class="error">{{ error }}</div>{% endif %}
   <p class="muted t13">PR·커밋은 저장소 연결이 자동으로 붙입니다. 여기에는 이 프로젝트의 문서, 조직의 회의록, 앱이 모르는 외부 주소를 연결합니다.</p>

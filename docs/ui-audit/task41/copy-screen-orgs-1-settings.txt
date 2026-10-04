@@ -1,0 +1,154 @@
+Browser tab: 2, Title: "조직 설정", URL: "http://127.0.0.1:8017/orgs/1/settings".
+1 AXWebArea 조직 설정, URL: 127.0.0.1:8017/orgs/1/settings
+	2 container
+		3 button (collapsed) Description: 조직 전환, Help: 산돌이, Secondary Actions: Expand
+			4 text 산돌이
+		5 container 주 메뉴
+			6 link Description: 오늘, Value: 127.0.0.1:8017/today
+			7 link Description: 내 태스크, Value: 127.0.0.1:8017/me
+			8 link Description: 프로젝트, Value: 127.0.0.1:8017/projects
+			9 link Description: 조직, Value: 127.0.0.1:8017/org
+			10 link Description: 검색, Value: 127.0.0.1:8017/search
+		11 link Description: 빠른 추가, Value: 127.0.0.1:8017/today?quick=1
+		12 button (collapsed) Description: 내 메뉴, Help: 김, Secondary Actions: Expand
+			13 text 김
+		14 heading 산돌이, Value: 1
+			15 text 산돌이
+		16 container 조직 메뉴
+			17 link Description: 개요, Value: 127.0.0.1:8017/orgs/1
+			18 link Description: 팀, Value: 127.0.0.1:8017/orgs/1/teams
+			19 link Description: 부하 현황, Value: 127.0.0.1:8017/orgs/1/capacity
+			20 link Description: 로드맵, Value: 127.0.0.1:8017/orgs/1/roadmap
+			21 link Description: 거버넌스, Value: 127.0.0.1:8017/orgs/1/governance
+			22 link Description: 회의록, Value: 127.0.0.1:8017/orgs/1/notes
+			23 link Description: 설정, Value: 127.0.0.1:8017/orgs/1/settings
+		24 text 조직 기본값과 잠금
+		25 text “프로젝트 변경 허용”이 켜진 항목만 프로젝트에서 다른 값을 저장할 수 있습니다. 끄면 조직 값으로 고정됩니다. 개인 환경설정은 알림·화면 기본값만 바꾸며 조직 규칙을 완화하지 않습니다.
+		26 container
+			27 container 조직 설정 섹션
+				28 link Description: 태스크 규칙 14, Value: 127.0.0.1:8017/orgs/1/settings#settings-group-1
+				29 link Description: 프로젝트 권한 8, Value: 127.0.0.1:8017/orgs/1/settings#settings-group-2
+				30 link Description: 조직 운영 4, Value: 127.0.0.1:8017/orgs/1/settings#settings-group-3
+				31 link Description: AI 정책 14, Value: 127.0.0.1:8017/orgs/1/settings#settings-group-4
+				32 link Description: 알림 11, Value: 127.0.0.1:8017/orgs/1/settings#settings-group-5
+			33 text 다섯 섹션의 값과 잠금을 함께 저장합니다.
+			34 button 조직 설정 저장
+			35 container settings-group-1
+				36 button (expanded) 태스크 규칙 14개 항목 ⌄, Secondary Actions: Collapse
+					37 text 태스크 규칙
+					38 text 14개 항목
+					39 text ⌄
+				40 content list
+					41 container
+						42 text 기본 중요도
+						43 text 생성 화면·API·AI가 중요도를 주지 않았을 때 쓰는 값입니다.
+						44 container 기본 중요도
+							45 stepper (settable, integer) 기본 중요도, Value: 5, ID: setting-task.default_priority
+						46 text 프로젝트 변경 허용
+						47 checkbox (settable, integer) Description: 기본 중요도 · 프로젝트 변경 허용, Value: 1, ID: unlock-task.default_priority
+					48 container
+						49 text 중요도 상한
+						50 text 이 값을 넘는 중요도는 프로젝트 관리자만 정할 수 있습니다. 0이면 제한하지 않습니다.
+						51 container 중요도 상한
+							52 stepper (settable, integer) 중요도 상한, Value: 0, ID: setting-task.priority_cap
+						53 text 프로젝트 변경 허용
+						54 checkbox (settable, integer) Description: 중요도 상한 · 프로젝트 변경 허용, Value: 1, ID: unlock-task.priority_cap
+					55 container
+						56 text 완료 조건을 적지 않으면 태스크를 만들 수 없습니다.
+						57 container 완료 조건 필수
+							58 checkbox (settable, integer) 완료 조건 필수, Value: 0, ID: setting-task.require_done_when
+						59 text 프로젝트 변경 허용
+						60 checkbox (settable, integer) Description: 완료 조건 필수 · 프로젝트 변경 허용, Value: 1, ID: unlock-task.require_done_when
+					61 container
+						62 text 기한 미정 사유로 대신할 수 없습니다.
+						63 container 기한 필수
+							64 checkbox (settable, integer) 기한 필수, Value: 0, ID: setting-task.due_required
+						65 text 프로젝트 변경 허용
+						66 checkbox (settable, integer) Description: 기한 필수 · 프로젝트 변경 허용, Value: 1, ID: unlock-task.due_required
+					67 container
+						68 text 기본 기한(영업일)
+						69 text 생성 화면의 기한 초기값을 오늘+N영업일로 제안합니다. 자동으로 채우지는 않습니다. 0이면 제안하지 않습니다.
+						70 container 기본 기한(영업일)
+							71 stepper (settable, integer) 기본 기한(영업일), Value: 0, ID: setting-task.default_due_days
+						72 text 프로젝트 변경 허용
+						73 checkbox (settable, integer) Description: 기본 기한(영업일) · 프로젝트 변경 허용, Value: 1, ID: unlock-task.default_due_days
+					74 container
+						75 text 동시 진행 한도
+						76 text 한 사람이 동시에 진행 중으로 둘 수 있는 태스크 수입니다. 0이면 제한하지 않습니다.
+						77 container 동시 진행 한도
+							78 stepper (settable, integer) 동시 진행 한도, Value: 0, ID: setting-task.doing_limit
+						79 text 프로젝트 변경 허용 조직에서 고정
+					80 container
+						81 text 한도 초과 처리
+						82 text 경고면 숫자만 보여 주고, 차단이면 진행 중으로 바꾸지 못하게 막습니다.
+						83 container 한도 초과 처리
+							84 pop up button (collapsed, settable) 한도 초과 처리, Value: 경고만, ID: setting-task.doing_limit_mode, Secondary Actions: Expand
+								85 menu
+									86 (selected) 경고만
+									87 차단
+						88 text 프로젝트 변경 허용 조직에서 고정
+					89 container
+						90 text 완료는 검토 대기를 거쳐서만 할 수 있습니다.
+						91 container 검토 대기 필수
+							92 checkbox (settable, integer) 검토 대기 필수, Value: 0, ID: setting-task.review_required
+						93 text 프로젝트 변경 허용
+						94 checkbox (settable, integer) Description: 검토 대기 필수 · 프로젝트 변경 허용, Value: 1, ID: unlock-task.review_required
+					95 container
+						96 text 끄면 담당자 본인이 검토 대기에서 완료로 바꿀 수 없습니다.
+						97 container 본인 검토 허용
+							98 checkbox (settable, integer) 본인 검토 허용, Value: 1, ID: setting-task.self_review
+						99 text 프로젝트 변경 허용
+						100 checkbox (settable, integer) Description: 본인 검토 허용 · 프로젝트 변경 허용, Value: 1, ID: unlock-task.self_review
+					101 container
+						102 text 완료·취소한 태스크를 되돌릴 때 사유를 적게 합니다.
+						103 container 재개 사유 필수
+							104 checkbox (settable, integer) 재개 사유 필수, Value: 0, ID: setting-task.reopen_reason_required
+						105 text 프로젝트 변경 허용
+						106 checkbox (settable, integer) Description: 재개 사유 필수 · 프로젝트 변경 허용, Value: 1, ID: unlock-task.reopen_reason_required
+					107 container
+						108 container 취소 사유 필수
+							109 checkbox (settable, integer) 취소 사유 필수, Value: 0, ID: setting-task.cancel_reason_required
+						110 text 프로젝트 변경 허용
+						111 checkbox (settable, integer) Description: 취소 사유 필수 · 프로젝트 변경 허용, Value: 1, ID: unlock-task.cancel_reason_required
+					112 container
+						113 text 사유는 이력에 남습니다.
+						114 container 담당자 변경 사유 필수
+							115 checkbox (settable, integer) 담당자 변경 사유 필수, Value: 0, ID: setting-task.assignee_change_reason
+						116 text 프로젝트 변경 허용
+						117 checkbox (settable, integer) Description: 담당자 변경 사유 필수 · 프로젝트 변경 허용, Value: 1, ID: unlock-task.assignee_change_reason
+					118 container
+						119 text 연장은 이미 사유를 받습니다. 단축·삭제에도 사유를 받게 합니다.
+						120 container 기한 변경 사유 필수
+							121 checkbox (settable, integer) 기한 변경 사유 필수, Value: 0, ID: setting-task.due_change_reason
+						122 text 프로젝트 변경 허용
+						123 checkbox (settable, integer) Description: 기한 변경 사유 필수 · 프로젝트 변경 허용, Value: 1, ID: unlock-task.due_change_reason
+					124 container
+						125 text 초과 유예(일)
+						126 text 기한이 지나도 N일까지는 초과로 강조하지 않고 초과 알림도 보내지 않습니다.
+						127 container 초과 유예(일)
+							128 stepper (settable, integer) 초과 유예(일), Value: 0, ID: setting-task.overdue_grace_days
+						129 text 프로젝트 변경 허용
+						130 checkbox (settable, integer) Description: 초과 유예(일) · 프로젝트 변경 허용, Value: 1, ID: unlock-task.overdue_grace_days
+			131 button (collapsed) 프로젝트 권한 8개 항목 ⌄, Secondary Actions: Expand
+				132 text 프로젝트 권한
+				133 text 8개 항목
+				134 text ⌄
+			135 button (collapsed) 조직 운영 4개 항목 ⌄, Secondary Actions: Expand
+				136 text 조직 운영
+				137 text 4개 항목
+				138 text ⌄
+			139 button (collapsed) AI 정책 14개 항목 ⌄, Secondary Actions: Expand
+				140 text AI 정책
+				141 text 14개 항목
+				142 text ⌄
+			143 button (collapsed) 알림 11개 항목 ⌄, Secondary Actions: Expand
+				144 text 알림
+				145 text 11개 항목
+				146 text ⌄
+		147 container
+			148 heading 설정 변경 이력, Value: 2
+				149 text 설정 변경 이력
+			150 content list
+				151 text 변경 이력 없음
+
+The focused UI element is 1 AXWebArea 조직 설정, URL: 127.0.0.1:8017/orgs/1/settings

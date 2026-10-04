@@ -1,0 +1,56 @@
+Browser tab: 2, Title: "부하 현황", URL: "http://127.0.0.1:8017/orgs/1/capacity".
+1 AXWebArea 부하 현황, URL: 127.0.0.1:8017/orgs/1/capacity
+	2 container
+		3 button (collapsed) Description: 조직 전환, Help: 산돌이, Secondary Actions: Expand
+			4 text 산돌이
+		5 container 주 메뉴
+			6 link Description: 오늘, Value: 127.0.0.1:8017/today
+			7 link Description: 내 태스크, Value: 127.0.0.1:8017/me
+			8 link Description: 프로젝트, Value: 127.0.0.1:8017/projects
+			9 link Description: 조직, Value: 127.0.0.1:8017/org
+			10 link Description: 검색, Value: 127.0.0.1:8017/search
+		11 link Description: 빠른 추가, Value: 127.0.0.1:8017/today?quick=1
+		12 button (collapsed) Description: 내 메뉴, Help: 김, Secondary Actions: Expand
+			13 text 김
+		14 heading 산돌이, Value: 1
+			15 text 산돌이
+		16 container 조직 메뉴
+			17 link Description: 개요, Value: 127.0.0.1:8017/orgs/1
+			18 link Description: 팀, Value: 127.0.0.1:8017/orgs/1/teams
+			19 link Description: 부하 현황, Value: 127.0.0.1:8017/orgs/1/capacity
+			20 link Description: 로드맵, Value: 127.0.0.1:8017/orgs/1/roadmap
+			21 link Description: 거버넌스, Value: 127.0.0.1:8017/orgs/1/governance
+			22 link Description: 회의록, Value: 127.0.0.1:8017/orgs/1/notes
+			23 link Description: 설정, Value: 127.0.0.1:8017/orgs/1/settings
+		24 heading 부하 현황, Value: 2
+			25 text 부하 현황
+		26 pop up button (collapsed, settable) Value: 전체 팀, Secondary Actions: Expand
+			27 menu
+				28 (selected) 전체 팀
+				29 서비스 개발
+		30 container 조직 부하 요약
+			31 text 4
+			32 text 진행 중
+			33 text 4
+			34 text 검토 대기
+			35 text 1
+			36 text 막힘
+			37 text 4
+			38 text 기한 초과
+			39 text 2.0
+			40 text 1인 평균 진행
+		41 container
+			42 heading 담당자별, Value: 2
+				43 text 담당자별
+			44 link Description: 김하늘, Value: 127.0.0.1:8017/me?member=1
+			45 image 진행 중과 검토 대기 8건, 조직 최대 8건
+			46 text 8/8 진행 중 4 · 검토 대기 4 · 막힘 0 ·  기한 초과 0 과부하
+			47 link Description: 이서준, Value: 127.0.0.1:8017/me?member=2
+			48 image 진행 중과 검토 대기 0건, 조직 최대 8건
+			49 text 0/8 진행 중 0 · 검토 대기 0 · 막힘 1 ·  기한 초과 4 과부하 막대는 진행 중 + 검토 대기 개수를 조직 최대치 기준으로 표시합니다. 이름을 누르면 그 사람의 태스크 목록으로 이동합니다.
+		50 container
+			51 heading 스킬 태그로 담당자 찾기, Value: 2
+				52 text 스킬 태그로 담당자 찾기
+			53 text 멤버 관리에서 스킬 태그를 넣으면 여기에서 찾을 수 있습니다.
+
+The focused UI element is 1 AXWebArea 부하 현황, URL: 127.0.0.1:8017/orgs/1/capacity

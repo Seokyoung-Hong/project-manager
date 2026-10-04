@@ -2,18 +2,18 @@
 {% block main %}
 <section class="card" style="max-width:520px">
   <h2>{{ client.name|default:"이름 없는 클라이언트" }}에 연결할까요?</h2>
-  <p class="t13 muted">이 앱이 <b>{{ user }}</b> 계정으로 산돌이 태스크를 다룰 수 있게 됩니다.
+  <p class="t13 muted">이 앱이 <b>{{ user }}</b> 계정으로 계정 권한과 조직 정책이 허용하는 자료에 접근할 수 있게 됩니다.
     허용하면 <code>{{ redirect_host }}</code>(으)로 돌아갑니다.</p>
   <form method="post" class="stack">{% csrf_token %}
     {% for k, v in params.items %}<input type="hidden" name="{{ k }}" value="{{ v }}">{% endfor %}
     <fieldset class="stack">
       <legend class="t13">허용할 범위</legend>
       <label><input type="radio" name="scope" value="read" checked> 읽기 — 태스크·프로젝트·문서를 보기만 합니다.</label>
-      <label><input type="radio" name="scope" value="write"> 읽기·쓰기 — 태스크를 만들고 고칠 수 있습니다.</label>
+      <label><input type="radio" name="scope" value="write"> 읽기·쓰기 — 허용된 조직 정책과 계정 권한 안에서 태스크·프로젝트·문서 등을 조회하고 변경할 수 있습니다.</label>
     </fieldset>
     <div class="row">
-      <button class="btn primary" name="decision" value="allow">허용</button>
-      <button class="btn" name="decision" value="deny">취소</button>
+      <button class="btn primary" name="decision" value="allow">접근 허용</button>
+      <button class="btn" name="decision" value="deny">접근 거절</button>
     </div>
   </form>
   <p class="t13 muted">허용하면 API 토큰이 하나 발급됩니다.

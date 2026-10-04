@@ -1,0 +1,20 @@
+[
+  {
+    "file": "app.css",
+    "equalNormalized": true,
+    "downloadLength": 65117,
+    "localLength": 65117
+  },
+  {
+    "file": "app.js",
+    "equalNormalized": true,
+    "downloadLength": 16869,
+    "localLength": 16841
+  },
+  {
+    "file": "notes.js",
+    "equalNormalized": true,
+    "downloadLength": 29260,
+    "localLength": 29254
+  }
+]

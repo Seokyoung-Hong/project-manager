@@ -5,7 +5,7 @@
   <div class="card-head today-list-head">
     <div class="today-list-title">
       <h2>오늘 목록 <span class="muted">{{ counts.today }}</span></h2>
-      <p class="muted t12">직접 담은 순서 · 자동 담김은 중요도순</p>
+      <p class="muted t12">직접 추가한 순서 · 자동 추가는 중요도순</p>
     </div>
     <a class="btn sm today-schedule-toggle"
        href="{% url 'today' %}?schedule={% if schedule_open %}0#today-list{% else %}1#today-schedule{% endif %}"
@@ -14,8 +14,8 @@
   </div>
   <div class="today-list-tools">
     <span class="today-scope-label">전체 조직 · 내 담당 태스크</span>
-    <label class="today-auto-pull muted t13">마감 자동 담기
-      <select name="auto_pull_days" class="select auto" aria-label="마감 기준 자동 담기" hx-post="{% url 'today_settings' %}{% if today_state_query %}?{{ today_state_query }}{% endif %}" hx-target="#today-list" hx-swap="outerHTML" hx-trigger="change">
+    <label class="today-auto-pull muted t13">목표일 기준 자동 추가
+      <select name="auto_pull_days" class="select auto" aria-label="목표일 기준 자동 추가" hx-post="{% url 'today_settings' %}{% if today_state_query %}?{{ today_state_query }}{% endif %}" hx-target="#today-list" hx-swap="outerHTML" hx-trigger="change">
         {% for v, label in auto_pull_choices %}<option value="{{ v }}"{% if v == auto_pull_days %} selected{% endif %}>{{ label }}</option>{% endfor %}
       </select>
     </label>
@@ -26,10 +26,10 @@
     <a href="{% url 'me' %}?status=review"><b>{{ counts.review }}</b><span>검토 대기</span></a>
     <a href="{% url 'me' %}?status=blocked"><b>{{ counts.blocked }}</b><span>막힘</span></a>
   </nav>
-  {% if counts.auto_pulled %}<p class="muted t13">마감 {{ auto_pull_days }}일 이내 자동 추가 {{ counts.auto_pulled }}건.</p>{% endif %}
-  {% if counts.excluded %}<p class="muted t13">오늘 제외 {{ counts.excluded }}건 · <button type="button" class="btn link" hx-post="{% url 'today_restore' %}{% if today_state_query %}?{{ today_state_query }}{% endif %}" hx-target="#today-list" hx-swap="outerHTML">제외한 태스크 복원</button></p>{% endif %}
+  {% if counts.auto_pulled %}<p class="muted t13">목표일이 {{ auto_pull_days }}일 이내인 태스크 자동 추가 {{ counts.auto_pulled }}건.</p>{% endif %}
+  {% if counts.excluded %}<p class="muted t13">오늘 목록에서 뺀 태스크 {{ counts.excluded }}건 · <button type="button" class="btn link" hx-post="{% url 'today_restore' %}{% if today_state_query %}?{{ today_state_query }}{% endif %}" hx-target="#today-list" hx-swap="outerHTML">오늘 목록에 복원</button></p>{% endif %}
   <ul class="tasks">
-    {% for r in rows %}{% task_row r %}{% empty %}<li class="muted">담긴 태스크가 없습니다. 내 태스크에서 “오늘 추가”를 누르면 여기에 표시됩니다.</li>{% endfor %}
+    {% for r in rows %}{% task_row r %}{% empty %}<li class="muted">오늘 목록에 태스크가 없습니다. 내 태스크에서 “오늘 목록에 추가”를 누르면 여기에 표시됩니다.</li>{% endfor %}
   </ul>
   <details class="today-done"><summary>오늘 완료 ({{ done_rows|length }})</summary><ul class="tasks" style="margin-top:8px">{% for r in done_rows %}{% task_row r %}{% endfor %}</ul></details>
 </section>

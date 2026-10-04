@@ -413,8 +413,18 @@ def org_issues_sync(request, org_id):
     org = org_or_404(request.user, org_id)
     n, failed = gh_services.sync_org_issues(org)
     if failed:
-        messages.error(request, f"저장소 {failed}곳에서 이슈를 가져오지 못했습니다.")
-    messages.success(request, f"열린 이슈 {n}건을 확인했습니다.")
+        total = RepoConnection.objects.filter(project__org=org).count()
+        if failed >= total:
+            messages.error(
+                request, f"연결된 저장소 {failed}곳 모두에서 이슈를 확인하지 못했습니다."
+            )
+        else:
+            messages.warning(
+                request,
+                f"일부 저장소만 확인했습니다. 열린 이슈 {n}건을 확인했고, {failed}곳은 확인하지 못했습니다.",
+            )
+    else:
+        messages.success(request, f"열린 이슈 {n}건을 확인했습니다.")
     return redirect(f"{reverse('org_issues', args=[org.pk])}?{request.POST.get('back', '')}")
 
 

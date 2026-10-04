@@ -179,7 +179,7 @@ def project_edit(request, project_id):
 
 
 @login_required
-def project_detail(request, project_id):
+def project_detail(request, project_id, *, link_form=None):
     project = project_or_404(request.user, project_id)
     request.session["org_id"] = project.org_id
     request.session["project_id"] = project.pk
@@ -198,10 +198,12 @@ def project_detail(request, project_id):
         "include_closed": include_closed,
         "form_open": request.GET.get("new") == "1",
         "is_admin": can_admin(request.user, project.org),
-        "link_form": LinkForm(),
+        "link_form": link_form if link_form is not None else LinkForm(),
+        "link_open": link_form is not None,
         "tab": "tasks",
         "form": TaskInlineForm(
             org=project.org,
+            project=project,
             initial={"assignee": request.user.pk, "priority": 5, "idem": new_idem()},
         ),
     }
@@ -220,7 +222,7 @@ def project_detail(request, project_id):
 def task_create(request, project_id):
     """인라인 태스크 폼. 성공하면 프로젝트 화면으로 돌아가며 #task-{id}로 패널을 연다."""
     project = project_or_404(request.user, project_id)
-    form = TaskInlineForm(request.POST, org=project.org)
+    form = TaskInlineForm(request.POST, org=project.org, project=project)
     if form.is_valid():
         d = form.cleaned_data
         try:
@@ -313,9 +315,10 @@ def link_add(request, project_id):
                 kind=d["kind"],
             )
         except ServiceError as e:
-            messages.error(request, " ".join(e.errors.values()))
+            apply_service_error(form, e)
+            return project_detail(request, project_id, link_form=form)
     else:
-        messages.error(request, "링크 입력이 올바르지 않습니다.")
+        return project_detail(request, project_id, link_form=form)
     return redirect("project_detail", project_id=project.pk)
 
 
@@ -403,7 +406,7 @@ def project_settings(request, project_id):
             if s.group == code
         ]
         if rows:
-            groups.append((label, rows))
+            groups.append(("화면 기본값" if code == "project" else label, rows))
     repo_state = None
     if settings.GITHUB_ENABLED:
         from github import services as gh_services
@@ -420,5 +423,6 @@ def project_settings(request, project_id):
             "groups": groups,
             "governance_extra": project.governance_extra,
             "repo_state": repo_state,
+            "open_task_count": project.tasks.filter(status__in=Task.OPEN).count(),
         },
     )

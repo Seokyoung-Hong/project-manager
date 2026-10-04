@@ -13,7 +13,7 @@
       {% if task.priority != 5 %}<span class="badge{% if task.priority >= 8 %} high{% endif %}">중요도 {{ task.priority }}/10</span>{% endif %}
       {% if task.is_stopped %}<span{% if task.is_blocked %} class="danger"{% endif %}>{{ task.stop_reason|default:"사유 없음" }}</span>{% endif %}
       {% if checklist_total %}<span>체크리스트 {{ checklist_done }}/{{ checklist_total }}</span>{% endif %}
-      {% if auto_pulled %}<span class="auto-mark" title="마감이 가까워 오늘 목록에 자동으로 담겼습니다">자동 담김</span>{% endif %}
+      {% if auto_pulled %}<span class="auto-mark" title="목표일이 가까워 오늘 목록에 자동으로 추가되었습니다">자동 추가</span>{% endif %}
     </div>
     {% if error %}<div class="error">{{ error }}</div>{% endif %}
   </div>
@@ -37,17 +37,17 @@
     {% endif %}
     {% if not hide_today and not task.is_closed %}
       {% if auto_pulled %}
-      <button type="button" class="btn sm today-btn in" hx-post="{% url 'today_exclude' task.pk %}?{{ row_query }}" hx-target="{{ row_target }}" hx-swap="outerHTML" title="오늘 할 일 목록에서 빼기">오늘 제외</button>
+      <button type="button" class="btn sm today-btn in" hx-post="{% url 'today_exclude' task.pk %}?{{ row_query }}" hx-target="{{ row_target }}" hx-swap="outerHTML" title="오늘 할 일 목록에서 빼기">오늘 목록에서 빼기</button>
       {% elif in_today %}
-      <button type="button" class="btn sm today-btn in" hx-post="{% url 'today_exclude' task.pk %}?{{ row_query }}" hx-target="{{ row_target }}" hx-swap="outerHTML" title="오늘 할 일 목록에서 빼기">오늘 제외</button>
+      <button type="button" class="btn sm today-btn in" hx-post="{% url 'today_exclude' task.pk %}?{{ row_query }}" hx-target="{{ row_target }}" hx-swap="outerHTML" title="오늘 할 일 목록에서 빼기">오늘 목록에서 빼기</button>
       {% else %}
-      <button type="button" class="btn sm today-btn" hx-post="{% url 'today_add' task.pk %}?{{ row_query }}" hx-target="{{ row_target }}" hx-swap="outerHTML" title="오늘 할 일 목록에 담기">오늘 추가</button>
+      <button type="button" class="btn sm today-btn" hx-post="{% url 'today_add' task.pk %}?{{ row_query }}" hx-target="{{ row_target }}" hx-swap="outerHTML" title="오늘 할 일 목록에 담기">오늘 목록에 추가</button>
       {% endif %}
     {% endif %}
-    <button type="button" class="btn sm icon" data-copy="{{ task.pk }}" aria-label="바로가기 링크 복사" title="바로가기 링크 복사"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M6.5 9.5l3-3M7 4.5l1.2-1.2a2.8 2.8 0 014 4L11 8.5M9 11.5l-1.2 1.2a2.8 2.8 0 01-4-4L5 7.5"></path></svg></button>
+    <button type="button" class="btn sm icon" data-copy="{{ task.pk }}" aria-label="태스크 링크 복사" title="태스크 링크 복사"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M6.5 9.5l3-3M7 4.5l1.2-1.2a2.8 2.8 0 014 4L11 8.5M9 11.5l-1.2 1.2a2.8 2.8 0 01-4-4L5 7.5"></path></svg></button>
     {% if show_move %}
-    <button type="button" class="btn sm icon" hx-post="{% url 'today_move' task.pk 'up' %}?{{ row_query }}" hx-target="#today-list" hx-swap="outerHTML" aria-label="위로">↑</button>
-    <button type="button" class="btn sm icon" hx-post="{% url 'today_move' task.pk 'down' %}?{{ row_query }}" hx-target="#today-list" hx-swap="outerHTML" aria-label="아래로">↓</button>
+    <button type="button" class="btn sm icon" hx-post="{% url 'today_move' task.pk 'up' %}?{{ row_query }}" hx-target="#today-list" hx-swap="outerHTML" aria-label="{{ task.title }} 오늘 목록에서 위로 이동">↑</button>
+    <button type="button" class="btn sm icon" hx-post="{% url 'today_move' task.pk 'down' %}?{{ row_query }}" hx-target="#today-list" hx-swap="outerHTML" aria-label="{{ task.title }} 오늘 목록에서 아래로 이동">↓</button>
     {% endif %}
   </div>
 </li>

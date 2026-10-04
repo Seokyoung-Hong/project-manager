@@ -10,8 +10,8 @@
       {% if team.discord_channel_id %}<p class="muted t13">Discord 채널 <code>{{ team.discord_channel_id }}</code></p>{% endif %}
     </div>
     <div class="row">
-      <button type="button" class="btn" hx-get="{% url 'team_edit' team.pk %}" hx-target="#dialog" hx-swap="innerHTML">수정</button>
-      <form method="post" action="{% url 'team_delete' team.pk %}" onsubmit="return confirm('팀을 삭제할까요? 멤버와 프로젝트는 그대로 남습니다. GitHub 팀은 남습니다.')">{% csrf_token %}<button class="btn danger">삭제</button></form>
+      <button type="button" class="btn" hx-get="{% url 'team_edit' team.pk %}" hx-target="#dialog" hx-swap="innerHTML">팀 수정</button>
+      <form method="post" action="{% url 'team_delete' team.pk %}" onsubmit="return confirm('팀을 삭제할까요? 멤버와 프로젝트는 그대로 남습니다. GitHub 팀은 남습니다.')">{% csrf_token %}<button class="btn danger">팀 삭제</button></form>
     </div>
   </div>
 </div>
@@ -21,23 +21,26 @@
   {% if gh_link %}
   <p class="row">연결됨 · <span class="badge">@{{ gh_link.slug }}</span></p>
   <div class="row">
-    <form method="post" action="{% url 'team_github_reconcile' team.pk %}">{% csrf_token %}<button class="btn sm">GitHub에 반영</button></form>
-    <form method="post" action="{% url 'team_github_unlink' team.pk %}">{% csrf_token %}<button class="btn sm danger">연결 해제</button></form>
+    <form method="post" action="{% url 'team_github_reconcile' team.pk %}">{% csrf_token %}<button class="btn sm">GitHub에 멤버 추가</button></form>
+    <form method="post" action="{% url 'team_github_unlink' team.pk %}">{% csrf_token %}<button class="btn sm danger">GitHub 팀 연결 해제</button></form>
   </div>
+  <p class="muted t13">연결을 해제해도 GitHub 팀은 유지됩니다. 멤버 추가는 활성 PM 팀 멤버만 GitHub에 추가를 요청하며, GitHub에만 있는 멤버는 제거하지 않습니다.</p>
   {% else %}
   <form method="post" action="{% url 'team_github_link' team.pk %}" class="row">{% csrf_token %}
     <select name="gh_team" class="select auto">
       <option value="">GitHub 팀 선택</option>
       {% for t in gh_teams %}<option value="{{ t.id }}:{{ t.slug }}:{{ t.name }}">{{ t.name }} (@{{ t.slug }})</option>{% endfor %}
     </select>
-    <button class="btn sm">연결</button>
+    <button class="btn sm">선택한 GitHub 팀 연결</button>
   </form>
-  <form method="post" action="{% url 'team_github_create' team.pk %}">{% csrf_token %}<button class="btn sm">GitHub에 새 팀 만들기</button></form>
+  <p class="muted t13">기존 팀 연결은 연결 정보만 저장합니다. 연결 후 GitHub에 멤버 추가를 별도로 실행하세요.</p>
+  <form method="post" action="{% url 'team_github_create' team.pk %}">{% csrf_token %}<button class="btn sm">GitHub 팀 만들고 연결</button></form>
   {% endif %}
 </section>
 {% endif %}
 <section class="card">
   <h2>멤버</h2>
+  <p class="muted t13">팀과 사용자가 GitHub에 연결되어 있으면 팀 멤버 추가·제거를 GitHub 팀에도 요청합니다. 처리 결과를 확인하세요.</p>
   <table class="grid">
     <thead><tr><th>이름</th><th>GitHub</th><th></th></tr></thead>
     <tbody>
@@ -45,7 +48,7 @@
     <tr>
       <td>{{ u.display_name }}</td>
       <td>{% if u.github %}@{{ u.github.login }}{% else %}<span class="badge">GitHub 미연결</span>{% endif %}</td>
-      <td><form method="post" action="{% url 'team_member_remove' team.pk u.pk %}">{% csrf_token %}<button class="btn sm danger">제거</button></form></td>
+      <td><form method="post" action="{% url 'team_member_remove' team.pk u.pk %}">{% csrf_token %}<button class="btn sm danger">팀에서 제거</button></form></td>
     </tr>
     {% empty %}<tr><td colspan="3" class="muted">멤버가 없습니다.</td></tr>{% endfor %}
     </tbody>
@@ -55,7 +58,7 @@
       <option value="">멤버 선택</option>
       {% for u in candidates %}<option value="{{ u.pk }}">{{ u.display_name }}</option>{% endfor %}
     </select>
-    <button class="btn sm">추가</button>
+    <button class="btn sm">팀에 멤버 추가</button>
   </form>
 </section>
 <section class="card">

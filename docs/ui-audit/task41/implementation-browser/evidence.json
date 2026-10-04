@@ -1,0 +1,7426 @@
+[
+  {
+    "width": 1280,
+    "path": "/today",
+    "url": "http://127.0.0.1:8018/today",
+    "status": 200,
+    "screenshot": "C:\\Users\\tjrdu\\AppData\\Local\\Temp/task41-astra-after-20261004/1280--today.png",
+    "text": "산돌이\n오늘\n내 태스크\n프로젝트\n조직\n검색\n빠른 추가\n김\n2026년 10월 4일 (일)\n오늘 목록 9건\n전체 조직 · 내 담당 태스크\n1\n오늘 완료\n1\n최근 7일 완료\n9\n미완료\n지금 할 일\n실제 화면에서 안내 문구와 흐름 확인\nTASK-2 · ProjectManager\n오늘 마감\n중요도 6/10\n모바일 업무 화면 정리\n태스크 완료로 표시\n진행 메모 열기\n자세히 보기\n오늘 목록 9\n\n직접 추가한 순서 · 자동 추가는 중요도순\n\n일정 보기\n전체 조직 · 내 담당 태스크\n목표일 기준 자동 추가\n사용 안 함\n1일 이내\n3일 이내\n5일 이내\n7일 이내\n14일 이내\n4\n오늘 마감\n0\n기한 초과\n4\n검토 대기\n0\n막힘\n\n목표일이 5일 이내인 태스크 자동 추가 6건.\n\n실제 화면에서 안내 문구와 흐름 확인\nProjectManager\n모바일 업무 화면 정리\n중요도 6/10\n체크리스트 0/2\n오늘 마감\n○ 시작 전\n▶ 진행 중\n⏸ 일시정지\n■ 막힘\n◆ 검토 대기\n✓ 완료\n✕ 취소\n오늘 목록에서 빼기\n↑\n↓\nProjectManager\n새 학기 시간표 검증\n체크리스트 0/2\n10월 5일\n○ 시작 전\n▶ 진행 중\n⏸ 일시정지\n■ 막힘\n◆ 검토 대기\n✓ 완료\n✕ 취소\n오늘 목록에서 빼기\n↑\n↓\n실제 화면에서 안내 문구와 흐름 확인\nProjectManager\n배포 전 점검\n중요도 2/10\n사유 없음\n체크리스트 0/2\n10월 8일\n○ 시작 전\n▶ 진행 중\n⏸ 일시정지\n■ 막힘\n◆ 검토 대기\n✓ 완료\n✕ 취소\n오늘 목록에서 빼기\n↑\n↓\n실제 화면에서 안내 문구와 흐름 확인\n학식 API\n모바일 업무 화면 정리\n중요도 6/10\n자동 추가\n오늘 마감\n○ 시작 전\n▶ 진행 중\n⏸ 일시정지\n■ 막힘\n◆ 검토 대기\n✓ 완료\n✕ 취소\n오늘 목록에서 빼기\n실제 화면에서 안내 문구와 흐름 확인\n강의실 시간표\n모바일 업무 화면 정리\n중요도 6/10\n자동 추가\n오늘 마감\n○ 시작 전\n▶ 진행 중\n⏸ 일시정지\n■ 막힘\n◆ 검토 대기\n✓ 완료\n✕ 취소\n오늘 목록에서 빼기\n실제 화면에서 안내 문구와 흐름 확인\n공지 알림\n모바일 업무 화면 정리\n중요도 6/10\n자동 추가\n오늘 마감\n○ 시작 전\n▶ 진행 중\n⏸ 일시정지\n■ 막힘\n◆ 검토 대기\n✓ 완료\n✕ 취소\n오늘 목록에서 빼기\n학식 API\n새 학기 시간표 검증\n자동 추가\n10월 5일\n○ 시작 전\n▶ 진행 중\n⏸ 일시정지\n■ 막힘\n◆ 검토 대기\n✓ 완료\n✕ 취소\n오늘 목록에서 빼기\n강의실 시간표\n새 학기 시간표 검증\n자동 추가\n10월 5일\n○ 시작 전\n▶ 진행 중\n⏸ 일시정지\n■ 막힘\n◆ 검토 대기\n✓ 완료\n✕ 취소\n오늘 목록에서 빼기\n공지 알림\n새 학기 시간표 검증\n자동 추가\n10월 5일\n○ 시작 전\n▶ 진행 중\n⏸ 일시정지\n■ 막힘\n◆ 검토 대기\n✓ 완료\n✕ 취소\n오늘 목록에서 빼기\n오늘 완료 (1)",
+    "controls": [
+      {
+        "tag": "SUMMARY",
+        "text": "산돌이",
+        "href": null,
+        "title": null,
+        "aria-label": "조직 전환"
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/orgs/1",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/orgs/new",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "오늘",
+        "href": "/today",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "내 태스크",
+        "href": "/me",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "프로젝트",
+        "href": "/projects",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "조직",
+        "href": "/org",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "검색",
+        "href": "/search",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "빠른 추가",
+        "href": null,
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "SUMMARY",
+        "text": "김",
+        "href": null,
+        "title": "계정·설정",
+        "aria-label": "내 메뉴"
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/settings/profile",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/portfolio",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/settings/tokens",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "",
+        "href": null,
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "1\n오늘 완료",
+        "href": "/me?status=done_today",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "1\n최근 7일 완료",
+        "href": "/me?status=done_7d",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "9\n미완료",
+        "href": "/me",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "태스크 완료로 표시",
+        "href": null,
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "진행 메모 열기",
+        "href": null,
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "자세히 보기",
+        "href": null,
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "일정 보기",
+        "href": "/today?schedule=1#today-schedule",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "4\n오늘 마감",
+        "href": "/me?due=today",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "0\n기한 초과",
+        "href": "/me?due=overdue",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "4\n검토 대기",
+        "href": "/me?status=review",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "0\n막힘",
+        "href": "/me?status=blocked",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "오늘 목록에서 빼기",
+        "href": null,
+        "title": "오늘 할 일 목록에서 빼기",
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "",
+        "href": null,
+        "title": "태스크 링크 복사",
+        "aria-label": "태스크 링크 복사"
+      },
+      {
+        "tag": "BUTTON",
+        "text": "↑",
+        "href": null,
+        "title": null,
+        "aria-label": "모바일 업무 화면 정리 오늘 목록에서 위로 이동"
+      },
+      {
+        "tag": "BUTTON",
+        "text": "↓",
+        "href": null,
+        "title": null,
+        "aria-label": "모바일 업무 화면 정리 오늘 목록에서 아래로 이동"
+      },
+      {
+        "tag": "BUTTON",
+        "text": "오늘 목록에서 빼기",
+        "href": null,
+        "title": "오늘 할 일 목록에서 빼기",
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "",
+        "href": null,
+        "title": "태스크 링크 복사",
+        "aria-label": "태스크 링크 복사"
+      },
+      {
+        "tag": "BUTTON",
+        "text": "↑",
+        "href": null,
+        "title": null,
+        "aria-label": "새 학기 시간표 검증 오늘 목록에서 위로 이동"
+      },
+      {
+        "tag": "BUTTON",
+        "text": "↓",
+        "href": null,
+        "title": null,
+        "aria-label": "새 학기 시간표 검증 오늘 목록에서 아래로 이동"
+      },
+      {
+        "tag": "BUTTON",
+        "text": "오늘 목록에서 빼기",
+        "href": null,
+        "title": "오늘 할 일 목록에서 빼기",
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "",
+        "href": null,
+        "title": "태스크 링크 복사",
+        "aria-label": "태스크 링크 복사"
+      },
+      {
+        "tag": "BUTTON",
+        "text": "↑",
+        "href": null,
+        "title": null,
+        "aria-label": "배포 전 점검 오늘 목록에서 위로 이동"
+      },
+      {
+        "tag": "BUTTON",
+        "text": "↓",
+        "href": null,
+        "title": null,
+        "aria-label": "배포 전 점검 오늘 목록에서 아래로 이동"
+      },
+      {
+        "tag": "BUTTON",
+        "text": "오늘 목록에서 빼기",
+        "href": null,
+        "title": "오늘 할 일 목록에서 빼기",
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "",
+        "href": null,
+        "title": "태스크 링크 복사",
+        "aria-label": "태스크 링크 복사"
+      },
+      {
+        "tag": "BUTTON",
+        "text": "오늘 목록에서 빼기",
+        "href": null,
+        "title": "오늘 할 일 목록에서 빼기",
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "",
+        "href": null,
+        "title": "태스크 링크 복사",
+        "aria-label": "태스크 링크 복사"
+      },
+      {
+        "tag": "BUTTON",
+        "text": "오늘 목록에서 빼기",
+        "href": null,
+        "title": "오늘 할 일 목록에서 빼기",
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "",
+        "href": null,
+        "title": "태스크 링크 복사",
+        "aria-label": "태스크 링크 복사"
+      },
+      {
+        "tag": "BUTTON",
+        "text": "오늘 목록에서 빼기",
+        "href": null,
+        "title": "오늘 할 일 목록에서 빼기",
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "",
+        "href": null,
+        "title": "태스크 링크 복사",
+        "aria-label": "태스크 링크 복사"
+      },
+      {
+        "tag": "BUTTON",
+        "text": "오늘 목록에서 빼기",
+        "href": null,
+        "title": "오늘 할 일 목록에서 빼기",
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "",
+        "href": null,
+        "title": "태스크 링크 복사",
+        "aria-label": "태스크 링크 복사"
+      },
+      {
+        "tag": "BUTTON",
+        "text": "오늘 목록에서 빼기",
+        "href": null,
+        "title": "오늘 할 일 목록에서 빼기",
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "",
+        "href": null,
+        "title": "태스크 링크 복사",
+        "aria-label": "태스크 링크 복사"
+      },
+      {
+        "tag": "SUMMARY",
+        "text": "오늘 완료 (1)",
+        "href": null,
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "",
+        "href": null,
+        "title": "태스크 링크 복사",
+        "aria-label": "태스크 링크 복사"
+      }
+    ],
+    "overflow": {
+      "scroll": 1280,
+      "viewport": 1280
+    },
+    "errors": []
+  },
+  {
+    "width": 1280,
+    "path": "/me",
+    "url": "http://127.0.0.1:8018/me",
+    "status": 200,
+    "screenshot": "C:\\Users\\tjrdu\\AppData\\Local\\Temp/task41-astra-after-20261004/1280--me.png",
+    "text": "산돌이\n오늘\n내 태스크\n프로젝트\n조직\n검색\n빠른 추가\n김\n내 태스크\n미완료 9건 · 결과 9건\n조직 전체\n나\n이서준\n묶음\n기한별\n프로젝트별\n상태별\n없음\n정렬\n기한\n중요도\n최근 수정\n모든 기한\n기한 초과\n오늘 마감\n이번 주 남은 마감\n이번 주 전체 마감\n그 이후\n기한 미정\n모든 프로젝트\nProjectManager\n강의실 시간표\n공지 알림\n학식 API\n모든 상태\n시작 전\n진행 중\n일시정지\n막힘\n검토 대기\n오늘 완료\n지난 7일 완료\n모든 중요도\n높음 8~10\n중간 4~7\n낮음 1~3\n오늘 마감 4\nProjectManager\n1건\nProjectManager\n모바일 업무 화면 정리\n중요도 6/10\n체크리스트 0/2\n오늘 마감\n○ 시작 전\n▶ 진행 중\n⏸ 일시정지\n■ 막힘\n◆ 검토 대기\n✓ 완료\n✕ 취소\n오늘 목록에서 빼기\n강의실 시간표\n1건\n강의실 시간표\n모바일 업무 화면 정리\n중요도 6/10\n자동 추가\n오늘 마감\n○ 시작 전\n▶ 진행 중\n⏸ 일시정지\n■ 막힘\n◆ 검토 대기\n✓ 완료\n✕ 취소\n오늘 목록에서 빼기\n공지 알림\n1건\n공지 알림\n모바일 업무 화면 정리\n중요도 6/10\n자동 추가\n오늘 마감\n○ 시작 전\n▶ 진행 중\n⏸ 일시정지\n■ 막힘\n◆ 검토 대기\n✓ 완료\n✕ 취소\n오늘 목록에서 빼기\n학식 API\n1건\n학식 API\n모바일 업무 화면 정리\n중요도 6/10\n자동 추가\n오늘 마감\n○ 시작 전\n▶ 진행 중\n⏸ 일시정지\n■ 막힘\n◆ 검토 대기\n✓ 완료\n✕ 취소\n오늘 목록에서 빼기\n그 이후 5\nProjectManager\n2건\nProjectManager\n새 학기 시간표 검증\n체크리스트 0/2\n10월 5일\n○ 시작 전\n▶ 진행 중\n⏸ 일시정지\n■ 막힘\n◆ 검토 대기\n✓ 완료\n✕ 취소\n오늘 목록에서 빼기\nProjectManager\n배포 전 점검\n중요도 2/10\n사유 없음\n체크리스트 0/2\n10월 8일\n○ 시작 전\n▶ 진행 중\n⏸ 일시정지\n■ 막힘\n◆ 검토 대기\n✓ 완료\n✕ 취소\n오늘 목록에서 빼기\n강의실 시간표\n1건\n강의실 시간표\n새 학기 시간표 검증\n자동 추가\n10월 5일\n○ 시작 전\n▶ 진행 중\n⏸ 일시정지\n■ 막힘\n◆ 검토 대기\n✓ 완료\n✕ 취소\n오늘 목록에서 빼기\n공지 알림\n1건\n공지 알림\n새 학기 시간표 검증\n자동 추가\n10월 5일\n○ 시작 전\n▶ 진행 중\n⏸ 일시정지\n■ 막힘\n◆ 검토 대기\n✓ 완료\n✕ 취소\n오늘 목록에서 빼기\n학식 API\n1건\n학식 API\n새 학기 시간표 검증\n자동 추가\n10월 5일\n○ 시작 전\n▶ 진행 중\n⏸ 일시정지\n■ 막힘\n◆ 검토 대기\n✓ 완료\n✕ 취소\n오늘 목록에서 빼기",
+    "controls": [
+      {
+        "tag": "SUMMARY",
+        "text": "산돌이",
+        "href": null,
+        "title": null,
+        "aria-label": "조직 전환"
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/orgs/1",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/orgs/new",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "오늘",
+        "href": "/today",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "내 태스크",
+        "href": "/me",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "프로젝트",
+        "href": "/projects",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "조직",
+        "href": "/org",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "검색",
+        "href": "/search",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "빠른 추가",
+        "href": "/today?quick=1",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "SUMMARY",
+        "text": "김",
+        "href": null,
+        "title": "계정·설정",
+        "aria-label": "내 메뉴"
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/settings/profile",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/portfolio",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/settings/tokens",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "",
+        "href": null,
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "기한별",
+        "href": null,
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "프로젝트별",
+        "href": null,
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "상태별",
+        "href": null,
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "없음",
+        "href": null,
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "기한",
+        "href": null,
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "중요도",
+        "href": null,
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "최근 수정",
+        "href": null,
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "ProjectManager",
+        "href": "/projects/1",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "오늘 목록에서 빼기",
+        "href": null,
+        "title": "오늘 할 일 목록에서 빼기",
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "",
+        "href": null,
+        "title": "태스크 링크 복사",
+        "aria-label": "태스크 링크 복사"
+      },
+      {
+        "tag": "A",
+        "text": "강의실 시간표",
+        "href": "/projects/3",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "오늘 목록에서 빼기",
+        "href": null,
+        "title": "오늘 할 일 목록에서 빼기",
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "",
+        "href": null,
+        "title": "태스크 링크 복사",
+        "aria-label": "태스크 링크 복사"
+      },
+      {
+        "tag": "A",
+        "text": "공지 알림",
+        "href": "/projects/4",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "오늘 목록에서 빼기",
+        "href": null,
+        "title": "오늘 할 일 목록에서 빼기",
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "",
+        "href": null,
+        "title": "태스크 링크 복사",
+        "aria-label": "태스크 링크 복사"
+      },
+      {
+        "tag": "A",
+        "text": "학식 API",
+        "href": "/projects/2",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "오늘 목록에서 빼기",
+        "href": null,
+        "title": "오늘 할 일 목록에서 빼기",
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "",
+        "href": null,
+        "title": "태스크 링크 복사",
+        "aria-label": "태스크 링크 복사"
+      },
+      {
+        "tag": "A",
+        "text": "ProjectManager",
+        "href": "/projects/1",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "오늘 목록에서 빼기",
+        "href": null,
+        "title": "오늘 할 일 목록에서 빼기",
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "",
+        "href": null,
+        "title": "태스크 링크 복사",
+        "aria-label": "태스크 링크 복사"
+      },
+      {
+        "tag": "BUTTON",
+        "text": "오늘 목록에서 빼기",
+        "href": null,
+        "title": "오늘 할 일 목록에서 빼기",
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "",
+        "href": null,
+        "title": "태스크 링크 복사",
+        "aria-label": "태스크 링크 복사"
+      },
+      {
+        "tag": "A",
+        "text": "강의실 시간표",
+        "href": "/projects/3",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "오늘 목록에서 빼기",
+        "href": null,
+        "title": "오늘 할 일 목록에서 빼기",
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "",
+        "href": null,
+        "title": "태스크 링크 복사",
+        "aria-label": "태스크 링크 복사"
+      },
+      {
+        "tag": "A",
+        "text": "공지 알림",
+        "href": "/projects/4",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "오늘 목록에서 빼기",
+        "href": null,
+        "title": "오늘 할 일 목록에서 빼기",
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "",
+        "href": null,
+        "title": "태스크 링크 복사",
+        "aria-label": "태스크 링크 복사"
+      },
+      {
+        "tag": "A",
+        "text": "학식 API",
+        "href": "/projects/2",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "오늘 목록에서 빼기",
+        "href": null,
+        "title": "오늘 할 일 목록에서 빼기",
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "",
+        "href": null,
+        "title": "태스크 링크 복사",
+        "aria-label": "태스크 링크 복사"
+      }
+    ],
+    "overflow": {
+      "scroll": 1280,
+      "viewport": 1280
+    },
+    "errors": []
+  },
+  {
+    "width": 1280,
+    "path": "/projects/1",
+    "url": "http://127.0.0.1:8018/projects/1",
+    "status": 200,
+    "screenshot": "C:\\Users\\tjrdu\\AppData\\Local\\Temp/task41-astra-after-20261004/1280--projects-1.png",
+    "text": "산돌이\n오늘\n내 태스크\n프로젝트\n조직\n검색\n빠른 추가\n김\n프로젝트 4\n미완료\n«\nP\nProjectManager\n5\n강\n강의실 시간표\n3\n공\n공지 알림\n3\n학\n학식 API\n3\n＋ 새 프로젝트\n산돌이\nProjectManager\n태스크\n문서\nAPI 문서\n설정\n\n팀의 업무와 결정을 한 곳에서 관리합니다.\n\n관리자 김하늘\n🚧 진행 중\n\n개발 또는 구현 진행 중\n\n프로젝트 수정\n태스크 만들기\n1/6\n완료\n5\n미완료\n1\n기한 초과\n1\n검토 대기\n1\n막힘\n목록\n보드\n완료·취소 포함\nProjectManager\n메뉴 누락 안내 개선\n이서준\n중요도 7/10\n체크리스트 0/2\n10월 3일 초과\n○ 시작 전\n▶ 진행 중\n⏸ 일시정지\n■ 막힘\n◆ 검토 대기\n✓ 완료\n✕ 취소\n오늘 목록에 추가\nProjectManager\n모바일 업무 화면 정리\n김하늘\n중요도 6/10\n체크리스트 0/2\n오늘 마감\n○ 시작 전\n▶ 진행 중\n⏸ 일시정지\n■ 막힘\n◆ 검토 대기\n✓ 완료\n✕ 취소\n오늘 목록에서 빼기\nProjectManager\n새 학기 시간표 검증\n김하늘\n체크리스트 0/2\n10월 5일\n○ 시작 전\n▶ 진행 중\n⏸ 일시정지\n■ 막힘\n◆ 검토 대기\n✓ 완료\n✕ 취소\n오늘 목록에서 빼기\nProjectManager\n연결 오류 안내 작성\n이서준\n중요도 4/10\n외부 API 응답 확인 대기\n체크리스트 0/2\n10월 6일\n○ 시작 전\n▶ 진행 중\n⏸ 일시정지\n■ 막힘\n◆ 검토 대기\n✓ 완료\n✕ 취소\n오늘 목록에 추가\nProjectManager\n배포 전 점검\n김하늘\n중요도 2/10\n사유 없음\n체크리스트 0/2\n10월 8일\n○ 시작 전\n▶ 진행 중\n⏸ 일시정지\n■ 막힘\n◆ 검토 대기\n✓ 완료\n✕ 취소\n오늘 목록에서 빼기\n참고 링크\n링크 없음\n＋ 링크 추가",
+    "controls": [
+      {
+        "tag": "SUMMARY",
+        "text": "산돌이",
+        "href": null,
+        "title": null,
+        "aria-label": "조직 전환"
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/orgs/1",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/orgs/new",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "오늘",
+        "href": "/today",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "내 태스크",
+        "href": "/me",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "프로젝트",
+        "href": "/projects",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "조직",
+        "href": "/org",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "검색",
+        "href": "/search",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "빠른 추가",
+        "href": "/today?quick=1",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "SUMMARY",
+        "text": "김",
+        "href": null,
+        "title": "계정·설정",
+        "aria-label": "내 메뉴"
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/settings/profile",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/portfolio",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/settings/tokens",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "",
+        "href": null,
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "«",
+        "href": null,
+        "title": "목록 접기",
+        "aria-label": "프로젝트 목록 접기"
+      },
+      {
+        "tag": "A",
+        "text": "P\nProjectManager\n5",
+        "href": "/projects/1",
+        "title": "ProjectManager",
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "강\n강의실 시간표\n3",
+        "href": "/projects/3",
+        "title": "강의실 시간표",
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "공\n공지 알림\n3",
+        "href": "/projects/4",
+        "title": "공지 알림",
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "학\n학식 API\n3",
+        "href": "/projects/2",
+        "title": "학식 API",
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "＋ 새 프로젝트",
+        "href": null,
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "산돌이",
+        "href": "/orgs/1",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "태스크",
+        "href": "/projects/1",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "문서",
+        "href": "/projects/1/docs",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "API 문서",
+        "href": "/projects/1/api",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "설정",
+        "href": "/projects/1/settings",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "프로젝트 수정",
+        "href": null,
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "태스크 만들기",
+        "href": null,
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "목록",
+        "href": "?view=list",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "보드",
+        "href": "?view=board",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "오늘 목록에 추가",
+        "href": null,
+        "title": "오늘 할 일 목록에 담기",
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "",
+        "href": null,
+        "title": "태스크 링크 복사",
+        "aria-label": "태스크 링크 복사"
+      },
+      {
+        "tag": "BUTTON",
+        "text": "오늘 목록에서 빼기",
+        "href": null,
+        "title": "오늘 할 일 목록에서 빼기",
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "",
+        "href": null,
+        "title": "태스크 링크 복사",
+        "aria-label": "태스크 링크 복사"
+      },
+      {
+        "tag": "BUTTON",
+        "text": "오늘 목록에서 빼기",
+        "href": null,
+        "title": "오늘 할 일 목록에서 빼기",
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "",
+        "href": null,
+        "title": "태스크 링크 복사",
+        "aria-label": "태스크 링크 복사"
+      },
+      {
+        "tag": "BUTTON",
+        "text": "오늘 목록에 추가",
+        "href": null,
+        "title": "오늘 할 일 목록에 담기",
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "",
+        "href": null,
+        "title": "태스크 링크 복사",
+        "aria-label": "태스크 링크 복사"
+      },
+      {
+        "tag": "BUTTON",
+        "text": "오늘 목록에서 빼기",
+        "href": null,
+        "title": "오늘 할 일 목록에서 빼기",
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "",
+        "href": null,
+        "title": "태스크 링크 복사",
+        "aria-label": "태스크 링크 복사"
+      },
+      {
+        "tag": "BUTTON",
+        "text": "＋ 링크 추가",
+        "href": null,
+        "title": null,
+        "aria-label": null
+      }
+    ],
+    "overflow": {
+      "scroll": 1280,
+      "viewport": 1280
+    },
+    "errors": []
+  },
+  {
+    "width": 1280,
+    "path": "/projects/1?view=board",
+    "url": "http://127.0.0.1:8018/projects/1?view=board",
+    "status": 200,
+    "screenshot": "C:\\Users\\tjrdu\\AppData\\Local\\Temp/task41-astra-after-20261004/1280--projects-1-view-board.png",
+    "text": "산돌이\n오늘\n내 태스크\n프로젝트\n조직\n검색\n빠른 추가\n김\n프로젝트 4\n미완료\n«\nP\nProjectManager\n5\n강\n강의실 시간표\n3\n공\n공지 알림\n3\n학\n학식 API\n3\n＋ 새 프로젝트\n산돌이\nProjectManager\n태스크\n문서\nAPI 문서\n설정\n\n팀의 업무와 결정을 한 곳에서 관리합니다.\n\n관리자 김하늘\n🚧 진행 중\n\n개발 또는 구현 진행 중\n\n프로젝트 수정\n태스크 만들기\n1/6\n완료\n5\n미완료\n1\n기한 초과\n1\n검토 대기\n1\n막힘\n목록\n보드\n완료·취소 포함\n\n상태 열을 좌우로 이동해 전체 흐름을 확인하세요.\n\n‹\n›\n시작 전 1\nProjectManager\n메뉴 누락 안내 개선\n이서준\n중요도 7/10\n체크리스트 0/2\n10월 3일 초과\n○ 시작 전\n▶ 진행 중\n⏸ 일시정지\n■ 막힘\n◆ 검토 대기\n✓ 완료\n✕ 취소\n오늘 목록에 추가\n진행 중 1\nProjectManager\n모바일 업무 화면 정리\n김하늘\n중요도 6/10\n체크리스트 0/2\n오늘 마감\n○ 시작 전\n▶ 진행 중\n⏸ 일시정지\n■ 막힘\n◆ 검토 대기\n✓ 완료\n✕ 취소\n오늘 목록에서 빼기\n검토 대기 1\nProjectManager\n새 학기 시간표 검증\n김하늘\n체크리스트 0/2\n10월 5일\n○ 시작 전\n▶ 진행 중\n⏸ 일시정지\n■ 막힘\n◆ 검토 대기\n✓ 완료\n✕ 취소\n오늘 목록에서 빼기\n막힘 1\nProjectManager\n연결 오류 안내 작성\n이서준\n중요도 4/10\n외부 API 응답 확인 대기\n체크리스트 0/2\n10월 6일\n○ 시작 전\n▶ 진행 중\n⏸ 일시정지\n■ 막힘\n◆ 검토 대기\n✓ 완료\n✕ 취소\n오늘 목록에 추가\n일시정지 1\nProjectManager\n배포 전 점검\n김하늘\n중요도 2/10\n사유 없음\n체크리스트 0/2\n10월 8일\n○ 시작 전\n▶ 진행 중\n⏸ 일시정지\n■ 막힘\n◆ 검토 대기\n✓ 완료\n✕ 취소\n오늘 목록에서 빼기\n완료 1\nProjectManager\n프로젝트 문서 정리\n김하늘\n중요도 3/10\n체크리스트 0/2\n10월 7일\n○ 시작 전\n▶ 진행 중\n⏸ 일시정지\n■ 막힘\n◆ 검토 대기\n✓ 완료\n✕ 취소\n참고 링크\n링크 없음\n＋ 링크 추가",
+    "controls": [
+      {
+        "tag": "SUMMARY",
+        "text": "산돌이",
+        "href": null,
+        "title": null,
+        "aria-label": "조직 전환"
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/orgs/1",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/orgs/new",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "오늘",
+        "href": "/today",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "내 태스크",
+        "href": "/me",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "프로젝트",
+        "href": "/projects",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "조직",
+        "href": "/org",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "검색",
+        "href": "/search",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "빠른 추가",
+        "href": "/today?quick=1",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "SUMMARY",
+        "text": "김",
+        "href": null,
+        "title": "계정·설정",
+        "aria-label": "내 메뉴"
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/settings/profile",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/portfolio",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/settings/tokens",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "",
+        "href": null,
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "«",
+        "href": null,
+        "title": "목록 접기",
+        "aria-label": "프로젝트 목록 접기"
+      },
+      {
+        "tag": "A",
+        "text": "P\nProjectManager\n5",
+        "href": "/projects/1",
+        "title": "ProjectManager",
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "강\n강의실 시간표\n3",
+        "href": "/projects/3",
+        "title": "강의실 시간표",
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "공\n공지 알림\n3",
+        "href": "/projects/4",
+        "title": "공지 알림",
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "학\n학식 API\n3",
+        "href": "/projects/2",
+        "title": "학식 API",
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "＋ 새 프로젝트",
+        "href": null,
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "산돌이",
+        "href": "/orgs/1",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "태스크",
+        "href": "/projects/1",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "문서",
+        "href": "/projects/1/docs",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "API 문서",
+        "href": "/projects/1/api",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "설정",
+        "href": "/projects/1/settings",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "프로젝트 수정",
+        "href": null,
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "태스크 만들기",
+        "href": null,
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "목록",
+        "href": "?view=list",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "보드",
+        "href": "?view=board",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "‹",
+        "href": null,
+        "title": "이전 상태 열",
+        "aria-label": "이전 상태 열"
+      },
+      {
+        "tag": "BUTTON",
+        "text": "›",
+        "href": null,
+        "title": "다음 상태 열",
+        "aria-label": "다음 상태 열"
+      },
+      {
+        "tag": "BUTTON",
+        "text": "오늘 목록에 추가",
+        "href": null,
+        "title": "오늘 할 일 목록에 담기",
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "",
+        "href": null,
+        "title": "태스크 링크 복사",
+        "aria-label": "태스크 링크 복사"
+      },
+      {
+        "tag": "BUTTON",
+        "text": "오늘 목록에서 빼기",
+        "href": null,
+        "title": "오늘 할 일 목록에서 빼기",
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "",
+        "href": null,
+        "title": "태스크 링크 복사",
+        "aria-label": "태스크 링크 복사"
+      },
+      {
+        "tag": "BUTTON",
+        "text": "오늘 목록에서 빼기",
+        "href": null,
+        "title": "오늘 할 일 목록에서 빼기",
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "",
+        "href": null,
+        "title": "태스크 링크 복사",
+        "aria-label": "태스크 링크 복사"
+      },
+      {
+        "tag": "BUTTON",
+        "text": "오늘 목록에 추가",
+        "href": null,
+        "title": "오늘 할 일 목록에 담기",
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "",
+        "href": null,
+        "title": "태스크 링크 복사",
+        "aria-label": "태스크 링크 복사"
+      },
+      {
+        "tag": "BUTTON",
+        "text": "오늘 목록에서 빼기",
+        "href": null,
+        "title": "오늘 할 일 목록에서 빼기",
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "",
+        "href": null,
+        "title": "태스크 링크 복사",
+        "aria-label": "태스크 링크 복사"
+      },
+      {
+        "tag": "BUTTON",
+        "text": "",
+        "href": null,
+        "title": "태스크 링크 복사",
+        "aria-label": "태스크 링크 복사"
+      },
+      {
+        "tag": "BUTTON",
+        "text": "＋ 링크 추가",
+        "href": null,
+        "title": null,
+        "aria-label": null
+      }
+    ],
+    "overflow": {
+      "scroll": 1280,
+      "viewport": 1280
+    },
+    "errors": []
+  },
+  {
+    "width": 1280,
+    "path": "/projects/1/docs",
+    "url": "http://127.0.0.1:8018/projects/1/docs",
+    "status": 200,
+    "screenshot": "C:\\Users\\tjrdu\\AppData\\Local\\Temp/task41-astra-after-20261004/1280--projects-1-docs.png",
+    "text": "산돌이\n오늘\n내 태스크\n프로젝트\n조직\n검색\n빠른 추가\n김\n프로젝트 4\n미완료\n«\nP\nProjectManager\n5\n강\n강의실 시간표\n3\n공\n공지 알림\n3\n학\n학식 API\n3\n＋ 새 프로젝트\n산돌이\nProjectManager\n태스크\n문서\nAPI 문서\n설정\n문서 1\nMarkdown 문서 올리기\n새 문서\n제목 없는 문서\n김하늘 · v2 · 10/4\n\n문서는 이 프로젝트 안에만 있습니다. 파일을 선택하면 바로 등록합니다. UTF-8 Markdown 파일을 올리세요. 올린 .md는 본문 텍스트만 읽어 저장하고, 파일과 이미지 첨부는 저장하지 않습니다.\n\n만든 사람 김하늘\n마지막 수정 김하늘\nv2 · 10/4 00:20\n본문 편집\n본문 편집을 눌러 작성하세요.\n로컬 디자인 검증 문서입니다.\n쓰는 법\n문서 삭제",
+    "controls": [
+      {
+        "tag": "SUMMARY",
+        "text": "산돌이",
+        "href": null,
+        "title": null,
+        "aria-label": "조직 전환"
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/orgs/1",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/orgs/new",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "오늘",
+        "href": "/today",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "내 태스크",
+        "href": "/me",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "프로젝트",
+        "href": "/projects",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "조직",
+        "href": "/org",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "검색",
+        "href": "/search",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "빠른 추가",
+        "href": "/today?quick=1",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "SUMMARY",
+        "text": "김",
+        "href": null,
+        "title": "계정·설정",
+        "aria-label": "내 메뉴"
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/settings/profile",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/portfolio",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/settings/tokens",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "",
+        "href": null,
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "«",
+        "href": null,
+        "title": "목록 접기",
+        "aria-label": "프로젝트 목록 접기"
+      },
+      {
+        "tag": "A",
+        "text": "P\nProjectManager\n5",
+        "href": "/projects/1",
+        "title": "ProjectManager",
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "강\n강의실 시간표\n3",
+        "href": "/projects/3",
+        "title": "강의실 시간표",
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "공\n공지 알림\n3",
+        "href": "/projects/4",
+        "title": "공지 알림",
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "학\n학식 API\n3",
+        "href": "/projects/2",
+        "title": "학식 API",
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "＋ 새 프로젝트",
+        "href": null,
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "산돌이",
+        "href": "/orgs/1",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "태스크",
+        "href": "/projects/1",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "문서",
+        "href": "/projects/1/docs",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "API 문서",
+        "href": "/projects/1/api",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "설정",
+        "href": "/projects/1/settings",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "새 문서",
+        "href": null,
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "제목 없는 문서\n김하늘 · v2 · 10/4",
+        "href": "?doc=1",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "본문 편집",
+        "href": null,
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "SUMMARY",
+        "text": "쓰는 법",
+        "href": null,
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "문서 삭제",
+        "href": null,
+        "title": null,
+        "aria-label": null
+      }
+    ],
+    "overflow": {
+      "scroll": 1280,
+      "viewport": 1280
+    },
+    "errors": []
+  },
+  {
+    "width": 1280,
+    "path": "/projects/1/api",
+    "url": "http://127.0.0.1:8018/projects/1/api",
+    "status": 200,
+    "screenshot": "C:\\Users\\tjrdu\\AppData\\Local\\Temp/task41-astra-after-20261004/1280--projects-1-api.png",
+    "text": "산돌이\n오늘\n내 태스크\n프로젝트\n조직\n검색\n빠른 추가\n김\n프로젝트 4\n미완료\n«\nP\nProjectManager\n5\n강\n강의실 시간표\n3\n공\n공지 알림\n3\n학\n학식 API\n3\n＋ 새 프로젝트\n산돌이\nProjectManager\n태스크\n문서\nAPI 문서\n설정\nAPI 문서\n주소에서 불러오기\nOpenAPI JSON 파일 올리기\nUTF-8로 저장한 OpenAPI JSON 파일을 선택하면 바로 등록합니다.\n아직 등록된 문서가 없습니다. 주소를 넣거나 openapi.json을 올리세요.",
+    "controls": [
+      {
+        "tag": "SUMMARY",
+        "text": "산돌이",
+        "href": null,
+        "title": null,
+        "aria-label": "조직 전환"
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/orgs/1",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/orgs/new",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "오늘",
+        "href": "/today",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "내 태스크",
+        "href": "/me",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "프로젝트",
+        "href": "/projects",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "조직",
+        "href": "/org",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "검색",
+        "href": "/search",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "빠른 추가",
+        "href": "/today?quick=1",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "SUMMARY",
+        "text": "김",
+        "href": null,
+        "title": "계정·설정",
+        "aria-label": "내 메뉴"
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/settings/profile",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/portfolio",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/settings/tokens",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "",
+        "href": null,
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "«",
+        "href": null,
+        "title": "목록 접기",
+        "aria-label": "프로젝트 목록 접기"
+      },
+      {
+        "tag": "A",
+        "text": "P\nProjectManager\n5",
+        "href": "/projects/1",
+        "title": "ProjectManager",
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "강\n강의실 시간표\n3",
+        "href": "/projects/3",
+        "title": "강의실 시간표",
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "공\n공지 알림\n3",
+        "href": "/projects/4",
+        "title": "공지 알림",
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "학\n학식 API\n3",
+        "href": "/projects/2",
+        "title": "학식 API",
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "＋ 새 프로젝트",
+        "href": null,
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "산돌이",
+        "href": "/orgs/1",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "태스크",
+        "href": "/projects/1",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "문서",
+        "href": "/projects/1/docs",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "API 문서",
+        "href": "/projects/1/api",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "설정",
+        "href": "/projects/1/settings",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "주소에서 불러오기",
+        "href": null,
+        "title": null,
+        "aria-label": null
+      }
+    ],
+    "overflow": {
+      "scroll": 1280,
+      "viewport": 1280
+    },
+    "errors": []
+  },
+  {
+    "width": 1280,
+    "path": "/projects/1/settings",
+    "url": "http://127.0.0.1:8018/projects/1/settings",
+    "status": 200,
+    "screenshot": "C:\\Users\\tjrdu\\AppData\\Local\\Temp/task41-astra-after-20261004/1280--projects-1-settings.png",
+    "text": "산돌이\n오늘\n내 태스크\n프로젝트\n조직\n검색\n빠른 추가\n김\n프로젝트 4\n미완료\n«\nP\nProjectManager\n5\n강\n강의실 시간표\n3\n공\n공지 알림\n3\n학\n학식 API\n3\n＋ 새 프로젝트\n산돌이\nProjectManager\n태스크\n문서\nAPI 문서\n설정\n프로젝트 설정\n\n이 프로젝트의 태스크 규칙·기본 화면·알림을 한 번에 저장합니다.\n\n3개 섹션\nⓘ\n조직에서 변경을 허용한 항목만 수정할 수 있습니다. “조직에서 잠금”은 조직 값을 표시하며 이 화면에서 바꿀 수 없습니다.\n태스크 규칙\n12\n화면 기본값\n1\n알림\n3\n표시된 모든 섹션을 함께 저장합니다.\n프로젝트 설정 저장\n태스크 규칙\n12개 항목\n기본 중요도\n생성 화면·API·AI가 중요도를 주지 않았을 때 쓰는 값입니다.\n중요도 상한\n이 값을 넘는 중요도는 프로젝트 관리자만 정할 수 있습니다. 0이면 제한하지 않습니다.\n완료 조건 필수\n켜면 완료 조건을 입력해야 태스크를 만들 수 있습니다.\n기한 필수\n켜면 기한을 입력해야 하며, 기한 미정 사유로 대신할 수 없습니다.\n기본 기한(영업일)\n생성 화면에서 오늘 이후 설정한 영업일 수만큼 지난 목표일을 제안합니다. 영업일은 월~금이며 공휴일은 따로 제외하지 않습니다. 자동으로 채우지는 않습니다. 0이면 제안하지 않습니다.\n검토 대기 필수\n켜면 검토 대기를 거쳐야 완료할 수 있습니다.\n본인 검토 허용\n끄면 담당자 본인이 검토 대기에서 완료로 바꿀 수 없습니다.\n재개 사유 필수\n켜면 완료·취소한 태스크를 되돌릴 때 사유를 입력해야 합니다.\n취소 사유 필수\n담당자 변경 사유 필수\n켜면 담당자 변경 사유를 입력해야 하며, 사유는 이력에 남습니다.\n기한 변경 사유 필수\n켜면 기한 단축·삭제에도 사유를 입력해야 합니다. 기한 연장은 이 설정과 관계없이 사유를 받습니다.\n초과 유예(일)\n기한이 지나도 N일까지는 초과로 강조하지 않고 초과 알림도 보내지 않습니다.\n화면 기본값\n1개 항목\n알림\n3개 항목\n프로젝트 정리\n\n끝난 프로젝트는 보관해 숨깁니다. 좌측 목록과 프로젝트 화면에서 빠지고, 조직 개요에서 \"보관 포함\"을 켜면 다시 보입니다. 데이터는 지워지지 않습니다.\n\n프로젝트 보관\n미완료 태스크를 모두 취소하고 프로젝트 보관\n\n삭제는 보관한 뒤에 할 수 있습니다.\n\n프로젝트 거버넌스 추가 문단\n\n조직 거버넌스에 이 프로젝트만의 규칙을 덧붙입니다. 5000자까지 씁니다.\n\n거버넌스 저장",
+    "controls": [
+      {
+        "tag": "SUMMARY",
+        "text": "산돌이",
+        "href": null,
+        "title": null,
+        "aria-label": "조직 전환"
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/orgs/1",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/orgs/new",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "오늘",
+        "href": "/today",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "내 태스크",
+        "href": "/me",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "프로젝트",
+        "href": "/projects",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "조직",
+        "href": "/org",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "검색",
+        "href": "/search",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "빠른 추가",
+        "href": "/today?quick=1",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "SUMMARY",
+        "text": "김",
+        "href": null,
+        "title": "계정·설정",
+        "aria-label": "내 메뉴"
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/settings/profile",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/portfolio",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/settings/tokens",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "",
+        "href": null,
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "«",
+        "href": null,
+        "title": "목록 접기",
+        "aria-label": "프로젝트 목록 접기"
+      },
+      {
+        "tag": "A",
+        "text": "P\nProjectManager\n5",
+        "href": "/projects/1",
+        "title": "ProjectManager",
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "강\n강의실 시간표\n3",
+        "href": "/projects/3",
+        "title": "강의실 시간표",
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "공\n공지 알림\n3",
+        "href": "/projects/4",
+        "title": "공지 알림",
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "학\n학식 API\n3",
+        "href": "/projects/2",
+        "title": "학식 API",
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "＋ 새 프로젝트",
+        "href": null,
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "산돌이",
+        "href": "/orgs/1",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "태스크",
+        "href": "/projects/1",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "문서",
+        "href": "/projects/1/docs",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "API 문서",
+        "href": "/projects/1/api",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "설정",
+        "href": "/projects/1/settings",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "태스크 규칙\n12",
+        "href": "#project-settings-group-1",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "화면 기본값\n1",
+        "href": "#project-settings-group-2",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "알림\n3",
+        "href": "#project-settings-group-3",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "프로젝트 설정 저장",
+        "href": null,
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "SUMMARY",
+        "text": "태스크 규칙\n12개 항목",
+        "href": null,
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "SUMMARY",
+        "text": "화면 기본값\n1개 항목",
+        "href": null,
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "SUMMARY",
+        "text": "알림\n3개 항목",
+        "href": null,
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "프로젝트 보관",
+        "href": null,
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "미완료 태스크를 모두 취소하고 프로젝트 보관",
+        "href": null,
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "거버넌스 저장",
+        "href": null,
+        "title": null,
+        "aria-label": null
+      }
+    ],
+    "overflow": {
+      "scroll": 1280,
+      "viewport": 1280
+    },
+    "errors": []
+  },
+  {
+    "width": 1280,
+    "path": "/orgs/1",
+    "url": "http://127.0.0.1:8018/orgs/1",
+    "status": 200,
+    "screenshot": "C:\\Users\\tjrdu\\AppData\\Local\\Temp/task41-astra-after-20261004/1280--orgs-1.png",
+    "text": "산돌이\n오늘\n내 태스크\n프로젝트\n조직\n검색\n빠른 추가\n김\n산돌이\n개요\n팀\n부하 현황\n로드맵\n거버넌스\n회의록\n설정\n14\n미완료\n4\n진행 중\n4\n검토 대기\n4\n기한 초과\n1\n막힘\n1\n완료\n프로젝트\n보관 포함\n새 프로젝트\n이름\t관리자\t담당 팀\t상태\t미완료\t완료\nProjectManager\n팀의 업무와 결정을 한 곳에서 관리합니다.\n\t김하늘\t서비스 개발\t🚧 진행 중\n개발 또는 구현 진행 중\n\t5\t1/6\n강의실 시간표\n강의실 이용 가능 시간을 확인합니다.\n\t김하늘\t서비스 개발\t🚧 진행 중\n개발 또는 구현 진행 중\n\t3\t0/3\n공지 알림\n학생에게 필요한 공지를 전달합니다.\n\t김하늘\t서비스 개발\t🚧 진행 중\n개발 또는 구현 진행 중\n\t3\t0/3\n학식 API\n오늘의 식단과 운영 시간을 안내합니다.\n\t김하늘\t서비스 개발\t🚧 진행 중\n개발 또는 구현 진행 중\n\t3\t0/3\n담당자별\n이름\t미완료\t기한 초과\t검토 대기\t막힘\n김하늘\t9\t0\t4\t0\n이서준\t5\t4\t0\t1",
+    "controls": [
+      {
+        "tag": "SUMMARY",
+        "text": "산돌이",
+        "href": null,
+        "title": null,
+        "aria-label": "조직 전환"
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/orgs/1",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/orgs/new",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "오늘",
+        "href": "/today",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "내 태스크",
+        "href": "/me",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "프로젝트",
+        "href": "/projects",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "조직",
+        "href": "/org",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "검색",
+        "href": "/search",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "빠른 추가",
+        "href": "/today?quick=1",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "SUMMARY",
+        "text": "김",
+        "href": null,
+        "title": "계정·설정",
+        "aria-label": "내 메뉴"
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/settings/profile",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/portfolio",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/settings/tokens",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "",
+        "href": null,
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "개요",
+        "href": "/orgs/1",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "팀",
+        "href": "/orgs/1/teams",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "부하 현황",
+        "href": "/orgs/1/capacity",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "로드맵",
+        "href": "/orgs/1/roadmap",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "거버넌스",
+        "href": "/orgs/1/governance",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "회의록",
+        "href": "/orgs/1/notes",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "설정",
+        "href": "/orgs/1/settings",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "14\n미완료",
+        "href": "/me?member=0",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "4\n진행 중",
+        "href": "/me?member=0&status=doing",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "4\n검토 대기",
+        "href": "/me?member=0&status=review",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "4\n기한 초과",
+        "href": "/me?member=0&due=overdue",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "1\n막힘",
+        "href": "/me?member=0&status=blocked",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "1\n완료",
+        "href": "/me?member=0&status=done_7d",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "새 프로젝트",
+        "href": null,
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "ProjectManager",
+        "href": "/projects/1",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "강의실 시간표",
+        "href": "/projects/3",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "공지 알림",
+        "href": "/projects/4",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "학식 API",
+        "href": "/projects/2",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "김하늘",
+        "href": "/me?member=1",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "이서준",
+        "href": "/me?member=2",
+        "title": null,
+        "aria-label": null
+      }
+    ],
+    "overflow": {
+      "scroll": 1280,
+      "viewport": 1280
+    },
+    "errors": []
+  },
+  {
+    "width": 1280,
+    "path": "/orgs/1/teams",
+    "url": "http://127.0.0.1:8018/orgs/1/teams",
+    "status": 200,
+    "screenshot": "C:\\Users\\tjrdu\\AppData\\Local\\Temp/task41-astra-after-20261004/1280--orgs-1-teams.png",
+    "text": "산돌이\n오늘\n내 태스크\n프로젝트\n조직\n검색\n빠른 추가\n김\n산돌이\n개요\n팀\n부하 현황\n로드맵\n거버넌스\n회의록\n설정\n멤버\n\n관리자 1명. 마지막 관리자는 역할을 바꾸거나 제거할 수 없습니다.\n\n이름\t역할\t소속 팀\t스킬 태그\tDiscord\t미완료\t\n김하늘\ndesign_demo\n\t\n관리자\n멤버\n\t서비스 개발\t\n김하늘 스킬 태그\n기술 태그 저장\n\t없음\t9\t조직에서 제거\n이서준\ndesign_member\n\t\n관리자\n멤버\n\t서비스 개발\t\n이서준 스킬 태그\n기술 태그 저장\n\t없음\t5 초과 4\t\n조직에서 제거\n\nDiscord가 ‘없음’인 멤버는 마감 알림 DM을 받지 못합니다. 본인이 프로필 → [Discord 연결]에서 코드를 받아 봇에게 DM으로 보내면 됩니다.\n\n초대 링크\n\n초대 링크는 조직 전체용입니다. 제거한 사람이 링크를 가지고 있으면 다시 참여할 수 있으니, 필요하면 링크를 폐기하고 새로 만드세요.\n\n링크\t만료\t사용\t\n초대 링크가 없습니다.\n만료(일)\n초대 링크 만들기\n팀\n새 팀\n이름\t멤버\t담당 프로젝트\tGitHub\t\n서비스 개발\t2\t4\t미연결\t\n팀 수정\n팀 삭제",
+    "controls": [
+      {
+        "tag": "SUMMARY",
+        "text": "산돌이",
+        "href": null,
+        "title": null,
+        "aria-label": "조직 전환"
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/orgs/1",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/orgs/new",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "오늘",
+        "href": "/today",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "내 태스크",
+        "href": "/me",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "프로젝트",
+        "href": "/projects",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "조직",
+        "href": "/org",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "검색",
+        "href": "/search",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "빠른 추가",
+        "href": "/today?quick=1",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "SUMMARY",
+        "text": "김",
+        "href": null,
+        "title": "계정·설정",
+        "aria-label": "내 메뉴"
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/settings/profile",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/portfolio",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/settings/tokens",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "",
+        "href": null,
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "개요",
+        "href": "/orgs/1",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "팀",
+        "href": "/orgs/1/teams",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "부하 현황",
+        "href": "/orgs/1/capacity",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "로드맵",
+        "href": "/orgs/1/roadmap",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "거버넌스",
+        "href": "/orgs/1/governance",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "회의록",
+        "href": "/orgs/1/notes",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "설정",
+        "href": "/orgs/1/settings",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "기술 태그 저장",
+        "href": null,
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "조직에서 제거",
+        "href": null,
+        "title": "마지막 관리자는 제거할 수 없습니다",
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "기술 태그 저장",
+        "href": null,
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "조직에서 제거",
+        "href": null,
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "초대 링크 만들기",
+        "href": null,
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "새 팀",
+        "href": null,
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "서비스 개발",
+        "href": "/teams/1",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "팀 수정",
+        "href": null,
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "팀 삭제",
+        "href": null,
+        "title": null,
+        "aria-label": null
+      }
+    ],
+    "overflow": {
+      "scroll": 1280,
+      "viewport": 1280
+    },
+    "errors": []
+  },
+  {
+    "width": 1280,
+    "path": "/orgs/1/notes",
+    "url": "http://127.0.0.1:8018/orgs/1/notes",
+    "status": 200,
+    "screenshot": "C:\\Users\\tjrdu\\AppData\\Local\\Temp/task41-astra-after-20261004/1280--orgs-1-notes.png",
+    "text": "산돌이\n오늘\n내 태스크\n프로젝트\n조직\n검색\n빠른 추가\n김\n산돌이\n개요\n팀\n부하 현황\n로드맵\n거버넌스\n회의록\n설정\n회의록\nMarkdown 회의록 올리기\n새 회의록\n범위\n전체\n조직 공통(프로젝트 미지정)\nProjectManager\n강의실 시간표\n공지 알림\n학식 API\n공지 알림 · 1건\n공지 알림 주간 회의\n김하늘 · v1 · 10/4\n강의실 시간표 · 1건\n강의실 시간표 주간 회의\n김하늘 · v1 · 10/4\n학식 API · 1건\n학식 API 주간 회의\n김하늘 · v1 · 10/4\nProjectManager · 1건\nProjectManager 주간 회의\n김하늘 · v1 · 10/4\n\n회의록은 프로젝트에 붙일 수도 있고 조직 공통(프로젝트 미지정)으로 남길 수도 있습니다. 파일을 선택하면 바로 등록합니다. UTF-8 Markdown 파일을 올리세요. 올린 .md는 본문 텍스트만 읽어 저장합니다. 파일 자체와 이미지 첨부는 저장되지 않습니다.\n\n저장됨 · v1 · 10/4 00:02\n프로젝트\n조직 공통(프로젝트 미지정)\nProjectManager\n강의실 시간표\n공지 알림\n학식 API\n작성자\n김하늘\n회의 일시\n태그\n본문 편집\n본문 편집을 눌러 작성하세요.\n이번 주 목표\n업무 흐름과 안내를 명확하게 정리합니다.\n결정 사항\n•\n주요 화면의 일관성을 우선합니다.\n•\n변경 후 실제 동작을 확인합니다.\n쓰는 법\n회의록 삭제",
+    "controls": [
+      {
+        "tag": "SUMMARY",
+        "text": "산돌이",
+        "href": null,
+        "title": null,
+        "aria-label": "조직 전환"
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/orgs/1",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/orgs/new",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "오늘",
+        "href": "/today",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "내 태스크",
+        "href": "/me",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "프로젝트",
+        "href": "/projects",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "조직",
+        "href": "/org",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "검색",
+        "href": "/search",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "빠른 추가",
+        "href": "/today?quick=1",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "SUMMARY",
+        "text": "김",
+        "href": null,
+        "title": "계정·설정",
+        "aria-label": "내 메뉴"
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/settings/profile",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/portfolio",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/settings/tokens",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "",
+        "href": null,
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "개요",
+        "href": "/orgs/1",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "팀",
+        "href": "/orgs/1/teams",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "부하 현황",
+        "href": "/orgs/1/capacity",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "로드맵",
+        "href": "/orgs/1/roadmap",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "거버넌스",
+        "href": "/orgs/1/governance",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "회의록",
+        "href": "/orgs/1/notes",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "설정",
+        "href": "/orgs/1/settings",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "새 회의록",
+        "href": null,
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "공지 알림 주간 회의\n김하늘 · v1 · 10/4",
+        "href": "?scope=all&note=4",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "강의실 시간표 주간 회의\n김하늘 · v1 · 10/4",
+        "href": "?scope=all&note=3",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "학식 API 주간 회의\n김하늘 · v1 · 10/4",
+        "href": "?scope=all&note=2",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "ProjectManager 주간 회의\n김하늘 · v1 · 10/4",
+        "href": "?scope=all&note=1",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "본문 편집",
+        "href": null,
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "SUMMARY",
+        "text": "쓰는 법",
+        "href": null,
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "회의록 삭제",
+        "href": null,
+        "title": null,
+        "aria-label": null
+      }
+    ],
+    "overflow": {
+      "scroll": 1280,
+      "viewport": 1280
+    },
+    "errors": []
+  },
+  {
+    "width": 1280,
+    "path": "/orgs/1/roadmap",
+    "url": "http://127.0.0.1:8018/orgs/1/roadmap",
+    "status": 200,
+    "screenshot": "C:\\Users\\tjrdu\\AppData\\Local\\Temp/task41-astra-after-20261004/1280--orgs-1-roadmap.png",
+    "text": "산돌이\n오늘\n내 태스크\n프로젝트\n조직\n검색\n빠른 추가\n김\n산돌이\n개요\n팀\n부하 현황\n로드맵\n거버넌스\n회의록\n설정\n로드맵\n새 마일스톤\n오늘\n10월\n11월\n12월\n사용성 개선\nProjectManager · 10월 18일 · 완료 1/6\n수정\n사용성 개선\n학식 API · 10월 18일 · 완료 0/3\n수정\n사용성 개선\n강의실 시간표 · 10월 18일 · 완료 0/3\n수정\n사용성 개선\n공지 알림 · 10월 18일 · 완료 0/3\n수정\n\n세로선은 오늘, 점선 테두리는 준비 중, 채워진 부분은 진행률입니다.\n\n프로젝트 의존성\n\n왼쪽 프로젝트가 오른쪽 프로젝트에 의존합니다. 차단 표시는 관계를 기록하며, 앱이 프로젝트 착수를 자동으로 막지는 않습니다.\n\n의존성이 없습니다.\n\n의존하는 프로젝트\n의존하는 프로젝트\nProjectManager\n강의실 시간표\n공지 알림\n학식 API\n→\n선행 프로젝트\n선행 프로젝트\nProjectManager\n강의실 시간표\n공지 알림\n학식 API\n의존성 메모\n차단\n의존성 추가",
+    "controls": [
+      {
+        "tag": "SUMMARY",
+        "text": "산돌이",
+        "href": null,
+        "title": null,
+        "aria-label": "조직 전환"
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/orgs/1",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/orgs/new",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "오늘",
+        "href": "/today",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "내 태스크",
+        "href": "/me",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "프로젝트",
+        "href": "/projects",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "조직",
+        "href": "/org",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "검색",
+        "href": "/search",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "빠른 추가",
+        "href": "/today?quick=1",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "SUMMARY",
+        "text": "김",
+        "href": null,
+        "title": "계정·설정",
+        "aria-label": "내 메뉴"
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/settings/profile",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/portfolio",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/settings/tokens",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "",
+        "href": null,
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "개요",
+        "href": "/orgs/1",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "팀",
+        "href": "/orgs/1/teams",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "부하 현황",
+        "href": "/orgs/1/capacity",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "로드맵",
+        "href": "/orgs/1/roadmap",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "거버넌스",
+        "href": "/orgs/1/governance",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "회의록",
+        "href": "/orgs/1/notes",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "설정",
+        "href": "/orgs/1/settings",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "새 마일스톤",
+        "href": null,
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "수정",
+        "href": null,
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "수정",
+        "href": null,
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "수정",
+        "href": null,
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "수정",
+        "href": null,
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "의존성 추가",
+        "href": null,
+        "title": null,
+        "aria-label": null
+      }
+    ],
+    "overflow": {
+      "scroll": 1280,
+      "viewport": 1280
+    },
+    "errors": []
+  },
+  {
+    "width": 1280,
+    "path": "/orgs/1/settings",
+    "url": "http://127.0.0.1:8018/orgs/1/settings",
+    "status": 200,
+    "screenshot": "C:\\Users\\tjrdu\\AppData\\Local\\Temp/task41-astra-after-20261004/1280--orgs-1-settings.png",
+    "text": "산돌이\n오늘\n내 태스크\n프로젝트\n조직\n검색\n빠른 추가\n김\n산돌이\n개요\n팀\n부하 현황\n로드맵\n거버넌스\n회의록\n설정\nⓘ\n조직 기본값과 잠금\n“프로젝트 변경 허용”이 켜진 항목만 프로젝트에서 다른 값을 저장할 수 있습니다. 끄면 조직 값으로 고정됩니다. 개인 환경설정은 알림·화면 기본값만 바꾸며 조직 규칙을 완화하지 않습니다.\n태스크 규칙\n14\n프로젝트 권한\n8\n조직 운영\n4\nAI 정책\n14\n알림\n11\n다섯 섹션의 값과 잠금을 함께 저장합니다.\n조직 설정 저장\n태스크 규칙\n14개 항목\n기본 중요도\n생성 화면·API·AI가 중요도를 주지 않았을 때 쓰는 값입니다.\n프로젝트 변경 허용\n중요도 상한\n이 값을 넘는 중요도는 프로젝트 관리자만 정할 수 있습니다. 0이면 제한하지 않습니다.\n프로젝트 변경 허용\n완료 조건 필수\n켜면 완료 조건을 입력해야 태스크를 만들 수 있습니다.\n프로젝트 변경 허용\n기한 필수\n켜면 기한을 입력해야 하며, 기한 미정 사유로 대신할 수 없습니다.\n프로젝트 변경 허용\n기본 기한(영업일)\n생성 화면에서 오늘 이후 설정한 영업일 수만큼 지난 목표일을 제안합니다. 영업일은 월~금이며 공휴일은 따로 제외하지 않습니다. 자동으로 채우지는 않습니다. 0이면 제안하지 않습니다.\n프로젝트 변경 허용\n동시 진행 한도\n한 사람이 동시에 진행 중으로 둘 수 있는 태스크 수입니다. 0이면 제한하지 않습니다.\n프로젝트 변경 허용\n조직에서 고정\n한도 초과 처리\n경고면 숫자만 보여 주고, 차단이면 진행 중으로 바꾸지 못하게 막습니다.\n경고만\n차단\n프로젝트 변경 허용\n조직에서 고정\n검토 대기 필수\n켜면 검토 대기를 거쳐야 완료할 수 있습니다.\n프로젝트 변경 허용\n본인 검토 허용\n끄면 담당자 본인이 검토 대기에서 완료로 바꿀 수 없습니다.\n프로젝트 변경 허용\n재개 사유 필수\n켜면 완료·취소한 태스크를 되돌릴 때 사유를 입력해야 합니다.\n프로젝트 변경 허용\n취소 사유 필수\n프로젝트 변경 허용\n담당자 변경 사유 필수\n켜면 담당자 변경 사유를 입력해야 하며, 사유는 이력에 남습니다.\n프로젝트 변경 허용\n기한 변경 사유 필수\n켜면 기한 단축·삭제에도 사유를 입력해야 합니다. 기한 연장은 이 설정과 관계없이 사유를 받습니다.\n프로젝트 변경 허용\n초과 유예(일)\n기한이 지나도 N일까지는 초과로 강조하지 않고 초과 알림도 보내지 않습니다.\n프로젝트 변경 허용\n프로젝트 권한\n8개 항목\n조직 운영\n4개 항목\nAI 정책\n14개 항목\n알림\n11개 항목\n설정 변경 이력\n변경 이력 없음",
+    "controls": [
+      {
+        "tag": "SUMMARY",
+        "text": "산돌이",
+        "href": null,
+        "title": null,
+        "aria-label": "조직 전환"
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/orgs/1",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/orgs/new",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "오늘",
+        "href": "/today",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "내 태스크",
+        "href": "/me",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "프로젝트",
+        "href": "/projects",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "조직",
+        "href": "/org",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "검색",
+        "href": "/search",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "빠른 추가",
+        "href": "/today?quick=1",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "SUMMARY",
+        "text": "김",
+        "href": null,
+        "title": "계정·설정",
+        "aria-label": "내 메뉴"
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/settings/profile",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/portfolio",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/settings/tokens",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "",
+        "href": null,
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "개요",
+        "href": "/orgs/1",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "팀",
+        "href": "/orgs/1/teams",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "부하 현황",
+        "href": "/orgs/1/capacity",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "로드맵",
+        "href": "/orgs/1/roadmap",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "거버넌스",
+        "href": "/orgs/1/governance",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "회의록",
+        "href": "/orgs/1/notes",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "설정",
+        "href": "/orgs/1/settings",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "태스크 규칙\n14",
+        "href": "#settings-group-1",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "프로젝트 권한\n8",
+        "href": "#settings-group-2",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "조직 운영\n4",
+        "href": "#settings-group-3",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "AI 정책\n14",
+        "href": "#settings-group-4",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "알림\n11",
+        "href": "#settings-group-5",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "조직 설정 저장",
+        "href": null,
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "SUMMARY",
+        "text": "태스크 규칙\n14개 항목",
+        "href": null,
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "SUMMARY",
+        "text": "프로젝트 권한\n8개 항목",
+        "href": null,
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "SUMMARY",
+        "text": "조직 운영\n4개 항목",
+        "href": null,
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "SUMMARY",
+        "text": "AI 정책\n14개 항목",
+        "href": null,
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "SUMMARY",
+        "text": "알림\n11개 항목",
+        "href": null,
+        "title": null,
+        "aria-label": null
+      }
+    ],
+    "overflow": {
+      "scroll": 1280,
+      "viewport": 1280
+    },
+    "errors": []
+  },
+  {
+    "width": 1280,
+    "path": "/settings/profile",
+    "url": "http://127.0.0.1:8018/settings/profile",
+    "status": 200,
+    "screenshot": "C:\\Users\\tjrdu\\AppData\\Local\\Temp/task41-astra-after-20261004/1280--settings-profile.png",
+    "text": "산돌이\n오늘\n내 태스크\n프로젝트\n조직\n검색\n빠른 추가\n김\n설정\n프로필\n환경설정\nAPI 토큰\n프로필\n표시 이름\n표시 이름 저장\nDiscord 연결\n\n연결하면 마감 알림(D-3 · D-1 · 당일 · 기한 초과)을 개인 DM으로 받고, 봇에게 DM으로 태스크를 처리할 수 있습니다.\n\nDiscord 연결 코드 받기\n\n봇과 같은 서버에 있어야 하고, 서버 우클릭 → 개인정보 보호 설정에서 ‘서버 멤버의 DM 허용’이 켜져 있어야 DM이 도착합니다.",
+    "controls": [
+      {
+        "tag": "SUMMARY",
+        "text": "산돌이",
+        "href": null,
+        "title": null,
+        "aria-label": "조직 전환"
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/orgs/1",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/orgs/new",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "오늘",
+        "href": "/today",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "내 태스크",
+        "href": "/me",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "프로젝트",
+        "href": "/projects",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "조직",
+        "href": "/org",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "검색",
+        "href": "/search",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "빠른 추가",
+        "href": "/today?quick=1",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "SUMMARY",
+        "text": "김",
+        "href": null,
+        "title": "계정·설정",
+        "aria-label": "내 메뉴"
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/settings/profile",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/portfolio",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/settings/tokens",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "",
+        "href": null,
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "프로필",
+        "href": "/settings/profile",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "환경설정",
+        "href": "/settings/preferences",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "API 토큰",
+        "href": "/settings/tokens",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "표시 이름 저장",
+        "href": null,
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "Discord 연결 코드 받기",
+        "href": null,
+        "title": null,
+        "aria-label": null
+      }
+    ],
+    "overflow": {
+      "scroll": 1280,
+      "viewport": 1280
+    },
+    "errors": []
+  },
+  {
+    "width": 1280,
+    "path": "/settings/preferences",
+    "url": "http://127.0.0.1:8018/settings/preferences",
+    "status": 200,
+    "screenshot": "C:\\Users\\tjrdu\\AppData\\Local\\Temp/task41-astra-after-20261004/1280--settings-preferences.png",
+    "text": "산돌이\n오늘\n내 태스크\n프로젝트\n조직\n검색\n빠른 추가\n김\n설정\n프로필\n환경설정\nAPI 토큰\n환경설정\n\n내 알림과 기본 화면에만 적용됩니다.\n\n개인 설정\nⓘ\n조직의 태스크 규칙이나 권한은 완화하지 않습니다. 조직에서 제한한 알림 종류도 여기서 다시 켤 수 없습니다.\n알림과 화면 기본값을 함께 저장합니다.\n환경설정 저장\n알림\n3\n개인 DM 받기\n끄면 마감·막힘·검토 대기 관리자 알림 DM을 받지 않습니다. 채널 주간 보고는 그대로입니다.\n받을 마감 알림\n조직이 끈 종류는 켤 수 없습니다.\n받을 마감 알림\n3일 전\n하루 전\n당일\n기한 초과\n내 마감 알림 시각\n0~23은 내 마감 알림 시각입니다. -1이면 조직 설정을 따릅니다.\n화면 기본값\n4\n로그인 후 첫 화면\n오늘\n내 태스크\n내 태스크 기본 묶음\n기한\n프로젝트\n상태\n묶지 않음\n내 태스크 기본 정렬\n기한\n중요도\n최근 수정\n프로젝트를 항상 보드로\n프로젝트 설정보다 우선합니다.",
+    "controls": [
+      {
+        "tag": "SUMMARY",
+        "text": "산돌이",
+        "href": null,
+        "title": null,
+        "aria-label": "조직 전환"
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/orgs/1",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/orgs/new",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "오늘",
+        "href": "/today",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "내 태스크",
+        "href": "/me",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "프로젝트",
+        "href": "/projects",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "조직",
+        "href": "/org",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "검색",
+        "href": "/search",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "빠른 추가",
+        "href": "/today?quick=1",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "SUMMARY",
+        "text": "김",
+        "href": null,
+        "title": "계정·설정",
+        "aria-label": "내 메뉴"
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/settings/profile",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/portfolio",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/settings/tokens",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "",
+        "href": null,
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "프로필",
+        "href": "/settings/profile",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "환경설정",
+        "href": "/settings/preferences",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "API 토큰",
+        "href": "/settings/tokens",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "환경설정 저장",
+        "href": null,
+        "title": null,
+        "aria-label": null
+      }
+    ],
+    "overflow": {
+      "scroll": 1280,
+      "viewport": 1280
+    },
+    "errors": []
+  },
+  {
+    "width": 1280,
+    "path": "/settings/tokens",
+    "url": "http://127.0.0.1:8018/settings/tokens",
+    "status": 200,
+    "screenshot": "C:\\Users\\tjrdu\\AppData\\Local\\Temp/task41-astra-after-20261004/1280--settings-tokens.png",
+    "text": "산돌이\n오늘\n내 태스크\n프로젝트\n조직\n검색\n빠른 추가\n김\n설정\n프로필\n환경설정\nAPI 토큰\nAPI 토큰\n이름\t앞자리\t범위\t용도\t만료\t\n토큰이 없습니다.\n이름\n범위\n읽기\n읽기·쓰기\n용도\nAI 도구(Claude·Codex 등)\n사람이 쓰는 스크립트·자동화\n토큰 발급\n\nAI 도구에는 AI용 토큰을 사용하세요. AI용 토큰에는 조직의 AI 정책이 적용됩니다.\n\nAI 클라이언트 연결\n\n셸이 있는 Claude Code에서는 스킬이 가장 가볍습니다. claude.ai 웹·모바일처럼 셸이 없는 곳은 OAuth 커넥터로 붙습니다.\n\n클라이언트\t설정\nClaude Code\n스킬 · 이 기기만\t저장소의 skills/ 폴더(pm, pm-*)를 ~/.claude/skills/에 복사하고 pm.py login으로 로그인합니다(브라우저에서 허용 — 토큰을 손으로 옮기지 않습니다). /pm-start, /pm-new 같은 명령이 생깁니다. 자세한 방법은 skills/README.md를 보세요.\nClaude 앱 / claude.ai\nOAuth\t설정 → 커넥터 → 커스텀 커넥터 추가 → URL http://127.0.0.1:8018/mcp 서버 주소 복사\n'연결'을 누르면 이 사이트의 로그인·허용 화면이 뜹니다. 허용하면 토큰이 자동으로 발급돼 API 토큰 목록에 추가됩니다 — 위에서 따로 발급하지 않아도 됩니다.\nClaude Code\nMCP · 헤더\tclaude mcp add --transport http sandol http://127.0.0.1:8018/mcp --header \"Authorization: Bearer <TOKEN>\" 설정 명령 복사\nCodex CLI\n헤더\t~/.codex/config.toml에 [mcp_servers.sandol] url = \"http://127.0.0.1:8018/mcp\" bearer_token_env_var = \"SANDOL_TOKEN\" 추가, 환경 변수 SANDOL_TOKEN=<TOKEN>\n그 밖의 클라이언트\n개인 비밀 URL\tOAuth도 헤더도 못 넣는 곳이면 URL에 토큰을 넣습니다: http://127.0.0.1:8018/u/<TOKEN>/mcp — 클라이언트의 별도 인증 설정은 필요하지 않습니다. URL에 포함된 토큰으로 인증합니다.\n\n<TOKEN>은 위에서 발급한 값입니다.\n\n개인 비밀 URL은 비밀번호와 같습니다. 주소창과 프록시 기록에 남으니, 넣을 곳이 있으면 헤더나 OAuth를 쓰세요. 유출되면 이 화면에서 폐기하세요.",
+    "controls": [
+      {
+        "tag": "SUMMARY",
+        "text": "산돌이",
+        "href": null,
+        "title": null,
+        "aria-label": "조직 전환"
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/orgs/1",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/orgs/new",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "오늘",
+        "href": "/today",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "내 태스크",
+        "href": "/me",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "프로젝트",
+        "href": "/projects",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "조직",
+        "href": "/org",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "검색",
+        "href": "/search",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "빠른 추가",
+        "href": "/today?quick=1",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "SUMMARY",
+        "text": "김",
+        "href": null,
+        "title": "계정·설정",
+        "aria-label": "내 메뉴"
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/settings/profile",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/portfolio",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/settings/tokens",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "",
+        "href": null,
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "프로필",
+        "href": "/settings/profile",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "환경설정",
+        "href": "/settings/preferences",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "API 토큰",
+        "href": "/settings/tokens",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "토큰 발급",
+        "href": null,
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "서버 주소 복사",
+        "href": null,
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "설정 명령 복사",
+        "href": null,
+        "title": null,
+        "aria-label": null
+      }
+    ],
+    "overflow": {
+      "scroll": 1280,
+      "viewport": 1280
+    },
+    "errors": []
+  },
+  {
+    "width": 1280,
+    "path": "/portfolio",
+    "url": "http://127.0.0.1:8018/portfolio",
+    "status": 200,
+    "screenshot": "C:\\Users\\tjrdu\\AppData\\Local\\Temp/task41-astra-after-20261004/1280--portfolio.png",
+    "text": "산돌이\n오늘\n내 태스크\n프로젝트\n조직\n검색\n빠른 추가\n김\n내 포트폴리오\n\n기록을 골라 AI에 전달할 포트폴리오 작성 요청을 만듭니다. AI가 작성한 내용을 붙여 넣어 비공개 초안으로 저장하세요.\n\n조직\n산돌이\n프로젝트\n모든 프로젝트\nProjectManager\n강의실 시간표\n공지 알림\n학식 API\n시작일\n종료일\n사용자 기록 종류\n전체 기록\n주요 선택\n요구·제약\n명시적 답변\n방향 수정\n구현 방식 지시\nAI 협업 방식\n출처 보기\n포트폴리오 출처\n사용자 기록과 AI 판단을 구분해 표시합니다. 현재 조건 0건 / 전체 0건\n선택한 조건에 해당하는 출처가 없습니다. 사용자 입력은 본인에게 귀속된 확인 또는 세션 수집 기록만 표시됩니다.\n선택한 출처로 AI 프롬프트 만들기",
+    "controls": [
+      {
+        "tag": "SUMMARY",
+        "text": "산돌이",
+        "href": null,
+        "title": null,
+        "aria-label": "조직 전환"
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/orgs/1",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/orgs/new",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "오늘",
+        "href": "/today",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "내 태스크",
+        "href": "/me",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "프로젝트",
+        "href": "/projects",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "조직",
+        "href": "/org",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "검색",
+        "href": "/search",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "빠른 추가",
+        "href": "/today?quick=1",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "SUMMARY",
+        "text": "김",
+        "href": null,
+        "title": "계정·설정",
+        "aria-label": "내 메뉴"
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/settings/profile",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/portfolio",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/settings/tokens",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "",
+        "href": null,
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "출처 보기",
+        "href": null,
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "선택한 출처로 AI 프롬프트 만들기",
+        "href": null,
+        "title": null,
+        "aria-label": null
+      }
+    ],
+    "overflow": {
+      "scroll": 1280,
+      "viewport": 1280
+    },
+    "errors": []
+  },
+  {
+    "width": 390,
+    "path": "/today",
+    "url": "http://127.0.0.1:8018/today",
+    "status": 200,
+    "screenshot": "C:\\Users\\tjrdu\\AppData\\Local\\Temp/task41-astra-after-20261004/390--today.png",
+    "text": "산돌이\n오늘\n내 태스크\n프로젝트\n조직\n검색\n빠른 추가\n김\n2026년 10월 4일 (일)\n오늘 목록 9건\n전체 조직 · 내 담당 태스크\n1\n오늘 완료\n1\n최근 7일 완료\n9\n미완료\n지금 할 일\n실제 화면에서 안내 문구와 흐름 확인\nTASK-2 · ProjectManager\n오늘 마감\n중요도 6/10\n모바일 업무 화면 정리\n태스크 완료로 표시\n진행 메모 열기\n자세히 보기\n오늘 목록 9\n\n직접 추가한 순서 · 자동 추가는 중요도순\n\n일정 보기\n전체 조직 · 내 담당 태스크\n목표일 기준 자동 추가\n사용 안 함\n1일 이내\n3일 이내\n5일 이내\n7일 이내\n14일 이내\n4\n오늘 마감\n0\n기한 초과\n4\n검토 대기\n0\n막힘\n\n목표일이 5일 이내인 태스크 자동 추가 6건.\n\n실제 화면에서 안내 문구와 흐름 확인\nProjectManager\n모바일 업무 화면 정리\n중요도 6/10\n체크리스트 0/2\n오늘 마감\n○ 시작 전\n▶ 진행 중\n⏸ 일시정지\n■ 막힘\n◆ 검토 대기\n✓ 완료\n✕ 취소\n오늘 목록에서 빼기\n↑\n↓\nProjectManager\n새 학기 시간표 검증\n체크리스트 0/2\n10월 5일\n○ 시작 전\n▶ 진행 중\n⏸ 일시정지\n■ 막힘\n◆ 검토 대기\n✓ 완료\n✕ 취소\n오늘 목록에서 빼기\n↑\n↓\n실제 화면에서 안내 문구와 흐름 확인\nProjectManager\n배포 전 점검\n중요도 2/10\n사유 없음\n체크리스트 0/2\n10월 8일\n○ 시작 전\n▶ 진행 중\n⏸ 일시정지\n■ 막힘\n◆ 검토 대기\n✓ 완료\n✕ 취소\n오늘 목록에서 빼기\n↑\n↓\n실제 화면에서 안내 문구와 흐름 확인\n학식 API\n모바일 업무 화면 정리\n중요도 6/10\n자동 추가\n오늘 마감\n○ 시작 전\n▶ 진행 중\n⏸ 일시정지\n■ 막힘\n◆ 검토 대기\n✓ 완료\n✕ 취소\n오늘 목록에서 빼기\n실제 화면에서 안내 문구와 흐름 확인\n강의실 시간표\n모바일 업무 화면 정리\n중요도 6/10\n자동 추가\n오늘 마감\n○ 시작 전\n▶ 진행 중\n⏸ 일시정지\n■ 막힘\n◆ 검토 대기\n✓ 완료\n✕ 취소\n오늘 목록에서 빼기\n실제 화면에서 안내 문구와 흐름 확인\n공지 알림\n모바일 업무 화면 정리\n중요도 6/10\n자동 추가\n오늘 마감\n○ 시작 전\n▶ 진행 중\n⏸ 일시정지\n■ 막힘\n◆ 검토 대기\n✓ 완료\n✕ 취소\n오늘 목록에서 빼기\n학식 API\n새 학기 시간표 검증\n자동 추가\n10월 5일\n○ 시작 전\n▶ 진행 중\n⏸ 일시정지\n■ 막힘\n◆ 검토 대기\n✓ 완료\n✕ 취소\n오늘 목록에서 빼기\n강의실 시간표\n새 학기 시간표 검증\n자동 추가\n10월 5일\n○ 시작 전\n▶ 진행 중\n⏸ 일시정지\n■ 막힘\n◆ 검토 대기\n✓ 완료\n✕ 취소\n오늘 목록에서 빼기\n공지 알림\n새 학기 시간표 검증\n자동 추가\n10월 5일\n○ 시작 전\n▶ 진행 중\n⏸ 일시정지\n■ 막힘\n◆ 검토 대기\n✓ 완료\n✕ 취소\n오늘 목록에서 빼기\n오늘 완료 (1)",
+    "controls": [
+      {
+        "tag": "SUMMARY",
+        "text": "산돌이",
+        "href": null,
+        "title": null,
+        "aria-label": "조직 전환"
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/orgs/1",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/orgs/new",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "오늘",
+        "href": "/today",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "내 태스크",
+        "href": "/me",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "프로젝트",
+        "href": "/projects",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "조직",
+        "href": "/org",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "검색",
+        "href": "/search",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "빠른 추가",
+        "href": null,
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "SUMMARY",
+        "text": "김",
+        "href": null,
+        "title": "계정·설정",
+        "aria-label": "내 메뉴"
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/settings/profile",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/portfolio",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/settings/tokens",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "",
+        "href": null,
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "1\n오늘 완료",
+        "href": "/me?status=done_today",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "1\n최근 7일 완료",
+        "href": "/me?status=done_7d",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "9\n미완료",
+        "href": "/me",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "태스크 완료로 표시",
+        "href": null,
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "진행 메모 열기",
+        "href": null,
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "자세히 보기",
+        "href": null,
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "일정 보기",
+        "href": "/today?schedule=1#today-schedule",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "4\n오늘 마감",
+        "href": "/me?due=today",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "0\n기한 초과",
+        "href": "/me?due=overdue",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "4\n검토 대기",
+        "href": "/me?status=review",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "0\n막힘",
+        "href": "/me?status=blocked",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "오늘 목록에서 빼기",
+        "href": null,
+        "title": "오늘 할 일 목록에서 빼기",
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "",
+        "href": null,
+        "title": "태스크 링크 복사",
+        "aria-label": "태스크 링크 복사"
+      },
+      {
+        "tag": "BUTTON",
+        "text": "↑",
+        "href": null,
+        "title": null,
+        "aria-label": "모바일 업무 화면 정리 오늘 목록에서 위로 이동"
+      },
+      {
+        "tag": "BUTTON",
+        "text": "↓",
+        "href": null,
+        "title": null,
+        "aria-label": "모바일 업무 화면 정리 오늘 목록에서 아래로 이동"
+      },
+      {
+        "tag": "BUTTON",
+        "text": "오늘 목록에서 빼기",
+        "href": null,
+        "title": "오늘 할 일 목록에서 빼기",
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "",
+        "href": null,
+        "title": "태스크 링크 복사",
+        "aria-label": "태스크 링크 복사"
+      },
+      {
+        "tag": "BUTTON",
+        "text": "↑",
+        "href": null,
+        "title": null,
+        "aria-label": "새 학기 시간표 검증 오늘 목록에서 위로 이동"
+      },
+      {
+        "tag": "BUTTON",
+        "text": "↓",
+        "href": null,
+        "title": null,
+        "aria-label": "새 학기 시간표 검증 오늘 목록에서 아래로 이동"
+      },
+      {
+        "tag": "BUTTON",
+        "text": "오늘 목록에서 빼기",
+        "href": null,
+        "title": "오늘 할 일 목록에서 빼기",
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "",
+        "href": null,
+        "title": "태스크 링크 복사",
+        "aria-label": "태스크 링크 복사"
+      },
+      {
+        "tag": "BUTTON",
+        "text": "↑",
+        "href": null,
+        "title": null,
+        "aria-label": "배포 전 점검 오늘 목록에서 위로 이동"
+      },
+      {
+        "tag": "BUTTON",
+        "text": "↓",
+        "href": null,
+        "title": null,
+        "aria-label": "배포 전 점검 오늘 목록에서 아래로 이동"
+      },
+      {
+        "tag": "BUTTON",
+        "text": "오늘 목록에서 빼기",
+        "href": null,
+        "title": "오늘 할 일 목록에서 빼기",
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "",
+        "href": null,
+        "title": "태스크 링크 복사",
+        "aria-label": "태스크 링크 복사"
+      },
+      {
+        "tag": "BUTTON",
+        "text": "오늘 목록에서 빼기",
+        "href": null,
+        "title": "오늘 할 일 목록에서 빼기",
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "",
+        "href": null,
+        "title": "태스크 링크 복사",
+        "aria-label": "태스크 링크 복사"
+      },
+      {
+        "tag": "BUTTON",
+        "text": "오늘 목록에서 빼기",
+        "href": null,
+        "title": "오늘 할 일 목록에서 빼기",
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "",
+        "href": null,
+        "title": "태스크 링크 복사",
+        "aria-label": "태스크 링크 복사"
+      },
+      {
+        "tag": "BUTTON",
+        "text": "오늘 목록에서 빼기",
+        "href": null,
+        "title": "오늘 할 일 목록에서 빼기",
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "",
+        "href": null,
+        "title": "태스크 링크 복사",
+        "aria-label": "태스크 링크 복사"
+      },
+      {
+        "tag": "BUTTON",
+        "text": "오늘 목록에서 빼기",
+        "href": null,
+        "title": "오늘 할 일 목록에서 빼기",
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "",
+        "href": null,
+        "title": "태스크 링크 복사",
+        "aria-label": "태스크 링크 복사"
+      },
+      {
+        "tag": "BUTTON",
+        "text": "오늘 목록에서 빼기",
+        "href": null,
+        "title": "오늘 할 일 목록에서 빼기",
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "",
+        "href": null,
+        "title": "태스크 링크 복사",
+        "aria-label": "태스크 링크 복사"
+      },
+      {
+        "tag": "SUMMARY",
+        "text": "오늘 완료 (1)",
+        "href": null,
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "",
+        "href": null,
+        "title": "태스크 링크 복사",
+        "aria-label": "태스크 링크 복사"
+      }
+    ],
+    "overflow": {
+      "scroll": 390,
+      "viewport": 390
+    },
+    "errors": []
+  },
+  {
+    "width": 390,
+    "path": "/me",
+    "url": "http://127.0.0.1:8018/me",
+    "status": 200,
+    "screenshot": "C:\\Users\\tjrdu\\AppData\\Local\\Temp/task41-astra-after-20261004/390--me.png",
+    "text": "산돌이\n오늘\n내 태스크\n프로젝트\n조직\n검색\n빠른 추가\n김\n내 태스크\n미완료 9건 · 결과 9건\n조직 전체\n나\n이서준\n묶음\n기한별\n프로젝트별\n상태별\n없음\n정렬\n기한\n중요도\n최근 수정\n필터\n기한 · 프로젝트 · 상태 · 중요도\n⌄\n오늘 마감 4\nProjectManager\n1건\nProjectManager\n모바일 업무 화면 정리\n중요도 6/10\n체크리스트 0/2\n오늘 마감\n○ 시작 전\n▶ 진행 중\n⏸ 일시정지\n■ 막힘\n◆ 검토 대기\n✓ 완료\n✕ 취소\n오늘 목록에서 빼기\n강의실 시간표\n1건\n강의실 시간표\n모바일 업무 화면 정리\n중요도 6/10\n자동 추가\n오늘 마감\n○ 시작 전\n▶ 진행 중\n⏸ 일시정지\n■ 막힘\n◆ 검토 대기\n✓ 완료\n✕ 취소\n오늘 목록에서 빼기\n공지 알림\n1건\n공지 알림\n모바일 업무 화면 정리\n중요도 6/10\n자동 추가\n오늘 마감\n○ 시작 전\n▶ 진행 중\n⏸ 일시정지\n■ 막힘\n◆ 검토 대기\n✓ 완료\n✕ 취소\n오늘 목록에서 빼기\n학식 API\n1건\n학식 API\n모바일 업무 화면 정리\n중요도 6/10\n자동 추가\n오늘 마감\n○ 시작 전\n▶ 진행 중\n⏸ 일시정지\n■ 막힘\n◆ 검토 대기\n✓ 완료\n✕ 취소\n오늘 목록에서 빼기\n그 이후 5\nProjectManager\n2건\nProjectManager\n새 학기 시간표 검증\n체크리스트 0/2\n10월 5일\n○ 시작 전\n▶ 진행 중\n⏸ 일시정지\n■ 막힘\n◆ 검토 대기\n✓ 완료\n✕ 취소\n오늘 목록에서 빼기\nProjectManager\n배포 전 점검\n중요도 2/10\n사유 없음\n체크리스트 0/2\n10월 8일\n○ 시작 전\n▶ 진행 중\n⏸ 일시정지\n■ 막힘\n◆ 검토 대기\n✓ 완료\n✕ 취소\n오늘 목록에서 빼기\n강의실 시간표\n1건\n강의실 시간표\n새 학기 시간표 검증\n자동 추가\n10월 5일\n○ 시작 전\n▶ 진행 중\n⏸ 일시정지\n■ 막힘\n◆ 검토 대기\n✓ 완료\n✕ 취소\n오늘 목록에서 빼기\n공지 알림\n1건\n공지 알림\n새 학기 시간표 검증\n자동 추가\n10월 5일\n○ 시작 전\n▶ 진행 중\n⏸ 일시정지\n■ 막힘\n◆ 검토 대기\n✓ 완료\n✕ 취소\n오늘 목록에서 빼기\n학식 API\n1건\n학식 API\n새 학기 시간표 검증\n자동 추가\n10월 5일\n○ 시작 전\n▶ 진행 중\n⏸ 일시정지\n■ 막힘\n◆ 검토 대기\n✓ 완료\n✕ 취소\n오늘 목록에서 빼기",
+    "controls": [
+      {
+        "tag": "SUMMARY",
+        "text": "산돌이",
+        "href": null,
+        "title": null,
+        "aria-label": "조직 전환"
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/orgs/1",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/orgs/new",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "오늘",
+        "href": "/today",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "내 태스크",
+        "href": "/me",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "프로젝트",
+        "href": "/projects",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "조직",
+        "href": "/org",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "검색",
+        "href": "/search",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "빠른 추가",
+        "href": "/today?quick=1",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "SUMMARY",
+        "text": "김",
+        "href": null,
+        "title": "계정·설정",
+        "aria-label": "내 메뉴"
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/settings/profile",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/portfolio",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/settings/tokens",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "",
+        "href": null,
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "기한별",
+        "href": null,
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "프로젝트별",
+        "href": null,
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "상태별",
+        "href": null,
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "없음",
+        "href": null,
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "기한",
+        "href": null,
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "중요도",
+        "href": null,
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "최근 수정",
+        "href": null,
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "SUMMARY",
+        "text": "필터\n기한 · 프로젝트 · 상태 · 중요도\n⌄",
+        "href": null,
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "ProjectManager",
+        "href": "/projects/1",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "오늘 목록에서 빼기",
+        "href": null,
+        "title": "오늘 할 일 목록에서 빼기",
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "",
+        "href": null,
+        "title": "태스크 링크 복사",
+        "aria-label": "태스크 링크 복사"
+      },
+      {
+        "tag": "A",
+        "text": "강의실 시간표",
+        "href": "/projects/3",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "오늘 목록에서 빼기",
+        "href": null,
+        "title": "오늘 할 일 목록에서 빼기",
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "",
+        "href": null,
+        "title": "태스크 링크 복사",
+        "aria-label": "태스크 링크 복사"
+      },
+      {
+        "tag": "A",
+        "text": "공지 알림",
+        "href": "/projects/4",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "오늘 목록에서 빼기",
+        "href": null,
+        "title": "오늘 할 일 목록에서 빼기",
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "",
+        "href": null,
+        "title": "태스크 링크 복사",
+        "aria-label": "태스크 링크 복사"
+      },
+      {
+        "tag": "A",
+        "text": "학식 API",
+        "href": "/projects/2",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "오늘 목록에서 빼기",
+        "href": null,
+        "title": "오늘 할 일 목록에서 빼기",
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "",
+        "href": null,
+        "title": "태스크 링크 복사",
+        "aria-label": "태스크 링크 복사"
+      },
+      {
+        "tag": "A",
+        "text": "ProjectManager",
+        "href": "/projects/1",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "오늘 목록에서 빼기",
+        "href": null,
+        "title": "오늘 할 일 목록에서 빼기",
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "",
+        "href": null,
+        "title": "태스크 링크 복사",
+        "aria-label": "태스크 링크 복사"
+      },
+      {
+        "tag": "BUTTON",
+        "text": "오늘 목록에서 빼기",
+        "href": null,
+        "title": "오늘 할 일 목록에서 빼기",
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "",
+        "href": null,
+        "title": "태스크 링크 복사",
+        "aria-label": "태스크 링크 복사"
+      },
+      {
+        "tag": "A",
+        "text": "강의실 시간표",
+        "href": "/projects/3",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "오늘 목록에서 빼기",
+        "href": null,
+        "title": "오늘 할 일 목록에서 빼기",
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "",
+        "href": null,
+        "title": "태스크 링크 복사",
+        "aria-label": "태스크 링크 복사"
+      },
+      {
+        "tag": "A",
+        "text": "공지 알림",
+        "href": "/projects/4",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "오늘 목록에서 빼기",
+        "href": null,
+        "title": "오늘 할 일 목록에서 빼기",
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "",
+        "href": null,
+        "title": "태스크 링크 복사",
+        "aria-label": "태스크 링크 복사"
+      },
+      {
+        "tag": "A",
+        "text": "학식 API",
+        "href": "/projects/2",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "오늘 목록에서 빼기",
+        "href": null,
+        "title": "오늘 할 일 목록에서 빼기",
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "",
+        "href": null,
+        "title": "태스크 링크 복사",
+        "aria-label": "태스크 링크 복사"
+      }
+    ],
+    "overflow": {
+      "scroll": 390,
+      "viewport": 390
+    },
+    "errors": []
+  },
+  {
+    "width": 390,
+    "path": "/projects/1",
+    "url": "http://127.0.0.1:8018/projects/1",
+    "status": 200,
+    "screenshot": "C:\\Users\\tjrdu\\AppData\\Local\\Temp/task41-astra-after-20261004/390--projects-1.png",
+    "text": "산돌이\n오늘\n내 태스크\n프로젝트\n조직\n검색\n빠른 추가\n김\n현재 프로젝트\nProjectManager\n4\n산돌이\nProjectManager\n태스크\n문서\nAPI 문서\n설정\n\n팀의 업무와 결정을 한 곳에서 관리합니다.\n\n관리자 김하늘\n🚧 진행 중\n\n개발 또는 구현 진행 중\n\n프로젝트 수정\n태스크 만들기\n1/6\n완료\n5\n미완료\n1\n기한 초과\n1\n검토 대기\n1\n막힘\n목록\n보드\n완료·취소 포함\nProjectManager\n메뉴 누락 안내 개선\n이서준\n중요도 7/10\n체크리스트 0/2\n10월 3일 초과\n○ 시작 전\n▶ 진행 중\n⏸ 일시정지\n■ 막힘\n◆ 검토 대기\n✓ 완료\n✕ 취소\n오늘 목록에 추가\nProjectManager\n모바일 업무 화면 정리\n김하늘\n중요도 6/10\n체크리스트 0/2\n오늘 마감\n○ 시작 전\n▶ 진행 중\n⏸ 일시정지\n■ 막힘\n◆ 검토 대기\n✓ 완료\n✕ 취소\n오늘 목록에서 빼기\nProjectManager\n새 학기 시간표 검증\n김하늘\n체크리스트 0/2\n10월 5일\n○ 시작 전\n▶ 진행 중\n⏸ 일시정지\n■ 막힘\n◆ 검토 대기\n✓ 완료\n✕ 취소\n오늘 목록에서 빼기\nProjectManager\n연결 오류 안내 작성\n이서준\n중요도 4/10\n외부 API 응답 확인 대기\n체크리스트 0/2\n10월 6일\n○ 시작 전\n▶ 진행 중\n⏸ 일시정지\n■ 막힘\n◆ 검토 대기\n✓ 완료\n✕ 취소\n오늘 목록에 추가\nProjectManager\n배포 전 점검\n김하늘\n중요도 2/10\n사유 없음\n체크리스트 0/2\n10월 8일\n○ 시작 전\n▶ 진행 중\n⏸ 일시정지\n■ 막힘\n◆ 검토 대기\n✓ 완료\n✕ 취소\n오늘 목록에서 빼기\n참고 링크\n링크 없음\n＋ 링크 추가",
+    "controls": [
+      {
+        "tag": "SUMMARY",
+        "text": "산돌이",
+        "href": null,
+        "title": null,
+        "aria-label": "조직 전환"
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/orgs/1",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/orgs/new",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "오늘",
+        "href": "/today",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "내 태스크",
+        "href": "/me",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "프로젝트",
+        "href": "/projects",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "조직",
+        "href": "/org",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "검색",
+        "href": "/search",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "빠른 추가",
+        "href": "/today?quick=1",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "SUMMARY",
+        "text": "김",
+        "href": null,
+        "title": "계정·설정",
+        "aria-label": "내 메뉴"
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/settings/profile",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/portfolio",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/settings/tokens",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "",
+        "href": null,
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "SUMMARY",
+        "text": "현재 프로젝트\nProjectManager\n4",
+        "href": null,
+        "title": null,
+        "aria-label": "프로젝트 전환, 현재 ProjectManager"
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/projects/1",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/projects/3",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/projects/4",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/projects/2",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "",
+        "href": null,
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "산돌이",
+        "href": "/orgs/1",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "태스크",
+        "href": "/projects/1",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "문서",
+        "href": "/projects/1/docs",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "API 문서",
+        "href": "/projects/1/api",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "설정",
+        "href": "/projects/1/settings",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "프로젝트 수정",
+        "href": null,
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "태스크 만들기",
+        "href": null,
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "목록",
+        "href": "?view=list",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "보드",
+        "href": "?view=board",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "오늘 목록에 추가",
+        "href": null,
+        "title": "오늘 할 일 목록에 담기",
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "",
+        "href": null,
+        "title": "태스크 링크 복사",
+        "aria-label": "태스크 링크 복사"
+      },
+      {
+        "tag": "BUTTON",
+        "text": "오늘 목록에서 빼기",
+        "href": null,
+        "title": "오늘 할 일 목록에서 빼기",
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "",
+        "href": null,
+        "title": "태스크 링크 복사",
+        "aria-label": "태스크 링크 복사"
+      },
+      {
+        "tag": "BUTTON",
+        "text": "오늘 목록에서 빼기",
+        "href": null,
+        "title": "오늘 할 일 목록에서 빼기",
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "",
+        "href": null,
+        "title": "태스크 링크 복사",
+        "aria-label": "태스크 링크 복사"
+      },
+      {
+        "tag": "BUTTON",
+        "text": "오늘 목록에 추가",
+        "href": null,
+        "title": "오늘 할 일 목록에 담기",
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "",
+        "href": null,
+        "title": "태스크 링크 복사",
+        "aria-label": "태스크 링크 복사"
+      },
+      {
+        "tag": "BUTTON",
+        "text": "오늘 목록에서 빼기",
+        "href": null,
+        "title": "오늘 할 일 목록에서 빼기",
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "",
+        "href": null,
+        "title": "태스크 링크 복사",
+        "aria-label": "태스크 링크 복사"
+      },
+      {
+        "tag": "BUTTON",
+        "text": "＋ 링크 추가",
+        "href": null,
+        "title": null,
+        "aria-label": null
+      }
+    ],
+    "overflow": {
+      "scroll": 390,
+      "viewport": 390
+    },
+    "errors": []
+  },
+  {
+    "width": 390,
+    "path": "/projects/1?view=board",
+    "url": "http://127.0.0.1:8018/projects/1?view=board",
+    "status": 200,
+    "screenshot": "C:\\Users\\tjrdu\\AppData\\Local\\Temp/task41-astra-after-20261004/390--projects-1-view-board.png",
+    "text": "산돌이\n오늘\n내 태스크\n프로젝트\n조직\n검색\n빠른 추가\n김\n현재 프로젝트\nProjectManager\n4\n산돌이\nProjectManager\n태스크\n문서\nAPI 문서\n설정\n\n팀의 업무와 결정을 한 곳에서 관리합니다.\n\n관리자 김하늘\n🚧 진행 중\n\n개발 또는 구현 진행 중\n\n프로젝트 수정\n태스크 만들기\n1/6\n완료\n5\n미완료\n1\n기한 초과\n1\n검토 대기\n1\n막힘\n목록\n보드\n완료·취소 포함\n\n상태 열을 좌우로 이동해 전체 흐름을 확인하세요.\n\n‹\n›\n시작 전 1\nProjectManager\n메뉴 누락 안내 개선\n이서준\n중요도 7/10\n체크리스트 0/2\n10월 3일 초과\n○ 시작 전\n▶ 진행 중\n⏸ 일시정지\n■ 막힘\n◆ 검토 대기\n✓ 완료\n✕ 취소\n오늘 목록에 추가\n진행 중 1\nProjectManager\n모바일 업무 화면 정리\n김하늘\n중요도 6/10\n체크리스트 0/2\n오늘 마감\n○ 시작 전\n▶ 진행 중\n⏸ 일시정지\n■ 막힘\n◆ 검토 대기\n✓ 완료\n✕ 취소\n오늘 목록에서 빼기\n검토 대기 1\nProjectManager\n새 학기 시간표 검증\n김하늘\n체크리스트 0/2\n10월 5일\n○ 시작 전\n▶ 진행 중\n⏸ 일시정지\n■ 막힘\n◆ 검토 대기\n✓ 완료\n✕ 취소\n오늘 목록에서 빼기\n막힘 1\nProjectManager\n연결 오류 안내 작성\n이서준\n중요도 4/10\n외부 API 응답 확인 대기\n체크리스트 0/2\n10월 6일\n○ 시작 전\n▶ 진행 중\n⏸ 일시정지\n■ 막힘\n◆ 검토 대기\n✓ 완료\n✕ 취소\n오늘 목록에 추가\n일시정지 1\nProjectManager\n배포 전 점검\n김하늘\n중요도 2/10\n사유 없음\n체크리스트 0/2\n10월 8일\n○ 시작 전\n▶ 진행 중\n⏸ 일시정지\n■ 막힘\n◆ 검토 대기\n✓ 완료\n✕ 취소\n오늘 목록에서 빼기\n완료 1\nProjectManager\n프로젝트 문서 정리\n김하늘\n중요도 3/10\n체크리스트 0/2\n10월 7일\n○ 시작 전\n▶ 진행 중\n⏸ 일시정지\n■ 막힘\n◆ 검토 대기\n✓ 완료\n✕ 취소\n참고 링크\n링크 없음\n＋ 링크 추가",
+    "controls": [
+      {
+        "tag": "SUMMARY",
+        "text": "산돌이",
+        "href": null,
+        "title": null,
+        "aria-label": "조직 전환"
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/orgs/1",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/orgs/new",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "오늘",
+        "href": "/today",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "내 태스크",
+        "href": "/me",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "프로젝트",
+        "href": "/projects",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "조직",
+        "href": "/org",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "검색",
+        "href": "/search",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "빠른 추가",
+        "href": "/today?quick=1",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "SUMMARY",
+        "text": "김",
+        "href": null,
+        "title": "계정·설정",
+        "aria-label": "내 메뉴"
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/settings/profile",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/portfolio",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/settings/tokens",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "",
+        "href": null,
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "SUMMARY",
+        "text": "현재 프로젝트\nProjectManager\n4",
+        "href": null,
+        "title": null,
+        "aria-label": "프로젝트 전환, 현재 ProjectManager"
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/projects/1",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/projects/3",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/projects/4",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/projects/2",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "",
+        "href": null,
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "산돌이",
+        "href": "/orgs/1",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "태스크",
+        "href": "/projects/1",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "문서",
+        "href": "/projects/1/docs",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "API 문서",
+        "href": "/projects/1/api",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "설정",
+        "href": "/projects/1/settings",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "프로젝트 수정",
+        "href": null,
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "태스크 만들기",
+        "href": null,
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "목록",
+        "href": "?view=list",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "보드",
+        "href": "?view=board",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "‹",
+        "href": null,
+        "title": "이전 상태 열",
+        "aria-label": "이전 상태 열"
+      },
+      {
+        "tag": "BUTTON",
+        "text": "›",
+        "href": null,
+        "title": "다음 상태 열",
+        "aria-label": "다음 상태 열"
+      },
+      {
+        "tag": "BUTTON",
+        "text": "오늘 목록에 추가",
+        "href": null,
+        "title": "오늘 할 일 목록에 담기",
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "",
+        "href": null,
+        "title": "태스크 링크 복사",
+        "aria-label": "태스크 링크 복사"
+      },
+      {
+        "tag": "BUTTON",
+        "text": "오늘 목록에서 빼기",
+        "href": null,
+        "title": "오늘 할 일 목록에서 빼기",
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "",
+        "href": null,
+        "title": "태스크 링크 복사",
+        "aria-label": "태스크 링크 복사"
+      },
+      {
+        "tag": "BUTTON",
+        "text": "오늘 목록에서 빼기",
+        "href": null,
+        "title": "오늘 할 일 목록에서 빼기",
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "",
+        "href": null,
+        "title": "태스크 링크 복사",
+        "aria-label": "태스크 링크 복사"
+      },
+      {
+        "tag": "BUTTON",
+        "text": "오늘 목록에 추가",
+        "href": null,
+        "title": "오늘 할 일 목록에 담기",
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "",
+        "href": null,
+        "title": "태스크 링크 복사",
+        "aria-label": "태스크 링크 복사"
+      },
+      {
+        "tag": "BUTTON",
+        "text": "오늘 목록에서 빼기",
+        "href": null,
+        "title": "오늘 할 일 목록에서 빼기",
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "",
+        "href": null,
+        "title": "태스크 링크 복사",
+        "aria-label": "태스크 링크 복사"
+      },
+      {
+        "tag": "BUTTON",
+        "text": "",
+        "href": null,
+        "title": "태스크 링크 복사",
+        "aria-label": "태스크 링크 복사"
+      },
+      {
+        "tag": "BUTTON",
+        "text": "＋ 링크 추가",
+        "href": null,
+        "title": null,
+        "aria-label": null
+      }
+    ],
+    "overflow": {
+      "scroll": 390,
+      "viewport": 390
+    },
+    "errors": []
+  },
+  {
+    "width": 390,
+    "path": "/projects/1/docs",
+    "url": "http://127.0.0.1:8018/projects/1/docs",
+    "status": 200,
+    "screenshot": "C:\\Users\\tjrdu\\AppData\\Local\\Temp/task41-astra-after-20261004/390--projects-1-docs.png",
+    "text": "산돌이\n오늘\n내 태스크\n프로젝트\n조직\n검색\n빠른 추가\n김\n현재 프로젝트\nProjectManager\n4\n산돌이\nProjectManager\n태스크\n문서\nAPI 문서\n설정\n문서 1\nMarkdown 문서 올리기\n새 문서\n제목 없는 문서\n김하늘 · v2 · 10/4\n\n문서는 이 프로젝트 안에만 있습니다. 파일을 선택하면 바로 등록합니다. UTF-8 Markdown 파일을 올리세요. 올린 .md는 본문 텍스트만 읽어 저장하고, 파일과 이미지 첨부는 저장하지 않습니다.\n\n만든 사람 김하늘\n마지막 수정 김하늘\nv2 · 10/4 00:20\n본문 편집\n본문 편집을 눌러 작성하세요.\n로컬 디자인 검증 문서입니다.\n쓰는 법\n문서 삭제",
+    "controls": [
+      {
+        "tag": "SUMMARY",
+        "text": "산돌이",
+        "href": null,
+        "title": null,
+        "aria-label": "조직 전환"
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/orgs/1",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/orgs/new",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "오늘",
+        "href": "/today",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "내 태스크",
+        "href": "/me",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "프로젝트",
+        "href": "/projects",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "조직",
+        "href": "/org",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "검색",
+        "href": "/search",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "빠른 추가",
+        "href": "/today?quick=1",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "SUMMARY",
+        "text": "김",
+        "href": null,
+        "title": "계정·설정",
+        "aria-label": "내 메뉴"
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/settings/profile",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/portfolio",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/settings/tokens",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "",
+        "href": null,
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "SUMMARY",
+        "text": "현재 프로젝트\nProjectManager\n4",
+        "href": null,
+        "title": null,
+        "aria-label": "프로젝트 전환, 현재 ProjectManager"
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/projects/1",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/projects/3",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/projects/4",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/projects/2",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "",
+        "href": null,
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "산돌이",
+        "href": "/orgs/1",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "태스크",
+        "href": "/projects/1",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "문서",
+        "href": "/projects/1/docs",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "API 문서",
+        "href": "/projects/1/api",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "설정",
+        "href": "/projects/1/settings",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "새 문서",
+        "href": null,
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "제목 없는 문서\n김하늘 · v2 · 10/4",
+        "href": "?doc=1",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "본문 편집",
+        "href": null,
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "SUMMARY",
+        "text": "쓰는 법",
+        "href": null,
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "문서 삭제",
+        "href": null,
+        "title": null,
+        "aria-label": null
+      }
+    ],
+    "overflow": {
+      "scroll": 390,
+      "viewport": 390
+    },
+    "errors": []
+  },
+  {
+    "width": 390,
+    "path": "/projects/1/api",
+    "url": "http://127.0.0.1:8018/projects/1/api",
+    "status": 200,
+    "screenshot": "C:\\Users\\tjrdu\\AppData\\Local\\Temp/task41-astra-after-20261004/390--projects-1-api.png",
+    "text": "산돌이\n오늘\n내 태스크\n프로젝트\n조직\n검색\n빠른 추가\n김\n현재 프로젝트\nProjectManager\n4\n산돌이\nProjectManager\n태스크\n문서\nAPI 문서\n설정\nAPI 문서\n주소에서 불러오기\nOpenAPI JSON 파일 올리기\nUTF-8로 저장한 OpenAPI JSON 파일을 선택하면 바로 등록합니다.\n아직 등록된 문서가 없습니다. 주소를 넣거나 openapi.json을 올리세요.",
+    "controls": [
+      {
+        "tag": "SUMMARY",
+        "text": "산돌이",
+        "href": null,
+        "title": null,
+        "aria-label": "조직 전환"
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/orgs/1",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/orgs/new",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "오늘",
+        "href": "/today",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "내 태스크",
+        "href": "/me",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "프로젝트",
+        "href": "/projects",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "조직",
+        "href": "/org",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "검색",
+        "href": "/search",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "빠른 추가",
+        "href": "/today?quick=1",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "SUMMARY",
+        "text": "김",
+        "href": null,
+        "title": "계정·설정",
+        "aria-label": "내 메뉴"
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/settings/profile",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/portfolio",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/settings/tokens",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "",
+        "href": null,
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "SUMMARY",
+        "text": "현재 프로젝트\nProjectManager\n4",
+        "href": null,
+        "title": null,
+        "aria-label": "프로젝트 전환, 현재 ProjectManager"
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/projects/1",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/projects/3",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/projects/4",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/projects/2",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "",
+        "href": null,
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "산돌이",
+        "href": "/orgs/1",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "태스크",
+        "href": "/projects/1",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "문서",
+        "href": "/projects/1/docs",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "API 문서",
+        "href": "/projects/1/api",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "설정",
+        "href": "/projects/1/settings",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "주소에서 불러오기",
+        "href": null,
+        "title": null,
+        "aria-label": null
+      }
+    ],
+    "overflow": {
+      "scroll": 390,
+      "viewport": 390
+    },
+    "errors": []
+  },
+  {
+    "width": 390,
+    "path": "/projects/1/settings",
+    "url": "http://127.0.0.1:8018/projects/1/settings",
+    "status": 200,
+    "screenshot": "C:\\Users\\tjrdu\\AppData\\Local\\Temp/task41-astra-after-20261004/390--projects-1-settings.png",
+    "text": "산돌이\n오늘\n내 태스크\n프로젝트\n조직\n검색\n빠른 추가\n김\n현재 프로젝트\nProjectManager\n4\n산돌이\nProjectManager\n태스크\n문서\nAPI 문서\n설정\n프로젝트 설정\n\n이 프로젝트의 태스크 규칙·기본 화면·알림을 한 번에 저장합니다.\n\n3개 섹션\nⓘ\n조직에서 변경을 허용한 항목만 수정할 수 있습니다. “조직에서 잠금”은 조직 값을 표시하며 이 화면에서 바꿀 수 없습니다.\n태스크 규칙\n12\n화면 기본값\n1\n알림\n3\n프로젝트 설정 저장\n태스크 규칙\n12개 항목\n기본 중요도\n생성 화면·API·AI가 중요도를 주지 않았을 때 쓰는 값입니다.\n중요도 상한\n이 값을 넘는 중요도는 프로젝트 관리자만 정할 수 있습니다. 0이면 제한하지 않습니다.\n완료 조건 필수\n켜면 완료 조건을 입력해야 태스크를 만들 수 있습니다.\n기한 필수\n켜면 기한을 입력해야 하며, 기한 미정 사유로 대신할 수 없습니다.\n기본 기한(영업일)\n생성 화면에서 오늘 이후 설정한 영업일 수만큼 지난 목표일을 제안합니다. 영업일은 월~금이며 공휴일은 따로 제외하지 않습니다. 자동으로 채우지는 않습니다. 0이면 제안하지 않습니다.\n검토 대기 필수\n켜면 검토 대기를 거쳐야 완료할 수 있습니다.\n본인 검토 허용\n끄면 담당자 본인이 검토 대기에서 완료로 바꿀 수 없습니다.\n재개 사유 필수\n켜면 완료·취소한 태스크를 되돌릴 때 사유를 입력해야 합니다.\n취소 사유 필수\n담당자 변경 사유 필수\n켜면 담당자 변경 사유를 입력해야 하며, 사유는 이력에 남습니다.\n기한 변경 사유 필수\n켜면 기한 단축·삭제에도 사유를 입력해야 합니다. 기한 연장은 이 설정과 관계없이 사유를 받습니다.\n초과 유예(일)\n기한이 지나도 N일까지는 초과로 강조하지 않고 초과 알림도 보내지 않습니다.\n화면 기본값\n1개 항목\n알림\n3개 항목\n프로젝트 정리\n\n끝난 프로젝트는 보관해 숨깁니다. 좌측 목록과 프로젝트 화면에서 빠지고, 조직 개요에서 \"보관 포함\"을 켜면 다시 보입니다. 데이터는 지워지지 않습니다.\n\n프로젝트 보관\n미완료 태스크를 모두 취소하고 프로젝트 보관\n\n삭제는 보관한 뒤에 할 수 있습니다.\n\n프로젝트 거버넌스 추가 문단\n\n조직 거버넌스에 이 프로젝트만의 규칙을 덧붙입니다. 5000자까지 씁니다.\n\n거버넌스 저장",
+    "controls": [
+      {
+        "tag": "SUMMARY",
+        "text": "산돌이",
+        "href": null,
+        "title": null,
+        "aria-label": "조직 전환"
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/orgs/1",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/orgs/new",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "오늘",
+        "href": "/today",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "내 태스크",
+        "href": "/me",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "프로젝트",
+        "href": "/projects",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "조직",
+        "href": "/org",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "검색",
+        "href": "/search",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "빠른 추가",
+        "href": "/today?quick=1",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "SUMMARY",
+        "text": "김",
+        "href": null,
+        "title": "계정·설정",
+        "aria-label": "내 메뉴"
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/settings/profile",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/portfolio",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/settings/tokens",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "",
+        "href": null,
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "SUMMARY",
+        "text": "현재 프로젝트\nProjectManager\n4",
+        "href": null,
+        "title": null,
+        "aria-label": "프로젝트 전환, 현재 ProjectManager"
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/projects/1",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/projects/3",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/projects/4",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/projects/2",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "",
+        "href": null,
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "산돌이",
+        "href": "/orgs/1",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "태스크",
+        "href": "/projects/1",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "문서",
+        "href": "/projects/1/docs",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "API 문서",
+        "href": "/projects/1/api",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "설정",
+        "href": "/projects/1/settings",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "태스크 규칙\n12",
+        "href": "#project-settings-group-1",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "화면 기본값\n1",
+        "href": "#project-settings-group-2",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "알림\n3",
+        "href": "#project-settings-group-3",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "프로젝트 설정 저장",
+        "href": null,
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "SUMMARY",
+        "text": "태스크 규칙\n12개 항목",
+        "href": null,
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "SUMMARY",
+        "text": "화면 기본값\n1개 항목",
+        "href": null,
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "SUMMARY",
+        "text": "알림\n3개 항목",
+        "href": null,
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "프로젝트 보관",
+        "href": null,
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "미완료 태스크를 모두 취소하고 프로젝트 보관",
+        "href": null,
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "거버넌스 저장",
+        "href": null,
+        "title": null,
+        "aria-label": null
+      }
+    ],
+    "overflow": {
+      "scroll": 390,
+      "viewport": 390
+    },
+    "errors": []
+  },
+  {
+    "width": 390,
+    "path": "/orgs/1",
+    "url": "http://127.0.0.1:8018/orgs/1",
+    "status": 200,
+    "screenshot": "C:\\Users\\tjrdu\\AppData\\Local\\Temp/task41-astra-after-20261004/390--orgs-1.png",
+    "text": "산돌이\n오늘\n내 태스크\n프로젝트\n조직\n검색\n빠른 추가\n김\n산돌이\n개요\n팀\n부하 현황\n로드맵\n거버넌스\n회의록\n설정\n14\n미완료\n4\n진행 중\n4\n검토 대기\n4\n기한 초과\n1\n막힘\n1\n완료\n프로젝트\n보관 포함\n새 프로젝트\n\n표를 좌우로 밀어 전체 항목을 확인하세요.\n\n이름\t관리자\t담당 팀\t상태\t미완료\t완료\nProjectManager\n팀의 업무와 결정을 한 곳에서 관리합니다.\n\t김하늘\t서비스 개발\t🚧 진행 중\n개발 또는 구현 진행 중\n\t5\t1/6\n강의실 시간표\n강의실 이용 가능 시간을 확인합니다.\n\t김하늘\t서비스 개발\t🚧 진행 중\n개발 또는 구현 진행 중\n\t3\t0/3\n공지 알림\n학생에게 필요한 공지를 전달합니다.\n\t김하늘\t서비스 개발\t🚧 진행 중\n개발 또는 구현 진행 중\n\t3\t0/3\n학식 API\n오늘의 식단과 운영 시간을 안내합니다.\n\t김하늘\t서비스 개발\t🚧 진행 중\n개발 또는 구현 진행 중\n\t3\t0/3\n담당자별\n\n표를 좌우로 밀어 전체 항목을 확인하세요.\n\n이름\t미완료\t기한 초과\t검토 대기\t막힘\n김하늘\t9\t0\t4\t0\n이서준\t5\t4\t0\t1",
+    "controls": [
+      {
+        "tag": "SUMMARY",
+        "text": "산돌이",
+        "href": null,
+        "title": null,
+        "aria-label": "조직 전환"
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/orgs/1",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/orgs/new",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "오늘",
+        "href": "/today",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "내 태스크",
+        "href": "/me",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "프로젝트",
+        "href": "/projects",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "조직",
+        "href": "/org",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "검색",
+        "href": "/search",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "빠른 추가",
+        "href": "/today?quick=1",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "SUMMARY",
+        "text": "김",
+        "href": null,
+        "title": "계정·설정",
+        "aria-label": "내 메뉴"
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/settings/profile",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/portfolio",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/settings/tokens",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "",
+        "href": null,
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "개요",
+        "href": "/orgs/1",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "팀",
+        "href": "/orgs/1/teams",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "부하 현황",
+        "href": "/orgs/1/capacity",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "로드맵",
+        "href": "/orgs/1/roadmap",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "거버넌스",
+        "href": "/orgs/1/governance",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "회의록",
+        "href": "/orgs/1/notes",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "설정",
+        "href": "/orgs/1/settings",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "14\n미완료",
+        "href": "/me?member=0",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "4\n진행 중",
+        "href": "/me?member=0&status=doing",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "4\n검토 대기",
+        "href": "/me?member=0&status=review",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "4\n기한 초과",
+        "href": "/me?member=0&due=overdue",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "1\n막힘",
+        "href": "/me?member=0&status=blocked",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "1\n완료",
+        "href": "/me?member=0&status=done_7d",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "새 프로젝트",
+        "href": null,
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "ProjectManager",
+        "href": "/projects/1",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "강의실 시간표",
+        "href": "/projects/3",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "공지 알림",
+        "href": "/projects/4",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "학식 API",
+        "href": "/projects/2",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "김하늘",
+        "href": "/me?member=1",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "이서준",
+        "href": "/me?member=2",
+        "title": null,
+        "aria-label": null
+      }
+    ],
+    "overflow": {
+      "scroll": 390,
+      "viewport": 390
+    },
+    "errors": []
+  },
+  {
+    "width": 390,
+    "path": "/orgs/1/teams",
+    "url": "http://127.0.0.1:8018/orgs/1/teams",
+    "status": 200,
+    "screenshot": "C:\\Users\\tjrdu\\AppData\\Local\\Temp/task41-astra-after-20261004/390--orgs-1-teams.png",
+    "text": "산돌이\n오늘\n내 태스크\n프로젝트\n조직\n검색\n빠른 추가\n김\n산돌이\n개요\n팀\n부하 현황\n로드맵\n거버넌스\n회의록\n설정\n멤버\n\n관리자 1명. 마지막 관리자는 역할을 바꾸거나 제거할 수 없습니다.\n\n멤버 정보와 스킬 태그는 좌우로 이동해 확인하세요.\n\n이름\t역할\t소속 팀\t스킬 태그\tDiscord\t미완료\t\n김하늘\ndesign_demo\n\t\n관리자\n멤버\n\t서비스 개발\t\n김하늘 스킬 태그\n기술 태그 저장\n\t없음\t9\t조직에서 제거\n이서준\ndesign_member\n\t\n관리자\n멤버\n\t서비스 개발\t\n이서준 스킬 태그\n기술 태그 저장\n\t없음\t5 초과 4\t\n조직에서 제거\n\nDiscord가 ‘없음’인 멤버는 마감 알림 DM을 받지 못합니다. 본인이 프로필 → [Discord 연결]에서 코드를 받아 봇에게 DM으로 보내면 됩니다.\n\n초대 링크\n\n초대 링크는 조직 전체용입니다. 제거한 사람이 링크를 가지고 있으면 다시 참여할 수 있으니, 필요하면 링크를 폐기하고 새로 만드세요.\n\n링크\t만료\t사용\t\n초대 링크가 없습니다.\n만료(일)\n초대 링크 만들기\n팀\n새 팀\n이름\t멤버\t담당 프로젝트\tGitHub\t\n서비스 개발\t2\t4\t미연결\t\n팀 수정\n팀 삭제",
+    "controls": [
+      {
+        "tag": "SUMMARY",
+        "text": "산돌이",
+        "href": null,
+        "title": null,
+        "aria-label": "조직 전환"
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/orgs/1",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/orgs/new",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "오늘",
+        "href": "/today",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "내 태스크",
+        "href": "/me",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "프로젝트",
+        "href": "/projects",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "조직",
+        "href": "/org",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "검색",
+        "href": "/search",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "빠른 추가",
+        "href": "/today?quick=1",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "SUMMARY",
+        "text": "김",
+        "href": null,
+        "title": "계정·설정",
+        "aria-label": "내 메뉴"
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/settings/profile",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/portfolio",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/settings/tokens",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "",
+        "href": null,
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "개요",
+        "href": "/orgs/1",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "팀",
+        "href": "/orgs/1/teams",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "부하 현황",
+        "href": "/orgs/1/capacity",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "로드맵",
+        "href": "/orgs/1/roadmap",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "거버넌스",
+        "href": "/orgs/1/governance",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "회의록",
+        "href": "/orgs/1/notes",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "설정",
+        "href": "/orgs/1/settings",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "기술 태그 저장",
+        "href": null,
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "조직에서 제거",
+        "href": null,
+        "title": "마지막 관리자는 제거할 수 없습니다",
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "기술 태그 저장",
+        "href": null,
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "조직에서 제거",
+        "href": null,
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "초대 링크 만들기",
+        "href": null,
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "새 팀",
+        "href": null,
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "서비스 개발",
+        "href": "/teams/1",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "팀 수정",
+        "href": null,
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "팀 삭제",
+        "href": null,
+        "title": null,
+        "aria-label": null
+      }
+    ],
+    "overflow": {
+      "scroll": 390,
+      "viewport": 390
+    },
+    "errors": []
+  },
+  {
+    "width": 390,
+    "path": "/orgs/1/notes",
+    "url": "http://127.0.0.1:8018/orgs/1/notes",
+    "status": 200,
+    "screenshot": "C:\\Users\\tjrdu\\AppData\\Local\\Temp/task41-astra-after-20261004/390--orgs-1-notes.png",
+    "text": "산돌이\n오늘\n내 태스크\n프로젝트\n조직\n검색\n빠른 추가\n김\n산돌이\n개요\n팀\n부하 현황\n로드맵\n거버넌스\n회의록\n설정\n회의록\nMarkdown 회의록 올리기\n새 회의록\n범위\n전체\n조직 공통(프로젝트 미지정)\nProjectManager\n강의실 시간표\n공지 알림\n학식 API\n공지 알림 · 1건\n공지 알림 주간 회의\n김하늘 · v1 · 10/4\n강의실 시간표 · 1건\n강의실 시간표 주간 회의\n김하늘 · v1 · 10/4\n학식 API · 1건\n학식 API 주간 회의\n김하늘 · v1 · 10/4\nProjectManager · 1건\nProjectManager 주간 회의\n김하늘 · v1 · 10/4\n\n회의록은 프로젝트에 붙일 수도 있고 조직 공통(프로젝트 미지정)으로 남길 수도 있습니다. 파일을 선택하면 바로 등록합니다. UTF-8 Markdown 파일을 올리세요. 올린 .md는 본문 텍스트만 읽어 저장합니다. 파일 자체와 이미지 첨부는 저장되지 않습니다.",
+    "controls": [
+      {
+        "tag": "SUMMARY",
+        "text": "산돌이",
+        "href": null,
+        "title": null,
+        "aria-label": "조직 전환"
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/orgs/1",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/orgs/new",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "오늘",
+        "href": "/today",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "내 태스크",
+        "href": "/me",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "프로젝트",
+        "href": "/projects",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "조직",
+        "href": "/org",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "검색",
+        "href": "/search",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "빠른 추가",
+        "href": "/today?quick=1",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "SUMMARY",
+        "text": "김",
+        "href": null,
+        "title": "계정·설정",
+        "aria-label": "내 메뉴"
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/settings/profile",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/portfolio",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/settings/tokens",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "",
+        "href": null,
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "개요",
+        "href": "/orgs/1",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "팀",
+        "href": "/orgs/1/teams",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "부하 현황",
+        "href": "/orgs/1/capacity",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "로드맵",
+        "href": "/orgs/1/roadmap",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "거버넌스",
+        "href": "/orgs/1/governance",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "회의록",
+        "href": "/orgs/1/notes",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "설정",
+        "href": "/orgs/1/settings",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "새 회의록",
+        "href": null,
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "공지 알림 주간 회의\n김하늘 · v1 · 10/4",
+        "href": "?scope=all&note=4",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "강의실 시간표 주간 회의\n김하늘 · v1 · 10/4",
+        "href": "?scope=all&note=3",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "학식 API 주간 회의\n김하늘 · v1 · 10/4",
+        "href": "?scope=all&note=2",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "ProjectManager 주간 회의\n김하늘 · v1 · 10/4",
+        "href": "?scope=all&note=1",
+        "title": null,
+        "aria-label": null
+      }
+    ],
+    "overflow": {
+      "scroll": 390,
+      "viewport": 390
+    },
+    "errors": []
+  },
+  {
+    "width": 390,
+    "path": "/orgs/1/roadmap",
+    "url": "http://127.0.0.1:8018/orgs/1/roadmap",
+    "status": 200,
+    "screenshot": "C:\\Users\\tjrdu\\AppData\\Local\\Temp/task41-astra-after-20261004/390--orgs-1-roadmap.png",
+    "text": "산돌이\n오늘\n내 태스크\n프로젝트\n조직\n검색\n빠른 추가\n김\n산돌이\n개요\n팀\n부하 현황\n로드맵\n거버넌스\n회의록\n설정\n로드맵\n새 마일스톤\n오늘\n10월\n11월\n12월\n사용성 개선\nProjectManager · 10월 18일 · 완료 1/6\n수정\n사용성 개선\n학식 API · 10월 18일 · 완료 0/3\n수정\n사용성 개선\n강의실 시간표 · 10월 18일 · 완료 0/3\n수정\n사용성 개선\n공지 알림 · 10월 18일 · 완료 0/3\n수정\n\n세로선은 오늘, 점선 테두리는 준비 중, 채워진 부분은 진행률입니다.\n\n프로젝트 의존성\n\n왼쪽 프로젝트가 오른쪽 프로젝트에 의존합니다. 차단 표시는 관계를 기록하며, 앱이 프로젝트 착수를 자동으로 막지는 않습니다.\n\n의존성이 없습니다.\n\n의존하는 프로젝트\n의존하는 프로젝트\nProjectManager\n강의실 시간표\n공지 알림\n학식 API\n→\n선행 프로젝트\n선행 프로젝트\nProjectManager\n강의실 시간표\n공지 알림\n학식 API\n의존성 메모\n차단\n의존성 추가",
+    "controls": [
+      {
+        "tag": "SUMMARY",
+        "text": "산돌이",
+        "href": null,
+        "title": null,
+        "aria-label": "조직 전환"
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/orgs/1",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/orgs/new",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "오늘",
+        "href": "/today",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "내 태스크",
+        "href": "/me",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "프로젝트",
+        "href": "/projects",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "조직",
+        "href": "/org",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "검색",
+        "href": "/search",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "빠른 추가",
+        "href": "/today?quick=1",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "SUMMARY",
+        "text": "김",
+        "href": null,
+        "title": "계정·설정",
+        "aria-label": "내 메뉴"
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/settings/profile",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/portfolio",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/settings/tokens",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "",
+        "href": null,
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "개요",
+        "href": "/orgs/1",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "팀",
+        "href": "/orgs/1/teams",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "부하 현황",
+        "href": "/orgs/1/capacity",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "로드맵",
+        "href": "/orgs/1/roadmap",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "거버넌스",
+        "href": "/orgs/1/governance",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "회의록",
+        "href": "/orgs/1/notes",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "설정",
+        "href": "/orgs/1/settings",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "새 마일스톤",
+        "href": null,
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "수정",
+        "href": null,
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "수정",
+        "href": null,
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "수정",
+        "href": null,
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "수정",
+        "href": null,
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "의존성 추가",
+        "href": null,
+        "title": null,
+        "aria-label": null
+      }
+    ],
+    "overflow": {
+      "scroll": 390,
+      "viewport": 390
+    },
+    "errors": []
+  },
+  {
+    "width": 390,
+    "path": "/orgs/1/settings",
+    "url": "http://127.0.0.1:8018/orgs/1/settings",
+    "status": 200,
+    "screenshot": "C:\\Users\\tjrdu\\AppData\\Local\\Temp/task41-astra-after-20261004/390--orgs-1-settings.png",
+    "text": "산돌이\n오늘\n내 태스크\n프로젝트\n조직\n검색\n빠른 추가\n김\n산돌이\n개요\n팀\n부하 현황\n로드맵\n거버넌스\n회의록\n설정\nⓘ\n조직 기본값과 잠금\n“프로젝트 변경 허용”이 켜진 항목만 프로젝트에서 다른 값을 저장할 수 있습니다. 끄면 조직 값으로 고정됩니다. 개인 환경설정은 알림·화면 기본값만 바꾸며 조직 규칙을 완화하지 않습니다.\n태스크 규칙\n14\n프로젝트 권한\n8\n조직 운영\n4\nAI 정책\n14\n알림\n11\n조직 설정 저장\n태스크 규칙\n14개 항목\n기본 중요도\n생성 화면·API·AI가 중요도를 주지 않았을 때 쓰는 값입니다.\n프로젝트 변경 허용\n중요도 상한\n이 값을 넘는 중요도는 프로젝트 관리자만 정할 수 있습니다. 0이면 제한하지 않습니다.\n프로젝트 변경 허용\n완료 조건 필수\n켜면 완료 조건을 입력해야 태스크를 만들 수 있습니다.\n프로젝트 변경 허용\n기한 필수\n켜면 기한을 입력해야 하며, 기한 미정 사유로 대신할 수 없습니다.\n프로젝트 변경 허용\n기본 기한(영업일)\n생성 화면에서 오늘 이후 설정한 영업일 수만큼 지난 목표일을 제안합니다. 영업일은 월~금이며 공휴일은 따로 제외하지 않습니다. 자동으로 채우지는 않습니다. 0이면 제안하지 않습니다.\n프로젝트 변경 허용\n동시 진행 한도\n한 사람이 동시에 진행 중으로 둘 수 있는 태스크 수입니다. 0이면 제한하지 않습니다.\n프로젝트 변경 허용\n조직에서 고정\n한도 초과 처리\n경고면 숫자만 보여 주고, 차단이면 진행 중으로 바꾸지 못하게 막습니다.\n경고만\n차단\n프로젝트 변경 허용\n조직에서 고정\n검토 대기 필수\n켜면 검토 대기를 거쳐야 완료할 수 있습니다.\n프로젝트 변경 허용\n본인 검토 허용\n끄면 담당자 본인이 검토 대기에서 완료로 바꿀 수 없습니다.\n프로젝트 변경 허용\n재개 사유 필수\n켜면 완료·취소한 태스크를 되돌릴 때 사유를 입력해야 합니다.\n프로젝트 변경 허용\n취소 사유 필수\n프로젝트 변경 허용\n담당자 변경 사유 필수\n켜면 담당자 변경 사유를 입력해야 하며, 사유는 이력에 남습니다.\n프로젝트 변경 허용\n기한 변경 사유 필수\n켜면 기한 단축·삭제에도 사유를 입력해야 합니다. 기한 연장은 이 설정과 관계없이 사유를 받습니다.\n프로젝트 변경 허용\n초과 유예(일)\n기한이 지나도 N일까지는 초과로 강조하지 않고 초과 알림도 보내지 않습니다.\n프로젝트 변경 허용\n프로젝트 권한\n8개 항목\n조직 운영\n4개 항목\nAI 정책\n14개 항목\n알림\n11개 항목\n설정 변경 이력\n변경 이력 없음",
+    "controls": [
+      {
+        "tag": "SUMMARY",
+        "text": "산돌이",
+        "href": null,
+        "title": null,
+        "aria-label": "조직 전환"
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/orgs/1",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/orgs/new",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "오늘",
+        "href": "/today",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "내 태스크",
+        "href": "/me",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "프로젝트",
+        "href": "/projects",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "조직",
+        "href": "/org",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "검색",
+        "href": "/search",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "빠른 추가",
+        "href": "/today?quick=1",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "SUMMARY",
+        "text": "김",
+        "href": null,
+        "title": "계정·설정",
+        "aria-label": "내 메뉴"
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/settings/profile",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/portfolio",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/settings/tokens",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "",
+        "href": null,
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "개요",
+        "href": "/orgs/1",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "팀",
+        "href": "/orgs/1/teams",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "부하 현황",
+        "href": "/orgs/1/capacity",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "로드맵",
+        "href": "/orgs/1/roadmap",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "거버넌스",
+        "href": "/orgs/1/governance",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "회의록",
+        "href": "/orgs/1/notes",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "설정",
+        "href": "/orgs/1/settings",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "태스크 규칙\n14",
+        "href": "#settings-group-1",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "프로젝트 권한\n8",
+        "href": "#settings-group-2",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "조직 운영\n4",
+        "href": "#settings-group-3",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "AI 정책\n14",
+        "href": "#settings-group-4",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "알림\n11",
+        "href": "#settings-group-5",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "조직 설정 저장",
+        "href": null,
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "SUMMARY",
+        "text": "태스크 규칙\n14개 항목",
+        "href": null,
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "SUMMARY",
+        "text": "프로젝트 권한\n8개 항목",
+        "href": null,
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "SUMMARY",
+        "text": "조직 운영\n4개 항목",
+        "href": null,
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "SUMMARY",
+        "text": "AI 정책\n14개 항목",
+        "href": null,
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "SUMMARY",
+        "text": "알림\n11개 항목",
+        "href": null,
+        "title": null,
+        "aria-label": null
+      }
+    ],
+    "overflow": {
+      "scroll": 390,
+      "viewport": 390
+    },
+    "errors": []
+  },
+  {
+    "width": 390,
+    "path": "/settings/profile",
+    "url": "http://127.0.0.1:8018/settings/profile",
+    "status": 200,
+    "screenshot": "C:\\Users\\tjrdu\\AppData\\Local\\Temp/task41-astra-after-20261004/390--settings-profile.png",
+    "text": "산돌이\n오늘\n내 태스크\n프로젝트\n조직\n검색\n빠른 추가\n김\n설정\n프로필\n환경설정\nAPI 토큰\n프로필\n표시 이름\n표시 이름 저장\nDiscord 연결\n\n연결하면 마감 알림(D-3 · D-1 · 당일 · 기한 초과)을 개인 DM으로 받고, 봇에게 DM으로 태스크를 처리할 수 있습니다.\n\nDiscord 연결 코드 받기\n\n봇과 같은 서버에 있어야 하고, 서버 우클릭 → 개인정보 보호 설정에서 ‘서버 멤버의 DM 허용’이 켜져 있어야 DM이 도착합니다.",
+    "controls": [
+      {
+        "tag": "SUMMARY",
+        "text": "산돌이",
+        "href": null,
+        "title": null,
+        "aria-label": "조직 전환"
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/orgs/1",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/orgs/new",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "오늘",
+        "href": "/today",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "내 태스크",
+        "href": "/me",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "프로젝트",
+        "href": "/projects",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "조직",
+        "href": "/org",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "검색",
+        "href": "/search",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "빠른 추가",
+        "href": "/today?quick=1",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "SUMMARY",
+        "text": "김",
+        "href": null,
+        "title": "계정·설정",
+        "aria-label": "내 메뉴"
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/settings/profile",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/portfolio",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/settings/tokens",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "",
+        "href": null,
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "프로필",
+        "href": "/settings/profile",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "환경설정",
+        "href": "/settings/preferences",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "API 토큰",
+        "href": "/settings/tokens",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "표시 이름 저장",
+        "href": null,
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "Discord 연결 코드 받기",
+        "href": null,
+        "title": null,
+        "aria-label": null
+      }
+    ],
+    "overflow": {
+      "scroll": 390,
+      "viewport": 390
+    },
+    "errors": []
+  },
+  {
+    "width": 390,
+    "path": "/settings/preferences",
+    "url": "http://127.0.0.1:8018/settings/preferences",
+    "status": 200,
+    "screenshot": "C:\\Users\\tjrdu\\AppData\\Local\\Temp/task41-astra-after-20261004/390--settings-preferences.png",
+    "text": "산돌이\n오늘\n내 태스크\n프로젝트\n조직\n검색\n빠른 추가\n김\n설정\n프로필\n환경설정\nAPI 토큰\n환경설정\n\n내 알림과 기본 화면에만 적용됩니다.\n\n개인 설정\nⓘ\n조직의 태스크 규칙이나 권한은 완화하지 않습니다. 조직에서 제한한 알림 종류도 여기서 다시 켤 수 없습니다.\n환경설정 저장\n알림\n3\n개인 DM 받기\n끄면 마감·막힘·검토 대기 관리자 알림 DM을 받지 않습니다. 채널 주간 보고는 그대로입니다.\n받을 마감 알림\n조직이 끈 종류는 켤 수 없습니다.\n받을 마감 알림\n3일 전\n하루 전\n당일\n기한 초과\n내 마감 알림 시각\n0~23은 내 마감 알림 시각입니다. -1이면 조직 설정을 따릅니다.\n화면 기본값\n4\n로그인 후 첫 화면\n오늘\n내 태스크\n내 태스크 기본 묶음\n기한\n프로젝트\n상태\n묶지 않음\n내 태스크 기본 정렬\n기한\n중요도\n최근 수정\n프로젝트를 항상 보드로\n프로젝트 설정보다 우선합니다.",
+    "controls": [
+      {
+        "tag": "SUMMARY",
+        "text": "산돌이",
+        "href": null,
+        "title": null,
+        "aria-label": "조직 전환"
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/orgs/1",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/orgs/new",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "오늘",
+        "href": "/today",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "내 태스크",
+        "href": "/me",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "프로젝트",
+        "href": "/projects",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "조직",
+        "href": "/org",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "검색",
+        "href": "/search",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "빠른 추가",
+        "href": "/today?quick=1",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "SUMMARY",
+        "text": "김",
+        "href": null,
+        "title": "계정·설정",
+        "aria-label": "내 메뉴"
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/settings/profile",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/portfolio",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/settings/tokens",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "",
+        "href": null,
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "프로필",
+        "href": "/settings/profile",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "환경설정",
+        "href": "/settings/preferences",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "API 토큰",
+        "href": "/settings/tokens",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "환경설정 저장",
+        "href": null,
+        "title": null,
+        "aria-label": null
+      }
+    ],
+    "overflow": {
+      "scroll": 390,
+      "viewport": 390
+    },
+    "errors": []
+  },
+  {
+    "width": 390,
+    "path": "/settings/tokens",
+    "url": "http://127.0.0.1:8018/settings/tokens",
+    "status": 200,
+    "screenshot": "C:\\Users\\tjrdu\\AppData\\Local\\Temp/task41-astra-after-20261004/390--settings-tokens.png",
+    "text": "산돌이\n오늘\n내 태스크\n프로젝트\n조직\n검색\n빠른 추가\n김\n설정\n프로필\n환경설정\nAPI 토큰\nAPI 토큰\n이름\t앞자리\t범위\t용도\t만료\t\n토큰이 없습니다.\n이름\n범위\n읽기\n읽기·쓰기\n용도\nAI 도구(Claude·Codex 등)\n사람이 쓰는 스크립트·자동화\n토큰 발급\n\nAI 도구에는 AI용 토큰을 사용하세요. AI용 토큰에는 조직의 AI 정책이 적용됩니다.\n\nAI 클라이언트 연결\n\n셸이 있는 Claude Code에서는 스킬이 가장 가볍습니다. claude.ai 웹·모바일처럼 셸이 없는 곳은 OAuth 커넥터로 붙습니다.\n\n클라이언트\t설정\nClaude Code\n스킬 · 이 기기만\t저장소의 skills/ 폴더(pm, pm-*)를 ~/.claude/skills/에 복사하고 pm.py login으로 로그인합니다(브라우저에서 허용 — 토큰을 손으로 옮기지 않습니다). /pm-start, /pm-new 같은 명령이 생깁니다. 자세한 방법은 skills/README.md를 보세요.\nClaude 앱 / claude.ai\nOAuth\t설정 → 커넥터 → 커스텀 커넥터 추가 → URL http://127.0.0.1:8018/mcp 서버 주소 복사\n'연결'을 누르면 이 사이트의 로그인·허용 화면이 뜹니다. 허용하면 토큰이 자동으로 발급돼 API 토큰 목록에 추가됩니다 — 위에서 따로 발급하지 않아도 됩니다.\nClaude Code\nMCP · 헤더\tclaude mcp add --transport http sandol http://127.0.0.1:8018/mcp --header \"Authorization: Bearer <TOKEN>\" 설정 명령 복사\nCodex CLI\n헤더\t~/.codex/config.toml에 [mcp_servers.sandol] url = \"http://127.0.0.1:8018/mcp\" bearer_token_env_var = \"SANDOL_TOKEN\" 추가, 환경 변수 SANDOL_TOKEN=<TOKEN>\n그 밖의 클라이언트\n개인 비밀 URL\tOAuth도 헤더도 못 넣는 곳이면 URL에 토큰을 넣습니다: http://127.0.0.1:8018/u/<TOKEN>/mcp — 클라이언트의 별도 인증 설정은 필요하지 않습니다. URL에 포함된 토큰으로 인증합니다.\n\n<TOKEN>은 위에서 발급한 값입니다.\n\n개인 비밀 URL은 비밀번호와 같습니다. 주소창과 프록시 기록에 남으니, 넣을 곳이 있으면 헤더나 OAuth를 쓰세요. 유출되면 이 화면에서 폐기하세요.",
+    "controls": [
+      {
+        "tag": "SUMMARY",
+        "text": "산돌이",
+        "href": null,
+        "title": null,
+        "aria-label": "조직 전환"
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/orgs/1",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/orgs/new",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "오늘",
+        "href": "/today",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "내 태스크",
+        "href": "/me",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "프로젝트",
+        "href": "/projects",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "조직",
+        "href": "/org",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "검색",
+        "href": "/search",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "빠른 추가",
+        "href": "/today?quick=1",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "SUMMARY",
+        "text": "김",
+        "href": null,
+        "title": "계정·설정",
+        "aria-label": "내 메뉴"
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/settings/profile",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/portfolio",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/settings/tokens",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "",
+        "href": null,
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "프로필",
+        "href": "/settings/profile",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "환경설정",
+        "href": "/settings/preferences",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "API 토큰",
+        "href": "/settings/tokens",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "토큰 발급",
+        "href": null,
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "서버 주소 복사",
+        "href": null,
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "설정 명령 복사",
+        "href": null,
+        "title": null,
+        "aria-label": null
+      }
+    ],
+    "overflow": {
+      "scroll": 390,
+      "viewport": 390
+    },
+    "errors": []
+  },
+  {
+    "width": 390,
+    "path": "/portfolio",
+    "url": "http://127.0.0.1:8018/portfolio",
+    "status": 200,
+    "screenshot": "C:\\Users\\tjrdu\\AppData\\Local\\Temp/task41-astra-after-20261004/390--portfolio.png",
+    "text": "산돌이\n오늘\n내 태스크\n프로젝트\n조직\n검색\n빠른 추가\n김\n내 포트폴리오\n\n기록을 골라 AI에 전달할 포트폴리오 작성 요청을 만듭니다. AI가 작성한 내용을 붙여 넣어 비공개 초안으로 저장하세요.\n\n조직\n산돌이\n프로젝트\n모든 프로젝트\nProjectManager\n강의실 시간표\n공지 알림\n학식 API\n시작일\n종료일\n사용자 기록 종류\n전체 기록\n주요 선택\n요구·제약\n명시적 답변\n방향 수정\n구현 방식 지시\nAI 협업 방식\n출처 보기\n포트폴리오 출처\n사용자 기록과 AI 판단을 구분해 표시합니다. 현재 조건 0건 / 전체 0건\n선택한 조건에 해당하는 출처가 없습니다. 사용자 입력은 본인에게 귀속된 확인 또는 세션 수집 기록만 표시됩니다.\n선택한 출처로 AI 프롬프트 만들기",
+    "controls": [
+      {
+        "tag": "SUMMARY",
+        "text": "산돌이",
+        "href": null,
+        "title": null,
+        "aria-label": "조직 전환"
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/orgs/1",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/orgs/new",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "오늘",
+        "href": "/today",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "내 태스크",
+        "href": "/me",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "프로젝트",
+        "href": "/projects",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "조직",
+        "href": "/org",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "검색",
+        "href": "/search",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "빠른 추가",
+        "href": "/today?quick=1",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "SUMMARY",
+        "text": "김",
+        "href": null,
+        "title": "계정·설정",
+        "aria-label": "내 메뉴"
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/settings/profile",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/portfolio",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "A",
+        "text": "",
+        "href": "/settings/tokens",
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "",
+        "href": null,
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "출처 보기",
+        "href": null,
+        "title": null,
+        "aria-label": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "선택한 출처로 AI 프롬프트 만들기",
+        "href": null,
+        "title": null,
+        "aria-label": null
+      }
+    ],
+    "overflow": {
+      "scroll": 390,
+      "viewport": 390
+    },
+    "errors": []
+  }
+]

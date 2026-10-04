@@ -18,11 +18,12 @@
     </div>
     <div class="stack">
       <form method="post" enctype="multipart/form-data" class="row">{% csrf_token %}
-        <input class="input" name="url" value="{{ spec_obj.source_url }}" placeholder="https://example.com/openapi.json" style="flex:1 1 200px">
+        <input class="input" aria-label="OpenAPI 문서 URL" name="url" value="{{ spec_obj.source_url }}" placeholder="https://example.com/openapi.json" style="flex:1 1 200px">
         <button class="btn sm primary">주소에서 불러오기</button>
         <input id="api-upload-file" class="file-upload-input" type="file" name="file" accept=".json,application/json" onchange="this.form.requestSubmit()">
-        <label class="btn sm file-upload-button" for="api-upload-file">파일</label>
+        <label class="btn sm file-upload-button" for="api-upload-file">OpenAPI JSON 파일 올리기</label>
       </form>
+      <span class="t12 muted">UTF-8로 저장한 OpenAPI JSON 파일을 선택하면 바로 등록합니다.</span>
       <span class="t12 muted">{% if spec_obj %}{{ spec_obj.source_url }} · {{ spec_obj.fetched_at|date:"n/j H:i" }} 저장됨{% else %}아직 등록된 문서가 없습니다. 주소를 넣거나 openapi.json을 올리세요.{% endif %}</span>
     </div>
   </div>

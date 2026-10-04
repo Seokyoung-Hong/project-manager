@@ -166,7 +166,10 @@ def _member_redirect(request, org_id):
 def invite_create(request, org_id):
     org = org_or_404(request.user, org_id)
     form = InviteForm(request.POST)
-    days = form.cleaned_data["days"] if form.is_valid() else 7
+    if not form.is_valid():
+        messages.error(request, "만료 기간은 1~90일로 입력하세요. 초대 링크는 만들지 않았습니다.")
+        return _member_redirect(request, org.pk)
+    days = form.cleaned_data["days"]
     try:
         invite = osv.create_invite(org, request.user, days=days)
         messages.success(request, f"초대 링크: {settings.SITE_URL}{invite.path}")

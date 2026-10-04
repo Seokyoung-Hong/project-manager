@@ -13,6 +13,60 @@
     t2 = setTimeout(function () { el.textContent = ""; }, 2500);
   }
 
+  // 수동 복사 창을 열거나 취소한 것은 클립보드 복사 성공이 아니다.
+  window.copyText = function (text, successLabel) {
+    return Promise.resolve().then(function () {
+      if (!navigator.clipboard) throw new Error("clipboard unavailable");
+      return navigator.clipboard.writeText(text);
+    }).then(function () {
+      flash(successLabel || "복사됨");
+      return true;
+    }, function () {
+      prompt("아래 내용을 선택해 직접 복사하세요.", text);
+      return false;
+    });
+  };
+
+  function updateDueSuggestion() {
+    var form = document.getElementById("quick-form");
+    if (!form) return;
+    var select = form.querySelector("[data-due-suggestions]");
+    var box = form.querySelector("[data-quick-due-suggestion]");
+    if (!select || !box) return;
+    var option = select.options[select.selectedIndex];
+    var date = option ? option.dataset.dueSuggestion : "";
+    box.hidden = !date;
+    box.dataset.date = date || "";
+    box.querySelector("[data-due-suggestion-label]").textContent = date ? "설정에 따른 제안: " + date + " (월~금 기준)" : "";
+  }
+  updateDueSuggestion();
+  body.addEventListener("htmx:afterSwap", updateDueSuggestion);
+  body.addEventListener("change", function (e) {
+    if (e.target.matches("[data-due-suggestions]")) updateDueSuggestion();
+  });
+  body.addEventListener("click", function (e) {
+    var button = e.target.closest('[data-action="use-due-suggestion"]');
+    if (!button) return;
+    var form = button.closest("form"), box = button.closest("[data-quick-due-suggestion]");
+    form.querySelector('[name="due_date"]').value = box.dataset.date;
+  });
+
+  function requestError(e, network) {
+    var detail = e.detail || {}, config = detail.requestConfig || {};
+    var verb = String(config.verb || "").toUpperCase();
+    var message = verb === "GET" || verb === "HEAD" ? "불러오지 못했습니다." :
+      verb ? "변경 요청을 완료하지 못했습니다." : "요청을 처리하지 못했습니다.";
+    var xhr = detail.xhr, reason = "";
+    if (xhr && !network) {
+      try {
+        var data = JSON.parse(xhr.responseText);
+        reason = typeof data.detail === "string" ? data.detail : typeof data.error === "string" ? data.error : "";
+      } catch (err) { /* HTML 오류 페이지는 표시하지 않는다. */ }
+    }
+    alert(message + (network ? " 네트워크 연결을 확인하고 다시 시도하세요." :
+      (reason ? " " + reason : " 다시 시도하세요.")));
+  }
+
   function openPanel(url, pushUrl) {
     htmx.ajax("GET", url, { target: "#panel", swap: "innerHTML" });
     if (pushUrl) history.pushState(null, "", pushUrl);
@@ -107,8 +161,11 @@
   });
   body.addEventListener("saved", function () { flash("자동 저장됨"); });
   body.addEventListener("htmx:responseError", function (e) {
-    alert("저장하지 못했습니다. 페이지를 새로고침한 뒤 다시 시도하세요. (" + e.detail.xhr.status + ")");
+    requestError(e, false);
   });
+
+  body.addEventListener("htmx:sendError", function (e) { requestError(e, true); });
+  body.addEventListener("htmx:timeout", function (e) { requestError(e, true); });
 
   // 행 전체 클릭 → 패널. 행 안의 컨트롤은 제외.
   body.addEventListener("click", function (e) {
@@ -133,16 +190,11 @@
     if (!b) return;
     e.preventDefault(); e.stopPropagation();
     if (b.dataset.copyText !== undefined) {
-      var text = b.dataset.copyText;
-      var ok = function () { flash(b.dataset.copyLabel || "복사됨"); };
-      (navigator.clipboard ? navigator.clipboard.writeText(text) : Promise.reject())
-        .then(ok, function () { prompt("복사하세요", text); ok(); });
+      window.copyText(b.dataset.copyText, b.dataset.copyLabel || "복사됨");
       return;
     }
     var id = b.dataset.copy, url = location.origin + "/tasks/" + id;
-    var done = function () { flash("TASK-" + id + " 링크 복사됨"); };
-    (navigator.clipboard ? navigator.clipboard.writeText(url) : Promise.reject())
-      .then(done, function () { prompt("링크를 복사하세요", url); done(); });
+    window.copyText(url, "TASK-" + id + " 링크 복사됨");
   });
 
   // 상태 select에서 '막힘' 선택 → 보내지 않고 패널의 사유 박스를 연다. (HTMX는 hx-trigger 필터로 이미 막혀 있다)
@@ -163,7 +215,7 @@
       layout.classList.toggle("has-panel", open);
       layout.classList.toggle("wide", open && localStorage.getItem("panel-wide") === "1");
       var w = e.target.querySelector("[data-action='toggle-wide']");
-      if (w) w.textContent = layout.classList.contains("wide") ? "작게 보기" : "크게 보기";
+      if (w) w.textContent = layout.classList.contains("wide") ? "패널 좁히기" : "패널 넓히기";
       var f = e.target.querySelector("[data-focus]");
       if (f) f.focus();
       else if (open && window.matchMedia("(max-width: 1150px)").matches) window.scrollTo(0, 0);
@@ -188,7 +240,7 @@
     } else if (a === "toggle-wide") {
       var on = !layout.classList.contains("wide");
       layout.classList.toggle("wide", on); localStorage.setItem("panel-wide", on ? "1" : "0");
-      b.textContent = on ? "작게 보기" : "크게 보기";
+      b.textContent = on ? "패널 좁히기" : "패널 넓히기";
       requestAnimationFrame(syncAllBoardNavigation);
     } else if (a === "close-dialog") {
       dlg.close(); dlg.innerHTML = "";

@@ -9,7 +9,8 @@ def test_editable_documents_expose_a_keyboard_entry_button():
         assert 'class="btn sm doc-edit-start"' in template
         assert 'type="button"' in template
         assert 'aria-controls="doc-body"' in template
-        assert "Enter로 시작 · Esc로 나가기" in template
+        assert "본문 편집을 눌러 작성하세요." in template
+        assert "키보드에서는 Enter로 편집을 시작하고 Esc로 편집을 마칩니다." in template
 
 
 def test_document_editor_enters_and_returns_focus_to_the_button():

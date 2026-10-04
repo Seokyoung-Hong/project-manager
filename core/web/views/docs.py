@@ -1,7 +1,8 @@
 """프로젝트 문서 탭. 회의록 화면과 같은 편집기를 쓰고 저장 규약도 같다."""
 
+from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.http import Http404, HttpResponse
+from django.http import Http404, HttpResponse, JsonResponse
 from django.shortcuts import redirect, render
 from django.urls import reverse
 from django.views.decorators.http import require_POST
@@ -55,7 +56,8 @@ def doc_new(request, project_id):
     project = project_or_404(request.user, project_id)
     try:
         doc = ts_docs.create_doc(project=project, actor=request.user)
-    except ServiceError:
+    except ServiceError as e:
+        messages.error(request, "문서를 만들지 못했습니다. " + " ".join(e.errors.values()))
         return _back(project_id)
     return _back(project_id, doc)
 
@@ -66,10 +68,12 @@ def doc_upload(request, project_id):
     project = project_or_404(request.user, project_id)
     f = request.FILES.get("file")
     if f is None:
+        messages.error(request, "업로드할 Markdown 파일(.md 또는 .markdown)을 선택하세요.")
         return _back(project_id)
     try:
         doc = ts_docs.upload_doc(project=project, actor=request.user, filename=f.name, raw=f.read())
-    except ServiceError:
+    except ServiceError as e:
+        messages.error(request, "문서를 업로드하지 못했습니다. " + " ".join(e.errors.values()))
         return _back(project_id)
     return _back(project_id, doc)
 
@@ -89,9 +93,15 @@ def doc_save(request, doc_id):
             source="web",
         )
     except ServiceError as e:
-        return HttpResponse(" ".join(e.errors.values()), status=400)
+        return JsonResponse(
+            {"error": " ".join(e.errors.values())},
+            status=400,
+            json_dumps_params={"ensure_ascii": False},
+        )
     except ConflictError:
-        return HttpResponse(CONFLICT_MSG, status=409)
+        return JsonResponse(
+            {"error": CONFLICT_MSG}, status=409, json_dumps_params={"ensure_ascii": False}
+        )
     resp = HttpResponse(status=204)
     resp["X-Note-Version"] = str(doc.version)
     return trigger(resp, "saved")
@@ -104,7 +114,8 @@ def doc_delete(request, doc_id):
     project_id = doc.project_id
     try:
         ts_docs.delete_doc(doc, request.user)
-    except ServiceError:
+    except ServiceError as e:
+        messages.error(request, "문서를 삭제하지 못했습니다. " + " ".join(e.errors.values()))
         return _back(project_id, doc)
     return _back(project_id)
 
