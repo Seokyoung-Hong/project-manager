@@ -1,4 +1,5 @@
 from django.db import transaction
+from django.db.models import Exists, OuterRef, Q
 from django.utils import timezone
 
 from common.errors import ServiceError
@@ -259,23 +260,60 @@ def _validate_team_name(org, name: str, exclude_pk=None) -> str:
     return name
 
 
-def create_team(*, org, name: str, purpose: str = "", actor, source: str = "") -> Team:
+def create_team(
+    *,
+    org,
+    name: str,
+    purpose: str = "",
+    actor,
+    source: str = "",
+    dev_tools: bool = True,
+    is_private: bool = False,
+) -> Team:
     _check_ai_manage_teams(org, source)
     require_admin(actor, org)
     return Team.objects.create(
         org=org,
         name=_validate_team_name(org, name),
         purpose=(purpose or "").strip()[:200],
+        dev_tools=dev_tools,
+        is_private=is_private,
         created_by=actor,
     )
 
 
-def update_team(team, *, name: str, purpose: str = "", actor) -> Team:
+def update_team(
+    team, *, name: str, purpose: str = "", actor, dev_tools=None, is_private=None
+) -> Team:
+    """None인 값은 그대로 둔다. 비공개 여부도 조직 관리자만 바꾼다(require_admin)."""
     require_admin(actor, team.org)
     team.name = _validate_team_name(team.org, name, exclude_pk=team.pk)
     team.purpose = (purpose or "").strip()[:200]
-    team.save(update_fields=["name", "purpose"])
+    if dev_tools is not None:
+        team.dev_tools = dev_tools
+    if is_private is not None:
+        team.is_private = is_private
+    team.save(update_fields=["name", "purpose", "dev_tools", "is_private"])
     return team
+
+
+def visible_teams(user, org=None):
+    """세부(멤버·팀장·채널·인원)를 볼 수 있는 팀. 이름은 이 함수와 상관없이 누구나 본다.
+
+    비공개 팀은 그 팀원(팀장 포함)과 조직 관리자만. org가 None이면 user의 모든 조직.
+    """
+    qs = (
+        Team.objects.filter(org=org)
+        if org is not None
+        else Team.objects.filter(org__in=orgs_of(user))
+    )
+    admin = OrgMembership.objects.filter(user=user, role="admin", org_id=OuterRef("org_id"))
+    member = TeamMembership.objects.filter(user=user, team_id=OuterRef("pk"))
+    return qs.filter(Q(is_private=False) | Exists(admin) | Exists(member))
+
+
+def can_view_team(user, team) -> bool:
+    return visible_teams(user, team.org).filter(pk=team.pk).exists()
 
 
 @transaction.atomic
@@ -303,7 +341,10 @@ def delete_team(team, *, actor, source: str = "web"):
 
 def add_team_member(team, user, actor, source: str = "") -> TeamMembership:
     _check_ai_manage_teams(team.org, source)
-    self_join = actor == user and effective("org.team_join_self", org=team.org)
+    # 비공개 팀에 스스로 들어가면 세부를 보게 되므로 자기 가입을 막는다(나가기는 허용).
+    self_join = (
+        actor == user and not team.is_private and effective("org.team_join_self", org=team.org)
+    )
     if not self_join:
         require_admin(actor, team.org)
     if not is_member(user, team.org):
