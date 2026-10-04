@@ -10,6 +10,7 @@ from django.views.decorators.http import require_POST
 from common.errors import ServiceError
 from orgs.models import Team
 from orgs.services import orgs_of
+from projects.services import visible_projects
 from tasks import work_requests as wr
 
 from .common import current_org, org_or_404
@@ -109,7 +110,7 @@ def request_detail(request, req_id):
         and wr.can_respond(request.user, req),
     }
     if can_answer and req.kind == "work":
-        ctx["projects"] = wr.projects_for(req)
+        ctx["projects"] = wr.projects_for(req, request.user)
         ctx["assignees"] = (
             req.team.members.filter(is_active=True).order_by("display_name") if req.team_id else []
         )
@@ -126,7 +127,9 @@ def request_act(request, req_id, action):
     note = post.get("note", "")
     try:
         if action == "accept":
-            project = req.org.projects.filter(pk=post.get("project") or 0).first()
+            project = (
+                visible_projects(request.user, req.org).filter(pk=post.get("project") or 0).first()
+            )
             assignee = req.org.members.filter(pk=post.get("assignee") or 0).first()
             try:
                 due = date.fromisoformat(post["due_date"]) if post.get("due_date") else None

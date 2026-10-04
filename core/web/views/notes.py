@@ -10,6 +10,7 @@ from django.views.decorators.http import require_POST
 from common.dates import KST
 from common.errors import ConflictError, ServiceError
 from notes import services as ts_notes
+from projects.services import visible_projects
 
 from .common import (
     CONFLICT_MSG,
@@ -34,7 +35,9 @@ def _note_or_404(user, note_id):
 def org_notes(request, org_id):
     org = org_or_404(request.user, org_id)
     scope = request.GET.get("scope", "all")
-    qs = org.notes.select_related("project", "created_by")
+    qs = (
+        ts_notes.visible_notes(request.user).filter(org=org).select_related("project", "created_by")
+    )
     if scope == "team":
         qs = qs.filter(project__isnull=True)
     elif scope.isdecimal():
@@ -79,7 +82,9 @@ def org_notes(request, org_id):
             "scope": scope,
             "tag": tag,
             "all_tags": all_tags,
-            "projects": org.projects.filter(is_archived=False).order_by("name"),
+            "projects": visible_projects(request.user, org)
+            .filter(is_archived=False)
+            .order_by("name"),
             "can_delete": bool(note)
             and (note.created_by_id == request.user.pk or can_admin(request.user, org)),
         },

@@ -13,9 +13,9 @@ from github import writes as gh_writes
 from github.client import GitHubError
 from github.models import RepoIssue, TaskGitLink
 from github.services import can_view_repo, repo_state, user_token
-from orgs.services import ai_denied, orgs_of
+from orgs.services import ai_denied
 from orgs.settings import effective
-from projects.models import Project
+from projects.services import visible_projects
 from tasks.brief import task_brief
 from tasks.models import ChangeLog, Task
 from tasks.services import (
@@ -234,7 +234,7 @@ def history(request, task_id: int):
 
 @router.post("", response={201: TaskOut, 400: ErrorOut})
 def create_task_ep(request, payload: TaskCreateIn):
-    project = Project.objects.filter(pk=payload.project_id, org__in=orgs_of(request.auth)).first()
+    project = visible_projects(request.auth).filter(pk=payload.project_id).first()
     if project is None:
         raise HttpError(404, "프로젝트를 찾을 수 없습니다.")
     assignee = None
@@ -290,7 +290,7 @@ def patch_task(request, task_id: int, payload: TaskPatchIn):
             raise HttpError(400, "검토자를 찾을 수 없습니다.")
     if "project_id" in data:
         pid = data.pop("project_id")
-        data["project"] = Project.objects.filter(pk=pid, org__in=orgs_of(request.auth)).first()
+        data["project"] = visible_projects(request.auth).filter(pk=pid).first()
         if data["project"] is None:
             raise HttpError(404, "프로젝트를 찾을 수 없습니다.")
     if data:

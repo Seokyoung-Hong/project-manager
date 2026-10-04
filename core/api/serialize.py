@@ -73,6 +73,7 @@ def project_out(p) -> dict:
         "status_label": p.status_label,
         "is_archived": p.is_archived,
         "dev_tools": p.dev_tools,
+        "visibility": p.visibility,
         "version": p.version,
         "stats": project_stats(p),
         "links": [link_out(link) for link in p.links.all()],

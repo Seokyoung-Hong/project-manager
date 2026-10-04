@@ -24,6 +24,8 @@ class Project(models.Model):
         "eol": "프로젝트가 더 이상 필요하지 않거나 대체되어, 유지보수·재개 가능성 모두 없는 상태",
     }
 
+    VISIBILITIES = [("org", "조직 전체"), ("teams", "담당 팀만")]
+
     org = models.ForeignKey("orgs.Organization", on_delete=models.CASCADE, related_name="projects")
     teams = models.ManyToManyField(
         "orgs.Team", blank=True, related_name="projects", verbose_name="담당 팀"
@@ -36,6 +38,7 @@ class Project(models.Model):
     status = models.CharField("상태", max_length=10, choices=STATUSES, default="preparing")
     discord_channel_id = models.CharField("Discord 채널", max_length=32, blank=True)
     discord_channel_managed = models.BooleanField("채널 자동 관리", default=False)
+    visibility = models.CharField("공개 범위", max_length=5, choices=VISIBILITIES, default="org")
     is_archived = models.BooleanField(default=False)
     archived_at = models.DateTimeField(null=True, blank=True)
     version = models.PositiveIntegerField(default=1)

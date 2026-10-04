@@ -12,7 +12,8 @@ from common.dates import today_kst
 from common.errors import ConflictError, ServiceError
 from github.services import pr_compare_url, repo_state, sync_issues_if_stale
 from github.writes import default_branch_name
-from projects.models import Project
+from notes.services import visible_notes
+from projects.services import visible_projects
 from tasks import services as ts
 from tasks.attachments import attachments_of
 from tasks.models import ChangeLog, ChecklistItem, Link
@@ -86,17 +87,17 @@ def _panel_ctx(request, task, **extra):
         "checklist_done": sum(1 for i in checklist if i.is_done),
         "links": task.links.all(),
         "link_form": LinkForm(dev_tools=task.project.dev_tools),
-        "notes": task.meeting_notes.all(),
-        "org_notes": task.project.org.notes.all(),
+        "notes": visible_notes(request.user).filter(tasks=task),
+        "org_notes": visible_notes(request.user).filter(org=task.project.org),
         # _refs.html은 패널 최초 렌더(_panel_ctx)와 조각 갱신(_refs) 양쪽에서 쓰인다.
         # 한쪽에만 넣으면 새로고침 전에는 문서가 보이지 않는다.
         "docs": task.docs.all(),
         "project_docs": task.project.docs.exclude(tasks=task),
         "attachments": attachments_of(task),
         # 패널이 프로젝트·담당자까지 맡으므로 고를 대상을 함께 싣는다
-        "org_projects": Project.objects.filter(org=task.project.org, is_archived=False).order_by(
-            "name"
-        ),
+        "org_projects": visible_projects(request.user, task.project.org)
+        .filter(is_archived=False)
+        .order_by("name"),
         "org_members": task.project.org.members.filter(is_active=True).order_by("display_name"),
         "pending_assignee": pending_assignee(task),
         "history": history_rows(logs),
@@ -238,7 +239,7 @@ def task_meta(request, task_id):
     org = task.project.org
     changes = {}
     if (pid := request.POST.get("project")) is not None:
-        project = Project.objects.filter(pk=pid or 0, org=org, is_archived=False).first()
+        project = visible_projects(request.user, org).filter(pk=pid or 0, is_archived=False).first()
         if project is None:
             return _panel(request, task, error="그 프로젝트로 옮길 수 없습니다.")
         changes["project"] = project
@@ -464,8 +465,8 @@ def _refs(request, task, error=None, link_form=None):
             "link_form": link_form
             if link_form is not None
             else LinkForm(dev_tools=task.project.dev_tools),
-            "notes": task.meeting_notes.all(),
-            "org_notes": task.project.org.notes.all(),
+            "notes": visible_notes(request.user).filter(tasks=task),
+            "org_notes": visible_notes(request.user).filter(org=task.project.org),
             "docs": task.docs.all(),
             # 이미 걸린 문서는 후보에서 뺀다 — 같은 것을 두 번 걸 이유가 없다
             "project_docs": task.project.docs.exclude(tasks=task),

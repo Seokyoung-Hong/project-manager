@@ -138,8 +138,13 @@ def deadline_alerts(org, today: date) -> list[tuple]:
         .select_related("project", "assignee")
         .order_by("due_date", "id")
     )
+    from projects.services import can_view_project
+
     out = []
     for t in qs:
+        # 공개 범위가 바뀌어 담당자가 더는 못 보는 비공개 프로젝트면 제목을 DM으로 흘리지 않는다.
+        if t.project.visibility != "org" and not can_view_project(t.assignee, t.project):
+            continue
         delta = (t.due_date - today).days
         if delta < 0:
             before = overdue_before(t.project)

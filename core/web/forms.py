@@ -87,6 +87,8 @@ class ProjectForm(forms.Form):
         label="담당 팀", queryset=Team.objects.none(), required=False
     )
     status = forms.ChoiceField(label="상태", choices=Project.STATUSES, initial="preparing")
+    # 조직 관리자에게만 그린다. 비어 오면(그리지 않은 경우) 바꾸지 않는다.
+    visibility = forms.ChoiceField(label="공개 범위", choices=Project.VISIBILITIES, required=False)
     version = forms.IntegerField(widget=forms.HiddenInput, required=False)
     # 생성 대화상자에서만 그린다. 수정은 설정 탭(project.dev_tools)과 GitHub 탭이 맡는다.
     dev_tools = forms.BooleanField(label="개발 도구 사용", required=False)
@@ -136,10 +138,11 @@ class QuickTaskForm(forms.Form):
 
     def __init__(self, *args, user, **kwargs):
         super().__init__(*args, **kwargs)
-        from orgs.services import orgs_of
+        from projects.services import visible_projects
 
         self.fields["project"].queryset = (
-            Project.objects.filter(org__in=orgs_of(user), is_archived=False)
+            visible_projects(user)
+            .filter(is_archived=False)
             .select_related("org")
             .order_by("org__name", "name")
         )

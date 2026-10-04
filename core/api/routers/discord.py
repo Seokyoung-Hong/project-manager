@@ -20,7 +20,7 @@ from orgs import settings as org_settings
 from orgs.models import Organization, OrgMembership, Team
 from orgs.services import orgs_of, set_team_channel, visible_teams
 from projects.models import Project
-from projects.services import set_project_channel
+from projects.services import set_project_channel, visible_projects
 from tasks import work_requests as wr
 from tasks.brief import task_brief
 from tasks.models import Task
@@ -136,7 +136,7 @@ def extend(request, task_id: int, payload: DiscordExtendIn):
 
 
 def _project(actor, project_id: int):
-    project = Project.objects.filter(pk=project_id, org__in=orgs_of(actor)).first()
+    project = visible_projects(actor).filter(pk=project_id).first()
     if project is None:
         raise HttpError(404, "프로젝트를 찾을 수 없습니다.")
     return project
@@ -254,7 +254,7 @@ def org_channel(request, payload: DiscordOrgChannelIn):
 def projects(request, payload: DiscordActorIn):
     """자동완성과 채널 생성용. 채널 id를 같이 주어 봇이 중복 생성 전에 확인한다."""
     actor = _actor(payload.discord_user_id)
-    qs = Project.objects.filter(org__in=orgs_of(actor), is_archived=False)
+    qs = visible_projects(actor).filter(is_archived=False)
     return [
         {"id": p.pk, "name": p.name, "org_id": p.org_id, "discord_channel_id": p.discord_channel_id}
         for p in qs
@@ -415,7 +415,7 @@ def channel_check(request, payload: DiscordChannelCheckIn):
     if payload.kind == "team":
         obj = Team.objects.filter(pk=payload.target_id, org__in=orgs_of(actor)).first()
     elif payload.kind == "project":
-        obj = Project.objects.filter(pk=payload.target_id, org__in=orgs_of(actor)).first()
+        obj = visible_projects(actor).filter(pk=payload.target_id).first()
     else:
         raise HttpError(400, "kind는 team 또는 project여야 합니다.")
     if obj is None:
@@ -536,8 +536,9 @@ def my_requests(request, payload: DiscordActorIn):
 @router.post("/requests/{int:request_id}/projects", response=list[dict])
 def request_projects(request, request_id: int, payload: DiscordActorIn):
     """수락할 때 `프로젝트` 자동완성. 받는 팀이 맡은 프로젝트가 앞에 온다."""
-    req = _request(_actor(payload.discord_user_id), request_id)
-    return [{"id": p.pk, "name": p.name} for p in wr.projects_for(req)]
+    actor = _actor(payload.discord_user_id)
+    req = _request(actor, request_id)
+    return [{"id": p.pk, "name": p.name} for p in wr.projects_for(req, actor)]
 
 
 @router.post("/requests/{int:request_id}/accept", response=dict)

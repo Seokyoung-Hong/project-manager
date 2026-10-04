@@ -62,7 +62,7 @@ def org_usage_bytes(org) -> int:
 
 
 def can_download(user, att) -> bool:
-    """접근 검사는 projects.services.can_view_project 한 곳에 둔다(공개 범위가 생기면 거기서 좁힌다)."""
+    """접근 검사는 projects.services.can_view_project 한 곳에 둔다(공개 범위 포함)."""
     return can_view_project(user, att.target_project)
 
 

@@ -15,7 +15,7 @@ from orgs import services as osv
 from orgs.governance import governance_text
 from orgs.models import ChangeRequest, Invite, OrgMembership
 from orgs.settings import GROUPS, SPECS, display, effective, enforced, locked_keys, specs_for
-from projects.services import project_stats
+from projects.services import project_stats, visible_projects
 from reports.services import org_status
 
 from ..forms import InviteForm, OrgForm
@@ -69,7 +69,7 @@ def org_detail(request, org_id):
     org = org_or_404(request.user, org_id)
     request.session["org_id"] = org.pk
     include_archived = request.GET.get("include_archived") == "1"
-    st = org_status(org)
+    st = org_status(org, viewer=request.user)
     c = st["counts"]
     me_url = reverse("me")
     tiles = [
@@ -80,7 +80,9 @@ def org_detail(request, org_id):
         ("막힘", c["blocked"], f"{me_url}?member=0&status=blocked", True),
         ("완료", c["done"], f"{me_url}?member=0&status=done_7d", False),
     ]
-    projects = org.projects.prefetch_related("owners", "teams").order_by("name")
+    projects = (
+        visible_projects(request.user, org).prefetch_related("owners", "teams").order_by("name")
+    )
     if not include_archived:
         projects = projects.filter(is_archived=False)
     return render(
@@ -128,7 +130,7 @@ def org_teams(request, org_id):
     org = org_or_404(request.user, org_id)
     if not can_admin(request.user, org):
         return _member_teams(request, org)
-    load = {r["assignee_id"]: r for r in org_status(org)["by_assignee"]}
+    load = {r["assignee_id"]: r for r in org_status(org, viewer=request.user)["by_assignee"]}
     memberships = list(org.memberships.select_related("user").order_by("user__display_name"))
     # 마지막 관리자는 services.remove_member가 거부한다 — 버튼도 그 규칙을 그대로 보여 준다
     last_admin = sum(1 for m in memberships if m.role == "admin") <= 1

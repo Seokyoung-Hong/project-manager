@@ -196,6 +196,8 @@ def _display(field, raw: str) -> str:
         return dict(Task.STATUSES).get(raw, raw)
     if field == "priority":
         return f"{raw}/10"
+    if field == "visibility":
+        return dict(Project.VISIBILITIES).get(raw, raw)
     if field == "due_date":
         return fmt_md(date.fromisoformat(raw))
     if field == "completed_at":

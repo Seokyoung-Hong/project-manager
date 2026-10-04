@@ -9,6 +9,7 @@ Priority = Annotated[int, Field(ge=1, le=10)]
 ProjectStatus = Literal[
     "preparing", "on_hold", "waiting", "active", "paused", "done", "stopped", "eol"
 ]
+ProjectVisibility = Literal["org", "teams"]
 
 
 class UserBrief(Schema):
@@ -194,6 +195,7 @@ class ProjectOut(Schema):
     status_label: str
     is_archived: bool
     dev_tools: bool  # false면 비개발 프로젝트 — GitHub·브랜치·PR 안내를 건너뛴다
+    visibility: ProjectVisibility = "org"  # teams면 관리자·프로젝트 관리자·담당 팀 멤버만 본다
     version: int
     stats: ProjectStats
     links: list[LinkOut]
@@ -208,6 +210,7 @@ class ProjectCreateIn(Schema):
     team_ids: list[int] = []
     status: ProjectStatus = "preparing"
     dev_tools: bool | None = None  # 비우면 조직 기본값(project.dev_tools)
+    visibility: ProjectVisibility = "org"  # teams는 조직 관리자만
 
 
 class ProjectPatchIn(Schema):
@@ -217,6 +220,7 @@ class ProjectPatchIn(Schema):
     owner_ids: list[int] | None = None
     team_ids: list[int] | None = None
     status: ProjectStatus | None = None
+    visibility: ProjectVisibility | None = None  # 조직 관리자만
 
 
 class OrgBrief(Schema):

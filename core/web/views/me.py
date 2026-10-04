@@ -4,7 +4,7 @@ from django.shortcuts import render
 
 from accounts.models import User
 from orgs.services import orgs_of
-from projects.models import Project
+from projects.services import visible_projects
 from tasks import services as ts
 from tasks.services import today_membership
 
@@ -78,9 +78,7 @@ def me(request):
             )
             .distinct()
             .order_by("display_name"),
-            "projects": Project.objects.filter(
-                org__in=orgs_of(request.user), is_archived=False
-            ).order_by("name"),
+            "projects": visible_projects(request.user).filter(is_archived=False).order_by("name"),
             "due_options": ts.DUE_FILTERS,
             "status_options": ts.STATUS_FILTERS,
             "priority_options": ts.PRIORITY_FILTERS,

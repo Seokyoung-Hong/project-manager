@@ -21,7 +21,7 @@
     <tbody>
     {% for p, st in project_rows %}
     <tr>
-      <td><a href="{% url 'project_detail' p.pk %}">{{ p.name }}</a>{% if p.is_archived %} <span class="badge">보관</span>{% endif %}<div class="muted t13">{{ p.purpose }}</div></td>
+      <td><a href="{% url 'project_detail' p.pk %}">{{ p.name }}</a>{% if p.visibility == "teams" %} <span class="badge" title="담당 팀만">🔒 비공개</span>{% endif %}{% if p.is_archived %} <span class="badge">보관</span>{% endif %}<div class="muted t13">{{ p.purpose }}</div></td>
       <td>{% for u in p.owners.all %}{{ u.display_name }}{% if not forloop.last %}, {% endif %}{% empty %}<span class="warning">미지정</span>{% endfor %}</td>
       <td>{% for t in p.teams.all %}<span class="badge">{{ t.name }}</span> {% endfor %}</td>
       <td><span class="badge">{{ p.status_label }}</span><div class="muted t13" style="max-width:220px">{{ p.status_desc }}</div></td>

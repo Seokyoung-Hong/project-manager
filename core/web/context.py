@@ -2,6 +2,7 @@ from django.conf import settings
 from django.db.models import Count, Q
 
 from orgs.services import orgs_of
+from projects.services import visible_projects
 from tasks.models import Task
 from tasks.work_requests import received
 
@@ -57,7 +58,8 @@ def shell(request):
     projects = []
     if nav == "project" and org is not None:
         projects = (
-            org.projects.filter(is_archived=False)
+            visible_projects(request.user, org)
+            .filter(is_archived=False)
             .annotate(open_count=Count("tasks", filter=Q(tasks__status__in=Task.OPEN)))
             .order_by("name")
         )

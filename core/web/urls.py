@@ -89,6 +89,11 @@ urlpatterns = [
     path("teams/<int:team_id>/delete", teams.team_delete, name="team_delete"),
     path("teams/<int:team_id>/members", teams.team_member_add, name="team_member_add"),
     path(
+        "teams/<int:team_id>/visible-projects",
+        teams.team_visible_projects,
+        name="team_visible_projects",
+    ),
+    path(
         "teams/<int:team_id>/members/<int:user_id>/remove",
         teams.team_member_remove,
         name="team_member_remove",

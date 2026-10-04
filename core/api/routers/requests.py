@@ -7,7 +7,7 @@ from ninja.errors import HttpError
 from accounts.models import IdempotencyKey, User
 from orgs.models import Organization, Team
 from orgs.services import is_member, orgs_of
-from projects.models import Project
+from projects.services import visible_projects
 from tasks import work_requests as wr
 from tasks.models import WorkRequest
 
@@ -151,7 +151,7 @@ def accept_request(request, request_id: int, payload: RequestAcceptIn):
     req = _request_or_404(request, request_id)
     project = assignee = None
     if payload.project_id is not None:
-        project = Project.objects.filter(pk=payload.project_id, org=req.org).first()
+        project = visible_projects(request.auth, req.org).filter(pk=payload.project_id).first()
         if project is None:
             raise _not_found("프로젝트")
     if payload.assignee_id is not None:

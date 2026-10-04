@@ -14,6 +14,7 @@ from orgs.services import orgs_of
 from portfolio import drafts as draft_services
 from portfolio import sources as source_services
 from projects.models import Project
+from projects.services import visible_projects
 
 from .common import org_or_404
 
@@ -45,7 +46,7 @@ def _source_filters(request):
     selected_project = None
     projects = Project.objects.none()
     if selected_org:
-        projects = Project.objects.filter(org=selected_org).order_by("name")
+        projects = visible_projects(request.user, selected_org).order_by("name")
         if project_id and not project_id.isdecimal():
             raise Http404
         if project_id.isdecimal():
