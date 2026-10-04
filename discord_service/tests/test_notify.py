@@ -397,3 +397,12 @@ def test_cli_deadlines_passes_the_same_notify_map(tmp_path, monkeypatch):
     monkeypatch.setattr(sys, "argv", ["x", "deadlines", "--org", "1", "--date", "2026-09-09"])
     cli.main()
     assert got["notify"]["111"]["notify_dm"] is False
+
+
+def test_first_tick_reads_orgs_right_after_boot(monkeypatch):
+    """부팅 직후(monotonic이 캐시 TTL보다 작을 때)에도 첫 틱은 조직 목록을 읽는다."""
+    from discord_service import scheduler
+
+    monkeypatch.setattr(scheduler.time, "monotonic", lambda: 1.0)
+    core = make_core(FakeCore([task(1, "2026-09-12")]))
+    assert scheduler.TickCache().orgs(core) != []

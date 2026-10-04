@@ -28,7 +28,7 @@ class TickCache:
 
     def __init__(self):
         self._orgs: list[dict] = []
-        self._orgs_at = 0.0
+        self._orgs_at = float("-inf")  # monotonic()은 부팅 직후 작다. 0이면 첫 조회를 건너뛴다.
         self._members: dict[int, tuple[float, list[dict]]] = {}
 
     def orgs(self, core: CoreClient) -> list[dict]:
