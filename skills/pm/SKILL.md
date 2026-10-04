@@ -7,7 +7,7 @@ argument-hint: "[하려는 일]"
 # 산돌이 PM
 
 이 문서는 **API 사용법과 공통 규칙**이다. 무엇이 옳은 일하기 방식인지는 조직마다 다르고,
-그건 서버의 **개발 거버넌스**에 있다. 규칙은 거버넌스, 조작법은 이 문서.
+그건 서버의 **업무 거버넌스**에 있다. 규칙은 거버넌스, 조작법은 이 문서.
 
 요청이 있으면 그대로 처리한다: $ARGUMENTS
 
@@ -129,7 +129,7 @@ PM apidoc 12 put openapi.json                         # 프로젝트 API 문서 
 | 하려는 일 | 호출 |
 |---|---|
 | ✋ AI 정책(`ai.*`)이 바뀌는 조직 설정 | `PM PUT /api/orgs/{org}/settings reason=<이유> -` — 본문은 `GET …/settings`의 `values` 전체에서 바꿀 값만 고친 것(통째 교체) |
-| ✋ 개발 거버넌스 교체 | `PM PUT /api/orgs/{org}/governance reason=<이유> -` `{"text"}` — 본문 전체 |
+| ✋ 업무 거버넌스 교체 | `PM PUT /api/orgs/{org}/governance reason=<이유> -` `{"text"}` — 본문 전체 |
 
 - **`reason`(왜 바꾸는지, 500자)은 필수다.** 관리자가 허용할지 판단하는 근거라, 사용자가 말한 목적과 바뀌는 점을
   한두 문장으로 적는다. 없으면 400이다.

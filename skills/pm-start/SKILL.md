@@ -45,6 +45,7 @@ disable-model-invocation: true
 1. 기한이 없으면 먼저 정한다. 거버넌스가 요구하면 확인받고 `PATCH`로 `due_date`를 넣는다.
 2. 담당자가 내가 아니면 바꿀지 확인받는다. 임의로 바꾸지 않는다.
 3. `POST /api/tasks/{id}/transition` `{"status": "doing", "version": <최신>}`.
-4. 브랜치 이름을 제안한다. 조직·저장소 규칙이 있으면 그것을, 없으면 `task-<N>-<짧은-영문-요지>`.
+4. **저장소가 연결된 프로젝트(`GET /api/projects/{id}/repo`의 `connected: true`)일 때만** 브랜치 이름을 제안한다.
+   아니면 이 단계를 건너뛴다. 조직·저장소 규칙이 있으면 그것을, 없으면 `task-<N>-<짧은-영문-요지>`.
    지금 작업 폴더가 그 저장소면 브랜치를 만들지 묻는다.
 5. 태스크의 `next_action`을 첫 작업으로 삼아 한 줄로 보고한다: `TASK-N 착수 — <다음 행동>`.

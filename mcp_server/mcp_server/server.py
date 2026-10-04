@@ -24,7 +24,7 @@ GUIDE = _guide()
 INSTRUCTIONS = """산돌이 조직 업무 관리 도구.
 - **이 서버를 처음 쓸 때 get_guide를 한 번 읽는다.** 어떤 상황에 어느 도구를 어떤 순서로
   부르는지, 무엇을 조심해야 하는지가 거기 있다. 아래는 그중 꼭 지켜야 할 것만 추린 것이다.
-- 조직마다 개발 거버넌스(태스크 쪼개기·기한·중요도·상태·팀 운영 규칙, AI에게 허용한 범위)가 있다.
+- 조직마다 업무 거버넌스(태스크 쪼개기·기한·중요도·상태·팀 운영 규칙, AI에게 허용한 범위)가 있다.
   태스크를 만들거나 기한·담당·중요도·상태를 바꾸거나 팀을 건드리기 전에 get_governance로 그 조직의
   규칙을 읽고 그대로 따른다. 거버넌스와 아래 기본 규칙이 어긋나면 거버넌스가 우선이다.
 - 쓰기 작업 전에는 get_governance와 함께 get_settings로 그 조직의 설정(AI 정책 포함)도 읽는다.
@@ -305,8 +305,11 @@ def create_project(
     owner_ids: list[int] | None = None,
     team_ids: list[int] | None = None,
     status: str = "preparing",
+    dev_tools: bool | None = None,
 ) -> dict:
-    """프로젝트를 만든다. 조직·관리자·팀 id는 목록에서 확인한다."""
+    """프로젝트를 만든다. 조직·관리자·팀 id는 목록에서 확인한다.
+    dev_tools는 개발 도구(GitHub·API 문서) 사용 여부다. 비우면 조직 기본값을 따르고,
+    홍보·디자인처럼 코드가 없는 프로젝트는 false로 만든다."""
     return _core().post(
         "/api/projects",
         {
@@ -316,6 +319,7 @@ def create_project(
             "owner_ids": owner_ids or [],
             "team_ids": team_ids or [],
             "status": status,
+            "dev_tools": dev_tools,
         },
     )
 
@@ -645,7 +649,7 @@ def append_note(task_id: int, text: str) -> dict:
 
 @mcp.tool()
 def get_governance(org_id: int) -> dict:
-    """그 조직의 개발 거버넌스 본문(마크다운). 쓰기 작업 전에 먼저 읽는다.
+    """그 조직의 업무 거버넌스 본문(마크다운). 쓰기 작업 전에 먼저 읽는다.
     is_default가 True면 조직이 아직 고치지 않은 기본안이다. 결과: {text, is_default}"""
     return _core().get(f"/api/orgs/{org_id}/governance")
 
@@ -707,7 +711,7 @@ def revoke_invite(invite_id: int) -> dict:
 
 @mcp.tool()
 def update_governance(org_id: int, text: str, reason: str = "") -> dict:
-    """조직 개발 거버넌스 전체 본문을 교체하자고 요청한다. 먼저 현재 내용을 get_governance로 읽는다.
+    """조직 업무 거버넌스 전체 본문을 교체하자고 요청한다. 먼저 현재 내용을 get_governance로 읽는다.
     바로 반영되지 않고 {status: "pending", approve_url}이 온다 — 링크를 사용자에게 보여 주고,
     조직 관리자가 허용할 때까지 다시 시도하지 않는다.
     reason: 왜 바꾸려는지(500자, 필수) — 사람이 허용할지 판단하는 근거다."""
