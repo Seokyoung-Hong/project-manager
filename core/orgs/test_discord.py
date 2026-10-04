@@ -1,5 +1,9 @@
 """조직 ↔ Discord 서버 바인딩(IMPL-PLAN-4 §8.4). 서비스·웹 흐름·봇 엔드포인트."""
 
+import json
+import urllib.error
+import urllib.parse
+
 import pytest
 from django.core.cache import cache
 from django.utils import timezone
@@ -118,14 +122,89 @@ def test_installed_without_state_is_404(client, org, admin):
     assert org.discord_guild_id is None
 
 
-def test_installed_binds_the_guild(client, org, admin):
-    client.force_login(admin)
+class _Resp:
+    def __init__(self, body: bytes):
+        self.body = body
+
+    def read(self):
+        return self.body
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *a):
+        return False
+
+
+@pytest.fixture
+def discord_token(monkeypatch, settings):
+    """Discord 토큰 엔드포인트 흉내. `calls`에 보낸 본문이 쌓이고 `guild`가 응답의 서버다."""
+    settings.DISCORD_CLIENT_SECRET = "s3cret"
+    state = {"guild": "9001", "calls": [], "fail": False}
+
+    def fake_urlopen(req, timeout=None):
+        state["calls"].append((req.full_url, dict(urllib.parse.parse_qsl(req.data.decode()))))
+        if state["fail"]:
+            raise urllib.error.HTTPError(req.full_url, 400, "bad", {}, None)
+        return _Resp(json.dumps({"access_token": "x", "guild": {"id": state["guild"]}}).encode())
+
+    monkeypatch.setattr("orgs.discord.urllib.request.urlopen", fake_urlopen)
+    return state
+
+
+def _install(client, org, query):
     client.get(f"/orgs/{org.pk}/discord/connect")
     state = client.session["dc_state"]
-    r = client.get(f"/orgs/discord/installed?guild_id=9001&state={state}")
+    return client.get(f"/orgs/discord/installed?{query}&state={state}")
+
+
+def test_installed_binds_the_guild_from_code_exchange(client, org, admin, discord_token):
+    client.force_login(admin)
+    r = _install(client, org, "code=abc&guild_id=9001")
     assert r.status_code == 302
     org.refresh_from_db()
     assert org.discord_guild_id == "9001"
+    ((url, body),) = discord_token["calls"]
+    assert url == "https://discord.com/api/v10/oauth2/token"
+    assert body["code"] == "abc"
+    assert body["client_secret"] == "s3cret"
+    assert body["grant_type"] == "authorization_code"
+
+
+def test_installed_rejects_a_forged_guild_id(client, org, admin, discord_token):
+    """쿼리의 guild_id를 남의 서버로 고쳐도 code 교환 결과와 다르면 붙이지 않는다(S2)."""
+    discord_token["guild"] = "9001"
+    client.force_login(admin)
+    _install(client, org, "code=abc&guild_id=7777")
+    org.refresh_from_db()
+    assert org.discord_guild_id is None
+
+
+def test_installed_rejects_when_exchange_fails(client, org, admin, discord_token):
+    discord_token["fail"] = True
+    client.force_login(admin)
+    _install(client, org, "code=abc&guild_id=9001")
+    org.refresh_from_db()
+    assert org.discord_guild_id is None
+
+
+def test_installed_without_code_or_secret_does_not_bind(
+    client, org, admin, discord_token, settings
+):
+    client.force_login(admin)
+    _install(client, org, "guild_id=9001")
+    settings.DISCORD_CLIENT_SECRET = ""
+    _install(client, org, "code=abc&guild_id=9001")
+    org.refresh_from_db()
+    assert org.discord_guild_id is None
+    assert discord_token["calls"] == []
+
+
+def test_installed_without_session_state_is_404(client, org, admin, discord_token):
+    """세션에 state가 없으면(None) 빈 state로도 통과하지 못한다."""
+    client.force_login(admin)
+    r = client.get("/orgs/discord/installed?code=abc&guild_id=9001&state=")
+    assert r.status_code == 404
 
 
 def test_discord_tab_hidden_without_client_id(client, org, admin, settings):

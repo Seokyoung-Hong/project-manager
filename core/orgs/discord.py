@@ -9,6 +9,12 @@ DB로 올린다. 봇은 하나이고 여러 길드에 설치된다.
 채널 목록을 뽑을 수 없고, 그 토큰을 받아 오면 비밀 반경이 깨진다(GUIDE-00 §3).
 """
 
+import json
+import urllib.error
+import urllib.parse
+import urllib.request
+
+from django.conf import settings
 from django.db import transaction
 from django.utils import timezone
 
@@ -30,6 +36,44 @@ def _log(org, field, old, new, actor, source="web"):
         actor=actor,
         source=source,
     )
+
+
+TOKEN_URL = "https://discord.com/api/v10/oauth2/token"
+
+
+def guild_from_code(code: str, redirect_uri: str) -> str:
+    """설치 콜백의 `code`를 Discord에서 토큰으로 바꾸고 응답의 `guild.id`를 돌려준다.
+
+    콜백 쿼리의 `guild_id`는 누구나 고쳐 쓸 수 있다. 봇 설치(`bot` scope) 교환 응답에는 실제로
+    설치된 서버가 실려 오므로 그 값만 믿는다(C-improvements S2).
+    """
+    if not settings.DISCORD_CLIENT_SECRET:
+        raise ServiceError(
+            {"guild_id": "서버에 DISCORD_CLIENT_SECRET이 없어 연결을 확인할 수 없습니다."}
+        )
+    if not code:
+        raise ServiceError({"guild_id": "Discord 설치 응답에 code가 없습니다."})
+    body = urllib.parse.urlencode(
+        {
+            "grant_type": "authorization_code",
+            "code": code,
+            "redirect_uri": redirect_uri,
+            "client_id": settings.DISCORD_CLIENT_ID,
+            "client_secret": settings.DISCORD_CLIENT_SECRET,
+        }
+    ).encode()
+    req = urllib.request.Request(TOKEN_URL, data=body, method="POST")
+    req.add_header("Content-Type", "application/x-www-form-urlencoded")
+    req.add_header("User-Agent", "sandol-pm")
+    try:
+        with urllib.request.urlopen(req, timeout=15) as r:  # noqa: S310 — 고정 호스트
+            data = json.loads(r.read())
+    except (urllib.error.URLError, ValueError):
+        raise ServiceError({"guild_id": "Discord에서 설치를 확인하지 못했습니다."}) from None
+    guild_id = str((data.get("guild") or {}).get("id") or "")
+    if not guild_id:
+        raise ServiceError({"guild_id": "Discord에서 설치를 확인하지 못했습니다."})
+    return guild_id
 
 
 def org_by_guild(guild_id: str):
