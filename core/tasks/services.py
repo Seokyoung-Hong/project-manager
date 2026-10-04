@@ -107,9 +107,17 @@ def _require_member(actor, project):
 ASSIGNEE_CANT_SEE = "담당자가 볼 수 없는 프로젝트입니다. 담당 팀에 넣거나 공개 범위를 바꾸세요."
 
 
+REVIEWER_CANT_SEE = "검토자가 볼 수 없는 프로젝트입니다. 담당 팀에 넣거나 공개 범위를 바꾸세요."
+
+
+def can_see(user, project) -> bool:
+    """공개 프로젝트는 조직 멤버 검사로 충분하다 — 비공개일 때만 가시성 질의를 한다."""
+    return project.visibility == "org" or can_view_project(user, project)
+
+
 def _require_viewer(assignee, project):
     """비공개 프로젝트(IMPL-PLAN-7 F)의 담당자는 그 프로젝트를 볼 수 있어야 한다."""
-    if project.visibility != "org" and not can_view_project(assignee, project):
+    if not can_see(assignee, project):
         raise ServiceError({"assignee": ASSIGNEE_CANT_SEE})
 
 
@@ -186,6 +194,8 @@ def _validate(
     if reviewer is not None:
         if check_reviewer and (not reviewer.is_active or not is_member(reviewer, project.org)):
             errors["reviewer"] = "검토자는 이 조직의 활성 멤버여야 합니다."
+        elif check_reviewer and not can_see(reviewer, project):
+            errors["reviewer"] = REVIEWER_CANT_SEE
         elif reviewer == assignee and not effective(
             "task.self_review", org=project.org, project=project
         ):
@@ -401,6 +411,9 @@ def update_task(
             raise ServiceError({"project": "다른 조직의 프로젝트로 옮길 수 없습니다."})
         if new["assignee"] is not None:
             _require_viewer(new["assignee"], new["project"])
+        # 검토자도 담당자와 같은 규칙: 옮길 프로젝트를 못 보면 이동을 거부한다.
+        if new["reviewer"] is not None and not can_see(new["reviewer"], new["project"]):
+            raise ServiceError({"reviewer": REVIEWER_CANT_SEE})
     new["no_due_reason"] = (new["no_due_reason"] or "").strip()[:200]
     new["stop_reason"] = (new["stop_reason"] or "").strip()[:300]
     _validate(

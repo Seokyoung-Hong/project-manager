@@ -63,7 +63,6 @@ def task_out(t, viewer=None) -> dict:
             ],
             # 담당 요청을 받은 사람이 아직 수락하지 않았다. 수락 전까지 assignee는 그대로다.
             "pending_assignee": user_brief(pending) if (pending := pending_assignee(t)) else None,
-            "reviewer": user_brief(t.reviewer),
             "children_count": children.count(),
             "attachments": [attachment_out(a) for a in attachments_of(t)],  # 최신 버전만
         }
