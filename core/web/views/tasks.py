@@ -110,7 +110,13 @@ def _panel_ctx(request, task, **extra):
         "desc_rows": max(2, -(-len(task.description) // 40)),
         "stop_draft": task.stop_reason,
         "block_pending": request.GET.get("block") == "1",
-        "reject_pending": "",
+        # 검토자·관리자에게 보이는 "반려" 버튼이 ?reject=1로 사유 상자를 연다.
+        "reject_pending": "doing"
+        if request.GET.get("reject") == "1" and ts.can_reject(request.user, task)
+        else "",
+        "can_reject": task.status == "review"
+        and request.user.pk != task.assignee_id
+        and ts.can_reject(request.user, task),
         "series": _series(request.user, task),
         "focus_notes": request.GET.get("focus") == "notes",
         "full_page": False,
