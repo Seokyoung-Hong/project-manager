@@ -2,6 +2,7 @@ from datetime import date, timedelta
 
 from django.db import IntegrityError, transaction
 from django.db.models import Max, Q
+from django.db.models.functions import Coalesce
 from django.utils import timezone
 
 from accounts.models import IdempotencyKey, User
@@ -1183,3 +1184,33 @@ def search(user, q: str, *, include_closed=False, include_archived=False):
     if num.isdecimal():
         cond |= Q(pk=int(num))
     return qs.filter(cond).order_by("-id")[:100]
+
+
+# 결과 선반 기간 필터. (코드, 화면 표기, 일수 — None은 전체)
+SHELF_PERIODS = [("7", "최근 7일", 7), ("30", "최근 30일", 30), ("all", "전체", None)]
+
+
+def closed_tasks(user, project, status: str, *, period: str = "all", q: str = ""):
+    """결과 선반: 프로젝트의 완료·취소 태스크를 닫힌 시각 최신순으로.
+
+    닫힌 시각은 완료일, 취소는 completed_at이 비므로 마지막 변경 시각으로 본다.
+    visible_tasks 범위를 그대로 따른다. status는 Task.CLOSED 중 하나여야 한다.
+    """
+    if status not in Task.CLOSED:
+        raise ValueError(status)
+    qs = (
+        visible_tasks(user)
+        .filter(project=project, is_template=False, status=status)
+        .annotate(closed_at=Coalesce("completed_at", "updated_at"))
+    )
+    days = {c: d for c, _, d in SHELF_PERIODS}.get(period)
+    if days:
+        qs = qs.filter(closed_at__gte=timezone.now() - timedelta(days=days))
+    q = (q or "").strip()
+    if q:
+        cond = Q(title__icontains=q)
+        num = q.upper().replace("TASK-", "")
+        if num.isdecimal():
+            cond |= Q(pk=int(num))
+        qs = qs.filter(cond)
+    return qs.order_by("-closed_at", "-id")

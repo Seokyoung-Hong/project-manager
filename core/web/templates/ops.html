@@ -9,7 +9,7 @@
     <tbody>
     {% for s in statuses %}
     <tr><td>{{ s.name }}</td><td>{{ s.last_run_at|date:"Y-m-d H:i" }}</td><td>{% if s.ok %}<span class="badge ok">✓ ok</span>{% else %}<span class="badge danger">✕ fail</span>{% endif %}</td><td class="muted t13">{% if s.detail.items %}{% for k, v in s.detail.items %}<div>{{ k }}: {{ v }}</div>{% endfor %}{% else %}{{ s.detail|default_if_none:"" }}{% endif %}</td></tr>
-    {% empty %}<tr><td colspan="4" class="muted">보고된 통합 상태가 없습니다.</td></tr>{% endfor %}
+    {% empty %}<tr><td colspan="4" class="empty-cell">보고된 통합 상태가 없습니다.</td></tr>{% endfor %}
     </tbody>
   </table>
 </section>
@@ -21,7 +21,7 @@
     <tbody>
     {% for l in locks %}
     <tr><td>{{ l.kind }}</td><td>{{ l.key }}</td><td>{{ l.locked_until|date:"Y-m-d H:i" }}</td><td><form method="post" action="{% url 'ops_unlock' %}">{% csrf_token %}<input type="hidden" name="key" value="{{ l.key }}"><button class="btn sm">해제</button></form></td></tr>
-    {% empty %}<tr><td colspan="4" class="muted">잠긴 계정·IP가 없습니다.</td></tr>{% endfor %}
+    {% empty %}<tr><td colspan="4" class="empty-cell">잠긴 계정·IP가 없습니다.</td></tr>{% endfor %}
     </tbody>
   </table>
 </section>

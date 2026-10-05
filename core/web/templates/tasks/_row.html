@@ -2,7 +2,7 @@
     class="task-row{% if in_today_page %} today-task-row{% endif %}{% if task.is_closed %} closed{% endif %}{% if selected %} selected{% endif %}"
     role="button" tabindex="0" aria-label="{{ task.title }} 상세 보기"
     data-id="{{ task.pk }}" data-panel="{% url 'task_panel' task.pk %}"
-    {% if in_board %}draggable="true" data-version="{{ task.version }}" data-status="{{ task.status }}"{% endif %}
+    {% if in_board %}draggable="{% if task.is_closed %}false{% else %}true{% endif %}" data-version="{{ task.version }}" data-status="{{ task.status }}"{% endif %}
     {% if not in_today_page and not in_board %}hx-get="{% url 'task_row' task.pk %}?{{ row_query }}" hx-trigger="task-changed[event.detail.id=={{ task.pk }}] from:body" hx-swap="outerHTML"{% endif %}>
   <div class="main{% if show_next %} has-next{% endif %}">
     {% if show_next %}<div class="next">{{ task.next_action }}</div>{% endif %}

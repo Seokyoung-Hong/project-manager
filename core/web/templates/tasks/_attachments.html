@@ -22,7 +22,7 @@
         </form>
       </details>
     </li>
-    {% empty %}<li class="muted t13">첨부 파일 없음</li>{% endfor %}
+    {% empty %}<li class="empty compact">첨부 파일 없음</li>{% endfor %}
   </ul>
   <form class="row" method="post" enctype="multipart/form-data" action="{{ upload_url }}"{% if hx %} hx-post="{{ upload_url }}" hx-encoding="multipart/form-data" hx-target="#refs" hx-swap="innerHTML"{% endif %}>{% csrf_token %}
     <select name="kind" class="select auto" aria-label="첨부 종류"><option value="file">파일</option><option value="out">산출물</option><option value="proof">증빙</option></select>

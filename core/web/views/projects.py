@@ -3,6 +3,7 @@ from datetime import date, timedelta
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.db.models import Count
 from django.shortcuts import redirect, render
 from django.urls import reverse
 from django.views.decorators.http import require_POST
@@ -51,23 +52,58 @@ from .common import (
 )
 
 BOARD_OPEN = ["todo", "doing", "review", "blocked", "paused"]
-# ponytail: 완료 열은 최근 20건만 보여 준다. 전부 보려면 목록 보기의 '완료·취소 포함'을 쓴다.
-DONE_ON_BOARD = 20
+SHELF_PAGE = 10
 
 
-def board_context(request, project, include_closed: bool) -> dict:
-    """보드 부분 렌더 context. 목록 보기와 달리 완료를 항상 실어 온다."""
-    labels = dict(Task.STATUSES)
-    codes = BOARD_OPEN + ["done"] + (["cancelled"] if include_closed else [])
-    base = project.tasks.filter(is_template=False).select_related("project", "assignee")
-    open_tasks = sorted(base.filter(status__in=Task.OPEN), key=ts.by_due)
-    done_tasks = list(base.filter(status="done").order_by("-completed_at", "-id")[:DONE_ON_BOARD])
-    extra = list(base.filter(status="cancelled").order_by("-id")) if include_closed else []
-    rows = rows_for(request.user, open_tasks + done_tasks + extra, "board")
+def shelf_context(request, project, params=None) -> dict:
+    """결과 선반(완료·취소 기록) context. 정확한 전체 건수 + 기간·검색 필터 + 10건씩 더 보기."""
+    p = params if params is not None else request.GET
+    status = p.get("shelf") if p.get("shelf") in Task.CLOSED else "done"
+    period = p.get("period") if p.get("period") in {c for c, _, _ in ts.SHELF_PERIODS} else "all"
+    q = (p.get("q") or "").strip()[:100]
+    try:
+        page = max(1, int(p.get("page", 1)))
+    except ValueError:
+        page = 1
+    totals = dict(
+        ts.visible_tasks(request.user)
+        .filter(project=project, is_template=False, status__in=Task.CLOSED)
+        .order_by()
+        .values_list("status")
+        .annotate(n=Count("id"))
+    )
+    qs = ts.closed_tasks(request.user, project, status, period=period, q=q)
+    matched = qs.count()
+    start = (page - 1) * SHELF_PAGE
+    shown = start + SHELF_PAGE
     return {
         "project": project,
-        "include_closed": include_closed,
-        "columns": [(c, labels[c], [r for r in rows if r["task"].status == c]) for c in codes],
+        "shelf": status,
+        "shelf_label": dict(Task.STATUSES)[status],
+        "shelf_totals": [(c, dict(Task.STATUSES)[c], totals.get(c, 0)) for c in Task.CLOSED],
+        "shelf_period": period,
+        "shelf_periods": ts.SHELF_PERIODS,
+        "shelf_q": q,
+        "shelf_rows": rows_for(request.user, qs[start:shown], "board"),
+        "shelf_matched": matched,
+        "shelf_shown": min(shown, matched),
+        "shelf_more": max(0, matched - shown),
+        "shelf_next": page + 1,
+        "shelf_page": page,
+    }
+
+
+def board_context(request, project) -> dict:
+    """보드 부분 렌더 context. 보드는 미완료 열만, 완료·취소는 결과 선반이 맡는다."""
+    labels = dict(Task.STATUSES)
+    base = ts.visible_tasks(request.user).filter(
+        project=project, is_template=False, status__in=Task.OPEN
+    )
+    rows = rows_for(request.user, sorted(base, key=ts.by_due), "board")
+    return {
+        "project": project,
+        "columns": [(c, labels[c], [r for r in rows if r["task"].status == c]) for c in BOARD_OPEN],
+        **shelf_context(request, project, {}),
     }
 
 
@@ -279,9 +315,12 @@ def project_detail(request, project_id, *, link_form=None):
         view = effective("project.default_view", org=project.org, project=project)
     include_closed = request.GET.get("include_closed") == "1"
     if request.GET.get("part") == "board":
-        return render(
-            request, "projects/_board.html", board_context(request, project, include_closed)
-        )
+        return render(request, "projects/_board.html", board_context(request, project))
+    if request.GET.get("part") == "shelf":
+        # 2쪽부터는 더 보기: 행과 다음 '더 보기'만 이어 붙인다.
+        ctx = shelf_context(request, project)
+        tpl = "projects/_shelf_page.html" if ctx["shelf_page"] > 1 else "projects/_shelf.html"
+        return render(request, tpl, ctx)
     ctx = {
         "project": project,
         "owners": list(project.owners.all()),
@@ -304,7 +343,7 @@ def project_detail(request, project_id, *, link_form=None):
     templates = list(project.tasks.filter(is_template=True).select_related("project", "assignee"))
     ctx["template_rows"] = rows_for(request.user, templates) if templates else []
     if view == "board":
-        ctx.update(board_context(request, project, include_closed))
+        ctx.update(board_context(request, project))
     elif view == "calendar":
         ctx.update(calendar_context(request, project))
     else:

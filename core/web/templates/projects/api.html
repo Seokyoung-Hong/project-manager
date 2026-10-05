@@ -6,19 +6,19 @@
     <div class="stack">
       {% if api %}
       <div class="row">
-        <span class="t20" style="font-weight:700">{{ api.title }}</span>
+        <span class="t20 fw-7">{{ api.title }}</span>
         <span class="badge">{{ api.version }}</span>
       </div>
-      <span class="t13" style="font-family:ui-monospace,SFMono-Regular,Menlo,monospace">{{ api.server }}</span>
+      <span class="t13 mono">{{ api.server }}</span>
       <span class="t12 muted">OpenAPI {{ api.openapi }}</span>
       {% if api.desc %}<p class="muted t13">{{ api.desc }}</p>{% endif %}
       {% else %}
-      <span class="t17" style="font-weight:700">API 문서</span>
+      <span class="t17 fw-7">API 문서</span>
       {% endif %}
     </div>
     <div class="stack">
       <form method="post" enctype="multipart/form-data" class="row">{% csrf_token %}
-        <input class="input" aria-label="OpenAPI 문서 URL" name="url" value="{{ spec_obj.source_url }}" placeholder="https://example.com/openapi.json" style="flex:1 1 200px">
+        <input class="input grow" aria-label="OpenAPI 문서 URL" name="url" value="{{ spec_obj.source_url }}" placeholder="https://example.com/openapi.json">
         <button class="btn sm primary">주소에서 불러오기</button>
         <input id="api-upload-file" class="file-upload-input" type="file" name="file" accept=".json,application/json" onchange="this.form.requestSubmit()">
         <label class="btn sm file-upload-button" for="api-upload-file">OpenAPI JSON 파일 올리기</label>

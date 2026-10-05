@@ -12,9 +12,9 @@
   {% if topic.key == "writes" %}
     {% for retry in retries %}<div class="card"><p>{{ retry.label }} · {{ retry.target }} · {{ retry.at }}</p>
       <form method="post" action="{% url 'github_write_retry' retry.id %}">{% csrf_token %}<button class="btn sm" onclick="return confirm('PM 변경은 반복하지 않고, 표시된 GitHub 작업만 현재 계정의 권한으로 다시 시도합니다. 계속할까요?')">GitHub만 다시 반영</button></form>
-    </div>{% empty %}<p class="muted t13">이 세션에 보관된 재시도 작업이 없습니다.</p>{% endfor %}
+    </div>{% empty %}<p class="empty compact">이 세션에 보관된 재시도 작업이 없습니다.</p>{% endfor %}
   {% endif %}
-  <details class="mt8"><summary>질문 프롬프트 보기·복사</summary>
+  <details class="mt-2"><summary>질문 프롬프트 보기·복사</summary>
     <textarea class="input integration-prompt" readonly rows="6" aria-label="{{ topic.title }} 질문 프롬프트">{{ topic.prompt }}</textarea>
     <button class="btn sm" type="button" data-copy-text="{{ topic.prompt }}">질문 프롬프트 복사</button>
   </details>

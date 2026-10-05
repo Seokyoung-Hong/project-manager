@@ -20,7 +20,7 @@
       {% endif %}
       <td>{% if not r.mine %}<a class="btn sm" href="{% url 'request_new' %}?org={{ org.pk }}&amp;target=team&amp;team={{ r.team.pk }}">요청 보내기</a>{% endif %}</td>
     </tr>
-    {% empty %}<tr><td colspan="4" class="muted">아직 팀이 없습니다.</td></tr>{% endfor %}
+    {% empty %}<tr><td colspan="4" class="empty-cell">아직 팀이 없습니다.</td></tr>{% endfor %}
     </tbody>
   </table>
 </section>

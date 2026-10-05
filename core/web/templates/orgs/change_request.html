@@ -17,7 +17,7 @@
     {% if req.is_open %}허용하면 아래 내용이 그대로 반영됩니다. {{ req.expires_at|date:"Y-m-d H:i" }}까지 처리하지 않으면 만료됩니다.{% endif %}
   </p>
 
-  <div class="notice" style="margin-bottom:12px"><strong>AI가 밝힌 이유</strong><br>{{ req.reason|linebreaksbr }}</div>
+  <div class="notice"><strong>AI가 밝힌 이유</strong><br>{{ req.reason|linebreaksbr }}</div>
 
   {% if req.kind == "settings" %}
   <table class="grid">
@@ -36,14 +36,14 @@
   <p class="muted t13">빨간 줄은 지워지고 초록 줄이 더해집니다.</p>
   <pre class="change-diff" aria-label="거버넌스 변경 내용">{% for line in diff %}<span class="{% if line|slice:':1' == '+' %}add{% elif line|slice:':1' == '-' %}del{% endif %}">{{ line }}</span>
 {% endfor %}</pre>
-  <details style="margin-top:8px">
+  <details class="mt-2">
     <summary>허용하면 적용될 전체 글 보기</summary>
     <pre class="change-diff" aria-label="바뀐 뒤 전체 거버넌스">{{ after }}</pre>
   </details>
   {% endif %}
 
   {% if req.is_open %}
-  <form method="post" class="row" style="margin-top:12px">{% csrf_token %}
+  <form method="post" class="row mt-3">{% csrf_token %}
     <button class="btn primary" name="action" value="approve">허용하고 반영</button>
     <label class="field grow">거절 사유(선택)<input name="reason" maxlength="300"></label>
     <button class="btn danger" name="action" value="reject">거절</button>

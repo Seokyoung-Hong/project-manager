@@ -30,12 +30,12 @@
 </div>
 <section class="card project-task-surface" id="project-tasks">
   <div class="card-head">
-    <div class="row" role="group" aria-label="보기">
+    <div class="row view-switch" role="group" aria-label="보기">
       <a class="btn sm" href="?view=list{% if include_closed %}&include_closed=1{% endif %}" aria-pressed="{% if view == 'list' %}true{% else %}false{% endif %}">목록</a>
       <a class="btn sm" href="?view=board{% if include_closed %}&include_closed=1{% endif %}" aria-pressed="{% if view == 'board' %}true{% else %}false{% endif %}">보드</a>
       <a class="btn sm" href="?view=calendar" aria-pressed="{% if view == 'calendar' %}true{% else %}false{% endif %}">달력</a>
     </div>
-    {% if view != 'calendar' %}<div class="row">
+    {% if view == 'list' %}<div class="row">
       <form method="get" class="row"><input type="hidden" name="view" value="{{ view }}">
         <label class="check muted t13"><input type="checkbox" name="include_closed" value="1"{% if include_closed %} checked{% endif %} onchange="this.form.requestSubmit()"> 완료·취소 포함</label>
       </form>
@@ -51,7 +51,7 @@
   {% elif view == 'board' %}
   {% include "projects/_board.html" %}
   {% else %}
-  <ul class="tasks">{% for r in rows %}{% task_row r %}{% empty %}<li class="muted">태스크가 없습니다.</li>{% endfor %}</ul>
+  <ul class="tasks">{% for r in rows %}{% task_row r %}{% empty %}<li class="empty">태스크가 없습니다.</li>{% endfor %}</ul>
   {% endif %}
 </section>
 <section class="card">
@@ -60,7 +60,7 @@
   <button type="button" class="btn sm" data-action="toggle" data-target="#link-form" data-alt="입력 닫기">＋ 링크 추가</button>
   <form id="link-form"{% if not link_open %} hidden{% endif %} method="post" action="{% url 'project_link_add' project.pk %}" class="row">{% csrf_token %}
     <select name="kind" class="select auto" aria-label="링크 종류">{% for code, label in link_form.fields.kind.choices %}<option value="{{ code }}"{% if link_form.kind.value == code %} selected{% endif %}>{{ label }}</option>{% endfor %}</select>
-    <label class="field" style="flex:1">제목<input class="input" name="title" value="{{ link_form.title.value|default:'' }}" required>{{ link_form.title.errors }}</label><label class="field" style="flex:2">URL<input class="input" name="url" type="url" value="{{ link_form.url.value|default:'' }}" placeholder="https://" required>{{ link_form.url.errors }}</label>
+    <label class="field flex-1">제목<input class="input" name="title" value="{{ link_form.title.value|default:'' }}" required>{{ link_form.title.errors }}</label><label class="field flex-2">URL<input class="input" name="url" type="url" value="{{ link_form.url.value|default:'' }}" placeholder="https://" required>{{ link_form.url.errors }}</label>
     {{ link_form.kind.errors }}{{ link_form.non_field_errors }}
     <button class="btn sm">링크 추가</button>
   </form>

@@ -22,13 +22,13 @@
       <td>{{ t.expires_at|date:"Y-m-d"|default:"없음" }}</td>
       <td>{% if not t.revoked_at %}<form method="post" action="{% url 'token_revoke' t.pk %}">{% csrf_token %}<button class="btn sm danger">토큰 폐기</button></form>{% endif %}</td>
     </tr>
-    {% empty %}<tr><td colspan="6" class="muted">토큰이 없습니다.</td></tr>{% endfor %}
+    {% empty %}<tr><td colspan="6" class="empty-cell">토큰이 없습니다.</td></tr>{% endfor %}
     </tbody>
   </table>
   {% if revoked_tokens %}
   <details>
     <summary>폐기된 토큰 {{ revoked_tokens|length }}개</summary>
-    <table class="grid" style="margin-top:8px">
+    <table class="grid mt-2">
       <tbody>
       {% for t in revoked_tokens %}
       <tr class="muted"><td>{{ t.name }} <span class="badge">폐기됨</span></td><td><code>{{ t.prefix|slice:"3:" }}…</code></td><td>{{ t.revoked_at|date:"Y-m-d" }} 폐기</td></tr>
@@ -46,7 +46,7 @@
       <tr><td>쓰는 곳</td><td>Claude·Codex·MCP 커넥터 등 AI 도구</td><td>내가 직접 짜고 내용을 아는 스크립트·자동화</td></tr>
     </tbody>
   </table>
-  <div class="card" role="alert" style="border-color:var(--danger)">
+  <div class="card alert" role="alert">
     <p class="danger"><b>⚠ 사람용 토큰을 AI 도구에 절대 넣지 마세요.</b></p>
     <ul class="t13">
       <li>조직 관리자가 AI에게 막아 둔 일을 AI가 그대로 할 수 있게 됩니다. 태스크 삭제, 요청 수락·거절, 담당자·기한·중요도 변경, 완료 처리가 모두 포함됩니다.</li>

@@ -13,6 +13,6 @@
 </div>
 <section class="card">
   <h2>결과 <span class="muted">{{ count }}</span></h2>
-  <ul class="tasks">{% for r in rows %}{% task_row r %}{% empty %}<li class="muted">{% if q %}검색 결과가 없습니다. 위의 “완료·취소 포함”과 “보관 포함”을 켜고 다시 찾아보세요.{% else %}태스크 번호·제목·프로젝트 이름으로 검색하세요.{% endif %}</li>{% endfor %}</ul>
+  <ul class="tasks">{% for r in rows %}{% task_row r %}{% empty %}<li class="empty">{% if q %}검색 결과가 없습니다. 위의 “완료·취소 포함”과 “보관 포함”을 켜고 다시 찾아보세요.{% else %}태스크 번호·제목·프로젝트 이름으로 검색하세요.{% endif %}</li>{% endfor %}</ul>
 </section>
 {% endblock %}

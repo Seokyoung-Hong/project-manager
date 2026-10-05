@@ -1,0 +1,6 @@
+{% if shelf_matched %}<li id="shelf-more" class="shelf-more">
+  <span class="muted t13">{{ shelf_shown }} / {{ shelf_matched }}건 표시{% if shelf_more %} · 더 있는 기록 {{ shelf_more }}건{% endif %}</span>
+  {% if shelf_more %}<button type="button" class="btn sm"
+          hx-get="{% url 'project_detail' project.pk %}?part=shelf&amp;shelf={{ shelf }}&amp;period={{ shelf_period }}&amp;q={{ shelf_q|urlencode }}&amp;page={{ shelf_next }}"
+          hx-target="#shelf-more" hx-swap="outerHTML">더 보기</button>{% endif %}
+</li>{% endif %}

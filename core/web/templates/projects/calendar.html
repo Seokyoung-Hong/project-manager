@@ -1,7 +1,7 @@
 <div id="project-calendar" class="pcal">
-  <div class="row schedule-actions" style="gap:4px;margin-bottom:8px">
+  <div class="row schedule-actions gap-1">
     <a class="btn sm icon" href="?view=calendar&amp;month={{ cal_prev }}" hx-get="{% url 'project_calendar' project.pk %}?month={{ cal_prev }}" hx-target="#project-calendar" hx-swap="outerHTML" hx-push-url="?view=calendar&amp;month={{ cal_prev }}" aria-label="이전 달" title="이전 달">‹</a>
-    <span class="t13" style="min-width:96px;text-align:center;font-weight:600">{{ cal_title }}</span>
+    <span class="t13 cal-title">{{ cal_title }}</span>
     <a class="btn sm icon" href="?view=calendar&amp;month={{ cal_next }}" hx-get="{% url 'project_calendar' project.pk %}?month={{ cal_next }}" hx-target="#project-calendar" hx-swap="outerHTML" hx-push-url="?view=calendar&amp;month={{ cal_next }}" aria-label="다음 달" title="다음 달">›</a>
     {% if cal_this %}<a class="btn sm" href="?view=calendar" hx-get="{% url 'project_calendar' project.pk %}" hx-target="#project-calendar" hx-swap="outerHTML" hx-push-url="?view=calendar">이번 달</a>{% endif %}
   </div>

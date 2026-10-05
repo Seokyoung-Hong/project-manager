@@ -1,4 +1,4 @@
-<form id="task-form" class="stack" style="background:var(--bg-secondary);border:1px solid var(--border);border-radius:12px;padding:16px" hx-post="{% url 'project_task_create' project.pk %}" hx-target="#task-form" hx-swap="outerHTML"{% if not form_open %} hidden{% endif %}>
+<form id="task-form" class="stack box" hx-post="{% url 'project_task_create' project.pk %}" hx-target="#task-form" hx-swap="outerHTML"{% if not form_open %} hidden{% endif %}>
   <h2 class="t17">{{ project.name }}에 태스크 만들기</h2>
   {{ form.idem }}
   <input class="input lg" name="title" value="{{ form.title.value|default:'' }}" placeholder="해야 할 일" required autofocus>

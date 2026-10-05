@@ -160,6 +160,28 @@
     if (e.target.hasAttribute && e.target.hasAttribute("data-autosave")) flash("저장 중…");
   });
   body.addEventListener("saved", function () { flash("자동 저장됨"); });
+
+  // 완료 순간 피드백: '완료'로 바꾸는 요청이 성공하면 새싹 알림을 3초 띄운다.
+  var toastTimer;
+  function celebrate() {
+    var old = document.querySelector(".toast");
+    if (old) old.remove();
+    var t = document.createElement("div");
+    t.className = "toast"; t.setAttribute("role", "status");
+    t.innerHTML = '<svg viewBox="0 0 40 40" aria-hidden="true"><ellipse class="art-pot" cx="20" cy="31" rx="9" ry="7"/>' +
+      '<g class="leaf"><path class="art-leaf" d="M20 25Q8 25 7 13Q18 11 20 25"/><path class="art-leaf-2" d="M20 22Q22 9 33 10Q34 21 20 22"/></g></svg>' +
+      "<span>끝! 한 걸음 더 자랐어요.</span>";
+    body.appendChild(t);
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { t.classList.add("leaving"); setTimeout(function () { t.remove(); }, 250); }, 3000);
+  }
+  body.addEventListener("htmx:afterRequest", function (e) {
+    var d = e.detail || {}, cfg = d.requestConfig || {};
+    if (!d.successful || !/\/tasks\/\d+\/status/.test((d.pathInfo && d.pathInfo.requestPath) || "")) return;
+    var fd = cfg.formData, status = fd && fd.get ? fd.get("status") : (cfg.parameters || {}).status;
+    var trig = (d.xhr && d.xhr.getResponseHeader("HX-Trigger")) || "";
+    if (status === "done" && /task-(updated|changed)/.test(trig)) celebrate();
+  });
   body.addEventListener("htmx:responseError", function (e) {
     requestError(e, false);
   });

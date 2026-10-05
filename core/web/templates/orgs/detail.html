@@ -24,11 +24,11 @@
       <td><a href="{% url 'project_detail' p.pk %}">{{ p.name }}</a>{% if p.visibility == "teams" %} <span class="badge" title="담당 팀만">🔒 비공개</span>{% endif %}{% if p.is_archived %} <span class="badge">보관</span>{% endif %}<div class="muted t13">{{ p.purpose }}</div></td>
       <td>{% for u in p.owners.all %}{{ u.display_name }}{% if not forloop.last %}, {% endif %}{% empty %}<span class="warning">미지정</span>{% endfor %}</td>
       <td>{% for t in p.teams.all %}<span class="badge">{{ t.name }}</span> {% endfor %}</td>
-      <td><span class="badge">{{ p.status_label }}</span><div class="muted t13" style="max-width:220px">{{ p.status_desc }}</div></td>
+      <td><span class="badge">{{ p.status_label }}</span><div class="muted t13 ellipsis-2">{{ p.status_desc }}</div></td>
       <td class="num">{{ st.open }}</td>
       <td class="num">{{ st.done }}/{{ st.total }}</td>
     </tr>
-    {% empty %}<tr><td colspan="6" class="muted">프로젝트가 없습니다.</td></tr>{% endfor %}
+    {% empty %}<tr><td colspan="6" class="empty-cell">프로젝트가 없습니다.</td></tr>{% endfor %}
     </tbody>
   </table>
   </div>
@@ -42,7 +42,7 @@
     <tbody>
     {% for a in by_assignee %}
     <tr><td><a href="{{ me_url }}?member={{ a.assignee_id }}">{{ a.assignee__display_name }}</a></td><td class="num">{{ a.open }}</td><td class="num">{{ a.overdue }}</td><td class="num">{{ a.review }}</td><td class="num">{{ a.blocked }}</td></tr>
-    {% empty %}<tr><td colspan="5" class="muted">미완료 태스크가 없습니다.</td></tr>{% endfor %}
+    {% empty %}<tr><td colspan="5" class="empty-cell">미완료 태스크가 없습니다.</td></tr>{% endfor %}
     </tbody>
   </table>
   </div>

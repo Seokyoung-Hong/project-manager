@@ -51,7 +51,7 @@
       <td>{% if p.repo %}연결됨 · {{ p.repo.full_name }}{% else %}<span class="muted">미연결</span>{% endif %}</td>
       <td><a class="btn sm" href="{% url 'project_repo' p.pk %}">저장소 설정</a></td>
     </tr>
-    {% empty %}<tr><td colspan="3" class="muted">프로젝트가 없습니다.</td></tr>{% endfor %}
+    {% empty %}<tr><td colspan="3" class="empty-cell">프로젝트가 없습니다.</td></tr>{% endfor %}
     </tbody>
   </table>
 </div>

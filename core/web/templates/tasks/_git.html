@@ -49,7 +49,7 @@
       <span class="dot">{% if gh.link.pr_number %}&#10003;{% else %}&#9675;{% endif %}</span>
       <span>
         {% if gh.link.pr_number %}
-        <span class="badge" style="{% if gh.link.pr_state == 'merged' %}background:#E7DBF7;color:#3B1A66{% else %}background:#CFE3F7;color:#0B3A66{% endif %}">#{{ gh.link.pr_number }} {% if gh.link.pr_state == 'merged' %}Merged{% else %}Open{% endif %}</span>
+        <span class="badge {% if gh.link.pr_state == 'merged' %}pr-merged{% else %}pr-open{% endif %}">#{{ gh.link.pr_number }} {% if gh.link.pr_state == 'merged' %}Merged{% else %}Open{% endif %}</span>
         · 커밋 {{ gh.link.commits|length }}건
         {% else %}
         연결된 PR 없음 · 커밋 {{ gh.link.commits|length|default:0 }}건

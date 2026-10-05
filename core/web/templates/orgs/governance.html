@@ -27,7 +27,7 @@
   <form method="post">{% csrf_token %}
     <textarea name="text" class="textarea" rows="28" aria-label="거버넌스 본문">{{ text }}</textarea>
     {% if error %}<div class="error">{{ error }}</div>{% endif %}
-    <div class="row" style="margin-top:8px">
+    <div class="row mt-2">
       <button class="btn primary">거버넌스 저장</button>
       {% if not is_default %}
       <button class="btn" name="reset" value="1" onclick="return confirm('기본안으로 되돌릴까요? 지금 내용은 지워집니다.')">기본안으로 되돌리기</button>
