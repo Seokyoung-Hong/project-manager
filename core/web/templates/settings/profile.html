@@ -13,15 +13,16 @@
   <p class="muted t13">연결하면 마감 알림(D-3 · D-1 · 당일 · 기한 초과)을 개인 DM으로 받고, 봇에게 DM으로 태스크를 처리할 수 있습니다.</p>
   {% if link_code %}
   <p>Discord에서 봇에게 <b>DM</b>으로 아래 한 줄을 <b>10분 안에</b> 보내세요.</p>
-  <code>연결 {{ link_code }}</code>
+  <p><code class="t20">연결 {{ link_code }}</code></p>
   <p class="warning t13">이 코드는 지금 한 번만 보입니다. 놓치면 다시 발급하세요.</p>
   {% endif %}
   {% if user.discord_user_id %}
-  <p class="row">연결됨 · {{ user.discord_linked_at|date:"Y-m-d H:i" }}
+  <div class="conn"><span class="conn-state on">연결됨</span> <span class="muted t13">{{ user.discord_linked_at|date:"Y-m-d H:i" }}</span>
     <form method="post" action="{% url 'discord_unlink' %}">{% csrf_token %}<button class="btn sm danger">Discord 계정 연결 해제</button></form>
-  </p>
+  </div>
   <p class="muted t13">해제하면 DM 알림이 멈춥니다. Discord에서 봇에게 <code>연결해제</code>를 보내도 됩니다.</p>
   {% else %}
+  <p class="conn"><span class="conn-state off">미연결</span></p>
   <form method="post" action="{% url 'discord_link' %}">{% csrf_token %}<button class="btn primary">Discord 연결 코드 받기</button></form>
   <p class="muted t13">봇과 같은 서버에 있어야 하고, 서버 우클릭 → 개인정보 보호 설정에서 &lsquo;서버 멤버의 DM 허용&rsquo;이 켜져 있어야 DM이 도착합니다.</p>
   {% endif %}
@@ -31,13 +32,14 @@
   <h2>GitHub 연결</h2>
   <p><a href="{% url 'integration_help' %}#oauth">연결·저장소 목록 문제 해결 및 질문 복사</a></p>
   {% if user.github %}
-  <p class="row">연결됨 · @{{ user.github.login }}
+  <div class="conn"><span class="conn-state on">연결됨</span> <code>@{{ user.github.login }}</code>
     <form method="post" action="{% url 'github_unlink' %}">{% csrf_token %}<button class="btn sm danger">GitHub 계정 연결 해제</button></form>
-  </p>
+  </div>
   <p class="muted t13">접근 가능 저장소 {{ user.github.repos|length }}개
     {% if user.github.repos_checked_at %}· {{ user.github.repos_checked_at|date:"Y-m-d H:i" }} 확인{% endif %}</p>
   <form method="post" action="{% url 'github_refresh' %}">{% csrf_token %}<button class="btn sm">접근 가능한 저장소 다시 확인</button></form>
   {% else %}
+  <p class="conn"><span class="conn-state off">미연결</span></p>
   <a class="btn primary" href="{% url 'github_connect' %}">GitHub 연결</a>
   <p class="muted t13">연결하면 접근 가능한 저장소의 이슈·브랜치·PR을 태스크와 잇고, 자동 전환 규칙을 쓸 수 있습니다.</p>
   {% endif %}

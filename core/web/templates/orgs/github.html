@@ -4,19 +4,21 @@
 <div class="card">
   <h2>설치 상태</h2>
   {% if install %}
-  <p class="row">연결됨 · {{ install.account_login }}
+  <p class="conn"><span class="conn-state on">연결됨</span> <code>{{ install.account_login }}</code>
+    <span class="badge">{% if install.account_type == "User" %}개인 계정{% else %}GitHub 조직{% endif %}</span>
     <span class="badge">{% if install.repo_selection == "all" %}전체 저장소{% else %}선택된 저장소{% endif %}</span>
   </p>
   <p class="muted t13">설치 시각 {{ install.installed_at|date:"Y-m-d H:i" }}</p>
   {% if install.account_type == "User" %}
   <a class="btn sm" target="_blank" rel="noopener"
      href="https://github.com/settings/installations/{{ install.installation_id }}">GitHub에서 설정</a>
-  <p class="muted t13">개인 계정 설치입니다. GitHub 조직 멤버·팀 관리와 이슈 자동 가져오기는 쓰지 않습니다. 이슈는 저장소 탭에서 손으로 가져오세요.</p>
+  <p class="notice"><span aria-hidden="true">ⓘ</span><span class="grow">개인 계정 설치입니다. GitHub 조직 멤버·팀 관리와 이슈 자동 가져오기는 쓰지 않습니다. 이슈는 저장소 탭에서 손으로 가져오세요.</span></p>
   {% else %}
   <a class="btn sm" target="_blank" rel="noopener"
      href="https://github.com/organizations/{{ install.account_login }}/settings/installations/{{ install.installation_id }}">GitHub에서 설정</a>
   {% endif %}
   {% else %}
+  <p class="conn"><span class="conn-state off">미설치</span></p>
   <p class="muted t13">이 조직에 아직 GitHub 앱이 설치되지 않았습니다.</p>
   {% if identity %}
   <a class="btn primary" href="{% url 'github_install' org.pk %}">GitHub 앱 설치</a>
@@ -31,12 +33,12 @@
 <div class="card">
   <h2>내 GitHub 연결</h2>
   {% if identity %}
-  <p class="row">연결됨 · @{{ identity.login }} · 접근 가능 저장소 {{ identity.repos|length }}개</p>
+  <p class="conn"><span class="conn-state on">연결됨</span> <code>@{{ identity.login }}</code> 접근 가능 저장소 {{ identity.repos|length }}개</p>
   <p class="muted t13">{% if identity.repos_checked_at %}{{ identity.repos_checked_at|date:"Y-m-d H:i" }} 마지막 확인{% else %}아직 확인하지 않았습니다.{% endif %}</p>
   <form method="post" action="{% url 'github_refresh' %}">{% csrf_token %}<button class="btn sm">접근 가능한 저장소 다시 확인</button></form>
   <p class="muted t13">확인 후 내 프로필 화면으로 이동합니다.</p>
   {% else %}
-  <p class="muted t13">GitHub 계정을 연결하지 않았습니다.</p>
+  <p class="conn"><span class="conn-state off">미연결</span> <span class="muted t13">GitHub 계정을 연결하지 않았습니다.</span></p>
   <a class="btn sm" href="{% url 'profile' %}">프로필에서 연결</a>
   {% endif %}
 </div>
@@ -48,7 +50,7 @@
     {% for p in projects %}
     <tr>
       <td>{{ p.name }}</td>
-      <td>{% if p.repo %}연결됨 · {{ p.repo.full_name }}{% else %}<span class="muted">미연결</span>{% endif %}</td>
+      <td>{% if p.repo %}<span class="conn"><span class="conn-state on">연결됨</span> <code>{{ p.repo.full_name }}</code></span>{% else %}<span class="conn-state off">미연결</span>{% endif %}</td>
       <td><a class="btn sm" href="{% url 'project_repo' p.pk %}">저장소 설정</a></td>
     </tr>
     {% empty %}<tr><td colspan="3" class="empty-cell">프로젝트가 없습니다.</td></tr>{% endfor %}
