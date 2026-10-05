@@ -94,6 +94,11 @@ def _hook(project):
     return RepoConnection.objects.get(project=project).discord_hook
 
 
+def _created(project, webhook_id="777"):
+    """봇이 지금 세대(job)로 보고한다."""
+    return hooks.on_created(project.pk, _hook(project)["job"], webhook_id, WEBHOOK_TOKEN)
+
+
 def test_setup_then_bot_creates_and_github_registers_with_user_token(
     ready, admin, client, bot_auth, gh_calls
 ):
@@ -101,12 +106,19 @@ def test_setup_then_bot_creates_and_github_registers_with_user_token(
     assert _hook(ready)["state"] == "pending"
 
     jobs = client.get(f"{DC}/github-hooks", headers=bot_auth).json()
+    job = _hook(ready)["job"]
     assert jobs == [
-        {"project_id": ready.pk, "action": "create", "channel_id": "555", "webhook_id": ""}
+        {
+            "project_id": ready.pk,
+            "action": "create",
+            "job": job,
+            "channel_id": "555",
+            "webhook_id": "",
+        }
     ]
     r = client.post(
         f"{DC}/github-hooks/{ready.pk}/created",
-        json.dumps({"webhook_id": "777", "webhook_token": WEBHOOK_TOKEN}),
+        json.dumps({"job": job, "webhook_id": "777", "webhook_token": WEBHOOK_TOKEN}),
         content_type="application/json",
         headers=bot_auth,
     )
@@ -128,7 +140,7 @@ def test_setup_then_bot_creates_and_github_registers_with_user_token(
 
 def test_events_update_and_remove_both_sides(ready, admin, client, bot_auth, gh_calls):
     hooks.request_setup(ready, ["push"], actor=admin)
-    hooks.on_created(ready.pk, "777", WEBHOOK_TOKEN)
+    _created(ready)
 
     hooks.update_events(ready, ["push", "release"], actor=admin)
     patch = next(c for c in gh_calls if c["method"] == "PATCH")
@@ -139,39 +151,146 @@ def test_events_update_and_remove_both_sides(ready, admin, client, bot_auth, gh_
     assert _hook(ready)["state"] == "removing"
     jobs = client.get(f"{DC}/github-hooks", headers=bot_auth).json()
     assert jobs[0]["action"] == "delete" and jobs[0]["webhook_id"] == "777"
-    client.post(f"{DC}/github-hooks/{ready.pk}/removed", headers=bot_auth)
+    client.post(
+        f"{DC}/github-hooks/{ready.pk}/removed",
+        json.dumps({"webhook_id": "777"}),
+        content_type="application/json",
+        headers=bot_auth,
+    )
     assert _hook(ready) == {}
 
 
-def test_github_refusal_becomes_visible_error_and_bot_deletes_webhook(ready, admin, gh_calls):
+def _delete_jobs():
+    return [j["webhook_id"] for j in hooks.pending_jobs() if j["action"] == "delete"]
+
+
+def test_github_refusal_becomes_visible_error_and_webhook_goes_to_cleanup(ready, admin, gh_calls):
     from github.client import GitHubError
 
     hooks.request_setup(ready, ["push"], actor=admin)
     gh_calls.state["fail_create"] = GitHubError(404, "Not Found")
-    assert hooks.on_created(ready.pk, "777", WEBHOOK_TOKEN) == {
-        "ok": False,
-        "delete_webhook": True,
-    }
+    assert _created(ready) == {"ok": False, "delete_webhook": False}
     hook = _hook(ready)
     assert hook["state"] == "error" and "Webhooks" in hook["error"]
+    assert _delete_jobs() == ["777"]  # 봇이 다음 틱에 Discord 웹훅을 지운다
+    hooks.on_removed(ready.pk, "777")
+    assert _delete_jobs() == []
     hooks.request_setup(ready, ["push"], actor=admin)  # 실패 뒤 다시 시도할 수 있다
     assert _hook(ready)["state"] == "pending"
 
 
 def test_bot_failure_and_cancelled_pending(ready, admin):
     hooks.request_setup(ready, ["push"], actor=admin)
-    hooks.on_failed(ready.pk, 'HTTP 403: {"message": "Missing Permissions", "code": 50013}')
+    job = _hook(ready)["job"]
+    hooks.on_failed(ready.pk, "other-job", "HTTP 403")  # 다른 세대의 실패 보고는 무시
+    assert _hook(ready)["state"] == "pending"
+    hooks.on_failed(ready.pk, job, 'HTTP 403: {"message": "Missing Permissions", "code": 50013}')
     assert "웹후크 관리" in _hook(ready)["error"]
     hooks.request_setup(ready, ["push"], actor=admin)
+    job = _hook(ready)["job"]
     hooks.remove(ready, actor=admin)  # pending 취소
     assert _hook(ready) == {}
-    assert hooks.on_created(ready.pk, "777", WEBHOOK_TOKEN)["delete_webhook"] is True
+    assert hooks.on_created(ready.pk, job, "777", WEBHOOK_TOKEN)["ok"] is False
+    assert _hook(ready)["cleanup"][0]["webhook_id"] == "777"
+    assert _delete_jobs() == ["777"]
 
 
 def test_invalid_webhook_values_from_bot_are_rejected(ready, admin, gh_calls):
     hooks.request_setup(ready, ["push"], actor=admin)
-    assert hooks.on_created(ready.pk, "777/../x", WEBHOOK_TOKEN)["ok"] is False
+    job = _hook(ready)["job"]
+    assert hooks.on_created(ready.pk, job, "777/../x", WEBHOOK_TOKEN)["ok"] is False
+    assert hooks.on_created(ready.pk, job, "777", "bad token/..")["ok"] is False
     assert not any(c["method"] == "POST" for c in gh_calls)
+
+
+# ---------- Sol 검토 결함 5·6: 세대·경합·응답 유실 ----------
+
+
+def test_cancel_during_github_post_is_not_revived_and_both_hooks_are_cleaned(
+    ready, admin, gh_calls, monkeypatch
+):
+    hooks.request_setup(ready, ["push"], actor=admin)
+    real = hooks.client.request
+
+    def cancel_midway(method, path, token, **kw):
+        if method == "POST":
+            hooks.remove(ready, actor=admin)  # GitHub 등록 진행 중 취소
+        return real(method, path, token, **kw)
+
+    monkeypatch.setattr(hooks.client, "request", cancel_midway)
+    assert _created(ready)["ok"] is False
+    hook = _hook(ready)
+    assert hook.get("state") is None  # 되살아나지 않는다
+    assert hook["cleanup"] == [{"webhook_id": "777", "hook_id": 42, "by": admin.pk}]
+    # 보상: 다음 틱에 GitHub 훅을 지우고 Discord 웹훅 삭제를 봇에 준다
+    assert _delete_jobs() == ["777"]
+    assert any(c["method"] == "DELETE" and c["path"] == "/repos/o/r/hooks/42" for c in gh_calls)
+    hooks.on_removed(ready.pk, "777")
+    assert _hook(ready) == {}
+
+
+def test_cleanup_survives_github_delete_failure_and_retries(ready, admin, gh_calls, monkeypatch):
+    from github.client import GitHubError
+
+    hooks.request_setup(ready, ["push"], actor=admin)
+    job = _hook(ready)["job"]
+    real = hooks.client.request
+    state = {"fail": True}
+
+    def flaky(method, path, token, **kw):
+        if method == "POST":
+            hooks.remove(ready, actor=admin)
+        if method == "DELETE" and state["fail"]:
+            raise GitHubError(502, "Bad Gateway")
+        return real(method, path, token, **kw)
+
+    monkeypatch.setattr(hooks.client, "request", flaky)
+    hooks.on_created(ready.pk, job, "777", WEBHOOK_TOKEN)
+    assert _delete_jobs() == []  # GitHub 쪽이 남아 있으면 Discord도 아직 지우지 않는다
+    assert _hook(ready)["cleanup"][0]["hook_id"] == 42
+    state["fail"] = False
+    assert _delete_jobs() == ["777"]
+
+
+def test_stale_callback_after_cancel_and_resetup_is_ignored(ready, admin, gh_calls):
+    hooks.request_setup(ready, ["push"], actor=admin)
+    old_job = _hook(ready)["job"]
+    hooks.remove(ready, actor=admin)
+    hooks.request_setup(ready, ["push"], actor=admin)
+    new_job = _hook(ready)["job"]
+    assert new_job != old_job
+    assert hooks.on_created(ready.pk, old_job, "666", WEBHOOK_TOKEN)["ok"] is False
+    hook = _hook(ready)
+    assert hook["state"] == "pending" and hook["job"] == new_job
+    assert not any(c["method"] == "POST" for c in gh_calls)
+    assert _delete_jobs() == ["666"]
+    assert hooks.on_created(ready.pk, new_job, "777", WEBHOOK_TOKEN)["ok"] is True
+
+
+def test_repeated_report_after_lost_response_is_idempotent(ready, admin, gh_calls):
+    hooks.request_setup(ready, ["push"], actor=admin)
+    first = _created(ready)
+    again = _created(ready)  # 봇이 응답을 못 받아 같은 job으로 다시 보고
+    assert first == again == {"ok": True, "delete_webhook": False}
+    assert sum(c["method"] == "POST" for c in gh_calls) == 1
+    assert _hook(ready)["state"] == "active" and _delete_jobs() == []
+
+
+def test_disconnect_during_registration_compensates_immediately(
+    ready, admin, gh_calls, monkeypatch
+):
+    hooks.request_setup(ready, ["push"], actor=admin)
+    real = hooks.client.request
+
+    def drop_conn(method, path, token, **kw):
+        out = real(method, path, token, **kw)
+        if method == "POST":
+            RepoConnection.objects.filter(project=ready).delete()
+        return out
+
+    monkeypatch.setattr(hooks.client, "request", drop_conn)
+    assert _created(ready) == {"ok": False, "delete_webhook": True}
+    assert any(c["method"] == "DELETE" and c["path"] == "/repos/o/r/hooks/42" for c in gh_calls)
 
 
 def test_not_repo_admin_is_refused_with_fix(ready, admin, gh_calls):
@@ -217,7 +336,7 @@ def test_executor_permissions_are_checked(ready, admin, member):
     with pytest.raises(ServiceError):
         hooks.request_setup(ready, ["push"], actor=member)
     hooks.request_setup(ready, ["push"], actor=admin)
-    hooks.on_created(ready.pk, "777", WEBHOOK_TOKEN)
+    _created(ready)
     with pytest.raises(ServiceError):
         hooks.remove(ready, actor=member)
     # Discord: 실행자의 서버 권한에 웹후크 관리가 없으면 거절(fail closed)
@@ -242,7 +361,7 @@ def test_page_shows_button_then_masked_status(ready, admin, client, monkeypatch)
         f"/projects/{ready.pk}/repo/discord-hook", {"action": "setup", "events": ["push"]}
     )
     assert r.status_code == 302 and _hook(ready)["state"] == "pending"
-    hooks.on_created(ready.pk, "777", WEBHOOK_TOKEN)
+    _created(ready)
     html = client.get(f"/projects/{ready.pk}/repo").content.decode()
     assert "https://discord.com/api/webhooks/777/****/github" in html
     assert WEBHOOK_TOKEN not in html

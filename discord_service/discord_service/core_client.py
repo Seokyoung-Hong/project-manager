@@ -273,17 +273,20 @@ class CoreClient:
         r.raise_for_status()
         return r.json()
 
-    def github_hook_created(self, project_id: int, webhook_id: str, webhook_token: str) -> dict:
+    def github_hook_created(
+        self, project_id: int, job: str, webhook_id: str, webhook_token: str
+    ) -> dict:
+        """멱등이다. 응답을 못 받았으면 같은 값으로 다시 보내면 된다."""
         return self._bot(
             f"/github-hooks/{project_id}/created",
-            {"webhook_id": webhook_id, "webhook_token": webhook_token},
+            {"job": job, "webhook_id": webhook_id, "webhook_token": webhook_token},
         )
 
-    def github_hook_failed(self, project_id: int, reason: str) -> dict:
-        return self._bot(f"/github-hooks/{project_id}/failed", {"reason": reason})
+    def github_hook_failed(self, project_id: int, job: str, reason: str) -> dict:
+        return self._bot(f"/github-hooks/{project_id}/failed", {"job": job, "reason": reason})
 
-    def github_hook_removed(self, project_id: int) -> dict:
-        return self._bot(f"/github-hooks/{project_id}/removed", {})
+    def github_hook_removed(self, project_id: int, webhook_id: str) -> dict:
+        return self._bot(f"/github-hooks/{project_id}/removed", {"webhook_id": webhook_id})
 
     def report_status(self, ok: bool, detail: dict):
         try:
