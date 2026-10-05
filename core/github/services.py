@@ -139,6 +139,55 @@ def _owns_account(identity, account: dict) -> bool:
     return (m or {}).get("role") == "admin" and (m or {}).get("state") == "active"
 
 
+# 기능 → (권한 키, 최소 수준, 이벤트들). 권한·구독이 없으면 그 기능은 조용히 꺼진다(IMPL-PLAN-8 §0.1).
+REQUIRED_CAPS = {
+    "ci": ("checks", "read", ("check_suite",)),
+    "ci_status": ("statuses", "read", ("status",)),
+    "review": ("pull_requests", "read", ("pull_request_review",)),
+    "milestone": ("issues", "read", ("milestone",)),
+    "release": ("contents", "read", ("release",)),
+}
+PERM_LABELS = {
+    "checks": "Checks",
+    "statuses": "Commit statuses",
+    "pull_requests": "Pull requests",
+    "issues": "Issues",
+    "contents": "Contents",
+}
+LEVELS = ("read", "write", "admin")
+CAPS_TTL = 3600
+
+
+def app_capabilities(org) -> dict | None:
+    """GET /app/installations/{id}(앱 JWT)의 permissions·events로 기능별 사용 가능 여부. 1시간 캐시.
+    설치가 없거나 GitHub 오류면 None(화면은 '확인 불가'로 그린다). 쓰는 곳: 조직 GitHub 탭(관리자).
+
+    반환 예: {"ci": {"ok": False, "missing": ["Checks 읽기 권한", "check_suite 구독"]}, ...}
+    """
+    inst = GitHubInstallation.objects.filter(org=org).first()
+    if inst is None:
+        return None
+    key = f"gh-app-caps:{inst.installation_id}"
+    caps = cache.get(key)
+    if caps is not None:
+        return caps
+    try:
+        data = client.request("GET", f"/app/installations/{inst.installation_id}", client.app_jwt())
+    except (GitHubError, ValueError):  # ValueError: 앱 개인키가 없거나 깨졌다
+        return None
+    perms = (data or {}).get("permissions") or {}
+    events = set((data or {}).get("events") or [])
+    caps = {}
+    for feature, (perm, level, needed) in REQUIRED_CAPS.items():
+        missing = []
+        if perms.get(perm) not in LEVELS[LEVELS.index(level) :]:
+            missing.append(f"{PERM_LABELS[perm]} 읽기 권한")
+        missing += [f"{e} 구독" for e in needed if e not in events]
+        caps[feature] = {"ok": not missing, "missing": missing}
+    cache.set(key, caps, CAPS_TTL)
+    return caps
+
+
 # ---------- 사용자 토큰 ----------
 
 
@@ -538,6 +587,16 @@ def _occurred_at(kind: str, payload: dict) -> datetime:
         return parse_ts((payload.get("pull_request") or {}).get("updated_at"))
     if kind == "issues":
         return parse_ts((payload.get("issue") or {}).get("updated_at"))
+    if kind == "pull_request_review":
+        return parse_ts((payload.get("review") or {}).get("submitted_at"))
+    if kind == "check_suite":
+        return parse_ts((payload.get("check_suite") or {}).get("updated_at"))
+    if kind == "status":
+        return parse_ts(payload.get("updated_at"))
+    if kind == "release":
+        return parse_ts((payload.get("release") or {}).get("published_at"))
+    if kind == "milestone":
+        return parse_ts((payload.get("milestone") or {}).get("updated_at"))
     return timezone.now()
 
 
@@ -563,12 +622,7 @@ def handle_event(event: str, delivery: str, payload: dict) -> tuple[int, dict]:
     # delivery_id는 연결마다 f"{delivery}:{conn.pk}"로 저장되므로 접두어로 찾는다.
     if delivery and GitEvent.objects.filter(delivery_id__startswith=f"{delivery}:").exists():
         return 200, {"ok": True, "duplicate": True}
-    handler = {
-        "create": _on_create,
-        "push": _on_push,
-        "pull_request": _on_pr,
-        "issues": _on_issues,
-    }.get(event)
+    handler = _handlers().get(event)
     if handler is None:
         for conn in conns:
             if event in ("membership", "team"):
@@ -587,6 +641,30 @@ def handle_event(event: str, delivery: str, payload: dict) -> tuple[int, dict]:
         except ConflictError:
             _record_failure(conn, delivery, event, payload, "다른 변경과 충돌")
     return 200, {"ok": True}
+
+
+def _handlers() -> dict:
+    """이벤트 → 처리기. 새 처리기 파일이 services를 import하므로 늦게 묶는다(순환 import 회피)."""
+    from . import ci, sync
+
+    return {
+        "create": _on_create,
+        "push": _on_push,
+        "pull_request": _on_pr,
+        "issues": _on_issues,
+        "pull_request_review": _on_pr_review,
+        "check_suite": ci.on_check_suite,
+        "status": ci.on_status,
+        "milestone": sync.on_milestone,
+        "release": sync.on_release,
+    }
+
+
+def record_ignored(conn, delivery, event, payload):
+    """받았지만 아직 처리하지 않는 이벤트. 들어왔다는 사실만 남긴다(G0 골격)."""
+    record_event(
+        conn, delivery, kind=event, payload=payload, summary=_short(event, payload), result="무시"
+    )
 
 
 def _record_failure(conn, delivery, event, payload, reason):
@@ -654,6 +732,9 @@ def _installation_event(event: str, payload: dict):
         GitHubIdentity.objects.update(repos_checked_at=None)
         return
     action = payload.get("action") or ""
+    if action == "new_permissions_accepted":
+        cache.delete(f"gh-app-caps:{inst_id}")  # 재승인 완료 → 점검 결과를 다시 묻는다
+        return
     if inst is None:
         return
     if action == "deleted":
@@ -722,6 +803,14 @@ def _link_for(conn, task) -> TaskGitLink:
 
 def _sender_login(payload) -> str:
     return ((payload.get("sender") or {}).get("login")) or ""
+
+
+# ---- pull_request_review ----
+
+
+def _on_pr_review(conn, delivery, payload):
+    """pull_request_review submitted|dismissed|edited. 본문은 G1(IMPL-PLAN-8 §3.2)."""
+    record_ignored(conn, delivery, "pull_request_review", payload)
 
 
 # ---- create (브랜치) ----
