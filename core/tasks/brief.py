@@ -7,6 +7,10 @@ def user_brief(u) -> dict | None:
     return {"id": u.pk, "display_name": u.display_name, "discord_user_id": u.discord_user_id}
 
 
+def _iso(value):
+    return value.isoformat() if value else None
+
+
 def _reviewer_sees(t) -> bool:
     if t.reviewer_id is None:
         return False
@@ -37,6 +41,9 @@ def task_brief(t) -> dict:
         "stop_reason": t.stop_reason,
         # 막힘·검토 에스컬레이션이 경과일을 재는 기준.
         "stopped_at": t.stopped_at.isoformat() if t.stopped_at else None,
+        "status_since": t.status_since.isoformat() if t.status_since else None,
+        # PR 리뷰 요청 시각. 목록 API가 annotate한 경우에만 있다(그 밖은 None).
+        "review_requested_at": _iso(getattr(t, "review_requested_at", None)),
         "updated_at": t.updated_at.isoformat() if t.updated_at else None,
         "next_action": t.next_action,
         # 템플릿은 진행하지 않는다. 회차·변형은 parent_id(계열의 뿌리)로 묶인다.

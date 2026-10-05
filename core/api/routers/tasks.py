@@ -102,6 +102,8 @@ def list_tasks(
         qs = qs.filter(project__is_archived=False)
     limit, offset = clamp_page(limit, offset)
     # nulls_last를 명시해야 SQLite(기한 미정이 앞)와 Postgres(뒤)가 같아지고, by_due()와도 맞는다.
+    # 검토 독촉이 PR 리뷰 요청 시각을 쓴다. LEFT JOIN 한 번이라 N+1이 없다.
+    qs = qs.annotate(review_requested_at=F("git__review_requested_at"))
     qs = qs.order_by(F("due_date").asc(nulls_last=True), "id")
     total = qs.count()
     return {

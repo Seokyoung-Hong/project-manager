@@ -598,7 +598,8 @@ def transition(
                     "완료 처리할 수 있습니다."
                 }
             )
-    fields = {"status": new_status}
+    # 같은 상태 재요청은 위에서 돌아갔다. 검토 대기 경과일은 이 시각부터 잰다.
+    fields = {"status": new_status, "status_since": timezone.now()}
     if new_status in Task.STOPPED:
         fields["stop_reason"] = reason or (task.stop_reason if task.is_stopped else "")
         if not task.is_stopped:

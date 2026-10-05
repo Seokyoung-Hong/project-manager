@@ -32,6 +32,15 @@ def _days_since(iso_value: str | None, today: date) -> int | None:
     return (today - d).days
 
 
+def _since(t: dict) -> str | None:
+    """경과일 기준. 막힘은 멈춘 시각, 검토 대기는 PR 리뷰 요청 → 상태가 바뀐 시각 → 옛 행의
+    stopped_at 순이다. transition은 review에 stopped_at을 찍지 않아 그것만 보면 독촉이 안 나갔다.
+    """
+    if t["status"] == REVIEW:
+        return t.get("review_requested_at") or t.get("status_since") or t.get("stopped_at")
+    return t.get("stopped_at")
+
+
 def run_escalations(
     core: CoreClient,
     bot: Bot,
@@ -53,7 +62,7 @@ def run_escalations(
     day = today.isoformat()
     by_project: dict[int, dict[str, list[dict]]] = defaultdict(lambda: {BLOCKED: [], REVIEW: []})
     for t in core.open_tasks(org_id):
-        age = _days_since(t.get("stopped_at"), today)
+        age = _days_since(_since(t), today)
         if age is None:
             continue
         if blocked_days and t["status"] == BLOCKED and age >= blocked_days:
@@ -108,7 +117,7 @@ def _message(kind: str, project_name: str, items: list[dict], today: date) -> st
     day = today.isoformat()
     head = f"⏰ **{project_name}** · {label} {len(items)}건이 오래 머물러 있습니다. 확인해 주세요."
     lines = [
-        alert_line(t, day, who=display_name) + f" · {_days_since(t['stopped_at'], today)}일째"
+        alert_line(t, day, who=display_name) + f" · {_days_since(_since(t), today)}일째"
         for t in items
     ]
     return head + "\n" + "\n".join(lines)

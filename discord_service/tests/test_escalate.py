@@ -86,6 +86,21 @@ def test_review_nudge_uses_its_own_threshold(store, fake_bot, bot):
     assert "검토 대기" in fake_bot.dm("555")[0]
 
 
+def test_review_nudge_counts_from_status_since_then_review_request(store, fake_bot, bot):
+    """core는 review에 stopped_at을 찍지 않는다. status_since·review_requested_at으로 잰다."""
+    by_status = task(1, "2026-09-01", status="review")
+    by_status["status_since"] = "2026-09-02T10:00:00+09:00"  # 7일째
+    rerequested = task(2, "2026-09-01", status="review")
+    rerequested["status_since"] = "2026-09-01T10:00:00+09:00"
+    rerequested["review_requested_at"] = "2026-09-08T10:00:00+09:00"  # 리뷰 다시 요청 → 1일째
+    fake = FakeCore([by_status, rerequested])
+    fake.project_owners_data[1] = [OWNER]
+    r = run_escalations(make_core(fake), bot, store, 1, TODAY, review_days=5)
+    assert r["sent"] == 1
+    sent = fake_bot.dm("555")[0]
+    assert "TASK-1" in sent and "7일째" in sent and "TASK-2" not in sent
+
+
 def test_review_nudge_goes_to_reviewer_first_then_owners_for_the_rest(store, fake_bot, bot):
     reviewed = task(1, "2026-09-01", status="review", stopped_at="2026-09-01")
     reviewed["reviewer"] = member(7, "777", "검토자")
