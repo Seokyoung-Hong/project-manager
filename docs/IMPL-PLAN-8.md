@@ -536,3 +536,8 @@ def reopen_as_new(conn, delivery, payload, *, old, kind: str) -> Task | None:
 - 운영 앱에 지금 실제로 구독된 이벤트 목록·설치별 승인 상태 — 서버·GitHub 설정은 보지 않았다(범위 밖).
 - GitHub `status` 이벤트의 `branches[]`가 PR head 브랜치를 항상 담는지(포크 PR은 담지 않을 수 있다) — 포크 PR의 CI는 sha 매칭에만 의존한다.
 - 디자인 시스템 에이전트가 실제로 바꾼 템플릿 목록 — G9 착수 시 다시 대조.
+
+## 10. 사용자 결정 결과 (2026-10-05) — 위 설계보다 우선
+1. **#8 이슈 양방향 동기화는 하지 않는다. 이슈는 "종료"만 반영**(GitHub에서 이슈가 닫히면 연결 태스크 완료 — 기존 규칙 유지). §3.8의 GH→PM 제목·담당자 동기화, PM→GH 담당자 PATCH, `issue_synced_at` 메아리 차단은 구현하지 않는다(G0이 만든 열은 쓰지 않고 둔다). G4는 마일스톤 동기화(§3.9)·릴리스(§3.10)만.
+2. **#12 Discord 슬래시로 GitHub 작업은 하지 않는다(G5 취소).** 대신 **G5′: GitHub 웹훅을 PM이 대신 설정** — 사용자가 GitHub 저장소 설정에서 Discord 웹훅을 손으로 넣는 번거로움을 없앤다. 프로젝트(저장소 연결 + Discord 프로젝트 채널이 있을 때) 설정 화면의 버튼 하나로: 봇이 그 Discord 채널에 웹훅을 만들고(Manage Webhooks), 그 URL의 GitHub 호환 엔드포인트(`<discord webhook url>/github`)를 GitHub 저장소 웹훅으로 등록한다(누른 사람의 사용자 토큰, 저장소 admin 필요). 이벤트 선택·해제(삭제)·상태 표시 포함. 필요한 GitHub 앱 권한(Repository "Webhooks" write)과 재승인, Discord 봇 권한을 §1에 추가해 문서화하고, 권한이 없으면 버튼 대신 이유를 보여 준다. #4(PM이 GitHub 사건을 프로젝트 채널에 직접 게시)는 그대로 둔다.
+3. **재개 태스크 담당자 = 원 담당자 + 담당 요청**: 새 태스크의 담당자는 원 담당자로 두고, 원 담당자에게 담당 요청(기존 WorkRequest 담당 요청 흐름)을 보내 수락/거절하게 한다.
