@@ -144,19 +144,29 @@ def version_of(request) -> int:
 
 def _overdue(task) -> bool:
     """유예를 적용한 초과 여부. `Task.is_overdue`는 사실이고, 화면은 프로젝트(없으면 조직) 설정을 본다."""
-    return bool(task.due_date) and task.due_date < overdue_before(task.project.org, task.project)
+    # 닫힌 태스크는 초과가 아니다(`Task.is_overdue`와 같은 규칙) — 결과 기록이 연체 목록처럼 보이면 안 된다.
+    return (
+        task.is_open
+        and bool(task.due_date)
+        and task.due_date < overdue_before(task.project.org, task.project)
+    )
 
 
 def due_label(task) -> str:
-    """행 우측 기한 라벨: '오늘 마감' / '9월 12일' / '기한 미정', 초과면 ' 초과'."""
+    """행 우측 기한 라벨: '오늘 마감' / '9월 12일' / '기한 미정', 초과면 ' 초과'.
+    닫힌 태스크는 중립 날짜 '목표일 9월 12일'."""
     if not task.due_date:
         return "기한 미정"
+    if task.is_closed:
+        return f"목표일 {fmt_md(task.due_date)}"
     label = "오늘 마감" if task.due_date == today_kst() else fmt_md(task.due_date)
     return label + " 초과" if _overdue(task) else label
 
 
 def due_class(task) -> str:
     """기한 배지의 변형. 색과 테두리는 이 한 곳에서만 정한다."""
+    if task.is_closed:
+        return "closed"
     if _overdue(task):
         return "overdue"
     if not task.due_date:
