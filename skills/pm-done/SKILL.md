@@ -19,7 +19,7 @@ disable-model-invocation: true
    - 완료 조건을 이번 작업이 채웠는가 — 근거(변경·테스트)를 한 줄씩. 채우지 못했으면 무엇이 남았는지.
    - 체크리스트 중 끝났는데 표시 안 된 것 / 안 끝난 것
    - 이번 세션의 결정 중 기록되지 않은 것 → 있으면 `/pm-decide` 흐름을 먼저 제안한다
-   - 저장소가 연결된 프로젝트(`GET /api/projects/{id}/repo`의 `connected: true`)일 때만: PR이 있는가(`github.pull_request`). 없으면 `/pm-pr`을 제안한다
+   - 저장소가 연결된 프로젝트(`GET /api/projects/{id}/repo`의 `connected: true`)일 때만: PR이 있는가(`github.pull_request`). 없으면 `/pm-pr`을 제안한다. **`pull_request.ci_state`가 `failure`거나 `review_state`가 `changes_requested`면 완료(review로 넘기기)를 제안하지 않는다** — 무엇이 막는지(`ci_url`)를 알린다
    - 범위 밖으로 미룬 일 → `/pm-followup` 제안
 3. **확인**: 체크리스트 갱신, 남길 진행 메모 한 줄(무엇을 끝냈고 어디서 확인하는지), review로 넘길지를 한 번에 묻는다.
    완료 조건을 못 채웠으면 review 대신 그대로 두기를 권한다.

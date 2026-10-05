@@ -181,11 +181,31 @@ def get_task_github(request, task_id: int):
                 else ""
             ),
             "merged_at": link.merged_at,
+            "draft": link.pr_draft,
+            "head_sha": link.head_sha,
+            "review_state": link.review_state,
+            "reviews": link.reviews,
+            "ci_state": link.ci_state,
+            "ci_url": link.ci_url,
         }
         if link.pr_number
         else None,
         "commits": link.commits,
+        "continued_by": _continued_by(task),
     }
+
+
+def _continued_by(task):
+    """재개(PR·이슈 reopened)로 이 태스크를 이어받은 가장 최근 새 태스크. 없으면 None."""
+    log = (
+        ChangeLog.objects.filter(target_type="task", target_id=task.pk, field="reopened_as")
+        .order_by("-id")
+        .first()
+    )
+    if log is None:
+        return None
+    new = Task.objects.filter(project=task.project, pk=log.new_value.removeprefix("TASK-")).first()
+    return {"id": new.pk, "number": new.number, "status": new.status} if new else None
 
 
 @router.post("/{task_id}/github/issue", response={201: dict, 400: ErrorOut})

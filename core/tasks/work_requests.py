@@ -85,7 +85,9 @@ def _notify_new(req, posted_in: str = ""):
     head = f"📨 {req.requested_by.display_name}님의 {req.get_kind_display()} **{req.number}** {req.title}"
     link = _link(req.path)
     if req.to_user_id:
-        notify(req.org, f"{head}\n수락·거절: {link}", user=req.to_user)
+        # GitHub 재개처럼 담당 요청에 사유(body)가 있으면 알림에 함께 담는다.
+        why = f"\n{req.body}" if req.kind == "assign" and req.source == "gh" and req.body else ""
+        notify(req.org, f"{head}{why}\n수락·거절: {link}", user=req.to_user)
         return
     if posted_in and posted_in == req.team.discord_channel_id:
         return  # /요청을 친 그 팀 채널에 봇이 이미 공개로 알렸다

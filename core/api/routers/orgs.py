@@ -220,6 +220,16 @@ def org_repos(request, org_id: int):
     return gh_services.installation_repos(org, request.auth)
 
 
+@router.get("/{org_id}/github/capabilities", response=dict)
+def github_capabilities(request, org_id: int):
+    """GitHub 앱 권한·이벤트 점검(관리자). 설치가 없거나 GitHub 오류면 capabilities가 null이다."""
+    from github import services as gh_services
+
+    org = org_or_404(request, org_id)
+    require_admin(ctx(request)["actor"], org)
+    return {"capabilities": gh_services.app_capabilities(org)}
+
+
 @router.get("/{org_id}/tasks", response=TaskListOut)
 def org_tasks(
     request,
