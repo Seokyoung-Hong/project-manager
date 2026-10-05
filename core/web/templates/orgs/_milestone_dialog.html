@@ -17,6 +17,6 @@
   <div class="row">
     <button class="btn primary">{% if ms %}변경 내용 저장{% else %}마일스톤 만들기{% endif %}</button>
     <button type="button" class="btn" data-action="close-dialog">취소</button>
-    {% if ms %}<button type="button" class="btn danger" hx-post="{% url 'milestone_delete' ms.pk %}" hx-confirm="이 마일스톤을 삭제할까요?" style="margin-left:auto">삭제</button>{% endif %}
+    {% if ms %}<button type="button" class="btn danger ml-auto" hx-post="{% url 'milestone_delete' ms.pk %}" hx-confirm="이 마일스톤을 삭제할까요?">삭제</button>{% endif %}
   </div>
 </form>

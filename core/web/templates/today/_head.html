@@ -1,20 +1,39 @@
-<div id="today-head" class="card today-head-card" hx-get="{% url 'today' %}?part=head" hx-trigger="task-changed from:body, task-updated from:body, today-changed from:body" hx-swap="outerHTML">
-  <div class="card-head today-overview-head">
-    <span class="studio-sprout" aria-hidden="true"></span>
-    <div><p class="studio-greeting">오늘도, 하나씩 함께.</p><h1 class="t17">{{ date_label }}</h1><div class="muted t13">{{ today_hint }}</div></div>
-    <div class="today-metrics" aria-label="전체 조직 내 담당 태스크 지표">
-      <span class="today-scope-label">전체 조직 · 내 담당 태스크</span>
-      <div class="stats">
-        <a class="stat" href="{% url 'me' %}?status=done_today"><b>{{ counts.done_today }}</b><span>오늘 완료</span></a>
-        <a class="stat" href="{% url 'me' %}?status=done_7d"><b>{{ counts.done_7d }}</b><span>최근 7일 완료</span></a>
-        <a class="stat" href="{% url 'me' %}"><b>{{ counts.my_open }}</b><span>미완료</span></a>
-      </div>
+<div id="today-head" class="today-head-card" hx-get="{% url 'today' %}?part=head" hx-trigger="task-changed from:body, task-updated from:body, today-changed from:body" hx-swap="outerHTML">
+  <section class="hero" aria-labelledby="today-greeting">
+    <div class="hero-copy">
+      <p class="eyebrow">{{ date_label }} · {{ user.display_name }}님의 오늘</p>
+      <h1 id="today-greeting" class="hero-title">같이 하면,<br>한 걸음 더 가요.</h1>
+      <p class="hero-hint">{{ today_hint }}</p>
+      <button type="button" class="btn" data-action="toggle" data-target="#quick" aria-controls="quick">＋ 오늘 할 일 담기</button>
     </div>
-  </div>
-  {% if error %}<p class="error">{{ error }}</p>{% endif %}
+    <svg class="hero-art" viewBox="0 0 230 230" aria-hidden="true" focusable="false">
+      <ellipse class="art-shadow" cx="125" cy="211" rx="77" ry="10"/>
+      <path class="art-spark spark" d="M40 112Q44 128 60 132Q44 136 40 152Q36 136 20 132Q36 128 40 112Z"/>
+      <circle class="art-spark" cx="208" cy="112" r="5"/>
+      <path class="art-pot" d="M87 138L99 200Q131 215 166 200L180 138Z"/>
+      <ellipse class="art-rim" cx="134" cy="138" rx="46" ry="12"/>
+      <ellipse class="art-soil" cx="134" cy="138" rx="33" ry="7"/>
+      <path class="art-stem" d="M134 139Q137 90 141 57" stroke-width="6"/>
+      <g class="leaf"><path class="art-leaf" d="M138 100Q72 104 61 49Q124 28 138 100"/><path class="art-vein" d="M138 100L77 61" stroke-width="2"/></g>
+      <g class="leaf-2"><path class="art-leaf-2" d="M140 78Q148 19 207 29Q214 78 140 78"/><path class="art-vein" d="M141 77L189 42" stroke-width="2"/></g>
+      <circle class="art-face" cx="124" cy="171" r="3"/><circle class="art-face" cx="148" cy="171" r="3"/>
+      <path class="art-face-line" d="M129 183Q137 189 144 181" stroke-width="2"/>
+    </svg>
+  </section>
+  <section class="tally" aria-label="전체 조직 내 담당 태스크 지표">
+    <h2>오늘도 차곡차곡</h2>
+    <a class="tally-main" href="{% url 'me' %}?status=done_today"><b>{{ counts.done_today }}</b><span>오늘 완료</span></a>
+    <span class="tally-badge" aria-hidden="true"><svg viewBox="0 0 40 40"><path class="art-ink-soft" d="M20 2Q23 17 38 20Q23 23 20 38Q17 23 2 20Q17 17 20 2Z"/></svg></span>
+    <p class="tally-scope">전체 조직 · 내 담당 태스크</p>
+    <div class="stats">
+      <a class="stat" href="{% url 'me' %}?status=done_7d"><b>{{ counts.done_7d }}</b><span>최근 7일 완료</span></a>
+      <a class="stat" href="{% url 'me' %}"><b>{{ counts.my_open }}</b><span>미완료</span></a>
+    </div>
+  </section>
+  {% if error %}<p class="error today-head-error" role="alert">{{ error }}</p>{% endif %}
   {% if focus %}
-  <section class="focus stack today-focus" aria-label="지금 할 일">
-    <div class="muted t13">지금 할 일</div>
+  <section class="memo focus-memo" aria-label="지금 할 일">
+    <p class="eyebrow">지금 할 한 가지</p>
     <h2>{{ focus.next_action|default:focus.title }}</h2>
     <div class="meta">
       <span>{{ focus.number }} · {{ focus.project.name }}</span>
@@ -22,7 +41,7 @@
       <span class="badge{% if focus.priority >= 8 %} high{% endif %}">중요도 {{ focus.priority }}/10</span>
       {% if focus.next_action %}<span>{{ focus.title }}</span>{% endif %}
     </div>
-    <div class="row today-focus-actions">
+    <div class="today-focus-actions">
       <form hx-post="{% url 'task_status' focus.pk %}" hx-target="#today-head" hx-swap="outerHTML">
         <input type="hidden" name="version" value="{{ focus.version }}">
         <input type="hidden" name="from" value="head">
@@ -34,6 +53,9 @@
     </div>
   </section>
   {% else %}
-  <p class="muted">오늘 할 일이 없습니다. 내 태스크에서 오늘 목록에 추가하거나 새 태스크를 만드세요.</p>
+  <section class="memo focus-memo is-empty" aria-label="지금 할 일">
+    <p class="eyebrow">지금 할 한 가지</p>
+    <p>오늘 할 일이 없습니다. 내 태스크에서 오늘 목록에 추가하거나 새 태스크를 만드세요.</p>
+  </section>
   {% endif %}
 </div>

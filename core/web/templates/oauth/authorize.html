@@ -1,6 +1,6 @@
 {% extends "base.html" %}{% block title %}연결 허용{% endblock %}
 {% block main %}
-<section class="card" style="max-width:520px">
+<section class="card w-sm">
   <h2>{{ client.name|default:"이름 없는 클라이언트" }}에 연결할까요?</h2>
   <p class="t13 muted">이 앱이 <b>{{ user }}</b> 계정으로 계정 권한과 조직 정책이 허용하는 자료에 접근할 수 있게 됩니다.
     허용하면 <code>{{ redirect_host }}</code>(으)로 돌아갑니다.</p>

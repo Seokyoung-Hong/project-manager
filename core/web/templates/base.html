@@ -31,7 +31,7 @@
     </div>
   </details>
   {% else %}
-  <a class="logo" href="{% url 'today' %}">산돌이 태스크</a>
+  <a class="logo" href="{% url 'today' %}"><i class="studio-mark" aria-hidden="true">◡</i>산돌이 태스크</a>
   {% endif %}
   {% if user.is_authenticated %}
   <nav class="nav" aria-label="주 메뉴">
@@ -51,7 +51,7 @@
   <details class="menu">
     <summary class="avatar" aria-label="내 메뉴" title="계정·설정">{{ user.display_name|initial }}<svg class="caret" width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M2 4l3 3 3-3"/></svg></summary>
     <div class="menu-list">
-      <span class="muted t13" style="padding:4px 10px">{{ user.display_name }}</span>
+      <span class="muted t13 menu-who">{{ user.display_name }}</span>
       <a href="{% url 'profile' %}">프로필</a>
       <a href="{% url 'portfolio' %}">내 포트폴리오</a>
       <a href="{% url 'tokens' %}">API 토큰</a>
@@ -103,7 +103,7 @@
         <span class="label">{% if p.visibility == "teams" %}🔒 {% endif %}{{ p.name }}</span>
         <span class="count t12 muted">{{ p.open_count }}</span>
       </a>
-      {% empty %}<span class="muted t13 rail-only" style="padding:0 10px">프로젝트 없음</span>{% endfor %}
+      {% empty %}<span class="muted t13 rail-only rail-empty">프로젝트 없음</span>{% endfor %}
     </div>
     <button type="button" class="btn link rail-only rail-new"
             hx-get="{% url 'project_new' %}?org={{ current_org.pk }}" hx-target="#dialog" hx-swap="innerHTML">＋ 새 프로젝트</button>
@@ -123,7 +123,7 @@
   </div>
 </div>
 {% else %}
-<main id="main-content" class="layout" tabindex="-1"><div class="card" style="max-width:420px;width:100%;margin:48px auto">{% block auth %}{% endblock %}</div></main>
+<main id="main-content" class="layout auth-main" tabindex="-1"><div class="card auth-card">{% block auth %}{% endblock %}</div></main>
 {% endif %}
 <dialog id="dialog"></dialog>
 <script src="{% static 'app.js' %}"></script>

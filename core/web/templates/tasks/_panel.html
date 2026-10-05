@@ -58,7 +58,7 @@
           </form>
           {% endif %}
           <span class="badge{% if due_class == "overdue" %} danger{% endif %}">{{ due_label }}</span>
-          <form class="row" style="gap:4px">
+          <form class="row gap-1">
             <input type="hidden" name="version" value="{{ task.version }}">
             <span>중요도</span>
             <select name="priority" class="select" aria-label="중요도"

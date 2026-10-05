@@ -52,7 +52,7 @@
       {% if team.dev_tools %}<td>{% if u.github %}@{{ u.github.login }}{% else %}<span class="badge">GitHub 미연결</span>{% endif %}</td>{% endif %}
       <td class="row">{% if is_admin %}<form method="post" action="{% url 'team_lead' team.pk u.pk %}">{% csrf_token %}<input type="hidden" name="lead" value="{% if u.pk in lead_ids %}0{% else %}1{% endif %}"><button class="btn sm">{% if u.pk in lead_ids %}팀장 해제{% else %}팀장 지정{% endif %}</button></form><form method="post" action="{% url 'team_member_remove' team.pk u.pk %}">{% csrf_token %}<button class="btn sm danger">팀에서 제거</button></form>{% endif %}</td>
     </tr>
-    {% empty %}<tr><td colspan="{% if team.dev_tools %}3{% else %}2{% endif %}" class="muted">멤버가 없습니다.</td></tr>{% endfor %}
+    {% empty %}<tr><td colspan="{% if team.dev_tools %}3{% else %}2{% endif %}" class="empty-cell">멤버가 없습니다.</td></tr>{% endfor %}
     </tbody>
   </table>
   <form method="post" action="{% url 'team_member_add' team.pk %}" class="row">{% csrf_token %}
@@ -67,7 +67,7 @@
   <h2>담당 프로젝트</h2>
   <ul class="links">
     {% for p in projects %}<li><a href="{% url 'project_detail' p.pk %}">{% if p.visibility == "teams" %}🔒 {% endif %}{{ p.name }}</a></li>
-    {% empty %}<li class="muted t13">담당 프로젝트가 없습니다.</li>{% endfor %}
+    {% empty %}<li class="empty compact">담당 프로젝트가 없습니다.</li>{% endfor %}
   </ul>
 </section>
 <section class="card">

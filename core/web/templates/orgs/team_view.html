@@ -15,14 +15,14 @@
   <h2>멤버</h2>
   <ul class="links">
     {% for u in members %}<li>{{ u.display_name }}{% if u.pk in lead_ids %} <span class="badge ok">팀장</span>{% endif %}</li>
-    {% empty %}<li class="muted t13">멤버가 없습니다.</li>{% endfor %}
+    {% empty %}<li class="empty compact">멤버가 없습니다.</li>{% endfor %}
   </ul>
 </section>
 <section class="card">
   <h2>담당 프로젝트</h2>
   <ul class="links">
     {% for p in projects %}<li><a href="{% url 'project_detail' p.pk %}">{{ p.name }}</a></li>
-    {% empty %}<li class="muted t13">담당 프로젝트가 없습니다.</li>{% endfor %}
+    {% empty %}<li class="empty compact">담당 프로젝트가 없습니다.</li>{% endfor %}
   </ul>
 </section>
 {% endblock %}

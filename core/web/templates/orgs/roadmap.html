@@ -6,14 +6,14 @@
     <h2>로드맵</h2>
     <button type="button" class="btn primary" hx-get="{% url 'milestone_new' org.pk %}" hx-target="#dialog" hx-swap="innerHTML">새 마일스톤</button>
   </div>
-  <div class="stack" style="gap:4px">
+  <div class="stack gap-1">
     <div class="tl-head"><span class="tl-name"></span>
       <div class="tl-track"><span class="tl-today tl-today-label" style="left:{{ today_pct }}%"><span>오늘</span></span>{% for m in months %}<span>{{ m.month }}월</span>{% endfor %}</div>
     </div>
     {% for r in rows %}
     <div class="tl-row">
       <div class="tl-name">
-        <span class="t16" style="font-weight:600">{{ r.ms.name }}</span>
+        <span class="t16 fw-6">{{ r.ms.name }}</span>
         <span class="t12 muted">{{ r.meta }}</span>
       </div>
       <div class="tl-track">
@@ -26,7 +26,7 @@
         <button class="btn sm" hx-get="{% url 'milestone_edit' r.ms.pk %}" hx-target="#dialog" hx-swap="innerHTML">수정</button>
       </div>
     </div>
-    {% empty %}<p class="muted">이 기간에 보여 줄 마일스톤이 없습니다.</p>{% endfor %}
+    {% empty %}<p class="empty">이 기간에 보여 줄 마일스톤이 없습니다.</p>{% endfor %}
   </div>
   {% if hidden %}<p class="muted t13">표시 기간 밖의 마일스톤 {{ hidden }}건은 보이지 않습니다.</p>{% endif %}
   <p class="muted t13">세로선은 오늘, 점선 테두리는 준비 중, 채워진 부분은 진행률입니다.</p>
@@ -46,7 +46,7 @@
       <span class="dependency-status badge{% if d.is_blocking %} danger{% endif %}">{% if d.is_blocking %}차단{% else %}차단 없음{% endif %}</span>
       <form class="dependency-actions" method="post" action="{% url 'dependency_delete' d.pk %}">{% csrf_token %}<button class="btn sm danger" aria-label="{{ d.from_project.name }}에서 {{ d.to_project.name }} 의존성 삭제">삭제</button></form>
     </article>
-    {% empty %}<p class="muted">의존성이 없습니다.</p>{% endfor %}
+    {% empty %}<p class="empty compact">의존성이 없습니다.</p>{% endfor %}
   </div>
   <form method="post" action="{% url 'dependency_add' org.pk %}" class="dependency-form">{% csrf_token %}
     <div class="dependency-form-route">

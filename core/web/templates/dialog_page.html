@@ -1,7 +1,7 @@
 {% extends "base.html" %}{% block title %}{{ block.super }}{% endblock %}
 {# 모달 조각을 주소로 직접 열었을 때의 껍데기. 평소에는 HTMX가 조각만 #dialog에 넣는다. #}
 {% block main %}
-<section class="card" style="max-width:640px">
+<section class="card w-md">
   {% include dialog_template %}
 </section>
 {% endblock %}

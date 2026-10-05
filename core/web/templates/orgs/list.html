@@ -12,7 +12,7 @@
       <td class="num">{{ o.project_count }}</td>
       <td class="num">{{ o.member_count }}</td>
     </tr>
-    {% empty %}<tr><td colspan="4" class="muted">아직 조직에 속해 있지 않습니다. 아래에서 조직을 만들거나, 받은 초대 링크로 참여하세요.</td></tr>{% endfor %}
+    {% empty %}<tr><td colspan="4" class="empty-cell">아직 조직에 속해 있지 않습니다. 아래에서 조직을 만들거나, 받은 초대 링크로 참여하세요.</td></tr>{% endfor %}
     </tbody>
   </table>
   <a class="btn" href="{% url 'org_new' %}">조직 만들기</a>

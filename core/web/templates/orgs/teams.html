@@ -49,7 +49,7 @@
     <tbody>
     {% for i in invites %}
     <tr>
-      <td class="row" style="gap:6px">
+      <td class="row gap-2">
         <code class="ellipsis" title="{{ site_url }}{{ i.path }}">{{ site_url }}{{ i.path }}</code>
         <button type="button" class="btn sm" data-copy-text="{{ site_url }}{{ i.path }}" data-copy-label="초대 링크 복사됨">초대 링크 복사</button>
         {% if not i.is_usable %}<span class="badge">만료</span>{% endif %}
@@ -58,7 +58,7 @@
       <td class="num">{{ i.use_count }}</td>
       <td><form method="post" action="{% url 'invite_revoke' i.pk %}">{% csrf_token %}<button class="btn sm danger">초대 링크 폐기</button></form></td>
     </tr>
-    {% empty %}<tr><td colspan="4" class="muted">초대 링크가 없습니다.</td></tr>{% endfor %}
+    {% empty %}<tr><td colspan="4" class="empty-cell">초대 링크가 없습니다.</td></tr>{% endfor %}
     </tbody>
   </table>
   <form method="post" action="{% url 'invite_create' org.pk %}" class="row">{% csrf_token %}
@@ -89,7 +89,7 @@
         <form method="post" action="{% url 'team_delete' row.team.pk %}" onsubmit="return confirm('팀을 삭제할까요? 멤버와 프로젝트는 그대로 남습니다. GitHub 팀은 남습니다.')">{% csrf_token %}<button class="btn sm danger">팀 삭제</button></form>
       </td>
     </tr>
-    {% empty %}<tr><td colspan="5" class="muted">팀이 없습니다.</td></tr>{% endfor %}
+    {% empty %}<tr><td colspan="5" class="empty-cell">팀이 없습니다.</td></tr>{% endfor %}
     </tbody>
   </table>
 </section>

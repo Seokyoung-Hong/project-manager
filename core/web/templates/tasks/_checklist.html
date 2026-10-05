@@ -1,5 +1,5 @@
 <div class="section">
-  <div class="row" style="justify-content:space-between">
+  <div class="row between">
     <span class="label">체크리스트</span>
     {% if checklist %}<span class="muted t13">{{ checklist_done }}/{{ checklist|length }} 완료</span>{% endif %}
   </div>
@@ -15,7 +15,7 @@
     {% endfor %}
   </ul>
   <form class="row" hx-post="{% url 'checklist_add' task.pk %}" hx-target="#checklist" hx-swap="innerHTML">
-    <input class="input" name="text" placeholder="항목 추가" style="flex:1" required>
+    <input class="input grow" name="text" placeholder="항목 추가" required>
     <button class="btn sm">체크 항목 추가</button>
   </form>
   {% if error %}<div class="error">{{ error }}</div>{% endif %}

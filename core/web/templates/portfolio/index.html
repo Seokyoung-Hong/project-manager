@@ -37,7 +37,7 @@
       <span class="muted t13">저장한 내용만 내려받습니다. 변경 후 먼저 저장하세요.</span>
     </div>
   </form>
-  <div class="subgroup" style="margin-top:20px">
+  <div class="subgroup mt-6">
     <h2 class="t16">사용한 출처</h2>
     <ul class="stack">
       {% for source in draft.portfolio_sources %}
@@ -46,7 +46,7 @@
         <p>{{ source.record_summary }}</p>
         <p class="muted t12">기록 당시 상태: {{ source.record_status }} · {{ source.record_created_at|date:"Y-m-d" }}</p>
       </li>
-      {% empty %}<li class="muted">저장된 출처가 없습니다.</li>{% endfor %}
+      {% empty %}<li class="empty compact">저장된 출처가 없습니다.</li>{% endfor %}
     </ul>
   </div>
 
@@ -70,7 +70,7 @@
       </div>
     </form>
 
-    <form method="post" action="{% url 'portfolio_prompt' %}" class="stack" style="margin-top:18px">
+    <form method="post" action="{% url 'portfolio_prompt' %}" class="stack mt-4">
       {% csrf_token %}
       <input type="hidden" name="org" value="{{ filters.org }}">
       <input type="hidden" name="project" value="{{ filters.project }}">
@@ -82,29 +82,29 @@
       <ul class="stack">
       {% for record in records %}
         <li class="card compact">
-          <label class="row" style="align-items:flex-start">
+          <label class="row start">
             <input type="checkbox" name="source_ids" value="{{ record.id }}"{% if record.id|stringformat:"s" in selected_ids %} checked{% endif %}>
             <span class="grow">
               <span class="row"><strong>{{ record.project_name }}</strong><span class="muted">{{ record.task_number }} · {{ record.created_at|slice:":10" }}</span>
               {% if record.portfolio_role == "context" %}<span class="tag">AI 판단 · 프로젝트 맥락</span>
               {% else %}<span class="tag">내 결정</span>{% if record.status == "captured" %}<span class="tag">세션에서 요약 수집</span>{% else %}<span class="tag">PM에서 확인</span>{% endif %}{% endif %}</span>
-              <span style="display:block">{{ record.summary }}</span>
-              {% if record.reason_summary %}<span class="muted t13" style="display:block">이유: {{ record.reason_summary }}</span>{% endif %}
-              {% if record.impact_summary %}<span class="muted t13" style="display:block">영향: {{ record.impact_summary }}</span>{% endif %}
+              <span class="block">{{ record.summary }}</span>
+              {% if record.reason_summary %}<span class="muted t13 block">이유: {{ record.reason_summary }}</span>{% endif %}
+              {% if record.impact_summary %}<span class="muted t13 block">영향: {{ record.impact_summary }}</span>{% endif %}
             </span>
           </label>
         </li>
-      {% empty %}<li class="card compact muted">선택한 조건에 해당하는 출처가 없습니다. 사용자 입력은 본인에게 귀속된 확인 또는 세션 수집 기록만 표시됩니다.</li>{% endfor %}
+      {% empty %}<li class="empty">선택한 조건에 해당하는 출처가 없습니다. 사용자 입력은 본인에게 귀속된 확인 또는 세션 수집 기록만 표시됩니다.</li>{% endfor %}
       </ul>
       <button class="btn primary" type="submit">선택한 출처로 AI 프롬프트 만들기</button>
     </form>
 
     {% if generation_prompt %}
-    <section class="subgroup" style="margin-top:24px">
+    <section class="subgroup mt-6">
       <div class="row gap wrap"><h2 class="t16">AI에게 전달할 프롬프트</h2><button type="button" class="btn sm" onclick="copyText(document.getElementById('portfolio-prompt').value, '프롬프트 복사됨')">프롬프트 복사</button></div>
       <p class="muted t13">선택한 기록의 의사 요지만 포함합니다. 프롬프트를 Codex, Claude Code, OpenCode 등에 전달한 뒤 생성된 Markdown을 아래에 붙여 넣어 저장하세요.</p>
       <textarea id="portfolio-prompt" class="input" rows="16" readonly>{{ generation_prompt }}</textarea>
-      <form method="post" action="{% url 'portfolio_create' %}" class="stack" style="margin-top:14px">
+      <form method="post" action="{% url 'portfolio_create' %}" class="stack mt-3">
         {% csrf_token %}<input type="hidden" name="org" value="{{ filters.org }}"><input type="hidden" name="project" value="{{ filters.project }}"><input type="hidden" name="from" value="{{ filters.from }}"><input type="hidden" name="to" value="{{ filters.to }}"><input type="hidden" name="input_type" value="{{ filters.input_type }}">
         {% for record in records %}{% if record.id|stringformat:"s" in selected_ids %}<input type="hidden" name="source_ids" value="{{ record.id }}">{% endif %}{% endfor %}
         <label class="field"><span>초안 제목</span><input class="input" type="text" name="title" value="프로젝트 포트폴리오 초안" maxlength="200" required></label>

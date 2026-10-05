@@ -17,7 +17,7 @@
   </form>
   {% endif %}
   <form method="post" class="row">{% csrf_token %}
-    <input class="input" name="url" placeholder="https://github.com/owner/repo.git" style="flex:1 1 260px"
+    <input class="input grow" name="url" placeholder="https://github.com/owner/repo.git"
       {% if org_repos %}list="org-repos"{% endif %}>
     {% if org_repos %}
     <datalist id="org-repos">
@@ -57,7 +57,7 @@
   {% else %}
   <p class="muted t13">조회에 성공했지만 앱에 보이는 접근 팀이 없습니다. 개인 계정의 접근 권한이나 조직의 모든 팀을 뜻하는 목록은 아닙니다.</p>
   {% endif %}
-  <details class="mt8">
+  <details class="mt-2">
     <summary>접근 팀 조회 해결 절차 보기</summary>
     <p class="t13">이 조회에는 GitHub 앱의 저장소 <b>Administration: Read-only</b> 권한이 필요합니다. 조직 Members 읽기 권한과는 다릅니다. ProjectManager의 기존 앱 설정 가이드는 Administration 권한을 요청하지 않으므로, 이 설정을 따랐다면 조회가 제한될 수 있습니다.</p>
     <ol class="t13">
@@ -113,7 +113,7 @@
         {% else %}<form method="post" action="{% url 'repo_issue_import' project.pk i.number %}">{% csrf_token %}<button class="btn sm">내 태스크로 가져오기</button></form>{% endif %}
       </td>
     </tr>
-    {% empty %}<tr><td colspan="4" class="muted">열린 이슈가 없습니다.</td></tr>{% endfor %}
+    {% empty %}<tr><td colspan="4" class="empty-cell">열린 이슈가 없습니다.</td></tr>{% endfor %}
     </tbody>
   </table>
 
@@ -139,7 +139,7 @@
       {% endif %}</td>
       <td class="t13">{% if e.result %}<span class="badge">{{ e.result }}</span>{% else %}<span class="muted">-</span>{% endif %}</td>
     </tr>
-    {% empty %}<tr><td colspan="4" class="muted">이벤트가 없습니다.</td></tr>{% endfor %}
+    {% empty %}<tr><td colspan="4" class="empty-cell">이벤트가 없습니다.</td></tr>{% endfor %}
     </tbody>
   </table>
   {% endif %}
