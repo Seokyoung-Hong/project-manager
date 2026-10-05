@@ -228,12 +228,19 @@ def resolve(org, alert_id: int, action: str, actor):
 
 # 기능별 필요 Discord 서버 권한(비트). 웹·REST 동작은 봇이 보고한 값으로, 슬래시·MCP는 봇이 직접 확인한다.
 MANAGE_CHANNELS, MANAGE_ROLES, MANAGE_GUILD, ADMINISTRATOR = 1 << 4, 1 << 28, 1 << 5, 1 << 3
+MANAGE_WEBHOOKS = 1 << 29
 NEEDS = {
     "channel": MANAGE_CHANNELS,  # 채널 연결 해제(REST)
     "managed": MANAGE_CHANNELS | MANAGE_ROLES,  # 자동 관리 켜기·끄기, 권한 밖 인원 허용·철회
     "unlink_guild": MANAGE_GUILD,  # 웹의 Discord 서버 연결 해제
+    "webhooks": MANAGE_WEBHOOKS,  # GitHub 알림 웹훅 설정·해제(github/hooks.py)
 }
-NEED_NAMES = {MANAGE_CHANNELS: "채널 관리", MANAGE_ROLES: "역할 관리", MANAGE_GUILD: "서버 관리"}
+NEED_NAMES = {
+    MANAGE_CHANNELS: "채널 관리",
+    MANAGE_ROLES: "역할 관리",
+    MANAGE_GUILD: "서버 관리",
+    MANAGE_WEBHOOKS: "웹후크 관리",
+}
 PERMISSION_STALE = timedelta(minutes=15)
 
 
