@@ -13,7 +13,7 @@ from accounts.services import set_user_settings
 from common.errors import ServiceError
 from orgs.requests import pending_out, request_change
 from orgs.services import ai_denied, set_org_settings
-from orgs.settings import SPECS, Spec, clean, effective, locked_keys, specs_for
+from orgs.settings import SPECS, Spec, clean, effective, locked_keys, merge_secrets, specs_for
 from projects.models import Project
 from projects.services import set_project_settings, visible_projects
 
@@ -82,12 +82,15 @@ def put_org_settings(request, org_id: int, payload: dict[str, Any] = _BODY, reas
         raise ServiceError(
             {"ai": ai_denied("설정 변경")}
         )  # AI를 끈 조직에서는 AI의 쓰기 전부를 막는다
-    if c["source"] == "mcp" and _ai_policy(clean("org", payload, allow_locked=True)) != _ai_policy(
+    # 비밀값은 요청(ChangeRequest)에도 평문이 남지 않게 먼저 암호화한다. 바로 저장하는 경로는
+    # set_org_settings가 같은 일을 한다(두 번 거치면 '지우기'가 '유지'로 바뀌므로 여기서만).
+    merged = merge_secrets(payload, org.settings or {})
+    if c["source"] == "mcp" and _ai_policy(clean("org", merged, allow_locked=True)) != _ai_policy(
         org.settings or {}
     ):
         return 202, pending_out(
             request_change(
-                org, "settings", payload, actor=c["actor"], reason=reason, token=c["token"]
+                org, "settings", merged, actor=c["actor"], reason=reason, token=c["token"]
             )
         )
     org = set_org_settings(org, payload, c["actor"], source=c["source"], token=c["token"])

@@ -396,6 +396,11 @@ def _settings_from_post(post, specs):
     for spec in specs:
         if spec.kind == "bool":
             data[spec.key] = spec.key in post
+        elif spec.kind == "secret":
+            # 빈 칸 = 그대로 둔다(merge_secrets). '지우기'를 고르면 False.
+            data[spec.key] = (
+                False if post.get(f"clear__{spec.key}") == "on" else post.get(spec.key, "")
+            )
         elif spec.kind == "set":
             data[spec.key] = post.getlist(spec.key)
         elif spec.key in post:

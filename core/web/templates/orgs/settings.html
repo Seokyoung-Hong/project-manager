@@ -10,7 +10,7 @@
   <nav class="settings-jump" aria-label="조직 설정 섹션">
     {% for label, group_rows in groups %}<a class="chip" href="#settings-group-{{ forloop.counter }}" data-action="open-settings-group" data-target="#settings-group-{{ forloop.counter }}">{{ label }} <span>{{ group_rows|length }}</span></a>{% endfor %}
   </nav>
-  {% if is_admin %}<div class="settings-save-bar"><span class="settings-save-hint">다섯 섹션의 값과 잠금을 함께 저장합니다.</span><button class="btn primary">조직 설정 저장</button></div>{% endif %}
+  {% if is_admin %}<div class="settings-save-bar"><span class="settings-save-hint">모든 섹션의 값과 잠금을 함께 저장합니다.</span><button class="btn primary">조직 설정 저장</button></div>{% endif %}
   {% for label, group_rows in groups %}
   <details id="settings-group-{{ forloop.counter }}" class="card settings-section"{% if forloop.first %} open{% endif %}>
     <summary class="settings-section-summary"><span>{{ label }}</span><span class="muted t12">{{ group_rows|length }}개 항목</span></summary>

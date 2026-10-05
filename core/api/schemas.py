@@ -443,6 +443,33 @@ class DiscordMemberPermissionsIn(Schema):
     members: list[dict]  # {"discord_user_id": str, "permissions": int}
 
 
+class DiscordMeetingIn(Schema):
+    """`/회의록` 인가·시작(IMPL-PLAN-9). 길드로 조직을 찾고 실행자의 범위 안에서만 시작한다."""
+
+    discord_user_id: str
+    guild_id: str
+    project_id: int | None = None
+    team_id: int | None = None
+
+
+class DiscordMeetingStartIn(DiscordMeetingIn):
+    voice_channel_id: str
+    title: str = ""
+
+
+class DiscordMeetingPatchIn(Schema):
+    """상태 전이·결과 업로드. 이어가기는 takeover_discord_user_id, 종료 명령은 discord_user_id(실행자)."""
+
+    discord_user_id: str = ""
+    takeover_discord_user_id: str = ""
+    status: Literal["transcribing", "draft", "failed"] | None = None
+    ended_at: datetime | None = None
+    end_reason: str = ""
+    participants: list[dict] | None = None
+    transcript_md: str | None = None
+    stats: dict | None = None
+
+
 class ProjectDiscordChannelIn(Schema):
     channel_id: str = ""
 

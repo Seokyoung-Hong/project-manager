@@ -1527,7 +1527,7 @@ def test_settings_controls_have_programmatic_labels(client, member, admin, org, 
     organization = client.get(f"/orgs/{org.pk}/settings").content.decode()
     assert 'aria-label="기본 중요도 · 프로젝트 변경 허용"' in organization
     assert 'class="settings-save-bar"' in organization
-    assert organization.count('class="card settings-section"') == 5
+    assert organization.count('class="card settings-section"') == 6  # 회의 녹음(IMPL-PLAN-9) 포함
 
     project_page = client.get(f"/projects/{project.pk}/settings").content.decode()
     assert "{# 태스크 규칙" not in project_page

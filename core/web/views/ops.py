@@ -13,6 +13,7 @@ from accounts.auth import active_locks, unlock
 from accounts.models import User
 from api.models import IntegrationStatus
 from orgs.models import Invite, Organization, OrgMembership, Team, TeamMembership
+from orgs.settings import SPECS, display
 from projects.models import Project
 from tasks.models import ChangeLog, ChecklistItem, Link, Task, TodayItem
 
@@ -40,6 +41,17 @@ def unlock_login(request):
     return redirect("ops")
 
 
+def _orgs_json() -> str:
+    """조직 설정의 비밀값(kind=secret)은 암호문 대신 '설정됨/미설정'만 내보낸다."""
+    orgs = list(Organization.objects.all())
+    for o in orgs:
+        o.settings = {
+            k: display(k, v) if k in SPECS and SPECS[k].kind == "secret" else v
+            for k, v in (o.settings or {}).items()
+        }
+    return serializers.serialize("json", orgs)
+
+
 @staff_member_required
 def export_json(request):
     parts = [
@@ -56,7 +68,7 @@ def export_json(request):
                 "auto_pull_days",
             ),
         ),
-        serializers.serialize("json", Organization.objects.all()),
+        _orgs_json(),
         serializers.serialize("json", OrgMembership.objects.all()),
         serializers.serialize(
             "json",

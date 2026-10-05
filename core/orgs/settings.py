@@ -8,7 +8,9 @@
 기본값은 전부 "이 라운드 전의 동작"이다 — 설정을 건드리지 않은 조직은 달라지는 것이 없다.
 """
 
+import ipaddress
 from dataclasses import dataclass
+from urllib.parse import urlsplit
 
 from common.errors import ServiceError
 
@@ -18,7 +20,7 @@ LOCKED = "_locked"  # 설정 JSON 안의 예약 키. 레지스트리에 없는 �
 @dataclass(frozen=True)
 class Spec:
     key: str
-    kind: str  # bool | int | choice | set | text
+    kind: str  # bool | int | choice | set | text | secret
     default: object
     scope: str  # org | user
     overridable: bool = False  # 조직 항목을 프로젝트가 덮어쓸 수 있는가
@@ -27,11 +29,12 @@ class Spec:
     help: str = ""
     choices: tuple = ()
     lo: int = 0
-    hi: int = 0
+    hi: int = 0  # text는 최대 글자 수
     ai_only: bool = False  # source == "mcp" 에만 적용
     hidden: bool = (
         False  # 아직 동작하지 않는 설정. 화면·API·MCP에 내지 않는다(저장된 값은 무시된다)
     )
+    validate: object = None  # text 추가 검증. 값 → 오류 문구("" = 통과)
 
     @property
     def input_choices(self):
@@ -49,6 +52,46 @@ class Spec:
 ALARM_KINDS = (("d3", "3일 전"), ("d1", "하루 전"), ("d0", "당일"), ("overdue", "기한 초과"))
 ALLOW_DENY = (("allow", "허용"), ("deny", "막기"))
 LEVELS = (("member", "멤버 누구나"), ("owner", "프로젝트 관리자"), ("admin", "조직 관리자만"))
+
+# 비밀값(kind="secret")은 org.settings에 Fernet 암호문("enc:" 접두)으로만 들어간다. 화면·API·이력·
+# 내보내기에는 이 두 문구만 나간다. 평문은 secret_value()로 봇 API 한 곳에서만 꺼낸다.
+SECRET_SET, SECRET_UNSET = "설정됨", "미설정"
+_ENC = "enc:"
+_PRIVATE_NETS = [ipaddress.ip_network(n) for n in ("10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16")]
+
+
+def validate_stt_url(url: str) -> str:
+    """로컬 전사 서버 주소(IMPL-PLAN-9 v2 §3.4). gateway가 core·내부 서비스로 오디오를 쏘지 못하게 한다.
+
+    http(s)만. localhost·루프백·링크 로컬(169.254)·점 없는 호스트(compose 서비스 이름 web·db 등)는
+    거부. http는 사설 대역(10/8·172.16/12·192.168/16) IP일 때만, 그 밖은 https.
+    """
+    if not url:
+        return ""
+    try:
+        parts = urlsplit(url)
+        host = (parts.hostname or "").lower()
+        _ = parts.port  # 잘못된 포트는 여기서 ValueError
+    except ValueError:
+        return "주소 형식이 올바르지 않습니다."
+    if parts.scheme not in ("http", "https") or not host:
+        return "http:// 또는 https://로 시작하는 주소여야 합니다."
+    try:
+        ip = ipaddress.ip_address(host)
+    except ValueError:
+        ip = None
+    if ip is None:
+        if host == "localhost" or host.endswith(".localhost") or "." not in host:
+            return "localhost나 내부 서비스 이름은 쓸 수 없습니다."
+    elif ip.is_loopback or ip.is_link_local or ip.is_unspecified or ip.is_multicast:
+        return "루프백·링크 로컬 주소는 쓸 수 없습니다."
+    if parts.scheme == "http" and not (ip is not None and any(ip in n for n in _PRIVATE_NETS)):
+        return (
+            "http는 사설 대역(10.x·172.16~31.x·192.168.x) 주소에만 쓸 수 있습니다. "
+            "그 밖은 https를 써 주세요."
+        )
+    return ""
+
 
 SPECS: dict[str, Spec] = {
     s.key: s
@@ -706,6 +749,99 @@ SPECS: dict[str, Spec] = {
             "리뷰 요청은 검토자에게, 변경 요청·CI 실패·재개는 담당자에게 DM을 보냅니다. "
             "개인 설정 '개인 DM 받기'를 끈 사람에게는 가지 않습니다.",
         ),
+        # --- 회의 녹음 (IMPL-PLAN-9) ---
+        Spec(
+            "meeting.recording_enabled",
+            "bool",
+            False,
+            "org",
+            True,
+            "meeting",
+            "음성 회의 녹음",
+            "켜면 Discord에서 /회의록으로 음성 회의를 녹음해 전사 초안을 만들 수 있습니다.",
+        ),
+        Spec(
+            "meeting.audio_keep_days",
+            "int",
+            7,
+            "org",
+            False,
+            "meeting",
+            "오디오 보관(일)",
+            "녹음 오디오를 보관하는 기간입니다. 0이면 전사가 끝나는 즉시 지웁니다. "
+            "백업에는 넣지 않습니다.",
+            lo=0,
+            hi=30,
+        ),
+        Spec(
+            "meeting.max_minutes",
+            "int",
+            180,
+            "org",
+            True,
+            "meeting",
+            "최대 녹음 길이(분)",
+            "이 길이를 넘으면 녹음을 자동으로 마칩니다.",
+            lo=10,
+            hi=360,
+        ),
+        Spec(
+            "meeting.default_visibility",
+            "choice",
+            "project",
+            "org",
+            False,
+            "meeting",
+            "확정 시 기본 공개 범위",
+            "회의록을 확정할 때 처음 선택되어 있는 공개 범위입니다.",
+            choices=(("project", "프로젝트"), ("team", "팀"), ("org", "조직 전체")),
+        ),
+        Spec(
+            "meeting.stt_url",
+            "text",
+            "",
+            "org",
+            False,
+            "meeting",
+            "로컬 전사 서버 주소",
+            "OpenAI 호환 전사 서버 주소입니다(예: http://172.30.1.50:8000). 비우면 OpenAI로 "
+            "전사합니다. http는 사설 대역 주소에만 쓸 수 있습니다.",
+            hi=200,
+            validate=validate_stt_url,
+        ),
+        Spec(
+            "meeting.stt_model",
+            "text",
+            "",
+            "org",
+            False,
+            "meeting",
+            "로컬 전사 모델",
+            "로컬 서버에 보낼 모델 이름입니다. 비우면 whisper-1로 보냅니다.",
+            hi=200,
+        ),
+        Spec(
+            "meeting.stt_timeout_s",
+            "int",
+            120,
+            "org",
+            False,
+            "meeting",
+            "전사 응답 대기(초)",
+            "구간 하나의 응답을 기다리는 최대 시간입니다.",
+            lo=10,
+            hi=600,
+        ),
+        Spec(
+            "meeting.stt_api_key",
+            "secret",
+            SECRET_UNSET,
+            "org",
+            False,
+            "meeting",
+            "로컬 전사 서버 키",
+            "로컬 서버의 Bearer 키입니다. 암호화해 저장하며 화면에는 설정 여부만 보입니다.",
+        ),
         # --- 4.6 개인 설정 ---
         Spec(
             "user.notify_dm",
@@ -797,6 +933,7 @@ GROUPS = [
     ("org", "조직 운영"),
     ("ai", "AI 정책"),
     ("notify", "알림"),
+    ("meeting", "회의 녹음"),
     ("user", "내 설정"),
 ]
 
@@ -845,8 +982,56 @@ def _coerce(spec: Spec, value):
         chosen = set(value)
         return [c[0] for c in spec.choices if c[0] in chosen], ""
     if spec.kind == "text":
-        return str(value), ""
+        value = ("" if value is None else str(value)).strip()
+        limit = spec.hi or 200
+        if len(value) > limit:
+            return None, f"{limit}자를 넘을 수 없습니다."
+        err = spec.validate(value) if spec.validate else ""
+        return (None, err) if err else (value, "")
+    if spec.kind == "secret":
+        # merge_secrets()를 거친 암호문만 저장된다. 평문이 여기까지 오면 저장하지 않는다.
+        if isinstance(value, str) and value.startswith(_ENC):
+            return value, ""
+        return None, "저장할 수 없는 값입니다."
     return None, "알 수 없는 형입니다."
+
+
+def merge_secrets(data: dict, old: dict) -> dict:
+    """설정 PUT은 통째 교체지만 비밀값은 다시 보여 줄 수 없으므로 '안 보내면 유지'다.
+
+    없음·None·""·"설정됨"/"미설정"(GET을 그대로 되돌린 값)은 기존 값 유지, False는 지우기,
+    이미 암호문이면 그대로(AI 요청을 허용할 때), 그 밖의 문자열은 새 값으로 보고 암호화한다.
+    """
+    from github.crypto import encrypt
+
+    out = dict(data or {})
+    for spec in SPECS.values():
+        if spec.kind != "secret":
+            continue
+        key, raw = spec.key, out.get(spec.key)
+        if raw is False:
+            out.pop(key, None)
+        elif raw in (None, "", SECRET_SET, SECRET_UNSET):
+            if (old or {}).get(key):
+                out[key] = old[key]
+            else:
+                out.pop(key, None)
+        elif isinstance(raw, str) and not raw.startswith(_ENC):
+            try:
+                out[key] = _ENC + encrypt(raw.strip())
+            except ValueError:
+                raise ServiceError(
+                    {key: "서버에 CREDENTIAL_KEY가 없어 키를 저장할 수 없습니다."}
+                ) from None
+    return out
+
+
+def secret_value(key: str, org) -> str:
+    """비밀값 평문. 봇 API(BotTokenAuth)에서만 부른다. 복호화에 실패하면 빈 문자열."""
+    from github.crypto import decrypt
+
+    raw = (getattr(org, "settings", None) or {}).get(key) or ""
+    return decrypt(raw[len(_ENC) :]) if raw.startswith(_ENC) else ""
 
 
 def _same_as_default(spec: Spec, value) -> bool:
@@ -900,6 +1085,11 @@ def locked_keys(org) -> set:
 def effective(key: str, *, org=None, project=None, user=None):
     """개인 > 프로젝트 > 조직 > 기본값. 규칙은 개인이 풀 수 없고, 잠긴 항목은 프로젝트가 못 바꾼다."""
     spec = SPECS[key]
+    if spec.kind == "secret":
+        # 암호문도 밖으로 내지 않는다. 평문은 secret_value().
+        o = org if org is not None else getattr(project, "org", None)
+        has = (getattr(o, "settings", None) or {}).get(key)
+        return SECRET_SET if has else SECRET_UNSET
     if spec.scope == "user":
         if user is not None:
             got = (getattr(user, "settings", None) or {}).get(key)
@@ -923,6 +1113,10 @@ def effective(key: str, *, org=None, project=None, user=None):
 def display(key: str, value) -> str:
     """사람이 읽는 값. 화면과 이력이 같은 문구를 쓴다."""
     spec = SPECS[key]
+    if spec.kind == "secret":
+        return SECRET_UNSET if value in (None, "", SECRET_UNSET) else SECRET_SET
+    if spec.kind == "text" and not value:
+        return "없음"
     if spec.kind == "bool":
         return "켬" if value else "끔"
     if spec.kind == "choice":
