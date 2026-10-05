@@ -210,3 +210,36 @@ def default_branch_name(task) -> str:
     """
     slug = slugify(task.title, allow_unicode=True)[:60].strip("-")
     return f"feat/{slug}({task.number})" if slug else f"feat/{task.number}"
+
+
+# ---------- 마일스톤 ----------
+
+
+def _milestone_body(ms) -> dict:
+    # 정오(UTC)로 보낸다. 자정이면 시간대 변환에서 하루 밀릴 수 있다. 되읽을 때는 앞 10자(날짜)만 쓴다.
+    return {
+        "title": ms.name,
+        "due_on": f"{ms.target_date.isoformat()}T12:00:00Z",
+        "state": "closed" if ms.status == "done" else "open",
+    }
+
+
+def create_gh_milestone(ms, *, actor) -> dict:
+    """PM 마일스톤을 GitHub에 만든다. 번호를 저장해 되돌아온 created 웹훅이 '변경 없음'이 되게 한다."""
+    conn = ms.project.repo
+    data = client.request(
+        "POST", f"/repos/{conn.full_name}/milestones", _actor_token(actor), body=_milestone_body(ms)
+    )
+    ms.gh_number = data["number"]
+    ms.save(update_fields=["gh_number"])
+    return data
+
+
+def update_gh_milestone(ms, *, actor):
+    conn = ms.project.repo
+    client.request(
+        "PATCH",
+        f"/repos/{conn.full_name}/milestones/{ms.gh_number}",
+        _actor_token(actor),
+        body=_milestone_body(ms),
+    )

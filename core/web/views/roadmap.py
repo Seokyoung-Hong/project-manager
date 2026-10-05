@@ -7,6 +7,7 @@ from django.urls import reverse
 from django.views.decorators.http import require_POST
 
 from common.errors import ServiceError
+from github import writes
 from orgs import services as osv
 from projects.models import Milestone, ProjectDependency
 from projects.services import (
@@ -96,6 +97,19 @@ def _parse_date(raw: str) -> date | None:
         return None
 
 
+def _push_to_github(request, ms):
+    """대화상자의 "GitHub에도 반영" 체크(§3.9). 저장소가 있고 누른 사람이 GitHub를 연결했을 때만.
+    PM 저장은 이미 끝났다 — GitHub 실패는 경고로만 보여 준다."""
+    if request.POST.get("github") != "on":
+        return
+    if getattr(ms.project, "repo", None) is None or getattr(request.user, "github", None) is None:
+        return
+    fn = writes.update_gh_milestone if ms.gh_number else writes.create_gh_milestone
+    warning = writes.try_write(fn, ms, actor=request.user)
+    if warning:
+        messages.warning(request, warning)
+
+
 def _milestone_dialog(request, org, ms=None, errors=None):
     if request.method == "POST":
         values = {
@@ -145,7 +159,7 @@ def milestone_new(request, org_id):
             visible_projects(request.user, org), pk=request.POST.get("project") or 0
         )
         try:
-            create_milestone(
+            ms = create_milestone(
                 project=project,
                 name=request.POST.get("name", ""),
                 target_date=_parse_date(request.POST.get("target_date", "")),
@@ -153,6 +167,7 @@ def milestone_new(request, org_id):
                 status=request.POST.get("status", "planned"),
                 actor=request.user,
             )
+            _push_to_github(request, ms)
             # 대화상자는 hx-target="#dialog"다. 302를 돌려주면 로드맵 전체가 대화상자 안에 끼워진다.
             return hx_redirect(request, reverse("org_roadmap", args=[org.pk]))
         except ServiceError as e:
@@ -177,6 +192,7 @@ def milestone_edit(request, milestone_id):
                 },
                 actor=request.user,
             )
+            _push_to_github(request, ms)
             return hx_redirect(request, reverse("org_roadmap", args=[org.pk]))
         except ServiceError as e:
             return _milestone_dialog(request, org, ms=ms, errors=e.errors)
