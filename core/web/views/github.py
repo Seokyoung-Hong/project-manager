@@ -57,6 +57,36 @@ def _viewable_repo(user, project):
 # ---------- 조직: 앱 설치 ----------
 
 
+CAP_FEATURES = [  # (app_capabilities 키, 기능, 꺼지면 사라지는 것)
+    ("ci", "CI 배지 · Checks", "태스크 패널의 CI 통과/실패 배지와 실패 알림"),
+    ("ci_status", "CI 배지 · Commit statuses", "외부 CI(status API)의 결과 배지"),
+    ("review", "PR 리뷰 상태", "리뷰 '승인 n · 변경 요청 n' 요약과 변경 요청 → 진행 중"),
+    ("milestone", "마일스톤 동기화", "GitHub 마일스톤 → 로드맵 마일스톤"),
+    ("release", "릴리스", "결과 선반의 릴리스 띠와 로드맵 릴리스 칩"),
+]
+
+
+def _cap_rows(org) -> list[dict] | None:
+    """조직 GitHub 탭의 앱 권한·이벤트 점검 표. GitHub에 물을 수 없으면 None(화면은 '확인 불가')."""
+    caps = gh_services.app_capabilities(org)
+    if caps is None:
+        return None
+    rows = [
+        {"label": label, "effect": effect, **caps.get(key, {"ok": False, "missing": []})}
+        for key, label, effect in CAP_FEATURES
+    ]
+    hooks_ok = gh_hooks.app_can_write_hooks(org)
+    rows.append(
+        {
+            "label": "GitHub 알림 → Discord 채널 · Webhooks",
+            "effect": "프로젝트 GitHub 탭의 [GitHub 알림을 Discord 채널로 받기]",
+            "ok": bool(hooks_ok),
+            "missing": [] if hooks_ok else ["Webhooks 쓰기 권한"],
+        }
+    )
+    return rows
+
+
 @login_required
 def org_github(request, org_id):
     _gh_enabled_or_404()
@@ -64,12 +94,16 @@ def org_github(request, org_id):
     if denied := not_admin(request, org, "GitHub 연동"):
         return denied
     projects = org.projects.filter(is_archived=False).select_related("repo").order_by("name")
+    install = getattr(org, "github", None)
+    caps = _cap_rows(org) if install else None
     return render(
         request,
         "orgs/github.html",
         {
             "org": org,
-            "install": getattr(org, "github", None),
+            "install": install,
+            "caps": caps,
+            "caps_off": bool(caps) and any(not c["ok"] for c in caps),
             "identity": getattr(request.user, "github", None),
             "projects": projects,
             "is_admin": True,
@@ -393,9 +427,17 @@ def _pickable_repos(project, user, *, strict=False):
 def repo_disconnect(request, project_id):
     _gh_enabled_or_404()
     project = project_or_404(request.user, project_id)
+    conn = getattr(project, "repo", None)
+    had_hook = conn is not None and (conn.discord_hook or {}).get("state") == "active"
     try:
         if gh_services.disconnect_repo(project=project, actor=request.user):
             messages.success(request, "저장소 연결을 해제했습니다.")
+            if had_hook:
+                messages.info(
+                    request,
+                    "GitHub 저장소의 Discord 알림 웹훅도 지웠습니다. Discord 채널에 남은 웹훅은 더 이상 "
+                    "알림을 받지 않습니다. 필요하면 채널 설정 → 연동에서 지워 주세요.",
+                )
     except ServiceError as e:
         messages.error(request, " ".join(e.errors.values()))
     return redirect("project_repo", project_id=project.pk)

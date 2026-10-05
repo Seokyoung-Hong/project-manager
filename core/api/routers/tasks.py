@@ -12,7 +12,7 @@ from github import client as github_client
 from github import writes as gh_writes
 from github.client import GitHubError
 from github.models import RepoIssue, TaskGitLink
-from github.services import can_view_repo, repo_state, user_token
+from github.services import can_view_repo, continuation, repo_state, user_token
 from orgs.services import ai_denied
 from orgs.settings import effective
 from projects.services import visible_projects
@@ -197,14 +197,7 @@ def get_task_github(request, task_id: int):
 
 def _continued_by(task):
     """재개(PR·이슈 reopened)로 이 태스크를 이어받은 가장 최근 새 태스크. 없으면 None."""
-    log = (
-        ChangeLog.objects.filter(target_type="task", target_id=task.pk, field="reopened_as")
-        .order_by("-id")
-        .first()
-    )
-    if log is None:
-        return None
-    new = Task.objects.filter(project=task.project, pk=log.new_value.removeprefix("TASK-")).first()
+    new = continuation(task)["by"]
     return {"id": new.pk, "number": new.number, "status": new.status} if new else None
 
 

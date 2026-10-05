@@ -1,6 +1,8 @@
 {% if github_enabled %}
 <div class="section">
   <div class="label">GitHub</div>
+  {% if gh.continued_by %}<p class="notice t13">이 작업은 PR·이슈가 다시 열려 <a href="{% url 'task_detail' gh.continued_by.pk %}">{{ gh.continued_by.number }}</a>로 이어졌습니다.</p>{% endif %}
+  {% if gh.continued_from %}<p class="muted t13"><a href="{% url 'task_detail' gh.continued_from.pk %}">{{ gh.continued_from.number }}</a>에서 이어진 작업입니다(닫힌 뒤 다시 열린 PR·이슈).</p>{% endif %}
   {% if gh.state == "none" %}
   <p class="conn t13"><span class="conn-state off">저장소 미연결</span> <a href="{% url 'project_repo' task.project_id %}">저장소 연결</a></p>
   {% elif gh.state == "unlinked" %}
@@ -49,7 +51,9 @@
       <span class="dot">{% if gh.link.pr_number %}&#10003;{% else %}&#9675;{% endif %}</span>
       <span>
         {% if gh.link.pr_number %}
-        <span class="badge {% if gh.link.pr_state == 'merged' %}pr-merged{% else %}pr-open{% endif %}">#{{ gh.link.pr_number }} {% if gh.link.pr_state == 'merged' %}Merged{% else %}Open{% endif %}</span>
+        <span class="badge {% if gh.link.pr_state == 'merged' %}pr-merged{% elif gh.link.pr_state == 'closed' %}pr-closed{% elif gh.link.pr_draft %}pr-draft{% else %}pr-open{% endif %}"><code>#{{ gh.link.pr_number }}</code> {% if gh.link.pr_state == 'merged' %}Merged{% elif gh.link.pr_state == 'closed' %}Closed{% elif gh.link.pr_draft %}Draft{% else %}Open{% endif %}</span>
+        {% if gh.link.ci_state %}<a class="ci ci-{{ gh.link.ci_state }}" href="{{ gh.link.ci_url }}" target="_blank" rel="noopener" title="CI 결과 보기">CI {% if gh.link.ci_state == 'success' %}통과{% elif gh.link.ci_state == 'failure' %}실패{% else %}진행 중{% endif %}</a>{% endif %}
+        {% if gh.approved or gh.changes %}<span class="review-sum">리뷰 승인 {{ gh.approved }} · 변경 요청 {{ gh.changes }}</span>{% endif %}
         · 커밋 {{ gh.link.commits|length }}건
         {% else %}
         연결된 PR 없음 · 커밋 {{ gh.link.commits|length|default:0 }}건

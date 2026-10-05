@@ -158,7 +158,7 @@ animation·transition을 끈다(파일 맨 끝 규칙).
 | 버튼 | `.btn` + `.primary` `.tint` `.sm` `.icon` `.link` `.danger`, `[aria-pressed]` | 화면당 주 버튼(`.primary`) 하나. 되돌릴 수 없는 행동은 `.danger`. 누르면 1px 내려간다 | 주 버튼 둘, 링크를 버튼처럼 칠하기, 아이콘만 있는 버튼에 `aria-label` 빠뜨리기 |
 | 입력 | `label.field` > `.input`/`.select`/`.textarea`, `.helptext`, `label.check` | 라벨은 위, 도움말·오류는 아래. 클래스 없는 Django 위젯도 `:where()` 기본 규칙으로 같은 모양 | placeholder로 라벨 대신하기, 입력을 알약 모양으로 |
 | 카드 | `.card`, `.card-head`, `.card > h2`, `.box`, `.card.compact`, `.card.alert` | 묶음에 의미가 있을 때만. 제목은 Jua 24px | 카드 안 카드, 한 줄짜리 묶음마다 카드 쌓기(→ `.group-stack` 구분선) |
-| 배지 | `.badge` + `.high` `.primary` `.ok` `.warn` `.danger` `.info`, `.tag` | 6px 모서리의 납작한 표식. 상태·수량·종류 | 알약 배지 남발, 배지에 클릭 동작 |
+| 배지 | `.badge` + `.high` `.primary` `.ok` `.warn` `.danger` `.info`, `.tag`, GitHub용 `.pr-open` `.pr-merged` `.pr-closed` `.pr-draft` | 6px 모서리의 납작한 표식. 상태·수량·종류 | 알약 배지 남발, 배지에 클릭 동작 |
 | 칩 | `.chips .chip`(체크박스·버튼·링크) | 필터·토글. 눌림은 잉크 색 채움 + ✓ | 칩으로 주 행동 |
 | 선택 카드 | `.radios .radio-card` | 설명이 필요한 선택지(프로젝트 상태 등) | 2개뿐인 선택에 쓰기 |
 | 탭 | `nav.tabs a[aria-current="page"]`, `.view-switch` | 화면 안 이동. 현재 탭은 표면색 + 그림자 | 탭으로 동작 실행 |
@@ -216,6 +216,17 @@ SVG 칠은 `fill="#…"`이 아니라 `.art-pot` `.art-leaf` 같은 클래스로
   - 태스크 흐름은 `ol.git-steps`: 이슈 → 브랜치 → PR → 머지. 점 `.dot`은 완료 `li.done`(세이지 채움), 진행 `li.progress`(노랑).
   - 배지 색: PR 열림 `.badge.pr-open`(info) · 병합 `.badge.pr-merged`(violet, GitHub 관례) · 닫힘 `.badge.pr-closed`(soft) · 가져온 이슈 `.badge.ok`.
   - 개인 계정 설치는 팀·조직 멤버 관리·이슈 자동 가져오기가 없음을 `.notice`로 밝힌다(조직 설치와 같은 화면에 섞지 않는다).
+  - PR 부가 정보(라운드 8): draft는 테두리만 있는 `.badge.pr-draft`, CI는 `a.ci.ci-{success|failure|pending}`(점 + "CI 통과/실패/진행 중",
+    누르면 GitHub 체크 화면, 결과가 없으면 그리지 않는다), 리뷰는 글자 요약 `.review-sum` "리뷰 승인 n · 변경 요청 n"(0·0이면 생략).
+  - 재개 계열: 닫힌 원 태스크에는 `.notice` "이 작업은 … TASK-x로 이어졌습니다", 새 태스크에는 보조 글자 "TASK-y에서 이어진 작업입니다".
+  - 릴리스: 태그는 고정폭 `.release-chip`(사전 배포 `.pre`는 점선 + `badge warn` "pre"). 결과 선반 위 `.release-strip`(최근 5건,
+    저장소를 볼 수 있는 사람만), 로드맵 마일스톤 이름 아래 칩 + 완료 전이면 `[완료로 표시]`(`.btn.sm.tint`).
+  - 규칙 스위치는 체크박스 목록(이슈→태스크, 브랜치→진행 중, 커밋→체크리스트, PR→검토 대기, 머지→완료, 리뷰, 마일스톤).
+    이슈 양방향 동기화 스위치는 두지 않는다(IMPL-PLAN-8 §10-1).
+  - 앱 권한·이벤트 점검 표(조직 GitHub 탭, 관리자): 기능 / `.conn-state` 켜짐·꺼짐 / 꺼지면 사라지는 것 / 필요한 권한·구독(`.badge.warn`).
+    꺼진 기능이 있으면 표 아래 `.notice.warn` 하나로 "권한 추가 → 설치 계정에서 재승인"을 안내한다. GitHub에 묻지 못하면 `.conn-state.warn` "확인 불가".
+  - GitHub 알림 → Discord 채널(저장소 탭): 상태 `.conn-state`(설정됨·봇 처리 대기·해제 중·미설정), 보낼 이벤트는 `.chips .chip`,
+    막힌 이유는 버튼 대신 `.notice.warn`(이유 + 해결 방법). 저장소 연결을 해제하면 GitHub 쪽 훅을 먼저 지우고 안내한다.
 - API 문서 메서드 `.method.m-{get|post|patch|put|delete}`: info · success · warning · violet · danger 의 soft 면 + 진한 글자. 응답 `.badge.resp-{2|4|5}`.
 
 ## 7. AI Slop 금지 규칙

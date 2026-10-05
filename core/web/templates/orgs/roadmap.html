@@ -15,6 +15,7 @@
       <div class="tl-name">
         <span class="t16 fw-6">{{ r.ms.name }}</span>
         <span class="t12 muted">{{ r.meta }}</span>
+        {% if r.releases %}<span class="row gap-1">{% for rel in r.releases %}<a class="release-chip{% if rel.prerelease %} pre{% endif %}" href="{{ rel.url }}" target="_blank" rel="noopener" title="릴리스 {{ rel.name|default:rel.tag }}">{{ rel.tag }}</a>{% endfor %}</span>{% endif %}
       </div>
       <div class="tl-track">
         <span class="tl-today" style="left:{{ today_pct }}%" aria-hidden="true"></span>
@@ -23,6 +24,16 @@
         </div>
       </div>
       <div class="row tl-actions">
+        {% if r.releases and r.ms.status != "done" %}
+        {# 릴리스가 나왔으면 완료 제안. 기존 수정 경로에 같은 값 + status=done만 보낸다. #}
+        <form hx-post="{% url 'milestone_edit' r.ms.pk %}" hx-target="#dialog" hx-swap="innerHTML">
+          <input type="hidden" name="name" value="{{ r.ms.name }}">
+          <input type="hidden" name="target_date" value="{{ r.ms.target_date|date:'Y-m-d' }}">
+          <input type="hidden" name="start_date" value="{{ r.ms.start_date|date:'Y-m-d' }}">
+          <input type="hidden" name="status" value="done">
+          <button class="btn sm tint">완료로 표시</button>
+        </form>
+        {% endif %}
         <button class="btn sm" hx-get="{% url 'milestone_edit' r.ms.pk %}" hx-target="#dialog" hx-swap="innerHTML">수정</button>
       </div>
     </div>

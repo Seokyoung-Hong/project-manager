@@ -7,6 +7,12 @@
       <p class="muted t13">끝낸 일과 멈춘 일을 차곡차곡 모아 둡니다. 다시 시작할 일은 상태 메뉴나 상세에서 명시적으로 재개합니다.</p>
     </div>
   </div>
+  {% if releases %}
+  <div class="release-strip" aria-label="최근 릴리스">
+    <span class="t13 fw-6">릴리스</span>
+    {% for rel in releases %}<a class="release-chip{% if rel.prerelease %} pre{% endif %}" href="{{ rel.url }}" target="_blank" rel="noopener">{{ rel.tag }}{% if rel.name and rel.name != rel.tag %} <span class="muted">{{ rel.name }}</span>{% endif %} <span class="muted t12">{{ rel.published_at|date:"n/j" }}</span>{% if rel.prerelease %} <span class="badge warn">pre</span>{% endif %}</a>{% endfor %}
+  </div>
+  {% endif %}
   <div class="shelf-tabs" role="group" aria-label="기록 종류">
     {% for code, label, n in shelf_totals %}
     <button type="button" class="chip" aria-pressed="{% if code == shelf %}true{% else %}false{% endif %}"

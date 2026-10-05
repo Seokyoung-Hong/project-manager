@@ -30,6 +30,29 @@
   <p class="muted t13">이 앱이 할 수 있는 것: 저장소 내용 읽기·브랜치 만들기 · 이슈 읽기·쓰기 · PR 읽기{% if install.account_type != "User" %} · 조직 멤버와 팀 관리{% endif %}</p>
   <p class="muted t13">할 수 없는 것: 저장소 삭제·설정 변경, 브랜치 보호 규칙, 저장소 권한 부여, PR 병합</p>
 </div>
+{% if install %}
+<div class="card">
+  <h2>앱 권한 · 이벤트 점검</h2>
+  {% if caps is None %}
+  <p class="conn"><span class="conn-state warn">확인 불가</span> <span class="muted t13">GitHub에 설치 권한을 묻지 못했습니다. 잠시 뒤 다시 열어 주세요.</span></p>
+  {% else %}
+  <p class="muted t13">아래 기능은 GitHub 앱의 권한과 이벤트 구독이 있어야 켜집니다. 앱 설정에서 권한을 바꾸면 설치 계정(조직 또는 개인)에서 <b>새 권한을 승인</b>해야 반영됩니다. 결과는 1시간 동안 기억합니다.</p>
+  <div class="table-scroll" tabindex="0" role="region" aria-label="앱 권한 점검, 좌우로 스크롤 가능">
+  <table class="grid caps-table">
+    <thead><tr><th>기능</th><th>상태</th><th>꺼지면</th><th>필요한 것</th></tr></thead>
+    <tbody>{% for c in caps %}
+    <tr>
+      <td>{{ c.label }}</td>
+      <td>{% if c.ok %}<span class="conn-state on">켜짐</span>{% else %}<span class="conn-state warn">꺼짐</span>{% endif %}</td>
+      <td class="t13 muted">{{ c.effect }}</td>
+      <td class="t13">{% for m in c.missing %}<span class="badge warn">{{ m }}</span> {% empty %}<span class="muted">-</span>{% endfor %}</td>
+    </tr>{% endfor %}</tbody>
+  </table>
+  </div>
+  {% if caps_off %}<p class="notice warn t13"><span aria-hidden="true">⚠</span><span class="grow">꺼진 기능이 있습니다: GitHub 앱 설정 → Permissions에서 권한(Checks·Commit statuses·Pull requests·Issues·Contents 읽기, Webhooks 쓰기)과 Subscribe to events(check_suite·status·pull_request_review·milestone·release)를 켠 뒤, 설치 계정에서 재승인해 주세요.</span></p>{% endif %}
+  {% endif %}
+</div>
+{% endif %}
 <div class="card">
   <h2>내 GitHub 연결</h2>
   {% if identity %}
