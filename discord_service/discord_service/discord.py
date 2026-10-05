@@ -129,6 +129,19 @@ class Bot:
         self._send(cid, text, parse=["users"])
         return "sent"
 
+    # ---------- 채널 웹훅(GitHub 알림, Manage Webhooks 필요) ----------
+
+    def create_webhook(self, channel_id: str, name: str = "GitHub") -> dict:
+        """응답의 id·token으로 `https://discord.com/api/webhooks/{id}/{token}`이 된다. 토큰을 로그에 남기지 않는다."""
+        return self._request("POST", f"/channels/{channel_id}/webhooks", {"name": name})
+
+    def delete_webhook(self, webhook_id: str) -> None:
+        try:
+            self._request("DELETE", f"/webhooks/{webhook_id}", None)
+        except RuntimeError as e:
+            if not str(e).startswith("HTTP 404"):  # 이미 지워졌으면 끝난 것이다
+                raise
+
     # ---------- 내부 ----------
 
     def _send(self, channel_id: str, text: str, *, parse: list[str]) -> None:
@@ -142,7 +155,7 @@ class Bot:
             {"content": content, "allowed_mentions": {"parse": parse}},
         )
 
-    def _request(self, method: str, path: str, json_body: dict) -> dict:
+    def _request(self, method: str, path: str, json_body: dict | None) -> dict:
         """3회까지. 429·5xx는 백오프, DM 불가 코드는 즉시 포기."""
         delay = 2.0
         last = None

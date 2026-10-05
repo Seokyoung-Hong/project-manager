@@ -7,6 +7,7 @@ from .config import Config
 from .core_client import CoreClient
 from .discord import Bot
 from .escalate import run_escalations
+from .github_hooks import run_github_hooks
 from .notify import run_deadlines
 from .store import Store
 from .weekly import last_monday, run_weekly
@@ -228,6 +229,7 @@ def tick(
     since = (now - timedelta(seconds=90)).isoformat()
 
     deliver_notices(core, bot)  # 조직 목록이 안 읽혀도 요청 알림은 나간다
+    run_github_hooks(core, bot)
     try:
         orgs = cache.orgs(core)
     except Exception:  # noqa: BLE001
