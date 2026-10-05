@@ -558,6 +558,54 @@ def update_milestone(ms, changes: dict, *, actor):
     return ms
 
 
+def sync_milestone(
+    project, *, gh_number: int, name: str, target_date, status: str, created_by
+) -> Milestone:
+    """GitHub 웹훅용. 권한 검사 없음(연결된 저장소가 근거). ChangeLog 없음(Milestone은 원래 이력이 없다).
+
+    `status`는 GitHub state(open|closed)다. closed→done, open→(done이면 active, 아니면 유지).
+    gh_number로 찾고, 없으면 번호 없는 같은 이름 행을 잇고(PM→GH 생성 직후 웹훅이 먼저 와도
+    두 행이 생기지 않는다), 그것도 없으면 만든다. target_date가 None이면 기존 값을 유지하고,
+    새로 만들어야 하면 ServiceError. 결과는 `ms.sync_result`(생성|갱신|변경 없음)에 남긴다.
+    """
+    name = (name or "").strip()[:100]
+    ms = Milestone.objects.filter(project=project, gh_number=gh_number).first()
+    if ms is None:
+        ms = Milestone.objects.filter(
+            project=project, gh_number__isnull=True, name__iexact=name
+        ).first()
+        if ms is not None:
+            ms.gh_number = gh_number
+            ms.save(update_fields=["gh_number"])
+    if ms is None:
+        if target_date is None:
+            raise ServiceError({"target_date": "GitHub 마일스톤에 목표일이 없습니다."})
+        ms = Milestone.objects.create(
+            project=project,
+            name=name,
+            target_date=target_date,
+            status="done" if status == "closed" else "planned",
+            created_by=created_by,
+            gh_number=gh_number,
+        )
+        ms.sync_result = "생성"
+        return ms
+    new = {
+        "name": name or ms.name,
+        "target_date": target_date or ms.target_date,
+        "status": "done"
+        if status == "closed"
+        else ("active" if ms.status == "done" else ms.status),
+    }
+    changed = [f for f, v in new.items() if getattr(ms, f) != v]
+    for f in changed:
+        setattr(ms, f, new[f])
+    if changed:
+        ms.save(update_fields=changed)
+    ms.sync_result = "갱신" if changed else "변경 없음"
+    return ms
+
+
 def delete_milestone(ms, actor):
     if not can_view_project(actor, ms.project):
         raise ServiceError({"org": "이 조직의 멤버가 아닙니다."})
