@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -4 780 258" role="img" aria-labelledby="title desc">
+  <title id="title">유달리 Udally</title>
+  <desc id="desc">둥근 Udally 글자. 두 l은 눈, y의 긴 곡선은 웃는 입을 이룬다.</desc>
+  <!-- 색은 DESIGN.md 토큰: 글자 c-ink, 얼굴(ll·y) c-accent. 다크 모드는 같은 토큰의 다크 값. -->
+  <style>
+    .ink { fill: #33372D } .face { fill: #A63E2E } .smile { stroke: #A63E2E }
+    @media (prefers-color-scheme: dark) { .ink { fill: #F5F0DF } .face { fill: #FFC3AD } .smile { stroke: #FFC3AD } }
+  </style>
+  <path class="ink" d="M12 38C12 23 23 12 38 12S64 23 64 38V122C64 150 76 167 96 167S128 150 128 122V38C128 23 139 12 154 12S180 23 180 38V122C180 181 149 218 96 218S12 181 12 122Z"/>
+  <path class="ink" fill-rule="evenodd" d="M314 20C314 5 325 0 340 0S365 10 365 25V189C365 205 356 215 342 215C331 215 322 211 318 201C303 212 287 218 267 218C222 218 188 185 188 140S222 62 267 62C286 62 301 68 314 78ZM241 140C241 159 252 171 271 171S302 159 302 140S290 111 271 111S241 122 241 140Z"/>
+  <path class="ink" fill-rule="evenodd" d="M379 140C379 95 411 62 454 62C474 62 490 68 502 80C507 69 515 65 526 65C541 65 551 76 551 91V190C551 205 542 216 528 216C516 216 508 212 502 202C489 213 473 218 454 218C411 218 379 185 379 140ZM430 140C430 159 441 171 459 171S489 159 489 140S477 111 459 111S430 122 430 140Z"/>
+  <rect class="face" x="573" y="50" width="43" height="101" rx="21.5"/>
+  <rect class="face" x="647" y="50" width="43" height="101" rx="21.5"/>
+  <path class="smile" d="M712 95L738 137M744 94L709 163C685 207 654 230 618 230C590 230 568 220 553 199" fill="none" stroke-width="43" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

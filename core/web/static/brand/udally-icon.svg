@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="508 10 280 280" role="img" aria-label="유달리">
+  <!-- 워드마크의 얼굴(ll = 눈, y = 웃는 입)만 잘라 낸 정사각 아이콘. 바탕 c-yellow, 얼굴 c-ink. -->
+  <rect x="508" y="10" width="280" height="280" rx="68" fill="#F5D575"/>
+  <g fill="#33372D">
+    <rect x="573" y="50" width="43" height="101" rx="21.5"/>
+    <rect x="647" y="50" width="43" height="101" rx="21.5"/>
+  </g>
+  <path d="M712 95L738 137M744 94L709 163C685 207 654 230 618 230C590 230 568 220 553 199" fill="none" stroke="#33372D" stroke-width="43" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
