@@ -48,7 +48,9 @@ from ..schemas import (
     DiscordExtendIn,
     DiscordGuildReportIn,
     DiscordLinkIn,
+    DiscordMeetingHostAnswerIn,
     DiscordMeetingHostIn,
+    DiscordMeetingHostRequestIn,
     DiscordMeetingIn,
     DiscordMeetingPatchIn,
     DiscordMeetingStartIn,
@@ -775,3 +777,32 @@ def meeting_host(request, recording_id: int, payload: DiscordMeetingHostIn):
         participants=payload.participants,
     )
     return {**_recording_out(_recording(rec.pk)), "channel_notice": notice}
+
+
+@router.post("/meetings/{int:recording_id}/host-requests", response=dict)
+def meeting_host_request(request, recording_id: int, payload: DiscordMeetingHostRequestIn):
+    """`/회의받기`. 봇은 `texts.mention` + [승인]·[거절] 버튼(`approve_label`·`reject_label`)을
+    회의 텍스트 채널에 올린다. 요청은 2분 뒤 만료된다(`expires_at`)."""
+    rec, req, texts = notes_svc.request_host(
+        _recording(recording_id),
+        requester_discord_user_id=payload.discord_user_id,
+        participants=payload.participants,
+    )
+    return {"request": req, "texts": texts}
+
+
+@router.post("/meetings/{int:recording_id}/host-requests/{int:request_id}", response=dict)
+def meeting_host_answer(
+    request, recording_id: int, request_id: int, payload: DiscordMeetingHostAnswerIn
+):
+    """버튼 응답. 누른 사람이 지금 진행자가 아니면 403(`detail.meeting`을 그 사람에게만 보인다).
+
+    승인: `texts.channel_notice`를 채널에. 거절: `texts.requester_notice`를 요청자에게.
+    """
+    rec, req, texts = notes_svc.answer_host_request(
+        _recording(recording_id),
+        request_id=request_id,
+        by_discord_user_id=payload.discord_user_id,
+        approve=payload.approve,
+    )
+    return {**_recording_out(_recording(rec.pk)), "request": req, "texts": texts}

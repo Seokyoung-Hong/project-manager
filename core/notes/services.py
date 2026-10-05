@@ -427,6 +427,7 @@ def update_recording(
     )
     note = rec.note
     if status is not None and status != rec.status:
+        _close_pending(rec, "cancelled")  # 회의가 끝나면 대기 중인 넘겨받기 요청은 취소
         if status not in _NEXT.get(rec.status, set()):
             raise ServiceError({"status": f"{rec.status}에서 {status}(으)로 바꿀 수 없습니다."})
         if status == "transcribing":
@@ -502,22 +503,7 @@ def transfer_host(rec, *, by, to_discord_user_id: str, participants: list | None
         raise ServiceError({"meeting": "회의가 진행 중일 때만 진행자를 넘길 수 있습니다."})
     if by is None or by.pk != rec.host_id:
         raise Forbidden({"meeting": "지금 진행자만 진행자를 넘길 수 있습니다."})
-    row = next(
-        (
-            p
-            for p in rec.participants or []
-            if p.get("discord_user_id") == to_discord_user_id and not p.get("left_at")
-        ),
-        None,
-    )
-    if row is None:
-        raise ServiceError({"meeting": "음성 채널에 있는 참여자에게만 넘길 수 있습니다."})
-    if not row.get("user_id"):
-        raise ServiceError(
-            {
-                "meeting": "PM 계정을 연결한 참여자에게만 넘길 수 있습니다. 웹 설정에서 연결해 주세요."
-            }
-        )
+    row = _present_linked(rec, to_discord_user_id, "참여자에게만 넘길")
     if row["user_id"] == rec.host_id:
         raise ServiceError({"meeting": "이미 진행자입니다."})
     old = rec.host
@@ -531,6 +517,145 @@ def transfer_host(rec, *, by, to_discord_user_id: str, participants: list | None
             "at": timezone.now().isoformat(),
         },
     ]
-    rec.save(update_fields=["host", "host_changes"])
+    _close_pending(rec, "cancelled")  # 진행자가 바뀌면 대기 중인 넘겨받기 요청은 취소
+    rec.save(update_fields=["host", "host_changes", "host_requests"])
     notice = f"회의 진행자가 {old.display_name}님에서 {row['display_name']}님으로 바뀌었습니다."
     return rec, notice
+
+
+def _present_linked(rec, discord_user_id: str, verb: str) -> dict:
+    """음성 채널에 남아 있고 PM 계정을 연결한 참여자 행. 봇이 보낸 참여자 목록 기준."""
+    row = next(
+        (
+            p
+            for p in rec.participants or []
+            if p.get("discord_user_id") == discord_user_id and not p.get("left_at")
+        ),
+        None,
+    )
+    if row is None:
+        raise ServiceError({"meeting": f"음성 채널에 있는 {verb} 수 있습니다."})
+    if not row.get("user_id"):
+        raise ServiceError(
+            {"meeting": f"PM 계정을 연결한 {verb} 수 있습니다. 웹 설정에서 연결해 주세요."}
+        )
+    return row
+
+
+# ---------- /회의받기: 넘겨받기 요청 (IMPL-PLAN-9 사용자 결정 3) ----------
+
+HOST_REQUEST_TTL = timedelta(minutes=2)
+HOST_REQUEST_TEXT = {
+    "approve_label": "승인",
+    "reject_label": "거절",
+    "not_host": "지금 회의 진행자만 넘겨받기 요청을 승인하거나 거절할 수 있습니다.",
+    "expired": "넘겨받기 요청이 2분 안에 응답이 없어 취소되었습니다.",
+    "cancelled": "회의 진행자가 바뀌었거나 회의가 끝나 넘겨받기 요청이 취소되었습니다.",
+    "pending": "이미 대기 중인 넘겨받기 요청이 있습니다. 진행자의 응답을 기다려 주세요.",
+}
+
+
+def _close_pending(rec, status: str, now=None):
+    """대기 중인 요청을 닫는다. 만료 시각이 지났으면 status 대신 expired."""
+    now = now or timezone.now()
+    for r in rec.host_requests or []:
+        if r["status"] == "pending":
+            expired = now.isoformat() >= r["expires_at"]
+            r["status"] = "expired" if expired else status
+            r["closed_at"] = now.isoformat()
+
+
+def _expire(rec, now) -> bool:
+    """만료 시각이 지난 대기 요청을 expired로. 바뀌었으면 True."""
+    changed = False
+    for r in rec.host_requests or []:
+        if r["status"] == "pending" and now.isoformat() >= r["expires_at"]:
+            r["status"], r["closed_at"] = "expired", now.isoformat()
+            changed = True
+    return changed
+
+
+def _locked(rec):
+    return (
+        VoiceRecording.objects.select_for_update()
+        .select_related("note", "note__org", "host")
+        .get(pk=rec.pk)
+    )
+
+
+@transaction.atomic
+def request_host(rec, *, requester_discord_user_id: str, participants: list | None = None):
+    """`/회의받기`. 돌려주는 값: (녹음, 요청, 봇 문구). 봇은 mention 문구와 버튼을 채널에 올린다."""
+    if participants is not None:
+        rec = update_recording(rec, participants=participants)
+    rec, now = _locked(rec), timezone.now()
+    if rec.status != "recording":
+        raise ServiceError({"meeting": "회의가 진행 중일 때만 넘겨받기 요청을 보낼 수 있습니다."})
+    row = _present_linked(rec, requester_discord_user_id, "참여자만 넘겨받기 요청을 보낼")
+    if row["user_id"] == rec.host_id:
+        raise ServiceError({"meeting": "이미 회의 진행자입니다."})
+    if _expire(rec, now):
+        rec.save(update_fields=["host_requests"])
+    if any(r["status"] == "pending" for r in rec.host_requests):
+        raise ServiceError({"meeting": HOST_REQUEST_TEXT["pending"]})
+    req = {
+        "id": len(rec.host_requests) + 1,
+        "requester_user_id": row["user_id"],
+        "requester_discord_user_id": requester_discord_user_id,
+        "at": now.isoformat(),
+        "expires_at": (now + HOST_REQUEST_TTL).isoformat(),
+        "status": "pending",
+    }
+    rec.host_requests = [*rec.host_requests, req]
+    rec.save(update_fields=["host_requests"])
+    texts = {
+        **HOST_REQUEST_TEXT,
+        "mention": (
+            f"<@{rec.host.discord_user_id}> 님, {row['display_name']}님이 넘겨받기 요청을 "
+            "보냈습니다. 승인하면 회의 진행자가 바뀝니다. 2분 안에 응답해 주세요."
+        ),
+    }
+    return rec, req, texts
+
+
+def answer_host_request(rec, *, request_id: int, by_discord_user_id: str, approve: bool):
+    """[승인]/[거절]. 누른 사람이 지금 진행자일 때만. 돌려주는 값: (녹음, 요청, 봇 문구)."""
+    # 만료 표시는 거절(예외)로 되돌려지지 않게 먼저 따로 저장한다.
+    with transaction.atomic():
+        locked = _locked(rec)
+        if _expire(locked, timezone.now()):
+            locked.save(update_fields=["host_requests"])
+    return _answer_host_request(rec, request_id, by_discord_user_id, approve)
+
+
+@transaction.atomic
+def _answer_host_request(rec, request_id, by_discord_user_id, approve):
+    rec, now = _locked(rec), timezone.now()
+    req = next((r for r in rec.host_requests or [] if r["id"] == request_id), None)
+    if req is None:
+        raise ServiceError({"meeting": "넘겨받기 요청을 찾을 수 없습니다."})
+    if req["status"] != "pending":
+        key = req["status"] if req["status"] in ("expired", "cancelled") else None
+        raise ServiceError(
+            {"meeting": HOST_REQUEST_TEXT[key] if key else "이미 응답한 넘겨받기 요청입니다."}
+        )
+    by = resolve("discord", by_discord_user_id)
+    if by is None or by.pk != rec.host_id:
+        raise Forbidden({"meeting": HOST_REQUEST_TEXT["not_host"]})
+    texts = {}
+    if approve:
+        # 넘김 규칙·이력·채널 공지는 /회의진행자와 같다. 넘기면서 대기 요청은 cancelled가 되므로 다시 쓴다.
+        rec, texts["channel_notice"] = transfer_host(
+            rec, by=by, to_discord_user_id=req["requester_discord_user_id"]
+        )
+    req = next(r for r in rec.host_requests if r["id"] == request_id)
+    req.update(
+        status="approved" if approve else "rejected",
+        responded_by_user_id=by.pk,
+        responded_at=now.isoformat(),
+    )
+    req.pop("closed_at", None)
+    rec.save(update_fields=["host_requests"])
+    if not approve:
+        texts["requester_notice"] = f"{by.display_name}님이 넘겨받기 요청을 거절했습니다."
+    return rec, req, texts
