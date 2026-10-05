@@ -44,6 +44,7 @@ GitHub 공식 문서로 확인한 것만 "확인"으로 적는다.
 | Actions | 없음 | 추가하지 않음 | (#7에서 워크플로 이름까지 보여 주려면 필요하나 제외) | — | `workflow_run`은 Actions Read 필요. check_suite로 충분하다 |
 | Contents | R/W | 그대로 | #10 | 없음 | `release`: "at least read-level access for the 'Contents' repository permission" — 같은 문서 `#release` |
 | Issues | R/W | 그대로 | #8·#9(마일스톤 API는 Issues 범위) | 없음 | `milestone`: "at least read-level access for the 'Issues' or 'Pull requests' repository permissions" — 같은 문서 `#milestone` |
+| **Webhooks** | 없음 | **Read and write** | G5′ GitHub 알림 → Discord 채널 웹훅 자동 설정(§10-2). 봇은 Discord Manage Webhooks 필요 | **재승인** | `docs/GITHUB-APP-SETUP.md` §7 |
 | Pull requests **Write** | 없음 | **추가하지 않음** | PM→GitHub 리뷰어 지정(#3 쓰기)은 범위 밖 | — | IMPL-PLAN-2 §4.3의 "PR은 읽기" 결정 유지. 리뷰 요청은 GitHub에서 한다 |
 
 ### 1.2 이벤트 구독 추가

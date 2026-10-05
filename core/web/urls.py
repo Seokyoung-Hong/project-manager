@@ -274,6 +274,11 @@ urlpatterns = [
     ),
     path("projects/<int:project_id>/repo/settings", github.repo_settings, name="repo_settings"),
     path(
+        "projects/<int:project_id>/repo/discord-hook",
+        github.repo_discord_hook,
+        name="repo_discord_hook",
+    ),
+    path(
         "projects/<int:project_id>/repo/issues/sync",
         github.repo_issues_sync,
         name="repo_issues_sync",

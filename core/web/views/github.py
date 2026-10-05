@@ -18,6 +18,7 @@ from django.views.decorators.http import require_POST
 from accounts.auth import login_user
 from common.errors import ServiceError
 from github import client
+from github import hooks as gh_hooks
 from github import services as gh_services
 from github import writes as gh_writes
 from github.client import GitHubError
@@ -350,6 +351,9 @@ def project_repo(request, project_id):
         ctx["issues"] = conn.issues.filter(state="open")[:50]
         ctx["events"] = conn.events.select_related("task")[:50]
         ctx["open_tasks"] = project.tasks.filter(status__in=Task.OPEN).order_by("-id")[:50]
+        ctx["hook"] = gh_hooks.status(project)
+        if ctx["can_settings"] and ctx["hook"].get("state") in (None, "error"):
+            ctx["hook_blockers"] = gh_hooks.blockers(request.user, project)
         # 개인 계정 저장소에는 팀이 없다. 조회하지 않고 화면에서도 접근 팀 칸을 숨긴다.
         if not ctx["user_install"]:
             team_result = _repo_teams(conn)
@@ -411,6 +415,33 @@ def repo_settings(request, project_id):
     try:
         gh_services.update_repo_settings(conn, changes, actor=request.user)
         messages.success(request, "저장소 설정을 저장했습니다.")
+    except ServiceError as e:
+        messages.error(request, " ".join(e.errors.values()))
+    return redirect("project_repo", project_id=project.pk)
+
+
+@login_required
+@require_POST
+def repo_discord_hook(request, project_id):
+    """GitHub 알림을 Discord 프로젝트 채널로: 설정·이벤트 수정·해제(github/hooks.py)."""
+    _gh_enabled_or_404()
+    project = project_or_404(request.user, project_id)
+    action = request.POST.get("action", "")
+    events = request.POST.getlist("events")
+    try:
+        if action == "setup":
+            gh_hooks.request_setup(project, events, actor=request.user)
+            messages.success(
+                request, "요청했습니다. 봇이 1분 안에 Discord 웹훅을 만들고 GitHub에 등록합니다."
+            )
+        elif action == "events":
+            gh_hooks.update_events(project, events, actor=request.user)
+            messages.success(request, "웹훅 이벤트를 저장했습니다.")
+        elif action == "remove":
+            gh_hooks.remove(project, actor=request.user)
+            messages.success(request, "GitHub 알림 웹훅을 해제했습니다.")
+        else:
+            raise Http404
     except ServiceError as e:
         messages.error(request, " ".join(e.errors.values()))
     return redirect("project_repo", project_id=project.pk)

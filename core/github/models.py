@@ -66,6 +66,9 @@ class RepoConnection(models.Model):
     rule_review = models.BooleanField(default=True)  # 리뷰 요청→검토자, 변경 요청→진행 중
     rule_sync = models.BooleanField(default=True)  # 이슈 제목·담당자 ↔ 태스크
     rule_milestone = models.BooleanField(default=True)  # GitHub 마일스톤 → PM 마일스톤
+    # GitHub 저장소 웹훅 → Discord 프로젝트 채널(G5′, `github/hooks.py`). 상태·이벤트·훅 id만 둔다.
+    # Discord 웹훅 URL은 토큰을 품고 있어 저장하지 않는다 — 봇이 보고한 순간 GitHub에 넘기고 버린다.
+    discord_hook = models.JSONField(default=dict, blank=True)
     last_event_at = models.DateTimeField(null=True, blank=True)
     issues_synced_at = models.DateTimeField(null=True, blank=True)
     created_by = models.ForeignKey(

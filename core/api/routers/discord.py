@@ -9,11 +9,12 @@
 
 from datetime import date
 
-from ninja import Router
+from ninja import Router, Schema
 from ninja.errors import HttpError
 
 from accounts.models import User
 from accounts.services import link_discord, unlink_discord_by_id, user_by_discord_id
+from github import hooks as gh_hooks
 from orgs import channels as org_channels
 from orgs import discord as org_discord
 from orgs import settings as org_settings
@@ -593,3 +594,37 @@ def notices(request):
 @router.post("/notices/ack", response=dict)
 def ack_notices(request, payload: DiscordNoticeAckIn):
     return {"acked": wr.mark_sent(payload.ids)}
+
+
+# ---------- GitHub 알림 웹훅(IMPL-PLAN-8 §10-2). 봇이 Discord 쪽을 맡고 결과를 보고한다 ----------
+
+
+class GitHubHookCreatedIn(Schema):
+    webhook_id: str
+    webhook_token: str
+
+
+class GitHubHookFailedIn(Schema):
+    reason: str = ""
+
+
+@router.get("/github-hooks", response=list[dict])
+def github_hook_jobs(request):
+    return gh_hooks.pending_jobs()
+
+
+@router.post("/github-hooks/{int:project_id}/created", response=dict)
+def github_hook_created(request, project_id: int, payload: GitHubHookCreatedIn):
+    return gh_hooks.on_created(
+        project_id, payload.webhook_id, payload.webhook_token
+    )  # URL은 되돌려 주지 않는다
+
+
+@router.post("/github-hooks/{int:project_id}/failed", response=dict)
+def github_hook_failed(request, project_id: int, payload: GitHubHookFailedIn):
+    return gh_hooks.on_failed(project_id, payload.reason)
+
+
+@router.post("/github-hooks/{int:project_id}/removed", response=dict)
+def github_hook_removed(request, project_id: int):
+    return gh_hooks.on_removed(project_id)

@@ -266,6 +266,25 @@ class CoreClient:
     def ack_notices(self, ids: list[int]) -> dict:
         return self._bot("/notices/ack", {"ids": ids})
 
+    # --- GitHub 알림 웹훅. core가 대기 작업을 주고, 봇이 Discord 쪽을 하고 보고한다 ---
+
+    def github_hook_jobs(self) -> list[dict]:
+        r = self.http.get("/api/integrations/discord/github-hooks")
+        r.raise_for_status()
+        return r.json()
+
+    def github_hook_created(self, project_id: int, webhook_id: str, webhook_token: str) -> dict:
+        return self._bot(
+            f"/github-hooks/{project_id}/created",
+            {"webhook_id": webhook_id, "webhook_token": webhook_token},
+        )
+
+    def github_hook_failed(self, project_id: int, reason: str) -> dict:
+        return self._bot(f"/github-hooks/{project_id}/failed", {"reason": reason})
+
+    def github_hook_removed(self, project_id: int) -> dict:
+        return self._bot(f"/github-hooks/{project_id}/removed", {})
+
     def report_status(self, ok: bool, detail: dict):
         try:
             self.http.post("/api/integrations/discord/status", json={"ok": ok, "detail": detail})

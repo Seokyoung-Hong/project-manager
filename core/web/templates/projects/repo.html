@@ -75,6 +75,40 @@
   {% endif %}
   <div class="row"><a class="btn sm" target="_blank" rel="noopener" href="https://github.com/{{ state.conn.full_name }}/settings/access">GitHub에서 접근 권한 확인</a></div>
 
+  <h3 class="t15">GitHub 알림 → Discord 채널</h3>
+  <p class="muted t13">GitHub 저장소 웹훅을 프로젝트 Discord 채널로 대신 설정합니다. 저장소 Settings → Webhooks에 손으로 넣지 않아도 됩니다.</p>
+  {% if hook.state == "active" %}
+  <p class="conn"><span class="conn-state on">설정됨</span> <span class="t13">채널 <code>{{ hook.channel_id }}</code> · {{ hook.labels|join:", " }} · <code>{{ hook.masked_url }}</code></span></p>
+  {% elif hook.state == "pending" %}
+  <p class="conn"><span class="conn-state warn">봇 처리 대기</span> <span class="muted t13">봇이 1분 안에 Discord 웹훅을 만들고 GitHub에 등록합니다.</span></p>
+  {% elif hook.state == "removing" %}
+  <p class="conn"><span class="conn-state warn">해제 중</span> <span class="muted t13">GitHub 웹훅은 지웠고, 봇이 Discord 웹훅을 지우는 중입니다.</span></p>
+  {% else %}
+  <p class="conn"><span class="conn-state off">미설정</span></p>
+  {% if hook.state == "error" %}<p class="notice warn t13"><span aria-hidden="true">⚠</span><span class="grow">설정하지 못했습니다 · {{ hook.error }}</span></p>{% endif %}
+  {% endif %}
+  {% if can_settings %}
+  {% if hook.state == "active" or hook.state == "pending" %}
+  <form method="post" action="{% url 'repo_discord_hook' project.pk %}" class="stack">{% csrf_token %}
+    <div class="row t13">{% for key, label, on in hook.choices %}<label class="row"><input type="checkbox" name="events" value="{{ key }}" {% if on %}checked{% endif %}> {{ label }}</label>{% endfor %}</div>
+    <div class="row">
+      <button class="btn sm" name="action" value="events">웹훅 이벤트 저장</button>
+      <button class="btn sm danger" name="action" value="remove" onclick="return confirm('GitHub 저장소 웹훅과 Discord 채널 웹훅을 모두 지울까요?')">웹훅 해제</button>
+    </div>
+  </form>
+  {% elif hook.state != "removing" %}
+  {% for b in hook_blockers %}
+  <p class="notice warn t13"><span aria-hidden="true">⚠</span><span class="grow">{{ b.reason }} {{ b.fix }}</span></p>
+  {% empty %}
+  <form method="post" action="{% url 'repo_discord_hook' project.pk %}" class="stack">{% csrf_token %}
+    <div class="row t13">{% for key, label, on in hook.choices %}<label class="row"><input type="checkbox" name="events" value="{{ key }}" {% if on %}checked{% endif %}> {{ label }}</label>{% endfor %}</div>
+    <p class="muted t12">누른 사람의 GitHub 계정으로 등록합니다. 저장소 admin 권한이 필요합니다.</p>
+    <div class="row"><button class="btn sm primary" name="action" value="setup">GitHub 알림을 Discord 채널로 받기</button></div>
+  </form>
+  {% endfor %}
+  {% endif %}
+  {% endif %}
+
   <h3 class="t15">이슈 가져오기</h3>
   <p class="t13"><a href="{% url 'integration_help' %}#issues">이슈 동기화 문제 해결 및 질문 복사</a></p>
   {% if can_settings %}

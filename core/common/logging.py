@@ -9,6 +9,8 @@ _PATTERNS = [
     re.compile(r"[A-Za-z0-9_\-]{24,}\.[A-Za-z0-9_\-]{6,}\.[A-Za-z0-9_\-]{27,}"),
     re.compile(r"(?i)DISCORD_BOT_TOKEN=\S+"),
     re.compile(r"/u/[A-Za-z0-9_\-]{20,}/"),
+    # Discord 웹훅 URL은 경로에 토큰을 품는다(GitHub 알림 웹훅, github/hooks.py).
+    re.compile(r"/webhooks/\d+/[A-Za-z0-9_\-]{20,}"),
     # GitHub 토큰. 설치(ghs_)·사용자(ghu_)·refresh(ghr_)는 접두어로 구분된다.
     re.compile(r"gh[sur]_[A-Za-z0-9]{20,}"),
     re.compile(
