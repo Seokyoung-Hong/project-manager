@@ -161,6 +161,29 @@
   });
   body.addEventListener("saved", function () { flash("자동 저장됨"); });
 
+  // 설정 섹션 목차의 현재 위치 표시(스크롤 스파이). 화면 위쪽 3분의 1을 지난 마지막 섹션이 현재다.
+  function markSettingsJump(link) {
+    var nav = link && link.closest(".settings-jump");
+    if (!nav) return;
+    nav.querySelectorAll("a[aria-current]").forEach(function (a) { a.removeAttribute("aria-current"); });
+    link.setAttribute("aria-current", "true");
+  }
+  var spyNav = document.querySelector(".settings-jump");
+  if (spyNav) {
+    var spyTick = false;
+    var spy = function () {
+      spyTick = false;
+      var current = null, line = window.innerHeight / 3;
+      spyNav.querySelectorAll('a[href^="#"]').forEach(function (a) {
+        var target = document.querySelector(a.getAttribute("href"));
+        if (target && target.getBoundingClientRect().top <= line) current = a;
+      });
+      markSettingsJump(current || spyNav.querySelector('a[href^="#"]'));
+    };
+    window.addEventListener("scroll", function () { if (!spyTick) { spyTick = true; requestAnimationFrame(spy); } }, { passive: true });
+    spy();
+  }
+
   // 완료 순간 피드백: '완료'로 바꾸는 요청이 성공하면 새싹 알림을 3초 띄운다.
   var toastTimer;
   function celebrate() {
@@ -278,6 +301,7 @@
       var summary = group.querySelector("summary");
       if (summary) summary.focus({ preventScroll: true });
       history.replaceState(null, "", b.getAttribute("href"));
+      markSettingsJump(b);
       requestAnimationFrame(function () {
         group.scrollIntoView({
           block: "start",

@@ -80,6 +80,16 @@
   <h3 class="t15">표 · 빈 상태 <span class="muted t12">table.grid · td.empty-cell · .empty (+ compact)</span></h3>
   <table class="grid"><thead><tr><th>이름</th><th class="num">미완료</th></tr></thead><tbody><tr><td>김관리</td><td class="num">5</td></tr><tr><td colspan="2" class="empty-cell">더 보여 줄 행이 없습니다.</td></tr></tbody></table>
   <div class="sg-cols"><p class="empty">조건에 맞는 기록이 없습니다.</p><p class="empty compact">첨부 파일 없음</p></div>
+  <h3 class="t15">설정 페이지 레이아웃 <span class="muted t12">.settings-split → .settings-jump + .settings-main · .setting-row</span></h3>
+  <div class="settings-split">
+    <nav class="settings-jump" aria-label="설정 섹션 예시"><a class="chip" href="#sg-components" aria-current="true">태스크 규칙 <span>15</span></a><a class="chip" href="#sg-components">알림 <span>12</span></a><a class="chip" href="#sg-components">회의 녹음 <span>9</span></a></nav>
+    <div class="settings-main">
+      <div class="settings-list" role="list">
+        <div class="setting-row setting-row-with-override" role="listitem"><div class="setting-name"><span class="setting-label">기본 중요도</span><span class="muted t12 setting-help">생성 화면·API·AI가 중요도를 주지 않았을 때 쓰는 값입니다.</span></div><div class="setting-control"><input class="input setting-number" value="5" aria-label="기본 중요도 예시"></div><div class="setting-override"><span class="setting-override-label">프로젝트 변경 허용</span><span class="muted t12">조직에서 고정</span></div></div>
+        <div class="setting-row" role="listitem"><div class="setting-name"><span class="setting-label">로그인 후 첫 화면</span></div><div class="setting-control"><select class="select" aria-label="첫 화면 예시"><option>오늘</option></select></div></div>
+      </div>
+    </div>
+  </div>
   <h3 class="t15">지표 · 진행 막대 <span class="muted t12">.tiles .tile · .bar</span></h3>
   <div class="tiles five"><div class="tile"><b>18/26</b><span>완료</span></div><div class="tile"><b>8</b><span>미완료</span></div><div class="tile"><b class="danger">2</b><span>기한 초과</span></div><div class="tile"><b>1</b><span>검토 대기</span></div><div class="tile"><b>0.6</b><span>1인 평균</span></div></div>
   <div class="bar" role="img" aria-label="62% 완료"><i style="width: 62%"></i></div>

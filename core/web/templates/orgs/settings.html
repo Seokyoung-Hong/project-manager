@@ -6,10 +6,11 @@
   <span><strong>조직 기본값과 잠금</strong><br>“프로젝트 변경 허용”이 켜진 항목만 프로젝트에서 다른 값을 저장할 수 있습니다. 끄면 조직 값으로 고정됩니다. 개인 환경설정은 알림·화면 기본값만 바꾸며 조직 규칙을 완화하지 않습니다.</span>
 </div>
 {% if not is_admin %}<div class="notice settings-readonly-note"><span>조직 관리자만 고칠 수 있습니다. 현재 적용값을 읽기 전용으로 표시합니다.</span></div>{% endif %}
-<form method="post" class="settings-form org-settings-form">{% csrf_token %}
+<form method="post" class="settings-form org-settings-form with-nav">{% csrf_token %}
   <nav class="settings-jump" aria-label="조직 설정 섹션">
     {% for label, group_rows in groups %}<a class="chip" href="#settings-group-{{ forloop.counter }}" data-action="open-settings-group" data-target="#settings-group-{{ forloop.counter }}">{{ label }} <span>{{ group_rows|length }}</span></a>{% endfor %}
   </nav>
+  <div class="settings-main">
   {% if is_admin %}<div class="settings-save-bar"><span class="settings-save-hint">모든 섹션의 값과 잠금을 함께 저장합니다.</span><button class="btn primary">조직 설정 저장</button></div>{% endif %}
   {% for label, group_rows in groups %}
   <details id="settings-group-{{ forloop.counter }}" class="card settings-section"{% if forloop.first %} open{% endif %}>
@@ -21,6 +22,7 @@
     </div>
   </details>
   {% endfor %}
+  </div>
 </form>
 <section class="card">
   <h2>설정 변경 이력</h2>
