@@ -144,6 +144,16 @@
     <li class="progress"><span class="dot">&#10003;</span><span><span class="badge pr-open">#34 Open</span> · 커밋 3건</span></li>
     <li><span class="dot">&#9675;</span><span>머지 <span class="badge pr-merged">Merged</span>는 보라</span></li>
   </ol>
+  <h3 class="t15">PR 부가 정보 <span class="muted t12">.badge.pr-draft · .ci.ci-{success|failure|pending} · .review-sum</span></h3>
+  <div class="row"><span class="badge pr-draft"><code>#35</code> Draft</span><a class="ci ci-success" href="#sg-integrations">CI 통과</a><a class="ci ci-failure" href="#sg-integrations">CI 실패</a><a class="ci ci-pending" href="#sg-integrations">CI 진행 중</a><span class="review-sum">리뷰 승인 2 · 변경 요청 1</span></div>
+  <p class="notice t13">이 작업은 PR·이슈가 다시 열려 <a href="#sg-integrations">TASK-42</a>로 이어졌습니다.</p>
+  <h3 class="t15">릴리스 <span class="muted t12">.release-chip (+ pre) · .release-strip</span></h3>
+  <div class="release-strip"><span class="t13 fw-6">릴리스</span><a class="release-chip" href="#sg-integrations">v1.2.0 <span class="muted">가을 업데이트</span> <span class="muted t12">10/5</span></a><a class="release-chip pre" href="#sg-integrations">v1.3.0-rc1 <span class="badge warn">pre</span></a></div>
+  <h3 class="t15">앱 권한 점검 표 <span class="muted t12">table.grid + .conn-state + .badge.warn</span></h3>
+  <table class="grid"><thead><tr><th>기능</th><th>상태</th><th>꺼지면</th><th>필요한 것</th></tr></thead><tbody>
+    <tr><td>CI 배지 · Checks</td><td><span class="conn-state on">켜짐</span></td><td class="t13 muted">CI 배지와 실패 알림</td><td><span class="muted">-</span></td></tr>
+    <tr><td>CI 배지 · Commit statuses</td><td><span class="conn-state warn">꺼짐</span></td><td class="t13 muted">외부 CI 결과 배지</td><td class="t13"><span class="badge warn">Commit statuses 읽기 권한</span> <span class="badge warn">status 구독</span></td></tr>
+  </tbody></table>
   <table class="grid"><thead><tr><th>시각</th><th>이벤트</th><th>태스크</th><th>결과</th></tr></thead><tbody>
     <tr><td class="t13">10/5 13:41</td><td class="t13">PR #34 열림</td><td><a href="#sg-integrations">TASK-1</a></td><td class="t13"><span class="badge">검토 대기로 전환</span></td></tr>
   </tbody></table>
