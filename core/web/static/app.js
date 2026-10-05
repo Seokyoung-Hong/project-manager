@@ -170,7 +170,7 @@
     t.className = "toast"; t.setAttribute("role", "status");
     t.innerHTML = '<svg viewBox="0 0 40 40" aria-hidden="true"><ellipse class="art-pot" cx="20" cy="31" rx="9" ry="7"/>' +
       '<g class="leaf"><path class="art-leaf" d="M20 25Q8 25 7 13Q18 11 20 25"/><path class="art-leaf-2" d="M20 22Q22 9 33 10Q34 21 20 22"/></g></svg>' +
-      "<span>끝! 한 걸음 더 자랐어요.</span>";
+      "<span>완료했습니다. 화분이 한 뼘 자랐습니다.</span>";
     body.appendChild(t);
     clearTimeout(toastTimer);
     toastTimer = setTimeout(function () { t.classList.add("leaving"); setTimeout(function () { t.remove(); }, 250); }, 3000);

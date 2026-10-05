@@ -12,7 +12,7 @@
   {% if install.account_type == "User" %}
   <a class="btn sm" target="_blank" rel="noopener"
      href="https://github.com/settings/installations/{{ install.installation_id }}">GitHub에서 설정</a>
-  <p class="notice"><span aria-hidden="true">ⓘ</span><span class="grow">개인 계정 설치입니다. GitHub 조직 멤버·팀 관리와 이슈 자동 가져오기는 쓰지 않습니다. 이슈는 저장소 탭에서 손으로 가져오세요.</span></p>
+  <p class="notice"><span class="grow">개인 계정 설치입니다. GitHub 조직 멤버·팀 관리와 이슈 자동 가져오기는 쓰지 않습니다. 이슈는 저장소 탭에서 손으로 가져오세요.</span></p>
   {% else %}
   <a class="btn sm" target="_blank" rel="noopener"
      href="https://github.com/organizations/{{ install.account_login }}/settings/installations/{{ install.installation_id }}">GitHub에서 설정</a>
