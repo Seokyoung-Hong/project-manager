@@ -1,0 +1,17 @@
+# M0 PoC 전용. 운영 compose.yml과 별개 프로젝트(-p voice-poc)로 띄운다. 절차는 POC.md.
+#   POC_CHANNEL_ID=<음성채널 id> docker compose -p voice-poc -f discord_gateway/compose.poc.yml up -d --build
+# 토큰은 운영 .env.discord의 DISCORD_BOT_TOKEN을 그대로 읽는다(새 파일에 쓰지 않는다).
+services:
+  voice-poc:
+    build: .
+    env_file: ../.env.discord
+    environment:
+      POC_CHANNEL_ID: ${POC_CHANNEL_ID:?POC_CHANNEL_ID를 지정해 주세요}
+      POC_MINUTES: ${POC_MINUTES:-35}
+      POC_OUT: /data/poc
+      # 길드는 .env.discord의 DISCORD_GUILD_ID. 다른 길드면 POC_GUILD_ID로 덮어쓴다
+      POC_GUILD_ID: ${POC_GUILD_ID:-}
+    volumes:
+      - ./poc-out:/data/poc
+    mem_limit: 256m
+    restart: "no"
