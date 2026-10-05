@@ -755,15 +755,72 @@ def test_roadmap_marks_responsive_timeline_regions(as_admin, org, project, admin
 # ---------- V2-03: 칸반 드래그 ----------
 
 
-def test_board_always_has_done_column(logged, project, task):
+def _close(project, member, n, status="done", *, days_ago=0, title="끝낸 일"):
+    """결과 선반 테스트용: 닫힌 태스크 n건. 상태 전이 규칙은 다른 테스트가 지키므로 직접 쓴다."""
+    from django.utils import timezone
+
+    from tasks.services import create_task
+
+    when = timezone.now() - timedelta(days=days_ago)
+    out = []
+    for i in range(n):
+        t = create_task(
+            project=project, title=f"{title} {i}", actor=member, source="web", due_date=today_kst()
+        )
+        Task.objects.filter(pk=t.pk).update(
+            status=status, completed_at=when if status == "done" else None, updated_at=when
+        )
+        out.append(t)
+    return out
+
+
+def test_board_always_has_done_column(logged, project, task, member):
+    """완료는 언제나 보드에서 찾을 수 있다 — 열이 아니라 보드 아래 결과 선반으로."""
+    _close(project, member, 1)
     body = logged.get(f"/projects/{project.pk}?view=board").content.decode()
-    assert 'class="col" data-status="done"' in body
+    assert 'id="shelf"' in body
+    assert "끝낸 일 0" in body
+    assert 'class="col" data-status="done"' not in body
     assert 'class="col" data-status="cancelled"' not in body
 
 
 def test_board_columns_cover_all_statuses(logged, project, task):
-    body = logged.get(f"/projects/{project.pk}?view=board&include_closed=1").content.decode()
-    assert body.count('class="col" data-status="') == len(Task.STATUSES)
+    """미완료 열 + 결과 선반(완료·취소)이 모든 상태를 덮는다."""
+    body = logged.get(f"/projects/{project.pk}?view=board").content.decode()
+    assert body.count('class="col" data-status="') == len(Task.OPEN)
+    for code in Task.OPEN:
+        assert f'class="col" data-status="{code}"' in body
+    for code in Task.CLOSED:
+        assert f"shelf={code}" in body
+    assert len(Task.OPEN) + len(Task.CLOSED) == len(Task.STATUSES)
+
+
+def test_shelf_counts_filters_and_pages(logged, project, member):
+    _close(project, member, 12, days_ago=1, title="최근")
+    _close(project, member, 3, days_ago=40, title="예전")
+    _close(project, member, 2, status="cancelled", title="취소한")
+    url = f"/projects/{project.pk}?part=shelf"
+    body = logged.get(url).content.decode()
+    assert "완료 전체 <b>15</b>건" in body
+    assert "취소 전체 <b>2</b>건" in body
+    assert "10 / 15건 표시" in body and "더 있는 기록 5건" in body
+    more = logged.get(url + "&page=2").content.decode()
+    assert more.count('class="task-row') == 5 and "15 / 15건 표시" in more
+    assert "더 보기" not in more
+    recent = logged.get(url + "&period=30").content.decode()
+    assert "조건 일치 <b>12</b>건" in recent
+    found = logged.get(url + "&q=예전").content.decode()
+    assert "조건 일치 <b>3</b>건" in found
+    cancelled = logged.get(url + "&shelf=cancelled").content.decode()
+    assert cancelled.count('class="task-row') == 2
+
+
+def test_shelf_respects_task_visibility(client, project, member, outsider):
+    """선반은 visible_tasks 범위를 따른다 — 프로젝트를 못 보는 사람은 건수도 못 본다."""
+    _close(project, member, 2)
+    client.force_login(outsider)
+    r = client.get(f"/projects/{project.pk}?part=shelf")
+    assert r.status_code == 404
 
 
 def test_board_part_renders_only_board(logged, project, task):

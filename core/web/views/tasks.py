@@ -196,7 +196,7 @@ def _respond(request, task, origin, error=None):
     if origin == "board":
         from .projects import board_context
 
-        ctx = board_context(request, task.project, request.POST.get("include_closed") == "1")
+        ctx = board_context(request, task.project)
         ctx["error"] = error
         return render(request, "projects/_board.html", ctx)
     return render_row(request, task, error=error)

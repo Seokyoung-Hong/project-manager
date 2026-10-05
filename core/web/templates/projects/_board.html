@@ -1,5 +1,5 @@
 {% load rows %}
-<div id="board" class="board" hx-get="{% url 'project_detail' project.pk %}?part=board{% if include_closed %}&amp;include_closed=1{% endif %}" hx-trigger="task-changed from:body" hx-swap="outerHTML" data-include-closed="{% if include_closed %}1{% endif %}">
+<div id="board" class="board" hx-get="{% url 'project_detail' project.pk %}?part=board" hx-trigger="task-changed from:body" hx-swap="outerHTML">
   <div class="board-toolbar">
     <p class="board-guide" id="board-guide">남은 일의 흐름에 집중해요. 상태 열을 좌우로 이동할 수 있습니다.</p>
     <div class="board-nav" aria-label="보드 열 이동">
@@ -9,29 +9,15 @@
               aria-label="다음 상태 열" title="다음 상태 열">›</button>
     </div>
   </div>
+  {% if error %}<p class="error" role="alert">{{ error }}</p>{% endif %}
   <div class="board-track" tabindex="0" role="region" aria-label="상태별 태스크 보드" aria-describedby="board-guide">
     {% for code, label, col in columns %}
-    {% if code != "done" and code != "cancelled" %}
     <div class="col" data-status="{{ code }}">
-      <h3>{{ label }} <span class="muted">{{ col|length }}</span></h3>
+      <h3><i class="col-dot" aria-hidden="true"></i>{{ label }} <span class="muted">{{ col|length }}</span></h3>
       <ul class="tasks">{% for r in col %}{% task_row r %}{% endfor %}</ul>
-      {% if not col %}<span class="t12" style="color:var(--text-disabled)">여기로 끌어다 놓기</span>{% endif %}
+      {% if not col %}<p class="col-empty">여기로 끌어다 놓기</p>{% endif %}
     </div>
-    {% endif %}
     {% endfor %}
   </div>
-  <details class="studio-records"{% if include_closed %} open{% endif %}>
-    <summary>결과 선반 · 완료와 취소 기록</summary>
-    <div class="row"><p class="muted t13">완료는 최근 최대 20건만 미리 보여 드려요. 전체 기록은 목록에서 확인할 수 있습니다.</p>
-      <a class="btn sm" href="{% url 'project_detail' project.pk %}?view=list&amp;include_closed=1">전체 목록에서 기록 찾기 ↗</a></div>
-    {% for code, label, col in columns %}{% if code == "done" or code == "cancelled" %}
-    <section class="record-group" data-status="{{ code }}">
-      <h3>{{ label }} <span class="muted">표시 {{ col|length }}건</span></h3>
-      <ul class="tasks">{% for r in col %}{% task_row r %}{% empty %}<li class="muted t13">표시할 기록이 없습니다.</li>{% endfor %}</ul>
-    </section>
-    {% endif %}{% endfor %}
-    {% if not include_closed %}<p class="muted t13" style="margin-top:12px">취소 기록도 보려면 위의 ‘완료·취소 포함’을 켜 주세요.</p>{% endif %}
-    <p class="muted t13" style="margin-top:12px">다시 시작할 일은 기록의 상태 메뉴나 상세에서 명시적으로 재개해요.</p>
-  </details>
-  {% if error %}<p class="error">{{ error }}</p>{% endif %}
+  {% include "projects/_shelf.html" %}
 </div>
