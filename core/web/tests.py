@@ -815,6 +815,15 @@ def test_shelf_counts_filters_and_pages(logged, project, member):
     assert cancelled.count('class="task-row') == 2
 
 
+def test_shelf_closed_rows_show_neutral_due(logged, project, member):
+    """닫힌 기록은 연체 경고가 아니라 중립 목표일로 보인다."""
+    (t,) = _close(project, member, 1, days_ago=1)
+    Task.objects.filter(pk=t.pk).update(due_date=today_kst() - timedelta(days=20))
+    body = logged.get(f"/projects/{project.pk}?part=shelf").content.decode()
+    assert 'class="due closed">목표일 ' in body
+    assert "초과" not in body
+
+
 def test_shelf_respects_task_visibility(client, project, member, outsider):
     """선반은 visible_tasks 범위를 따른다 — 프로젝트를 못 보는 사람은 건수도 못 본다."""
     _close(project, member, 2)

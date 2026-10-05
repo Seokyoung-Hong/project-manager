@@ -408,6 +408,7 @@ select.pill { padding-right: 8px; }
 .due.overdue::before { content: "! "; }
 .due.today { background: var(--c-warning-soft); color: var(--c-warning); }
 .due.none { background: transparent; border: 1px dashed var(--c-line); }
+.due.closed { background: transparent; color: var(--c-muted); }
 /* 상태 안내지 버튼이 아니다 — 테두리를 주면 눌러야 할 것처럼 보인다 */
 .auto-mark { font-size: var(--fs-xs); line-height: 18px; color: var(--c-muted); white-space: nowrap; }
 .auto-mark::before { content: "✦ "; color: var(--c-yellow-strong); }
@@ -689,14 +690,16 @@ details > summary { cursor: pointer; font-weight: 600; }
 .pcal-ms { color: var(--c-accent); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .pcal-task { all: unset; box-sizing: border-box; cursor: pointer; padding: 2px 6px; border-radius: var(--r-sm); background: var(--c-soft); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .pcal-task:hover, .pcal-task:focus-visible { background: var(--c-sage); outline: 2px solid var(--c-accent); }
-.pcal-task.closed { opacity: .55; text-decoration: line-through; }
+.pcal-task.closed { color: var(--c-muted); background: var(--c-surface); text-decoration: line-through; }
+.pcal-cell.is-empty { background: transparent; }
 
 /* ---- 18. 상세 패널 ---- */
 .panel {
   background: var(--c-surface); border: 1px solid var(--c-line); border-radius: var(--r-xl); padding: var(--sp-6);
   display: flex; flex-direction: column; gap: var(--sp-4);
 }
-.panel-bar { display: flex; align-items: center; gap: var(--sp-2); }
+.panel-bar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2); }
+.panel-status .pill { height: 36px; }
 .panel-mobile-context { display: none; }
 .panel-bar .status { flex: 1; font-size: var(--fs-sm); color: var(--c-muted); }
 .panel-bar > a:first-child { margin-right: var(--sp-1); }
@@ -993,13 +996,13 @@ details.card.settings-section { padding: 0; gap: 0; }
 }
 @media (max-width: 720px) {
   .pcal-grid { display: flex; flex-direction: column; }
-  .pcal-dow, .pcal-blank, .pcal-cell.empty { display: none; }
+  .pcal-dow, .pcal-blank, .pcal-cell.is-empty { display: none; }
   .pcal-cell { min-height: 0; }
   .pcal-wd { display: inline; }
   .pcal-task, .pcal-ms { white-space: normal; }
 }
 @media (max-width: 700px) {
-  :root { --header-h: 108px; }
+  :root { --header-h: 115px; }
   .header {
     display: grid; grid-template-columns: minmax(0, 1fr) auto auto; height: auto;
     padding: 10px 14px 8px; column-gap: var(--sp-2); row-gap: 6px;
@@ -1062,7 +1065,7 @@ details.card.settings-section { padding: 0; gap: 0; }
   .project-picker-empty { padding: 10px; }
   .project-picker-new { min-height: 44px; padding: 0 10px; justify-content: flex-start; border-top: 1px solid var(--c-line); border-radius: 0; }
   /* 넓은 패널도 좁은 화면에서는 흐름 안의 시트로 — 헤더가 가려지면 돌아갈 길이 없다 */
-  .layout.wide aside#panel { position: static; inset: auto; padding: 0; background: none; }
+  .layout.wide aside#panel { position: static; inset: auto; padding: 0; background: none; z-index: auto; }
   .layout.wide aside#panel .panel { max-width: none; margin: 0; padding: var(--sp-4); border-radius: 0; min-height: 100%; }
   /* align-items:flex-start가 남으면 자식이 내용 폭으로 부풀어 페이지가 가로로 흔들린다 */
   .frame { flex-direction: column; align-items: stretch; }
@@ -1074,7 +1077,13 @@ details.card.settings-section { padding: 0; gap: 0; }
   .card, .panel { padding: 18px; border-radius: var(--r-lg); }
   .card > h2, .card-head h2 { font-size: 21px; }
   .tiles, .tiles.five { grid-template-columns: repeat(2, 1fr); gap: var(--sp-2); }
-  .tiles.five.project-kpis, .org-kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .project-summary { padding: var(--sp-3); gap: var(--sp-3); }
+  .project-summary-head { gap: var(--sp-2); }
+  .project-task-surface { padding: var(--sp-3); }
+  /* 지표 5개는 한 줄로 두고 가로로 민다. 끝 카드가 살짝 보여 더 있음을 알린다 */
+  .tiles.five.project-kpis, .org-kpis { display: flex; overflow-x: auto; gap: var(--sp-2); scrollbar-width: none; padding-bottom: 2px; }
+  .project-kpis .tile, .org-kpis .tile { flex: 0 0 96px; min-height: 68px; padding: 10px 12px; border-radius: var(--r-md); }
+  .project-kpis .tile b, .org-kpis .tile b { font-size: 24px; }
   .tile { padding: var(--sp-3); border-radius: var(--r-lg); min-width: 0; }
   .tile b { font-size: 26px; }
   .tile span { font-size: var(--fs-xs); }
@@ -1093,6 +1102,11 @@ details.card.settings-section { padding: 0; gap: 0; }
   .btn, .btn.sm, .btn.icon, .pill, .pill.sm, .panel .meta .select, .panel .meta .pill.sm, .today-auto-pull .select, .today-schedule-toggle { min-height: 44px; height: 44px; }
   .btn.icon, .task-row:not(.today-task-row) [data-copy] { min-width: 44px; }
   .btn.link { height: auto; min-height: 0; }
+  /* 패널 안 링크형 버튼(연결 해제·외부 주소 추가·삭제)도 터치 44px */
+  .panel .btn.link { min-height: 44px; min-width: 44px; padding-inline: var(--sp-2); display: inline-flex; align-items: center; justify-content: center; }
+  .request-table { min-width: 680px; display: table; }
+  .request-table th:first-child, .request-table td:first-child { min-width: 200px; width: 220px; }
+  .request-table th:not(:first-child), .request-table td:not(:first-child) { white-space: nowrap; }
   .input, .select, :where(input:not([type=checkbox], [type=radio], [type=hidden], [type=file]), select, textarea) { font-size: 16px; }
   .input, .select, :where(input:not([type=checkbox], [type=radio], [type=hidden], [type=file]), select) { height: 44px; }
   /* 배지 글자 수에 따라 줄바꿈이 달라지면 카드 높이가 제멋대로가 된다 */
@@ -1107,24 +1121,28 @@ details.card.settings-section { padding: 0; gap: 0; }
   .today-list-card .task-row { position: relative; gap: var(--sp-2); }
   .today-list-card .task-row .actions { gap: var(--sp-1); }
   .today-list-card .task-row .today-btn { padding-inline: var(--sp-2); }
+  .today-list-card { gap: 10px; padding: var(--sp-4); }
   .today-list-card, .today-schedule-card { scroll-margin-top: 117px; }
   .today-list-head { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: start; }
   .today-assigned-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); width: 100%; gap: var(--sp-1); }
-  .today-assigned-stats a { min-width: 0; min-height: 52px; padding: 5px 3px; flex-direction: column; align-items: center; justify-content: center; gap: 0; text-align: center; border-radius: var(--r-md); }
+  .today-assigned-stats a { min-width: 0; min-height: 44px; padding: 5px 3px; flex-direction: column; align-items: center; justify-content: center; gap: 0; text-align: center; border-radius: var(--r-md); }
   .today-assigned-stats span { max-width: 100%; font-size: 11px; line-height: 16px; white-space: nowrap; }
   /* 오늘 머리: 강 장식은 줄이지 않고 배치만 접는다 */
-  .today-grid > *, #today-head > * { margin-bottom: var(--sp-4); }
+  .today-grid > *, #today-head > * { margin-bottom: var(--sp-3); }
   .today-grid { column-gap: var(--sp-4); }
-  .hero { min-height: 196px; padding: 20px; border-radius: var(--r-xl); align-items: flex-start; }
+  .hero { min-height: 184px; padding: 18px 20px; border-radius: var(--r-xl); align-items: flex-start; }
   .hero-copy { max-width: 64%; gap: var(--sp-2); }
   .hero-title { font-size: 30px; }
   .hero-hint { font-size: var(--fs-sm); }
   .hero-art { position: absolute; right: -14px; bottom: 0; width: 150px; height: 144px; opacity: .9; margin: 0; }
-  .tally { padding: 18px 20px; gap: var(--sp-2); }
-  .tally-main b { font-size: 48px; }
-  .tally-badge { width: 58px; height: 58px; right: 16px; top: 16px; }
-  .tally .stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--sp-1); }
-  .tally .stat { flex-direction: column; gap: 0; }
+  /* 노란 집계는 가로로 납작하게(1차 모바일처럼) — 첫 업무가 첫 화면에 들어오게 한다 */
+  .tally { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; padding: 12px 16px; gap: 2px 16px; }
+  .tally h2 { grid-column: 1; font-size: var(--fs-sm); }
+  .tally-main { grid-column: 1; }
+  .tally .stats { grid-column: 2; grid-row: 1 / span 2; display: flex; justify-content: flex-end; gap: var(--sp-4); margin: 0; }
+  .tally-scope, .tally-badge { display: none; }
+  .tally-main b { font-size: 36px; }
+  .tally .stat { flex-direction: column; gap: 0; align-items: flex-end; min-height: 44px; justify-content: center; }
   .tally .stat b { font-size: 22px; }
   .memo { padding: 20px; transform: rotate(-.8deg); }
   .focus-memo h2 { font-size: 21px; }
@@ -1138,7 +1156,10 @@ details.card.settings-section { padding: 0; gap: 0; }
   .panel-mobile-context { display: flex; flex: 1; min-width: 0; flex-direction: column; gap: 1px; }
   .panel-mobile-context > span { font-size: 11px; line-height: 15px; color: var(--c-muted); }
   .panel-mobile-context > strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--fs-sm); line-height: 18px; }
-  .panel-bar .status, .panel-bar [data-action="toggle-wide"] { display: none; }
+  .panel-bar [data-action="toggle-wide"] { display: none; }
+  .panel-bar .status { order: 9; flex: 1 1 100%; display: block; font-size: var(--fs-xs); line-height: 18px; min-height: 18px; }
+  .panel-status { flex: none; }
+  .panel-status .pill { height: 44px; }
   .panel .title-input { font-size: 24px; min-height: 48px; }
   .task-due-row > .btn.link { min-height: 44px; }
   .me-primary-controls { gap: 10px; }

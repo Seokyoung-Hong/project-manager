@@ -5,6 +5,18 @@
       <span>{{ task.number }}</span>
       <strong>{{ task.title }}</strong>
     </span>
+    {% if not task.is_template %}
+    <form class="panel-status">
+      <input type="hidden" name="version" value="{{ task.version }}">
+      <input type="hidden" name="from" value="panel">
+      <select name="status" class="pill sm {{ task.status }}" aria-label="상태"
+              data-status="{{ task.status }}" data-id="{{ task.pk }}" data-panel="{% url 'task_panel' task.pk %}"
+              hx-post="{% url 'task_status' task.pk %}" hx-target="#panel" hx-swap="innerHTML"
+              hx-trigger="change[!(this.value=='blocked' && this.dataset.status!='blocked')]">
+        {% for code, label in task.STATUSES %}<option value="{{ code }}"{% if code == task.status %} selected{% endif %}>{{ label }}</option>{% endfor %}
+      </select>
+    </form>
+    {% endif %}
     <span id="save-status" class="status" aria-live="polite"></span>
     <button type="button" class="btn sm icon" data-copy="{{ task.pk }}" aria-label="태스크 링크 복사" title="태스크 링크 복사"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M6.5 9.5l3-3M7 4.5l1.2-1.2a2.8 2.8 0 014 4L11 8.5M9 11.5l-1.2 1.2a2.8 2.8 0 01-4-4L5 7.5"></path></svg></button>
     {% if not full_page %}
@@ -45,18 +57,7 @@
               {% for u in org_members %}<option value="{{ u.pk }}"{% if u.pk == task.reviewer_id %} selected{% endif %}>검토자 {{ u.display_name }}</option>{% endfor %}
             </select>
           </form>
-          {% if task.is_template %}<span class="badge primary">템플릿</span>{% else %}
-          <form>
-            <input type="hidden" name="version" value="{{ task.version }}">
-            <input type="hidden" name="from" value="panel">
-            <select name="status" class="pill sm {{ task.status }}" aria-label="상태"
-                    data-status="{{ task.status }}" data-id="{{ task.pk }}" data-panel="{% url 'task_panel' task.pk %}"
-                    hx-post="{% url 'task_status' task.pk %}" hx-target="#panel" hx-swap="innerHTML"
-                    hx-trigger="change[!(this.value=='blocked' && this.dataset.status!='blocked')]">
-              {% for code, label in task.STATUSES %}<option value="{{ code }}"{% if code == task.status %} selected{% endif %}>{{ label }}</option>{% endfor %}
-            </select>
-          </form>
-          {% endif %}
+          {% if task.is_template %}<span class="badge primary">템플릿</span>{% endif %}
           <span class="badge{% if due_class == "overdue" %} danger{% endif %}">{{ due_label }}</span>
           <form class="row gap-1">
             <input type="hidden" name="version" value="{{ task.version }}">
