@@ -384,3 +384,58 @@ def test_webhook_url_is_masked_in_logs_and_errors():
     SecretFilter().filter(record)
     assert WEBHOOK_TOKEN not in record.getMessage()
     assert WEBHOOK_TOKEN not in hooks.mask(url)
+
+
+# ---------- Fable 최종 검토: 해제가 Discord 권한에 잠기지 않는다, 재승인 캐시 ----------
+
+
+def _no_discord(admin):
+    DiscordMemberPermission.objects.all().delete()
+    admin.discord_user_id, admin.discord_linked_at = None, None
+    admin.save()
+
+
+def test_clearing_pending_or_error_does_not_need_discord_permission(ready, admin):
+    hooks.request_setup(ready, ["push"], actor=admin)
+    job = _hook(ready)["job"]
+    hooks.on_failed(ready.pk, job, "HTTP 403: Missing Permissions")
+    _no_discord(admin)
+    hooks.remove(ready, actor=admin)  # 오류 지우기
+    assert _hook(ready) == {}
+
+
+def test_removing_active_hook_still_needs_discord_permission(ready, admin):
+    hooks.request_setup(ready, ["push"], actor=admin)
+    _created(ready)
+    _no_discord(admin)
+    with pytest.raises(ServiceError):
+        hooks.remove(ready, actor=admin)
+    assert _hook(ready)["state"] == "active"
+
+
+def test_disconnect_repo_with_pending_hook_skips_discord_and_bot_cleans_up(ready, admin):
+    from github import services as ghs
+
+    hooks.request_setup(ready, ["push"], actor=admin)
+    job = _hook(ready)["job"]
+    _no_discord(admin)
+    ready.refresh_from_db()
+    assert ghs.disconnect_repo(project=ready, actor=admin) is True
+    assert not RepoConnection.objects.filter(project=ready).exists()
+    # 봇이 뒤늦게 만든 웹훅을 보고하면 행이 없으니 봇이 직접 지운다
+    assert hooks.on_created(ready.pk, job, "777", WEBHOOK_TOKEN) == {
+        "ok": False,
+        "delete_webhook": True,
+    }
+
+
+def test_reapproval_event_clears_webhooks_permission_cache(ready, gh_calls):
+    from github import services as ghs
+
+    gh_calls.state["app_perm"] = "read"
+    assert hooks.app_can_write_hooks(ready.org) is False
+    gh_calls.state["app_perm"] = "write"
+    ghs._installation_event(
+        "installation", {"action": "new_permissions_accepted", "installation": {"id": 99}}
+    )
+    assert hooks.app_can_write_hooks(ready.org) is True
