@@ -117,9 +117,7 @@ def test_dm_gates_org_user_and_visibility(org, project, task, member, outsider):
 # ---------- 디스패치 골격 ----------
 
 
-@pytest.mark.parametrize(
-    "event", ["pull_request_review", "check_suite", "status", "milestone", "release"]
-)
+@pytest.mark.parametrize("event", ["check_suite", "status", "milestone", "release"])
 def test_new_events_are_dispatched_and_recorded_as_ignored(gh, client, conn, event):
     payload = {"repository": {"full_name": "o/r"}, "action": "x", "sender": {"login": "dev"}}
     r = signed(client, payload, event, f"g0-{event}")
