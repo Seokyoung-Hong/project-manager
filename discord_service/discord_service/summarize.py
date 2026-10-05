@@ -1,6 +1,17 @@
 from .messages import by_project, mention
 
 
+def github_line(g: dict | None) -> str:
+    """저장소 연결이 없으면(None) 줄을 쓰지 않는다. 평균 리뷰 시간은 값이 있을 때만."""
+    if not g:
+        return ""
+    parts = [f"병합 PR {g['merged']}건", f"새 PR {g['opened']}건", f"열린 PR {g['open']}건"]
+    if g.get("avg_review_hours") is not None:
+        parts.append(f"평균 리뷰 {g['avg_review_hours']}시간")
+    parts.append(f"CI 실패 {g['ci_failing']}건")
+    return "GitHub: " + " · ".join(parts) + "입니다."
+
+
 def fixed_summary(data: dict) -> str:
     """LLM 없이 만드는 고정 형식 보고서."""
     c = data["counts"]
@@ -42,6 +53,9 @@ def fixed_summary(data: dict) -> str:
     ]
     if proj:
         body.append("**프로젝트별**\n" + "\n".join(proj))
+    gh = github_line(data.get("github"))
+    if gh:
+        body.append(gh)
     body.append(f"검토 대기 {c['review']}건 · 기한 미정 {c['no_due']}건")
     # /ops는 staff만 보지만 이 보고는 당사자가 본다. 연결을 안 한 사람이 스스로 알게 한다.
     unlinked = [m["display_name"] for m in data.get("members", []) if not m.get("discord_user_id")]

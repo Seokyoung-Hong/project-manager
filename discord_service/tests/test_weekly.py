@@ -151,3 +151,15 @@ def test_unknown_weekly_is_not_reposted_on_the_next_tick(tmp_path, store, bot, m
     tick(cfg, make_core(fake), bot, store, monday)
     tick(cfg, make_core(fake), bot, store, monday + timedelta(minutes=1))
     assert calls == ["111ch"]
+
+
+def test_fixed_summary_github_line():
+    data = weekly_data(completed=[task(1, "2026-09-02")])
+    assert "GitHub:" not in fixed_summary(data)
+    data["github"] = {"merged": 3, "opened": 5, "open": 4, "avg_review_hours": 6.5, "ci_failing": 1}
+    assert (
+        "GitHub: 병합 PR 3건 · 새 PR 5건 · 열린 PR 4건 · 평균 리뷰 6.5시간 · CI 실패 1건입니다."
+        in fixed_summary(data)
+    )
+    data["github"]["avg_review_hours"] = None
+    assert "평균 리뷰" not in fixed_summary(data)
