@@ -1,0 +1,18 @@
+{
+  "name": "discord-gateway",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "scripts": {
+    "poc": "node poc.mjs",
+    "test": "node --test",
+    "check": "node --check poc.mjs && node --check src/ogg.mjs && node --check src/recorder.mjs"
+  },
+  "dependencies": {
+    "@discordjs/voice": "0.19.2",
+    "@snazzah/davey": "0.1.12",
+    "discord.js": "14.27.0"
+  }
+}
