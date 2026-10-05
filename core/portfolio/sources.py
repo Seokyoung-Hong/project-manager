@@ -37,12 +37,36 @@ def _allowed_source_records(user):
             task__project__in=visible_projects(user),
         )
         .filter(own_user_inputs | ai_context)
-        .select_related("task", "task__project")
+        .select_related("task", "task__project", "task__git__connection")
         .order_by("created_at", "id")
     )
 
 
-def _serialize_source(record):
+def pr_evidence(user, task):
+    """병합된 PR의 번호·주소·병합일만. 제목·본문·브랜치는 담지 않는다.
+
+    저장소를 GitHub에서 볼 수 없는 사람에게는 저장소 이름이 새므로 None이다.
+    """
+    from github.services import can_view_repo
+
+    link = getattr(task, "git", None)
+    if (
+        user is None
+        or link is None
+        or link.pr_state != "merged"
+        or not link.pr_number
+        or link.merged_at is None
+        or not can_view_repo(user, link.connection.full_name)
+    ):
+        return None
+    return {
+        "number": link.pr_number,
+        "url": f"https://github.com/{link.connection.full_name}/pull/{link.pr_number}",
+        "merged_at": link.merged_at,
+    }
+
+
+def _serialize_source(record, user=None):
     """Serialize only the decision gist and safe project/task context."""
     result = {
         "id": record.pk,
@@ -61,7 +85,11 @@ def _serialize_source(record):
         "project_id": record.task.project_id,
         "project_name": record.task.project.name,
         "org_id": record.task.project.org_id,
+        "pr": None,
     }
+    pr = pr_evidence(user, record.task)
+    if pr:
+        result["pr"] = {**pr, "merged_at": pr["merged_at"].isoformat()}
     if record.confirmed_at:
         result["confirmed_at"] = record.confirmed_at.isoformat()
     return result
@@ -108,7 +136,7 @@ def list_portfolio_sources(
     total = records.count()
     page = records[offset : offset + limit]
     return {
-        "items": [_serialize_source(record) for record in page],
+        "items": [_serialize_source(record, user) for record in page],
         "total": total,
         "limit": limit,
         "offset": offset,
