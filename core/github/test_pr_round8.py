@@ -50,16 +50,18 @@ def _pr(task, action, *, number=12, draft=False, merged=False, sha="a" * 40, **e
     return payload
 
 
-def _review(state, *, action="submitted", login="rev", number=12):
+def _review(state, *, action="submitted", login="rev", number=12, rid=None, at="2026-10-02"):
+    _review.n = getattr(_review, "n", 0) + 1
     return {
         "action": action,
         "repository": {"full_name": "o/r"},
         "sender": {"id": 501, "login": login},
         "pull_request": {"number": number},
         "review": {
+            "id": rid or _review.n,
             "state": state,
             "user": {"login": login},
-            "submitted_at": "2026-10-02T00:00:00Z",
+            "submitted_at": f"{at}T00:00:00Z",
         },
     }
 
@@ -192,7 +194,7 @@ def test_review_states_recompute(client, conn, task, member):
 
     _send(client, _review("commented", login="a"), "pull_request_review")
     link.refresh_from_db()
-    assert link.reviews == {"a": "approved"}  # 코멘트는 승인을 지우지 않는다
+    assert link.review_states == {"a": "approved"}  # 코멘트는 승인을 지우지 않는다
 
     _send(client, _review("changes_requested", login="b"), "pull_request_review")
     link.refresh_from_db()
@@ -201,9 +203,42 @@ def test_review_states_recompute(client, conn, task, member):
     log = ChangeLog.objects.filter(target_id=task.pk, field="status").order_by("-id").first()
     assert log.note == "PR #12 변경 요청" and log.external_actor == "b"
 
-    _send(client, _review("", action="dismissed", login="b"), "pull_request_review")
+    rid = link.reviews["b"]["id"]
+    _send(
+        client, _review("dismissed", action="dismissed", login="b", rid=rid), "pull_request_review"
+    )
     link.refresh_from_db()
-    assert link.reviews == {"a": "approved"} and link.review_state == "approved"
+    assert link.review_states == {"a": "approved"} and link.review_state == "approved"
+
+
+def test_late_older_review_does_not_override_newer_approval(client, conn, task):
+    """같은 리뷰어의 10/5 승인 뒤에 10/4 변경 요청이 늦게 도착해도 승인이 남는다."""
+    _review_state(task, client)
+    _send(client, _review("approved", rid=20, at="2026-10-05"), "pull_request_review")
+    ev = _send(client, _review("changes_requested", rid=10, at="2026-10-04"), "pull_request_review")
+    link = TaskGitLink.objects.get(task=task)
+    task.refresh_from_db()
+    assert ev.result == "오래된 리뷰 무시"
+    assert link.review_states == {"rev": "approved"} and link.review_state == "approved"
+    assert task.status == "review"
+    # 옛 리뷰의 철회도 새 승인을 지우지 않는다
+    _send(client, _review("dismissed", action="dismissed", rid=10), "pull_request_review")
+    link.refresh_from_db()
+    assert link.review_state == "approved"
+
+
+def test_pr_link_survives_title_without_task_number(client, conn, task):
+    """이미 이어진 PR은 제목에서 TASK 번호를 지워도 링크로 찾는다."""
+    _review_state(task, client)
+    renamed = _pr(task, "edited")
+    renamed["pull_request"].update(title="리팩터링", head={"ref": "misc", "sha": "c" * 40})
+    _send(client, renamed)
+    assert TaskGitLink.objects.get(task=task).pr_title == "리팩터링"
+    merged = _pr(task, "closed", merged=True, merged_at="2026-10-04T00:00:00Z")
+    merged["pull_request"].update(title="리팩터링", head={"ref": "misc", "sha": "c" * 40})
+    _send(client, merged)
+    task.refresh_from_db()
+    assert task.status == "done"
 
 
 def test_changes_requested_with_rule_off_records_only(client, conn, task):
@@ -243,6 +278,7 @@ def test_pr_reopened_on_closed_task_creates_new_task(
     project.discord_channel_id = "c-1"
     project.save()
     _merged(client, task)
+    before = Notice.objects.filter(user=member).count()
 
     ev = _send(client, _pr(task, "reopened"), delivery="re-1")
     new = Task.objects.exclude(pk=task.pk).get()
@@ -257,7 +293,8 @@ def test_pr_reopened_on_closed_task_creates_new_task(
     # 원 담당자에게 담당 요청(행위자 = 프로젝트 관리자)
     req = WorkRequest.objects.get(kind="assign", task=new)
     assert req.to_user == member and req.requested_by == admin and req.status == "pending"
-    assert Notice.objects.filter(user=member, text__contains="재개").exists()
+    # 담당 지정 알림 없이 담당 요청 한 통만 간다
+    assert Notice.objects.filter(user=member).count() == before + 1
     assert Notice.objects.filter(channel_id="c-1", text__contains="재개").exists()
 
     # 같은 delivery 재전송은 웹훅 단계에서 버려진다
@@ -311,3 +348,27 @@ def test_issue_reopened_on_closed_task_creates_new_task(client, conn, task, memb
     assert ev.result == f"{new.number} 생성" and new.status == "todo"
     assert RepoIssue.objects.get(number=5).task == new
     assert new.git.issue_number == 5 and new.git.issue_state == "open"
+
+
+def test_reopen_locks_original_task_row(client, conn, task, monkeypatch):
+    """동시 reopen 방지: 열린 재개 링크를 보기 전에 원 태스크 행을 잠근다(SQLite는 FOR UPDATE를
+    지원하지 않아 실제 교차 실행 대신 잠금 호출 순서를 고정한다)."""
+    _merged(client, task)
+    calls = []
+    real = Task.objects.select_for_update
+    real_filter = TaskGitLink.objects.filter
+
+    def spy_lock(*a, **kw):
+        calls.append("lock")
+        return real(*a, **kw)
+
+    def spy_filter(*a, **kw):
+        if "task__status__in" in kw:
+            calls.append("existing")
+        return real_filter(*a, **kw)
+
+    monkeypatch.setattr(Task.objects, "select_for_update", spy_lock)
+    monkeypatch.setattr(TaskGitLink.objects, "filter", spy_filter)
+    _send(client, _pr(task, "reopened"))
+    assert calls[:2] == ["lock", "existing"]
+    assert Task.objects.count() == 2

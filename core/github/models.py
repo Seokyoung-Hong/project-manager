@@ -142,6 +142,14 @@ class TaskGitLink(models.Model):
     def __str__(self):
         return f"{self.connection.full_name} ← {self.task_id}"
 
+    @property
+    def review_states(self) -> dict:
+        """{login: state}. reviews 값은 {"state", "id", "at"}이다(옛 행은 문자열)."""
+        return {
+            login: v.get("state", "") if isinstance(v, dict) else v
+            for login, v in (self.reviews or {}).items()
+        }
+
 
 class GitRelease(models.Model):
     """릴리스·태그. GitEvent는 50건에 잘리므로 선반에 남기려면 표가 따로 있어야 한다."""
