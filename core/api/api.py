@@ -2,7 +2,8 @@ from django.contrib.auth.decorators import login_required
 from ninja import NinjaAPI
 from ninja.throttling import AuthRateThrottle
 
-from common.errors import ConflictError, ServiceError
+from common.errors import ConflictError, Forbidden, ServiceError
+from notes.models import MeetingNote
 from portfolio.api import router as portfolio_router
 
 from .auth import BrowserSessionAuth, TokenAuth
@@ -14,6 +15,7 @@ from .routers import (
     github,
     integrations,
     me,
+    notes,
     orgs,
     pr_context,
     projects,
@@ -69,12 +71,19 @@ def _service_error(request, exc):
     return api.create_response(request, {"detail": exc.errors}, status=400)
 
 
+@api.exception_handler(Forbidden)
+def _forbidden(request, exc):
+    return api.create_response(request, {"detail": exc.errors}, status=403)
+
+
 @api.exception_handler(ConflictError)
 def _conflict(request, exc):
     latest = exc.latest
     viewer = getattr(request, "auth", None)
     if hasattr(latest, "assignee"):
         data = task_out(latest, viewer)
+    elif isinstance(latest, MeetingNote):
+        data = notes.note_out(latest)
     elif hasattr(latest, "body_md"):
         # 프로젝트 문서. project_out을 태우면 없는 필드를 찾다 500이 난다.
         data = doc_out(latest, body=False)
@@ -93,6 +102,7 @@ api.add_router("/tasks", tasks.router)
 api.add_router("/tasks", decisions.router)
 api.add_router("/tasks", pr_context.router)
 api.add_router("/", attachments.router)
+api.add_router("/", notes.router)
 api.add_router("/me", portfolio_router)
 api.add_router("/today", today.router)
 api.add_router("/reports", reports.router)

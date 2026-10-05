@@ -15,6 +15,8 @@ from ninja.errors import HttpError
 from accounts.models import User
 from accounts.services import link_discord, unlink_discord_by_id, user_by_discord_id
 from github import hooks as gh_hooks
+from notes import services as notes_svc
+from notes.models import VoiceRecording
 from orgs import channels as org_channels
 from orgs import discord as org_discord
 from orgs import settings as org_settings
@@ -46,6 +48,9 @@ from ..schemas import (
     DiscordExtendIn,
     DiscordGuildReportIn,
     DiscordLinkIn,
+    DiscordMeetingIn,
+    DiscordMeetingPatchIn,
+    DiscordMeetingStartIn,
     DiscordMemberPermissionsIn,
     DiscordNoteIn,
     DiscordNoticeAckIn,
@@ -636,3 +641,123 @@ def github_hook_failed(request, project_id: int, payload: GitHubHookFailedIn):
 @router.post("/github-hooks/{int:project_id}/removed", response=dict)
 def github_hook_removed(request, project_id: int, payload: GitHubHookRemovedIn):
     return gh_hooks.on_removed(project_id, payload.webhook_id)
+
+
+# ---------- 음성 회의 녹음 (IMPL-PLAN-9 M2) ----------
+
+
+def _stt(org) -> dict:
+    """전사 설정. 로컬 전사 서버 키(평문)가 밖으로 나가는 곳은 이 봇 API뿐이다."""
+    return {
+        "url": org_settings.effective("meeting.stt_url", org=org),
+        "model": org_settings.effective("meeting.stt_model", org=org),
+        "timeout_s": org_settings.effective("meeting.stt_timeout_s", org=org),
+        "api_key": org_settings.secret_value("meeting.stt_api_key", org),
+    }
+
+
+def _meeting_args(payload):
+    actor = _actor(payload.discord_user_id)
+    org = org_discord.org_by_guild(payload.guild_id)
+    if org is None:
+        raise HttpError(404, "이 서버는 조직에 연결되지 않았습니다.")
+    project = team = None
+    if payload.project_id is not None:
+        project = Project.objects.filter(pk=payload.project_id, org=org).first()
+        if project is None:
+            raise HttpError(404, "프로젝트를 찾을 수 없습니다.")
+    if payload.team_id is not None:
+        team = Team.objects.filter(pk=payload.team_id, org=org).first()
+        if team is None:
+            raise HttpError(404, "팀을 찾을 수 없습니다.")
+    return {"actor": actor, "org": org, "project": project, "team": team}
+
+
+def _recording_out(rec) -> dict:
+    return {
+        "id": rec.pk,
+        "note_id": rec.note_id,
+        "status": rec.status,
+        "current_owner": {
+            "id": rec.current_owner_id,
+            "discord_user_id": rec.current_owner.discord_user_id,
+        },
+        "ended_at": rec.ended_at,
+        "end_reason": rec.end_reason,
+        "audio_expires_at": rec.audio_expires_at,
+    }
+
+
+def _recording(recording_id: int):
+    rec = (
+        VoiceRecording.objects.select_related("note", "note__org", "current_owner")
+        .filter(pk=recording_id)
+        .first()
+    )
+    if rec is None:
+        raise HttpError(404, "녹음을 찾을 수 없습니다.")
+    return rec
+
+
+@router.post("/meetings/check", response=dict)
+def meeting_check(request, payload: DiscordMeetingIn):
+    """녹음을 시작해도 되는가(멤버·프로젝트/팀 가시성·meeting.recording_enabled). 거절은 403/400."""
+    args = _meeting_args(payload)
+    conf = notes_svc.meeting_scope(**args)
+    return {"ok": True, "org_id": args["org"].pk, **conf, "stt": _stt(args["org"])}
+
+
+@router.post("/meetings", response=dict)
+def meeting_start(request, payload: DiscordMeetingStartIn):
+    """녹음 + 초안 회의록(draft, source=voice)을 만든다. 길드당 하나."""
+    args = _meeting_args(payload)
+    rec = notes_svc.start_recording(
+        **args,
+        guild_id=payload.guild_id,
+        voice_channel_id=payload.voice_channel_id,
+        title=payload.title,
+    )
+    return {
+        **_recording_out(rec),
+        **notes_svc.meeting_scope(**args),
+        "stt": _stt(args["org"]),
+    }
+
+
+@router.patch("/meetings/{int:recording_id}", response=dict)
+def meeting_update(request, recording_id: int, payload: DiscordMeetingPatchIn):
+    """이어가기·종료(transcribing)·전사 결과(draft)·실패. 상태는 앞으로만 간다."""
+    rec = _recording(recording_id)
+    stopped_by = user_by_discord_id(payload.discord_user_id) if payload.discord_user_id else None
+    new_owner = (
+        _actor(payload.takeover_discord_user_id) if payload.takeover_discord_user_id else None
+    )
+    rec = notes_svc.update_recording(
+        rec,
+        status=payload.status,
+        stopped_by=stopped_by,
+        new_owner=new_owner,
+        ended_at=payload.ended_at,
+        end_reason=payload.end_reason,
+        participants=payload.participants,
+        transcript_md=payload.transcript_md,
+        stats=payload.stats,
+    )
+    return _recording_out(rec)
+
+
+@router.get("/meetings/{int:recording_id}/names", response=dict)
+def meeting_names(request, recording_id: int):
+    """전사 화자 표기용 `discord_user_id → 표시명·user_id`(연결한 조직 멤버)와 전사 설정."""
+    rec = _recording(recording_id)
+    org = rec.note.org
+    users = User.objects.filter(org_memberships__org=org, discord_linked_at__isnull=False).exclude(
+        discord_user_id=None
+    )
+    return {
+        "names": [
+            {"discord_user_id": u.discord_user_id, "user_id": u.pk, "display_name": u.display_name}
+            for u in users
+        ],
+        "stt": _stt(org),
+    }
