@@ -20,6 +20,7 @@ WEEKLY_KEYS = {
     "overdue",
     "blocked",
     "by_project",
+    "github",
     "counts",
     "members",
 }
@@ -94,3 +95,47 @@ def test_org_status_counts(project, member, admin):
     assert len(st["by_project"][0]["owners"]) == 1
     assert "status" in st["by_project"][0]
     assert st["by_assignee"][0]["blocked"] == 1
+
+
+def test_weekly_github_metrics(org, project, member, admin):
+    from datetime import timedelta as td
+
+    from github.models import RepoConnection, TaskGitLink
+
+    ws = last_week_start()
+    assert weekly(org, ws)["github"] is None
+    conn = RepoConnection.objects.create(
+        project=project, url="https://github.com/o/r", full_name="o/r", created_by=admin
+    )
+    mid = datetime.combine(ws, datetime.min.time(), tzinfo=KST) + td(days=2)
+    for i, kw in enumerate(
+        [
+            dict(
+                pr_state="merged",
+                merged_at=mid,
+                pr_opened_at=mid,
+                review_requested_at=mid,
+                reviewed_at=mid + td(hours=5),
+            ),
+            dict(
+                pr_state="open",
+                ci_state="failure",
+                pr_opened_at=mid,
+                review_requested_at=mid,
+                reviewed_at=mid + td(hours=8),
+            ),
+            dict(pr_state="open", ci_state="success"),
+        ]
+    ):
+        t = create_task(
+            project=project, title=f"t{i}", actor=member, source="web", no_due_reason="x"
+        )
+        TaskGitLink.objects.create(task=t, connection=conn, **kw)
+    g = weekly(org, ws)["github"]
+    assert g == {
+        "merged": 1,
+        "opened": 2,
+        "open": 2,
+        "avg_review_hours": 6.5,
+        "ci_failing": 1,
+    }

@@ -4,6 +4,7 @@ from datetime import date, timedelta
 from django.db.models import Count, Q
 
 from common.dates import kst_week_range, overdue_q, today_kst, week_bounds
+from github.metrics import weekly_metrics
 from orgs.models import Team, TeamMembership
 from orgs.services import visible_teams
 from projects.services import visible_projects
@@ -238,6 +239,7 @@ def weekly(org, week_start: date, *, viewer=None) -> dict:
         "overdue": overdue,
         "blocked": blocked,
         "by_project": by_project,
+        "github": weekly_metrics(shown_projects.filter(is_archived=False), start, end),
         "counts": {
             "completed": len(completed_ids),
             "reopened": len(reopened_ids),
