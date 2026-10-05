@@ -192,7 +192,8 @@ animation·transition을 끈다(파일 맨 끝 규칙).
 | 붓질 | `.page-head > h1::after` 노랑 14px(모바일 10px), -1° | 페이지 제목에 자동 | 프로젝트·조직·설정·요청 제목 |
 | 반짝이 | 화분 SVG 안 `.spark`, 집계 면 `.tally-badge` | 2.4s 2회 | 오늘만 |
 | 로고(워드마크) | `static/brand/udally.svg` — 파비콘과 같은 `--c-yellow` 바탕, 얼굴(ll = 눈, y = 웃는 입) `--c-ink`, Uda는 한 톤 물러난 황토 #7A5C16(바탕 대비 4.3:1). 바탕이 있어 다크 모드도 같은 색, 다크 값은 파일 안 `prefers-color-scheme` | 헤더 높이 38px | 상단 바(로그인 전·후), README |
-| 로고(아이콘) | `static/brand/udally-icon.svg` — 얼굴만 잘라 `--c-yellow` 바탕에 `--c-ink` | 16px까지 읽힘 | 파비콘, Discord 봇 프로필 |
+| 로고(아이콘) | `static/brand/udally-icon.svg` — 얼굴만 잘라 `--c-yellow` 바탕에 `--c-ink` | 16px까지 읽힘 | 파비콘 |
+| 로고(아바타) | `static/brand/udally-avatar.svg` — 아이콘과 같은 색, 원형으로 잘려도 얼굴이 다 들어가게 여백을 둠 | 512px PNG로 올림 | Discord 봇 아바타·앱 아이콘 |
 
 SVG 칠은 `fill="#…"`이 아니라 `.art-pot` `.art-leaf` 같은 클래스로 — 다크에서 함께 바뀐다. 새 그림을 만들면 `templates/art/`에 둔다.
 
