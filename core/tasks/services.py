@@ -265,7 +265,9 @@ def create_task(
     due_date=None,
     no_due_reason="",
     idempotency_key=None,
+    notify_assignee=True,
 ) -> Task:
+    """notify_assignee=False: 호출부가 담당자에게 따로 알린다(GitHub 재개는 담당 요청 한 통)."""
     _require_member(actor, project)
     _ai_check(project.org, "ai.create_task", "태스크 만들기", source, "title")
     if idempotency_key:
@@ -318,7 +320,7 @@ def create_task(
     _log(task, "created", "", task.number, actor, source, token)
     if ask is not None:
         wr.request_assign(task, ask, actor, source)
-    elif assignee != actor:
+    elif assignee != actor and notify_assignee:
         wr.notify_assigned(task, actor)
     if idempotency_key:
         # 같은 키로 동시에 두 번 오면 둘 다 위의 조회를 비켜 간다. 유니크 충돌이 난 쪽은
@@ -665,6 +667,7 @@ def duplicate_task(
     no_due_reason="",
     assignee=None,
     idempotency_key=None,
+    notify_assignee=True,
 ) -> Task:
     """복제·회차·변형 공통. 설명·완료 조건·다음 행동·중요도·체크리스트(전부 미완료)·링크·문서 연결을
     복사한다. 첨부 파일은 복사하지 않는다(회차는 새 파일을 만든다). 상태는 todo, 템플릿 아님.
@@ -683,6 +686,7 @@ def duplicate_task(
         due_date=due_date,
         no_due_reason=no_due_reason,
         idempotency_key=idempotency_key,
+        notify_assignee=notify_assignee,
     )
     if new.parent_id is not None:
         return new  # 같은 Idempotency-Key 재요청 — 이미 복사까지 끝난 회차다

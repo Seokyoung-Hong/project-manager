@@ -970,14 +970,15 @@ def _on_pr(conn, delivery, payload):
     action = payload.get("action") or ""
     pr = payload.get("pull_request") or {}
     branch = ((pr.get("head") or {}).get("ref")) or ""
-    task, _ = _find_task(conn, pr.get("title") or "", pr.get("body") or "", branch)
     number = pr.get("number")
     summary = f"PR #{number} {action}"
-    if task is not None and not task.is_open:
-        # PR 제목은 여전히 원 태스크 번호를 가리킨다. 재개로 이어진 열린 태스크가 있으면 그쪽이다.
-        cont = _pr_link(conn, number)
-        if cont is not None and cont.task.is_open:
-            task = cont.task
+    # 이미 이어진 PR은 그 링크가 기준이다(재개로 이어진 열린 태스크 우선). 제목에서 TASK 번호를
+    # 지워도 연결이 끊기지 않는다. 번호 탐색은 처음 연결할 때만 한다.
+    linked = _pr_link(conn, number) if number else None
+    if linked is not None:
+        task = linked.task
+    else:
+        task, _ = _find_task(conn, pr.get("title") or "", pr.get("body") or "", branch)
     if task is None or action not in PR_ACTIONS:
         record_event(
             conn,
@@ -1108,7 +1109,7 @@ REVIEW_STATES = ("approved", "changes_requested", "commented")
 
 
 def _review_state(reviews: dict) -> str:
-    values = set(reviews.values())
+    values = {v.get("state") if isinstance(v, dict) else v for v in reviews.values()}
     if "changes_requested" in values:
         return "changes_requested"
     return "approved" if "approved" in values else ""
@@ -1132,15 +1133,34 @@ def _on_pr_review(conn, delivery, payload):
             result="연결 안 됨",
         )
         return
+    # 같은 PR의 리뷰가 동시에 와도 JSON 갱신을 잃지 않게 링크 행을 잠근다.
+    link = TaskGitLink.objects.select_for_update().select_related("task").get(pk=link.pk)
     task = link.task
     login = ((review.get("user") or {}).get("login")) or ""
     reviews = dict(link.reviews or {})
+    prev = reviews.get(login)
+    prev = prev if isinstance(prev, dict) else {"state": prev}  # 옛 행: 순서 정보 없음
+    rid, at = review.get("id"), parse_ts(review.get("submitted_at")).isoformat()
     if action == "dismissed":
-        reviews.pop(login, None)
+        # 철회는 그 리뷰에만 걸린다. 뒤늦게 온 옛 리뷰의 철회가 새 리뷰를 지우면 안 된다.
+        if prev.get("id") in (None, rid):
+            reviews.pop(login, None)
     elif action == "submitted" and state in REVIEW_STATES and login:
-        # 코멘트 리뷰는 GitHub에서도 앞선 승인·변경 요청을 지우지 않는다.
-        if state != "commented" or login not in reviews:
-            reviews[login] = state
+        if prev.get("at") and (at, rid or 0) <= (prev["at"], prev.get("id") or 0):
+            # 늦게 도착한 옛 리뷰. 최신 리뷰를 덮지도, 상태를 바꾸지도 않는다.
+            record_event(
+                conn,
+                delivery,
+                kind="pull_request_review",
+                payload=payload,
+                summary=summary,
+                task=task,
+                result="오래된 리뷰 무시",
+            )
+            return
+        # 코멘트 리뷰는 GitHub에서도 앞선 승인·변경 요청을 지우지 않는다(시각만 앞으로 민다).
+        kept = prev.get("state") if state == "commented" and prev.get("state") else state
+        reviews[login] = {"state": kept, "id": rid, "at": at}
         if state != "commented":
             link.reviewed_at = parse_ts(review.get("submitted_at"))
     link.reviews = reviews
@@ -1186,6 +1206,9 @@ def reopen_as_new(conn, delivery, payload, *, old, kind: str) -> Task | None:
     label = "PR" if is_pr else "이슈"
     summary = f"{label} #{number} reopened"
     field = "pr_number" if is_pr else "issue_number"
+    # 같은 PR·이슈의 reopen이 동시에 와도 새 태스크는 하나만. 원 태스크 행을 잠그면 뒤에 온 쪽은
+    # 앞쪽이 커밋할 때까지 기다렸다가 아래 조회에서 그 태스크를 본다.
+    Task.objects.select_for_update().filter(pk=old.pk).first()
     existing = (
         TaskGitLink.objects.filter(connection=conn, **{field: number}, task__status__in=Task.OPEN)
         .select_related("task")
@@ -1214,6 +1237,7 @@ def reopen_as_new(conn, delivery, payload, *, old, kind: str) -> Task | None:
         due_date=None,
         no_due_reason=f"{note}로 생성",
         assignee=old.assignee,
+        notify_assignee=False,  # 담당 요청(또는 재개 DM) 한 통으로 알린다
     )
     src = TaskGitLink.objects.filter(task=old).first()
     link = _link_for(conn, new)

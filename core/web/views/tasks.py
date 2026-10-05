@@ -47,7 +47,7 @@ def _git_ctx(request, task) -> dict:
     if rs["state"] == "ok" and not (link and link.issue_number):
         sync_issues_if_stale(rs["conn"])
         issues = rs["conn"].issues.filter(state="open", task__isnull=True)[:50]
-    reviews = list((link.reviews or {}).values()) if link else []
+    reviews = list(link.review_states.values()) if link else []
     return {
         "gh": {
             **rs,

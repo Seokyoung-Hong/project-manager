@@ -184,7 +184,7 @@ def get_task_github(request, task_id: int):
             "draft": link.pr_draft,
             "head_sha": link.head_sha,
             "review_state": link.review_state,
-            "reviews": link.reviews,
+            "reviews": link.review_states,
             "ci_state": link.ci_state,
             "ci_url": link.ci_url,
         }
