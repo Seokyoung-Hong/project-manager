@@ -169,6 +169,24 @@ animation·transition을 끈다(파일 맨 끝 규칙).
 | 알림 | `.notice`(세이지) `.notice.warn` `.notice.bad`, `.toast` | 경고·실패는 ⚠ 글리프를 앞에 둔다(색 외 단서). 일반 알림엔 글리프 없음. 토스트는 3초 | ⓘ 같은 장식 글리프, 감탄부호 |
 | 지표 | `.tiles .tile`, `.stats .stat`, `.bar` | 첫 칸(대표)만 세이지, 위험 수치(`b.danger`)는 코랄, 나머지 바탕색 | 의미 없는 색 돌림 |
 
+### 3.1 폼·설정 페이지 레이아웃
+
+**원칙: 페이지 폭은 채우고, 입력 하나는 읽기 좋은 폭에서 멈춘다.** 폼을 640px 상자에 넣어 왼쪽에 붙이고 오른쪽을 비우지 않는다
+(2026-10-06 사용자 지적). 페이지·섹션·목록에 고정 `max-width`를 두지 않는다 — 폭 제한은 입력 요소에만 둔다.
+
+| 화면 유형 | 배치 | 클래스 |
+|---|---|---|
+| 섹션이 여럿인 설정(조직·프로젝트 설정) | 왼쪽 섹션 목차 220px(고정 위치, 스크롤에 따라 현재 섹션 표시) + 오른쪽 넓은 본문. 저장 막대는 본문 위에 붙는다 | `form.settings-form.with-nav` 또는 카드 안 `.settings-split` → `.settings-jump` + `.settings-main` |
+| 설정 행 | "라벨·도움말 \| 입력 \| (조직) 프로젝트 변경 허용" 3단 그리드 `minmax(260px, 1.4fr) minmax(200px, 1fr) minmax(170px, 220px)`. 셀렉트·글 입력은 최대 420px, 숫자는 84px, 도움말은 70ch | `.setting-row`, `.setting-row-with-override` |
+| 짧은 그룹 여럿(개인 환경설정) | 그룹을 나란히: `repeat(auto-fit, minmax(520px, 1fr))` | `.settings-groups` |
+| 카드 몇 장(프로필·연결) | 카드를 2~3열: `repeat(auto-fit, minmax(440px, 1fr))` | `.card-grid` |
+| 하나의 일을 하는 독립 폼(새 요청·조직 만들기) | 읽기 폭 카드 760px를 **가운데**에 | `.card.form-card` |
+| 표가 주인 화면(토큰·운영·팀 멤버) | 카드가 본문 폭을 채우고 표가 넓게 | 기본 `.card` |
+| 대화상자 | 네이티브 `dialog` 640px(폭 문제 없음) | `dialog` |
+
+- 1100px 이하: 목차 사이드는 위쪽 가로 칩 줄로 접힌다. 850px 이하: 설정 행이 세로 카드(라벨 → 입력 → 잠금)로. 700px 이하: 모두 1열.
+- 목차 링크는 `data-action="open-settings-group"`(누르면 그 섹션만 펼침)을 그대로 쓰고, 현재 섹션은 `aria-current="true"`.
+
 ## 4. 업무 부품
 
 - **상태 알약 7종** `.pill.{todo|doing|review|blocked|paused|done|cancelled}` — select와 읽기 전용(`.pill.static`) 공용, 글자 앞에 상태 기호

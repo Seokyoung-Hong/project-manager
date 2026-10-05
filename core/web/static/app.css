@@ -203,7 +203,6 @@ details[open] > summary .caret { transform: rotate(180deg); }
 }
 .layout { flex: 1; min-width: 0; display: flex; align-items: flex-start; gap: var(--sp-6); padding: var(--sp-8); }
 .layout > main { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; gap: var(--sp-6); }
-.layout > main:has(> .settings-tabs) { max-width: 880px; }
 .auth-main { min-height: calc(100vh - var(--header-h)); align-items: center; justify-content: center; }
 aside#panel { flex: 1 1 380px; max-width: 480px; position: sticky; top: calc(var(--header-h) + var(--sp-6)); max-height: calc(100vh - var(--header-h) - 48px); overflow: auto; }
 aside#panel:empty { display: none; }
@@ -328,6 +327,8 @@ label.check { display: inline-flex; align-items: center; gap: var(--sp-2); min-h
   overflow: hidden; clip-path: inset(50%); white-space: nowrap; opacity: 0;
 }
 .file-upload-input:focus-visible + .file-upload-button { outline: 3px solid var(--c-accent); outline-offset: 2px; }
+fieldset { min-width: 0; margin: 0; padding: var(--sp-3) var(--sp-4); border: 1px solid var(--c-line); border-radius: var(--r-md); }
+fieldset > legend { padding: 0 var(--sp-1); font-size: var(--fs-sm); font-weight: 600; color: var(--c-muted); }
 .choice-fieldset { min-width: 0; margin: 0; padding: 0; border: 0; }
 .choice-fieldset > legend { margin-bottom: var(--sp-2); padding: 0; font-size: var(--fs-sm); font-weight: 600; color: var(--c-muted); }
 
@@ -893,20 +894,42 @@ details > summary { cursor: pointer; font-weight: 600; }
 /* ---- 22. 설정 ---- */
 .settings-heading { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: var(--sp-2) var(--sp-4); }
 .settings-heading > div { display: flex; flex-direction: column; gap: 2px; }
-.settings-scope-note { max-width: 960px; }
+.settings-scope-note { max-width: none; }
 .settings-form { display: flex; flex-direction: column; gap: var(--sp-4); min-width: 0; }
 .settings-tabs ~ .card form.stack { max-width: 560px; }
-.settings-jump { display: flex; flex-wrap: wrap; gap: var(--sp-2); max-width: 960px; }
+.settings-jump { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
 .settings-jump .chip span { color: var(--c-muted); font-size: var(--fs-xs); }
+/* 설정 페이지 레이아웃(DESIGN.md 3.1): 페이지 폭을 채우되 입력이 끝까지 늘어나지 않게.
+   왼쪽은 섹션 목차(고정·현재 위치 표시), 오른쪽은 넓은 본문. 행은 '라벨·도움말 | 입력 | 잠금' 3단 */
+.settings-form.with-nav, .settings-split {
+  display: grid; grid-template-columns: minmax(180px, 220px) minmax(0, 1fr); gap: var(--sp-6); align-items: start;
+}
+.settings-main { display: flex; flex-direction: column; gap: var(--sp-4); min-width: 0; }
+.with-nav > .settings-jump, .settings-split > .settings-jump {
+  position: sticky; top: calc(var(--header-h) + var(--sp-4)); flex-direction: column; flex-wrap: nowrap; gap: 2px;
+  padding: var(--sp-2); border-radius: var(--r-lg); background: var(--c-soft);
+}
+.with-nav > .settings-jump .chip, .settings-split > .settings-jump .chip {
+  justify-content: space-between; height: 40px; border-color: transparent; background: transparent; border-radius: var(--r-md);
+}
+.with-nav > .settings-jump .chip:hover, .settings-split > .settings-jump .chip:hover { background: var(--c-surface); }
+.settings-jump .chip[aria-current="true"] { background: var(--c-surface); font-weight: 700; box-shadow: var(--sh-1); }
+/* 개인 환경설정: 그룹이 짧아 넓은 화면에서는 나란히 둔다 */
+.settings-groups { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(520px, 100%), 1fr)); gap: var(--sp-5) var(--sp-8); align-items: start; }
+.personal-settings-group + .personal-settings-group { margin-top: 0; }
+/* 카드 몇 장짜리 설정(프로필 등): 넓으면 2~3열 */
+/* 하나의 일을 하는 독립 폼 페이지(새 요청·조직 만들기): 읽기 폭의 카드를 가운데에 */
+.form-card { width: 100%; max-width: 760px; margin-inline: auto; }
+.form-card form.stack { max-width: none; }
+.card-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(440px, 100%), 1fr)); gap: var(--sp-6); align-items: start; }
 .settings-save-bar {
-  position: sticky; top: calc(var(--header-h) + 8px); z-index: var(--z-sticky); display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); max-width: 960px;
+  position: sticky; top: calc(var(--header-h) + 8px); z-index: var(--z-sticky); display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3);
   padding: var(--sp-2) var(--sp-2) var(--sp-2) var(--sp-4); border: 1px solid var(--c-line); border-radius: var(--r-lg);
   background: color-mix(in srgb, var(--c-surface) 94%, transparent); box-shadow: var(--sh-2); backdrop-filter: blur(12px);
 }
 .settings-save-hint { color: var(--c-muted); font-size: var(--fs-sm); line-height: 19px; }
-.personal-settings-group, .settings-section { max-width: 960px; }
+.personal-settings-group, .settings-section { min-width: 0; }
 .personal-settings-group { display: flex; flex-direction: column; gap: var(--sp-2); }
-.personal-settings-group + .personal-settings-group { margin-top: var(--sp-1); }
 .settings-group-title { display: flex; align-items: baseline; gap: 6px; font-size: var(--fs-task); line-height: 22px; }
 .settings-section { border: 1px solid var(--c-line); border-radius: var(--r-lg); background: var(--c-surface); scroll-margin-top: 150px; }
 details.card.settings-section { padding: 0; gap: 0; }
@@ -921,20 +944,20 @@ details.card.settings-section { padding: 0; gap: 0; }
 .settings-section[open] > .settings-section-summary { border-bottom: 1px solid var(--c-line); }
 .settings-section[open] > .settings-section-summary::after { transform: rotate(180deg); }
 .settings-section-body { padding: 0 var(--sp-5) var(--sp-4); }
-.settings-list { display: flex; max-width: 960px; flex-direction: column; border-top: 1px solid var(--c-line); }
+.settings-list { display: flex; flex-direction: column; border-top: 1px solid var(--c-line); }
 .settings-section-body > .settings-list { border-top: 0; }
 .setting-row {
-  display: grid; grid-template-columns: minmax(280px, 1fr) minmax(180px, 320px); gap: var(--sp-4) var(--sp-6);
+  display: grid; grid-template-columns: minmax(260px, 1.4fr) minmax(220px, 1fr); gap: var(--sp-4) var(--sp-6);
   align-items: center; min-height: 64px; padding: 10px var(--sp-2); border-bottom: 1px solid var(--c-line);
 }
 .setting-row:last-child { border-bottom: 0; }
-.setting-row-with-override { grid-template-columns: minmax(280px, 1fr) minmax(180px, 280px) minmax(170px, 220px); }
+.setting-row-with-override { grid-template-columns: minmax(260px, 1.4fr) minmax(200px, 1fr) minmax(170px, 220px); }
 .setting-name { display: flex; min-width: 0; flex-direction: column; align-items: flex-start; gap: 2px; }
 .setting-label { font-size: var(--fs-md); line-height: 20px; font-weight: 600; }
 .setting-help { display: block; max-width: 70ch; }
 .setting-lock { margin-top: var(--sp-1); white-space: normal; text-decoration: none; }
 .setting-control { min-width: 0; }
-.setting-control .input, .setting-control .select { width: 100%; max-width: 320px; }
+.setting-control .input, .setting-control .select { width: 100%; max-width: 420px; }
 .setting-control .setting-number { width: 84px; }
 .setting-toggle { display: inline-flex; align-items: center; gap: var(--sp-2); min-width: 64px; min-height: 44px; border-radius: var(--r-md); cursor: pointer; }
 .setting-toggle input, .setting-option input { flex: none; width: 20px; height: 20px; margin: 0; cursor: pointer; }
@@ -1012,6 +1035,12 @@ details.card.settings-section { padding: 0; gap: 0; }
 @media (max-width: 960px) {
   .today-grid { grid-template-columns: minmax(0, 1fr); grid-template-areas: "hero" "tally" "error" "quick" "list" "focus" "schedule"; }
   .tally { min-height: 0; }
+}
+@media (max-width: 1100px) {
+  /* 목차 사이드는 접고 위쪽 가로 칩으로 */
+  .settings-form.with-nav, .settings-split { display: flex; flex-direction: column; gap: var(--sp-4); }
+  .with-nav > .settings-jump, .settings-split > .settings-jump { position: static; flex-direction: row; flex-wrap: wrap; padding: 0; background: none; }
+  .with-nav > .settings-jump .chip, .settings-split > .settings-jump .chip { border-color: var(--c-line); background: var(--c-surface); height: 44px; }
 }
 @media (max-width: 850px) {
   .notes-columns { display: block; }
