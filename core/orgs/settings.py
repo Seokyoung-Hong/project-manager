@@ -676,6 +676,36 @@ SPECS: dict[str, Spec] = {
             "켜면 조직 채널 외에 팀 채널에도 그 팀 담당 프로젝트만 추려 보냅니다.",
             hidden=True,  # 봇이 아직 팀 채널로 보내지 않는다(weekly.py 참고). 구현되면 푼다
         ),
+        Spec(
+            "notify.github_channel_events",
+            "set",
+            (),
+            "org",
+            True,
+            "notify",
+            "GitHub 사건 채널 게시",
+            "채널이 연결된 프로젝트만 해당합니다. 멘션은 넣지 않습니다.",
+            choices=(
+                ("pr_opened", "PR 열림"),
+                ("pr_merged", "PR 병합"),
+                ("pr_changes", "PR 변경 요청"),
+                ("ci_failed", "CI 실패"),
+                ("issue_imported", "이슈 자동 가져옴"),
+                ("release", "릴리스 발행"),
+                ("reopened", "PR·이슈 재개로 새 태스크"),
+            ),
+        ),
+        Spec(
+            "notify.github_dm",
+            "bool",
+            True,
+            "org",
+            True,
+            "notify",
+            "GitHub 개인 DM",
+            "리뷰 요청은 검토자에게, 변경 요청·CI 실패·재개는 담당자에게 DM을 보냅니다. "
+            "개인 설정 '개인 DM 받기'를 끈 사람에게는 가지 않습니다.",
+        ),
         # --- 4.6 개인 설정 ---
         Spec(
             "user.notify_dm",
@@ -685,7 +715,7 @@ SPECS: dict[str, Spec] = {
             False,
             "user",
             "개인 DM 받기",
-            "끄면 마감·막힘·검토 대기 관리자 알림 DM을 받지 않습니다. 채널 주간 보고는 그대로입니다.",
+            "끄면 마감·막힘·검토 대기 관리자 알림·GitHub DM을 받지 않습니다. 채널 주간 보고는 그대로입니다.",
         ),
         Spec(
             "user.notify_kinds",
