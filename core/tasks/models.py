@@ -51,6 +51,8 @@ class Task(models.Model):
     no_due_reason = models.CharField("기한 미정 사유", max_length=200, blank=True)
     stop_reason = models.CharField("멈춘 사유", max_length=300, blank=True)
     stopped_at = models.DateTimeField(null=True, blank=True)
+    # 상태가 바뀐 시각. 검토 대기 경과일(에스컬레이션)이 쓴다. null이면 옛 행(stopped_at으로 대체).
+    status_since = models.DateTimeField(null=True, blank=True)
     completed_at = models.DateTimeField(null=True, blank=True)
     version = models.PositiveIntegerField(default=1)
     created_by = models.ForeignKey(

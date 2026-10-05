@@ -55,6 +55,9 @@ class PortfolioSource(models.Model):
     record_created_at = models.DateTimeField("기록 시각 스냅샷")
     task_number = models.CharField("태스크 번호 스냅샷", max_length=32)
     project_name = models.CharField("프로젝트명 스냅샷", max_length=100)
+    # 선택 시점의 병합 PR 근거. 번호·주소·병합일만 — 제목·본문·커밋 메시지는 담지 않는다.
+    pr_url = models.CharField("병합 PR 주소 스냅샷", max_length=300, blank=True)
+    pr_merged_at = models.DateTimeField("병합 시각 스냅샷", null=True, blank=True)
     created_at = models.DateTimeField("출처 추가 시각", auto_now_add=True)
 
     class Meta:
