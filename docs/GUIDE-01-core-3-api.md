@@ -500,7 +500,7 @@ class UserRateThrottle(AuthRateThrottle):
 
 
 api = NinjaAPI(
-    title="Sandol PM API",
+    title="Udally API",
     version="1",
     auth=[BrowserSessionAuth(), TokenAuth()],
     throttle=[UserRateThrottle("60/m")],

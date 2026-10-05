@@ -309,7 +309,7 @@ urlpatterns = [
 ```python
 from ninja import NinjaAPI
 
-api = NinjaAPI(title="Sandol PM API", version="1")
+api = NinjaAPI(title="Udally API", version="1")
 ```
 
 `core/web/urls.py` (임시):
