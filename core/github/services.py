@@ -533,11 +533,12 @@ def disconnect_repo(*, project, actor, source: str = "web") -> bool:
     conn = getattr(project, "repo", None)
     if conn is None:
         return False
-    if (conn.discord_hook or {}).get("state") in ("pending", "active", "error"):
+    if (conn.discord_hook or {}).get("state") == "active":
         from . import hooks
 
         # GitHub 저장소의 Discord 알림 훅을 먼저 지운다(누른 사람 토큰). 실패하면 해제도 멈춘다 —
-        # 연결을 지우고 나면 그 훅을 찾아 지울 길이 없다.
+        # 연결을 지우고 나면 그 훅을 찾아 지울 길이 없다. pending·registering·error는 GitHub 훅이 없거나
+        # 등록 중이라 행만 지운다: 봇의 늦은 보고는 hooks.on_created가 행 없음을 보고 보상 삭제한다.
         # ponytail: 봇이 지울 Discord 쪽 웹훅은 연결 행과 함께 사라져 채널에 남는다(GitHub 훅이 없어 조용하다).
         # 남는 게 문제가 되면 정리 작업을 연결 밖(프로젝트)에 두는 표를 만든다.
         hooks.remove(project, actor=actor, source=source)
@@ -772,7 +773,9 @@ def _installation_event(event: str, payload: dict):
         return
     action = payload.get("action") or ""
     if action == "new_permissions_accepted":
-        cache.delete(f"gh-app-caps:{inst_id}")  # 재승인 완료 → 점검 결과를 다시 묻는다
+        cache.delete_many(
+            [f"gh-app-caps:{inst_id}", f"gh-app-hooks:{inst_id}"]
+        )  # 재승인 → 다시 묻는다
         return
     if inst is None:
         return

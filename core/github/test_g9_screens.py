@@ -131,7 +131,7 @@ def test_disconnect_removes_github_hook_first(as_admin, conn, project, calls, mo
     org.save()
     calls.clear()
     # 실행자 Discord 권한 검사(require_discord)는 G5′ 테스트가 고정했다. 여기서는 정리 순서만 본다.
-    monkeypatch.setattr("github.hooks._require", lambda actor, project: None)
+    monkeypatch.setattr("github.hooks.require_discord", lambda actor, org, feature: None)
     r = as_admin.post(f"/projects/{project.pk}/repo/disconnect", follow=True)
     assert ("DELETE", "/repos/o/r/hooks/42") in calls
     assert not RepoConnection.objects.filter(project=project).exists()

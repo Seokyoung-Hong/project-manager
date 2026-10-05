@@ -285,11 +285,14 @@ def remove(project, *, actor, source="web") -> dict:
     등록 중(registering)에 취소하면 `on_created`가 끝난 뒤 세대가 바뀐 것을 보고 양쪽 훅을 정리한다.
     """
     conn = _conn(project)
-    _require(actor, project)
+    require_level(actor, project, effective("project.settings_by", org=project.org), "hook")
     hook = conn.discord_hook or {}
     state = hook.get("state")
     cleanup: tuple = ()
     if state == "active":
+        # Discord 서버 권한은 실제 훅이 있을 때만 본다. pending·error는 기록만 지우므로 묻지 않는다 —
+        # 봇 권한 부족으로 생긴 오류를 같은 권한 없는 사람이 못 지우는 잠김을 막는다.
+        require_discord(actor, project.org, "webhooks")
         try:
             client.request(
                 "DELETE", f"/repos/{conn.full_name}/hooks/{hook['hook_id']}", _actor_token(actor)
