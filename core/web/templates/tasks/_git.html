@@ -2,17 +2,17 @@
 <div class="section">
   <div class="label">GitHub</div>
   {% if gh.state == "none" %}
-  <p class="muted t13">저장소 미연결 · <a href="{% url 'project_repo' task.project_id %}">저장소 연결</a></p>
+  <p class="conn t13"><span class="conn-state off">저장소 미연결</span> <a href="{% url 'project_repo' task.project_id %}">저장소 연결</a></p>
   {% elif gh.state == "unlinked" %}
-  <p class="muted t13">GitHub를 연결하면 저장소 정보가 보입니다. <a href="{% url 'profile' %}">GitHub 연결</a></p>
+  <p class="conn t13"><span class="conn-state off">계정 미연결</span> <span class="muted">GitHub를 연결하면 저장소 정보가 보입니다.</span> <a href="{% url 'profile' %}">GitHub 연결</a></p>
   {% elif gh.state == "denied" %}
-  <p class="muted t13">저장소 접근 권한 없음</p>
+  <p class="conn t13"><span class="conn-state bad">저장소 접근 권한 없음</span></p>
   {% else %}
-  <p class="t13 muted">{{ gh.conn.full_name }}</p>
+  <p class="conn t13"><span class="conn-state on">연결됨</span> <code>{{ gh.conn.full_name }}</code></p>
   <ol class="git-steps">
     <li class="{% if gh.link.issue_number %}done{% endif %}">
       <span class="dot">{% if gh.link.issue_number %}&#10003;{% else %}&#9675;{% endif %}</span>
-      <span>이슈{% if gh.link.issue_number %} #{{ gh.link.issue_number }} {{ gh.link.issue_title }}{% endif %}</span>
+      <span>이슈{% if gh.link.issue_number %} <code>#{{ gh.link.issue_number }}</code> {{ gh.link.issue_title }}{% if gh.link.issue_state == "closed" %} <span class="badge pr-closed">Closed</span>{% endif %}{% endif %}</span>
       {% if not gh.link.issue_number %}
       <form class="row" hx-post="{% url 'git_issue' task.pk %}" hx-target="#panel" hx-swap="innerHTML">
         <select name="number" class="select auto" aria-label="이슈 선택">
@@ -31,7 +31,7 @@
     </li>
     <li class="{% if gh.link.branch %}done{% endif %}">
       <span class="dot">{% if gh.link.branch %}&#10003;{% else %}&#9675;{% endif %}</span>
-      <span>브랜치{% if gh.link.branch %} {{ gh.link.branch }}{% endif %}</span>
+      <span>브랜치{% if gh.link.branch %} <code>{{ gh.link.branch }}</code>{% endif %}</span>
       {% if not gh.link.branch %}
       <form class="row" hx-post="{% url 'git_branch' task.pk %}" hx-target="#panel" hx-swap="innerHTML">
         <input class="input" name="branch" placeholder="branch-name" aria-label="브랜치 이름">

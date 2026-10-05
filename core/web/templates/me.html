@@ -37,8 +37,9 @@
     </details>
   </form>
 </div>
+<div class="card group-stack">
 {% for g in groups %}
-<section class="card group">
+<section class="group">
   <h2>{{ g.title }} <span class="muted">{{ g.count }}</span></h2>
   {% if g.count == 0 %}<p class="muted">{{ g.empty_text }}</p>
   {% elif g.flat %}<ul class="tasks">{% for r in g.rows %}{% task_row r %}{% endfor %}</ul>
@@ -56,4 +57,5 @@
   {% endif %}
 </section>
 {% endfor %}
+</div>
 {% endblock %}

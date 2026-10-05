@@ -4,5 +4,6 @@
   <a href="{% url 'profile' %}" {% if settings_tab == "profile" %}aria-current="page"{% endif %}>프로필</a>
   <a href="{% url 'preferences' %}" {% if settings_tab == "preferences" %}aria-current="page"{% endif %}>환경설정</a>
   <a href="{% url 'tokens' %}" {% if settings_tab == "tokens" %}aria-current="page"{% endif %}>API 토큰</a>
-  {% if user.is_staff %}<a href="{% url 'ops' %}" {% if settings_tab == "ops" %}aria-current="page"{% endif %}>운영 상태</a>{% endif %}
+  {% if user.is_staff %}<a href="{% url 'ops' %}" {% if settings_tab == "ops" %}aria-current="page"{% endif %}>운영 상태</a>
+  <a href="{% url 'ops_design' %}" {% if settings_tab == "design" %}aria-current="page"{% endif %}>디자인 시스템</a>{% endif %}
 </nav>

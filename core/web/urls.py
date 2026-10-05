@@ -199,6 +199,7 @@ urlpatterns = [
     path("ops", ops.ops, name="ops"),
     path("ops/unlock", ops.unlock_login, name="ops_unlock"),
     path("ops/export.json", ops.export_json, name="export_json"),
+    path("ops/design", ops.design, name="ops_design"),
     # ---- V2-04: 부하 현황 · 로드맵 (아래는 이 단계에서 추가) ----
     path("orgs/<int:org_id>/capacity", roadmap.capacity, name="org_capacity"),
     path("orgs/<int:org_id>/roadmap", roadmap.roadmap, name="org_roadmap"),

@@ -4,7 +4,7 @@
 <div class="card">
   <h2>Discord 서버</h2>
   {% if org.discord_guild_id %}
-  <p class="row">연결됨 · 서버 id <code>{{ org.discord_guild_id }}</code></p>
+  <p class="conn"><span class="conn-state on">연결됨</span> 서버 id <code>{{ org.discord_guild_id }}</code></p>
   <p class="muted t13">
     {{ org.discord_linked_at|date:"Y-m-d H:i" }} 연결{% if org.discord_linked_by %} · {{ org.discord_linked_by.display_name }}{% endif %}
   </p>
@@ -13,6 +13,7 @@
     {% csrf_token %}<button class="btn sm danger">연결 해제</button>
   </form>
   {% else %}
+  <p class="conn"><span class="conn-state off">미연결</span></p>
   <p class="muted t13">이 조직에 아직 Discord 서버가 연결되지 않았습니다. 마감 알림과 주간 보고가 나가지 않습니다.</p>
   <a class="btn primary" href="{% url 'discord_connect' org.pk %}">Discord 서버 연결</a>
   <p class="muted t13">연결 화면에서 서버를 고를 수 있는 사람은 그 서버의 관리 권한자뿐입니다.</p>
@@ -22,25 +23,26 @@
 <div class="card">
   <h2>팀·프로젝트 채널</h2>
   {% if reauthorize %}
-  <p class="row"><strong>권한 갱신 필요</strong> · 봇에 채널 자동 관리에 필요한 권한(역할 관리)이 없습니다.
-    <a href="{% url 'discord_connect' org.pk %}">봇 다시 설치(권한 갱신)</a></p>
+  <div class="notice warn" role="status"><span aria-hidden="true">⚠</span><span class="grow"><strong>권한 갱신 필요</strong> · 봇에 채널 자동 관리에 필요한 권한(역할 관리)이 없습니다.</span>
+    <a class="btn sm" href="{% url 'discord_connect' org.pk %}">봇 다시 설치(권한 갱신)</a></div>
   {% endif %}
-  {% if intent_denied %}<p class="row"><strong>서버 멤버 인텐트 꺼짐</strong> · Discord 개발자 포털에서 Server Members Intent를 켜야 감시와 자동 관리가 동작합니다.</p>
-  {% elif not watching %}<p class="muted t13">봇이 채널을 감시하지 않고 있습니다. 서버 멤버 인텐트가 켜졌는지 확인해 주세요(감시 꺼짐). 이 경우 웹에서 자동 관리·허용·철회는 할 수 없고 Discord에서 명령으로 해야 합니다.</p>{% endif %}
+  {% if intent_denied %}<div class="notice warn" role="status"><span aria-hidden="true">⚠</span><span class="grow"><strong>서버 멤버 인텐트 꺼짐</strong> · Discord 개발자 포털에서 Server Members Intent를 켜야 감시와 자동 관리가 동작합니다.</span></div>
+  {% elif not watching %}<p class="notice warn"><span aria-hidden="true">⚠</span><span class="grow">봇이 채널을 감시하지 않고 있습니다. 서버 멤버 인텐트가 켜졌는지 확인해 주세요(감시 꺼짐). 이 경우 웹에서 자동 관리·허용·철회는 할 수 없고 Discord에서 명령으로 해야 합니다.</span></p>{% endif %}
   <p class="muted t13">연결과 새 채널 만들기는 이 화면에서 하지 않습니다. Discord에서 <code>/팀채널</code>·<code>/프로젝트채널</code>로 합니다.
     새 채널은 비공개로 만들어지고, 권한 밖 인원이 보이면 조직 관리자에게 DM으로 알립니다.</p>
+  <div class="table-scroll" tabindex="0" role="region" aria-label="팀·프로젝트 채널, 좌우로 스크롤 가능">
   <table class="grid">
     <thead><tr><th>대상</th><th>채널</th><th>상태</th><th>자동 관리</th></tr></thead>
     <tbody>
     {% for r in rows %}
     <tr>
       <td>{{ r.label }}</td>
-      <td>{% if r.channel_id %}<code>{{ r.channel_id }}</code>{% else %}-{% endif %}</td>
+      <td>{% if r.channel_id %}<code>{{ r.channel_id }}</code>{% else %}<span class="muted">-</span>{% endif %}</td>
       <td>
-        {% if r.state == "unlinked" %}미연결
-        {% elif r.state == "alert" %}<strong>권한 밖 {{ r.open|length }}명</strong>
-        {% elif r.state == "unwatched" %}감시 꺼짐
-        {% else %}정상{% endif %}
+        {% if r.state == "unlinked" %}<span class="conn-state off">미연결</span>
+        {% elif r.state == "alert" %}<span class="conn-state bad">권한 밖 {{ r.open|length }}명</span>
+        {% elif r.state == "unwatched" %}<span class="conn-state warn">감시 꺼짐</span>
+        {% else %}<span class="conn-state on">정상</span>{% endif %}
         {% if r.missing %}<div class="muted t13">Discord 미접근 팀원: {% for m in r.missing %}{{ m.display_name|default:m.discord_user_id }}{% if not forloop.last %}, {% endif %}{% endfor %}</div>{% endif %}
       </td>
       <td>
@@ -71,15 +73,17 @@
     {% endfor %}
     </tbody>
   </table>
+  </div>
 </div>
 {% endif %}
 <div class="card">
   <h2>알림 채널</h2>
   <p class="t13"><a href="{% url 'integration_help' %}#discord">알림 채널·DM 문제 해결 및 질문 복사</a></p>
   {% if org.discord_channel_id %}
-  <p class="row">채널 id <code>{{ org.discord_channel_id }}</code></p>
+  <p class="conn"><span class="conn-state on">지정됨</span> 채널 id <code>{{ org.discord_channel_id }}</code></p>
   <p class="muted t13">주간 보고와 'DM을 보낼 수 없습니다' 통보가 이 채널로 갑니다.</p>
   {% else %}
+  <p class="conn"><span class="conn-state off">미지정</span></p>
   <p class="muted t13">아직 정해지지 않았습니다. 개인 마감 DM은 채널 없이도 갑니다.</p>
   {% endif %}
   <p class="muted t13">
