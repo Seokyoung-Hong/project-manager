@@ -1,0 +1,151 @@
+{% extends "base.html" %}{% load rows %}{% block title %}디자인 시스템{% endblock %}
+{% block main %}
+{% include "settings/_tabs.html" %}
+{# 살아 있는 스타일 가이드. 토큰 표는 app.css를 읽어 그리고, 컴포넌트는 실제 클래스로 그린다. 규칙과 이유는 DESIGN.md. #}
+<section class="card">
+  <div class="card-head"><h2>디자인 시스템 · 모여서, 한 걸음</h2><span class="badge primary">장식 강</span></div>
+  <p class="muted t13">규칙과 이유는 저장소 루트 <code>DESIGN.md</code>, 값은 <code>core/web/static/app.css</code>가 기준입니다. 이 화면의 토큰 표는 app.css를 직접 읽어 그리므로 코드와 어긋나지 않습니다. 운영체제의 라이트·다크 설정을 바꾸면 견본도 바뀝니다.</p>
+  <nav class="chips" aria-label="이 화면 안 이동">
+    <a class="chip" href="#sg-color">색</a><a class="chip" href="#sg-type">글자</a><a class="chip" href="#sg-scale">간격·모서리·그림자</a>
+    <a class="chip" href="#sg-components">컴포넌트</a><a class="chip" href="#sg-work">업무 부품</a><a class="chip" href="#sg-art">그림</a><a class="chip" href="#sg-integrations">연동</a>
+  </nav>
+</section>
+
+<section class="card" id="sg-color">
+  <h2>색 토큰</h2>
+  <div class="table-scroll" tabindex="0" role="region" aria-label="색 토큰, 좌우로 스크롤 가능">
+  <table class="grid">
+    <thead><tr><th>견본</th><th>토큰</th><th>라이트</th><th>다크</th></tr></thead>
+    <tbody>{% for k, v, d in colors %}<tr><td><span class="sg-swatch" style="background: var({{ k }})"></span></td><td><code>{{ k }}</code></td><td class="mono t12">{{ v }}</td><td class="mono t12">{{ d|default:"—" }}</td></tr>{% endfor %}</tbody>
+  </table>
+  </div>
+</section>
+
+<section class="card" id="sg-type">
+  <h2>글자</h2>
+  <p class="muted t13">제목·숫자는 Jua(<code>.display</code>, <code>--f-display</code>), 나머지는 Pretendard(<code>--f-body</code>). 본문 기준 14px·줄 높이 1.55.</p>
+  <ul class="stack">{% for k, v, d in font_sizes %}
+    <li class="sg-type-row"><code>{{ k }}</code> <span class="muted t12 mono">{{ v }}</span>
+      <span style="font-size: var({{ k }})">같이 하면, 한 걸음 더</span>
+      <span class="display" style="font-size: var({{ k }})">같이 하면</span></li>{% endfor %}
+  </ul>
+</section>
+
+<section class="card" id="sg-scale">
+  <h2>간격 · 모서리 · 그림자 · 쌓임 · 모션</h2>
+  <div class="sg-cols">
+    <div><h3 class="t15">간격 (4px 단위)</h3>
+      <ul class="stack">{% for k, v, d in spaces %}<li class="row"><code>{{ k }}</code><span class="sg-bar" style="width: var({{ k }})"></span><span class="muted t12">{{ v }}</span></li>{% endfor %}</ul></div>
+    <div><h3 class="t15">모서리</h3>
+      <ul class="stack">{% for k, v, d in radii %}<li class="row"><span class="sg-radius" style="border-radius: var({{ k }})"></span><code>{{ k }}</code><span class="muted t12">{{ v }}</span></li>{% endfor %}</ul></div>
+    <div><h3 class="t15">그림자</h3>
+      <ul class="stack">{% for k, v, d in shadows %}<li class="row"><span class="sg-radius" style="box-shadow: var({{ k }})"></span><code>{{ k }}</code></li>{% endfor %}</ul></div>
+    <div><h3 class="t15">쌓임 · 모션</h3>
+      <ul class="stack t13">{% for k, v, d in layers %}<li><code>{{ k }}</code> {{ v }}</li>{% endfor %}{% for k, v, d in motions %}<li><code>{{ k }}</code> {{ v }}</li>{% endfor %}</ul></div>
+  </div>
+</section>
+
+<section class="card" id="sg-components">
+  <h2>컴포넌트</h2>
+  <h3 class="t15">버튼 <span class="muted t12">.btn · .primary · .tint · .sm · .icon · .link · .danger</span></h3>
+  <div class="row">
+    <button type="button" class="btn primary">태스크 만들기</button><button type="button" class="btn">프로젝트 수정</button>
+    <button type="button" class="btn tint">빠른 추가</button><button type="button" class="btn sm">작은 버튼</button>
+    <button type="button" class="btn sm icon" aria-label="다음">›</button><button type="button" class="btn link">링크형 버튼</button>
+    <button type="button" class="btn danger">연결 해제</button><button type="button" class="btn" disabled>사용 불가</button>
+    <span class="row view-switch" role="group" aria-label="보기 예시"><a class="btn sm" href="#sg-components" aria-pressed="true">목록</a><a class="btn sm" href="#sg-components" aria-pressed="false">보드</a></span>
+  </div>
+  <h3 class="t15">입력 <span class="muted t12">label.field · .input · .select · .textarea · label.check</span></h3>
+  <div class="row start">
+    <label class="field flex-1">제목<input class="input" placeholder="무엇을 할까요?"><span class="helptext">도움말은 12px 보조색입니다.</span></label>
+    <label class="field">중요도<select class="select auto"><option>5</option></select></label>
+    <label class="check"><input type="checkbox" checked> 완료 조건 필수</label>
+  </div>
+  <label class="field">메모<textarea class="textarea" rows="2">지금까지 한 일</textarea></label>
+  <h3 class="t15">칩 · 선택 카드 <span class="muted t12">.chips .chip · .radios .radio-card</span></h3>
+  <div class="chips"><label class="chip"><input type="checkbox" checked>백엔드</label><label class="chip"><input type="checkbox">디자인</label><button type="button" class="chip" aria-pressed="true">완료 전체 <b>18</b>건</button></div>
+  <div class="radios"><label class="radio-card"><input type="radio" name="sg-r" checked><b>진행 중</b><span>작업 진행 중</span></label><label class="radio-card"><input type="radio" name="sg-r"><b>준비 중</b><span>기획·기초 구상</span></label></div>
+  <h3 class="t15">배지 <span class="muted t12">.badge (+ high · primary · ok · warn · danger · info)</span></h3>
+  <div class="row"><span class="badge">기본</span><span class="badge high">중요도 9/10</span><span class="badge primary">템플릿</span><span class="badge ok">허용</span><span class="badge warn">대기</span><span class="badge danger">거절</span><span class="badge info">정보</span><span class="tag">태그</span></div>
+  <h3 class="t15">탭 <span class="muted t12">nav.tabs a[aria-current]</span></h3>
+  <nav class="tabs" aria-label="탭 예시"><a href="#sg-components" aria-current="page">태스크</a><a href="#sg-components">문서</a><a href="#sg-components">설정</a></nav>
+  <h3 class="t15">알림 <span class="muted t12">.notice (+ warn · bad) · .toast</span></h3>
+  <div class="notice" role="status"><span class="grow">저장했습니다. 기본 알림은 세이지 면입니다.</span></div>
+  <div class="notice warn"><span aria-hidden="true">⚠</span><span class="grow">확인이 필요한 상태(권한 갱신·공유 저장소)는 warn.</span></div>
+  <div class="notice bad"><span aria-hidden="true">⚠</span><span class="grow">실패·되돌릴 수 없는 결과는 bad.</span></div>
+  <div class="toast sg-static" role="presentation"><svg viewBox="0 0 40 40" aria-hidden="true"><ellipse class="art-pot" cx="20" cy="31" rx="9" ry="7"/><g class="leaf"><path class="art-leaf" d="M20 25Q8 25 7 13Q18 11 20 25"/><path class="art-leaf-2" d="M20 22Q22 9 33 10Q34 21 20 22"/></g></svg><span>완료했습니다. 화분이 한 뼘 자랐습니다.</span></div>
+  <h3 class="t15">대화상자 <span class="muted t12">dialog (네이티브 showModal)</span></h3>
+  <button type="button" class="btn sm" onclick="document.getElementById('sg-dialog').showModal()">대화상자 열기</button>
+  <dialog id="sg-dialog"><form method="dialog" class="stack"><h2>새 마일스톤</h2><label class="field">이름<input class="input"></label><div class="row"><button class="btn primary">저장</button><button class="btn">닫기</button></div></form></dialog>
+  <h3 class="t15">표 · 빈 상태 <span class="muted t12">table.grid · td.empty-cell · .empty (+ compact)</span></h3>
+  <table class="grid"><thead><tr><th>이름</th><th class="num">미완료</th></tr></thead><tbody><tr><td>김관리</td><td class="num">5</td></tr><tr><td colspan="2" class="empty-cell">더 보여 줄 행이 없습니다.</td></tr></tbody></table>
+  <div class="sg-cols"><p class="empty">조건에 맞는 기록이 없습니다.</p><p class="empty compact">첨부 파일 없음</p></div>
+  <h3 class="t15">지표 · 진행 막대 <span class="muted t12">.tiles .tile · .bar</span></h3>
+  <div class="tiles five"><div class="tile"><b>18/26</b><span>완료</span></div><div class="tile"><b>8</b><span>미완료</span></div><div class="tile"><b class="danger">2</b><span>기한 초과</span></div><div class="tile"><b>1</b><span>검토 대기</span></div><div class="tile"><b>0.6</b><span>1인 평균</span></div></div>
+  <div class="bar" role="img" aria-label="62% 완료"><i style="width: 62%"></i></div>
+</section>
+
+<section class="card" id="sg-work">
+  <h2>업무 부품</h2>
+  <h3 class="t15">상태 알약 7종 <span class="muted t12">.pill.{상태} (select와 읽기 전용 .static 공용)</span></h3>
+  <div class="row">{% for code, label in statuses %}<span class="pill static {{ code }}">{{ code|status_mark }} {{ label }}</span>{% endfor %}</div>
+  <h3 class="t15">기한 <span class="muted t12">.due (+ today · overdue · none · closed)</span></h3>
+  <div class="row"><span class="due">10월 12일</span><span class="due today">오늘 마감</span><span class="due overdue">10월 4일 초과</span><span class="due none">기한 미정</span><span class="due closed">목표일 9월 17일</span><span class="auto-mark">자동 추가</span></div>
+  <h3 class="t15">보드 열 · 카드 <span class="muted t12">.board-track .col[data-status] · ul.tasks .task-row</span></h3>
+  <div class="board"><div class="board-track sg-board">
+    {% for code, label in statuses %}{% if code != "done" and code != "cancelled" %}<div class="col" data-status="{{ code }}"><h3><i class="col-dot" aria-hidden="true"></i>{{ label }} <span class="muted">1</span></h3>
+      <ul class="tasks"><li class="task-row"><div class="main"><div class="proj">학식 API</div><div class="title">예시 카드</div><div class="meta"><span>김관리</span><span class="badge">중요도 6/10</span></div></div><div class="actions"><span class="due">10월 12일</span><span class="pill static {{ code }}">{{ label }}</span></div></li></ul></div>{% endif %}{% endfor %}
+  </div></div>
+  <h3 class="t15">결과 선반 <span class="muted t12">.shelf · .shelf-head · .shelf-tabs · .shelf-list · .shelf-more</span></h3>
+  <section class="shelf" aria-label="결과 선반 예시">
+    <div class="shelf-head">{% include "art/_shelf.html" %}<div class="grow"><h3 class="display t24">결과 선반</h3><p class="muted t13">끝낸 일과 멈춘 일을 차곡차곡 모아 둡니다.</p></div></div>
+    <div class="shelf-tabs"><span class="chip" aria-pressed="true">완료 전체 <b>18</b>건</span><span class="chip">취소 전체 <b>1</b>건</span></div>
+    <ul class="tasks shelf-list"><li class="task-row closed"><div class="main"><div class="proj">학식 API</div><div class="title">완료한 일</div></div><div class="actions"><span class="due closed">목표일 9월 17일</span><span class="pill static done">✓ 완료</span></div></li>
+      <li class="shelf-more"><span class="muted t13">10 / 18건 표시 · 더 있는 기록 8건</span><button type="button" class="btn sm">더 보기</button></li></ul>
+  </section>
+  <h3 class="t15">달력 <span class="muted t12">.pcal-grid .pcal-cell (+ today · is-empty) · .pcal-task (+ closed)</span></h3>
+  <div class="pcal-grid sg-cal">
+    <div class="pcal-cell today"><span class="pcal-day t12">5</span><span class="pcal-task t12"><span class="badge">시작 전</span> 주말 운영</span></div>
+    <div class="pcal-cell"><span class="pcal-day t12">6</span><span class="pcal-ms t12">◆ 1차 출시</span><span class="pcal-task t12 closed"><span class="badge">완료</span> 끝낸 일</span></div>
+    <div class="pcal-cell is-empty"><span class="pcal-day t12">7</span></div>
+  </div>
+</section>
+
+<section class="card" id="sg-art">
+  <h2>그림 · 장식</h2>
+  <p class="muted t13">식물은 오늘 환영 영역(약 200px)과 빈 상태(34~76px)에만 씁니다. 메모·테이프는 '지금 할 일'처럼 한 화면에 하나. 붓질은 페이지 제목(<code>.page-head &gt; h1</code>)에만 자동으로 붙습니다.</p>
+  <div class="sg-cols">
+    <div class="sg-art-box">{% include "art/_plant.html" with cls="sg-plant" %}<span class="muted t12">art/_plant.html · 환영 영역 210×200</span></div>
+    <div class="memo"><p class="eyebrow">지금 할 한 가지</p><h3 class="display t24">메모와 테이프</h3><p class="t13">.memo — 코랄 면, -1.2° 기울기, 위 테이프</p></div>
+    <div class="page-head"><h1>붓질 제목</h1><p class="t13">.page-head &gt; h1</p></div>
+  </div>
+</section>
+
+<section class="card" id="sg-integrations">
+  <h2>연동 화면 부품</h2>
+  <h3 class="t15">연결 상태 <span class="muted t12">.conn .conn-state (+ on · off · warn · bad)</span></h3>
+  <div class="row"><span class="conn-state on">연결됨</span><span class="conn-state off">미연결</span><span class="conn-state warn">감시 꺼짐</span><span class="conn-state bad">권한 밖 1명</span></div>
+  <h3 class="t15">Discord <span class="muted t12">서버 연결 · 채널 관리 · 알림 채널</span></h3>
+  <p class="conn"><span class="conn-state on">연결됨</span> 서버 id <code>123456789012345678</code></p>
+  <div class="notice warn"><span aria-hidden="true">⚠</span><span class="grow"><strong>권한 갱신 필요</strong> · 봇에 역할 관리 권한이 없습니다.</span><button type="button" class="btn sm">봇 다시 설치</button></div>
+  <table class="grid"><thead><tr><th>대상</th><th>채널</th><th>상태</th><th>자동 관리</th></tr></thead><tbody>
+    <tr><td>백엔드 팀</td><td><code>2233445566</code></td><td><span class="conn-state on">정상</span></td><td><button type="button" class="btn sm">켜짐 · 끄기</button></td></tr>
+    <tr><td>학식 API</td><td><code>3344556677</code></td><td><span class="conn-state bad">권한 밖 1명</span></td><td><button type="button" class="btn sm">꺼짐 · 켜기</button></td></tr>
+    <tr><td>디자인 팀</td><td><span class="muted">-</span></td><td><span class="conn-state off">미연결</span></td><td><span class="muted">-</span></td></tr>
+  </tbody></table>
+  <h3 class="t15">GitHub <span class="muted t12">설치 · 계정 · 저장소 · 이슈→브랜치→PR→머지</span></h3>
+  <p class="conn"><span class="conn-state on">연결됨</span> <code>sandol-team</code> <span class="badge">GitHub 조직</span><span class="badge">선택된 저장소</span></p>
+  <p class="conn"><span class="conn-state on">연결됨</span> <code>@octo</code> 접근 가능 저장소 4개</p>
+  <p class="notice warn t13"><span aria-hidden="true">⚠</span><span class="grow">이 저장소는 다른 프로젝트에도 연결돼 있습니다(공유 저장소 경고).</span></p>
+  <p class="notice"><span class="grow">개인 계정 설치입니다. 조직 멤버·팀 관리와 이슈 자동 가져오기는 쓰지 않습니다.</span></p>
+  <ol class="git-steps">
+    <li class="done"><span class="dot">&#10003;</span><span>이슈 <code>#12</code> 메뉴 누락 <span class="badge pr-closed">Closed</span></span></li>
+    <li class="done"><span class="dot">&#10003;</span><span>브랜치 <code>task-1-menu</code></span></li>
+    <li class="progress"><span class="dot">&#10003;</span><span><span class="badge pr-open">#34 Open</span> · 커밋 3건</span></li>
+    <li><span class="dot">&#9675;</span><span>머지 <span class="badge pr-merged">Merged</span>는 보라</span></li>
+  </ol>
+  <table class="grid"><thead><tr><th>시각</th><th>이벤트</th><th>태스크</th><th>결과</th></tr></thead><tbody>
+    <tr><td class="t13">10/5 13:41</td><td class="t13">PR #34 열림</td><td><a href="#sg-integrations">TASK-1</a></td><td class="t13"><span class="badge">검토 대기로 전환</span></td></tr>
+  </tbody></table>
+</section>
+{% endblock %}
