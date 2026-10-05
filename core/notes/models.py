@@ -12,7 +12,7 @@ class MeetingNote(models.Model):
     team = models.ForeignKey(
         "orgs.Team", on_delete=models.SET_NULL, null=True, blank=True, related_name="notes"
     )
-    # 음성 회의 초안(draft)은 시작자·조직 관리자만 본다. 웹에서 만든 회의록은 처음부터 final이다.
+    # 음성 회의 초안(draft)은 진행자·조직 관리자만 본다. 웹에서 만든 회의록은 처음부터 final이다.
     status = models.CharField(
         max_length=10, choices=[("draft", "초안"), ("final", "확정")], default="final"
     )
@@ -28,6 +28,8 @@ class MeetingNote(models.Model):
     version = models.PositiveIntegerField(default=1)
     # related_name="notes"는 Task.notes(진행 메모 텍스트 필드)와 이름이 부딪힌다.
     tasks = models.ManyToManyField("tasks.Task", blank=True, related_name="meeting_notes")
+    # 참여자(PM 계정). 음성 채널에 있던 사람 중 Discord 계정을 연결한 조직 구성원이 들어간다.
+    attendees = models.ManyToManyField(settings.AUTH_USER_MODEL, blank=True, related_name="+")
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="+"
     )
@@ -42,7 +44,7 @@ class MeetingNote(models.Model):
 
 
 class VoiceRecording(models.Model):
-    """Discord 음성 회의 녹음 한 번(IMPL-PLAN-9 v1 §3.1, v2 §5). 오디오 파일은 core에 두지 않는다."""
+    """회의 한 번의 녹음(IMPL-PLAN-9 v1 §3.1, v2 §5). 오디오 파일은 core에 두지 않는다."""
 
     STATUSES = [
         ("recording", "녹음 중"),
@@ -52,8 +54,8 @@ class VoiceRecording(models.Model):
         ("failed", "실패"),
     ]
     END_REASONS = [
-        ("command", "종료 명령"),
-        ("starter_left", "시작자 퇴장"),
+        ("command", "/회의종료"),
+        ("host_left", "진행자 퇴장"),
         ("max_length", "최대 길이"),
         ("empty", "모두 퇴장"),
         ("restart", "봇 재시작"),
@@ -66,10 +68,10 @@ class VoiceRecording(models.Model):
     started_by = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="+"
     )
-    # /회의_이어가기로 바뀐다. 초안 열람·편집·종료 권한은 시작자와 이 사람이 같이 갖는다.
-    current_owner = models.ForeignKey(
-        settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="+"
-    )
+    # 진행자. /회의진행자로 넘어간다. 초안 열람·편집·종료·확정은 지금 진행자와 조직 관리자만 한다.
+    host = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="+")
+    # 진행자 넘김 이력 [{from_user_id, to_user_id, by_user_id, at}]
+    host_changes = models.JSONField(default=list, blank=True)
     started_at = models.DateTimeField(auto_now_add=True)
     ended_at = models.DateTimeField(null=True, blank=True)
     end_reason = models.CharField(max_length=20, choices=END_REASONS, blank=True)

@@ -444,7 +444,7 @@ class DiscordMemberPermissionsIn(Schema):
 
 
 class DiscordMeetingIn(Schema):
-    """`/회의록` 인가·시작(IMPL-PLAN-9). 길드로 조직을 찾고 실행자의 범위 안에서만 시작한다."""
+    """`/회의시작` 인가·시작(IMPL-PLAN-9). 길드로 조직을 찾고 실행자의 범위 안에서만 시작한다."""
 
     discord_user_id: str
     guild_id: str
@@ -458,16 +458,27 @@ class DiscordMeetingStartIn(DiscordMeetingIn):
 
 
 class DiscordMeetingPatchIn(Schema):
-    """상태 전이·결과 업로드. 이어가기는 takeover_discord_user_id, 종료 명령은 discord_user_id(실행자)."""
+    """상태 전이·결과 업로드. `/회의종료`면 discord_user_id = 실행자(진행자나 조직 관리자),
+    진행자 퇴장(end_reason=host_left)이면 discord_user_id = 나간 사람.
+
+    participants: [{discord_user_id, discord_name, joined_at, left_at}] — 표시 이름·user_id는 core가 정한다.
+    """
 
     discord_user_id: str = ""
-    takeover_discord_user_id: str = ""
     status: Literal["transcribing", "draft", "failed"] | None = None
     ended_at: datetime | None = None
     end_reason: str = ""
     participants: list[dict] | None = None
     transcript_md: str | None = None
     stats: dict | None = None
+
+
+class DiscordMeetingHostIn(Schema):
+    """`/회의진행자 @참여자`. discord_user_id는 실행자(지금 진행자여야 한다)."""
+
+    discord_user_id: str
+    target_discord_user_id: str
+    participants: list[dict] | None = None  # 지금 음성 채널의 참여자 목록(있으면 먼저 반영)
 
 
 class ProjectDiscordChannelIn(Schema):

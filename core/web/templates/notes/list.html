@@ -70,6 +70,18 @@
         <span class="label">작성자</span>
         <span class="note-author-value">{{ note.created_by.display_name }}</span>
       </div>
+      {% if note.source == "voice" %}
+      <div class="note-meta-field note-author">
+        <span class="label">진행자</span>
+        <span class="note-author-value">{{ note.recording.host.display_name }}</span>
+      </div>
+      {% endif %}
+      {% with attendees=note.attendees.all %}{% if attendees %}
+      <div class="note-meta-field note-author">
+        <span class="label">참여자</span>
+        <span class="note-author-value">{% for u in attendees %}{{ u.display_name }}{% if not forloop.last %}, {% endif %}{% endfor %}</span>
+      </div>
+      {% endif %}{% endwith %}
       <label class="note-meta-field note-date">
         <span class="label">회의 일시</span>
         <input class="input auto" type="datetime-local" data-note-field="created_on" value="{{ note.created_on|date:'Y-m-d\TH:i' }}" aria-label="회의 일시">

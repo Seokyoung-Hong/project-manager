@@ -1,10 +1,12 @@
 import re
+from collections import Counter
 from datetime import timedelta
 
 from django.db import transaction
 from django.db.models import Exists, OuterRef, Q
 from django.utils import timezone
 
+from accounts.identity import resolve
 from common.dates import now_kst
 from common.errors import ConflictError, Forbidden, ServiceError
 from orgs import settings as org_settings
@@ -33,7 +35,8 @@ def visible_notes(user):
     """회의록 가시성 관문. 회의록을 내보내는 모든 경로(웹·API·태스크 연결)가 이것을 지난다.
 
     확정(final): 프로젝트 회의록은 그 프로젝트를, 팀 회의록은 그 팀을 볼 수 있을 때만(IMPL-PLAN-7 F).
-    초안(draft, 음성 회의): 시작자(이어가기로 넘겨받은 사람 포함)와 조직 관리자만(IMPL-PLAN-9 결정 2).
+    초안(draft, 음성 회의): 지금 진행자(recording.host)와 조직 관리자만(IMPL-PLAN-9 결정 2-5).
+    진행자를 넘기면 이전 진행자는 더 이상 보지 못한다.
     """
     admin = OrgMembership.objects.filter(user=user, role="admin", org_id=OuterRef("org_id"))
     final = (
@@ -41,9 +44,7 @@ def visible_notes(user):
         & (Q(project__isnull=True) | Q(project__in=visible_projects(user)))
         & (Q(team__isnull=True) | Q(team__in=visible_teams(user)))
     )
-    draft = Q(status="draft") & (
-        Q(created_by=user) | Q(recording__current_owner=user) | Exists(admin)
-    )
+    draft = Q(status="draft") & (Q(recording__host=user) | Exists(admin))
     return MeetingNote.objects.filter(org__in=orgs_of(user)).filter(final | draft)
 
 
@@ -82,20 +83,17 @@ def create_note(
 
 
 def _is_owner(note, user) -> bool:
-    """초안을 다룰 수 있는 사람: 시작자·이어받은 사람·조직 관리자."""
-    rec = getattr(note, "recording", None) if note.source == "voice" else None
-    return (
-        note.created_by_id == user.pk
-        or (rec is not None and rec.current_owner_id == user.pk)
-        or is_admin(user, note.org)
-    )
+    """초안을 다룰 수 있는 사람: 지금 진행자·조직 관리자. 녹음 없는 회의록은 작성자."""
+    rec = getattr(note, "recording", None)
+    who = rec.host_id if rec is not None else note.created_by_id
+    return who == user.pk or is_admin(user, note.org)
 
 
 def _check_edit(note, actor, source: str):
     if not is_member(actor, note.org):
         raise ServiceError({"org": "이 조직의 멤버가 아닙니다."})
     if note.status == "draft" and not _is_owner(note, actor):
-        raise Forbidden({"note": "초안은 시작자나 조직 관리자만 고칠 수 있습니다."})
+        raise Forbidden({"note": "초안은 진행자나 조직 관리자만 고칠 수 있습니다."})
     # AI 편집은 태스크 본문과 같은 정책(ai.edit_text)을 탄다. 새 키를 만들지 않는다.
     if source == "mcp" and (
         not org_settings.effective("ai.enabled", org=note.org)
@@ -151,7 +149,10 @@ def upload_note(*, org, actor, filename: str, raw: bytes, project=None) -> Meeti
 
 def delete_note(note, actor):
     """작성자 본인이거나 조직 관리자만."""
-    if note.created_by_id != actor.pk and not is_admin(actor, note.org):
+    if note.status == "draft":
+        if not _is_owner(note, actor):
+            raise ServiceError({"note": "초안은 진행자나 조직 관리자만 지울 수 있습니다."})
+    elif note.created_by_id != actor.pk and not is_admin(actor, note.org):
         raise ServiceError({"note": "작성자나 조직 관리자만 지울 수 있습니다."})
     note.delete()
 
@@ -177,7 +178,7 @@ def finalize_note(note, *, actor, source: str, project=None, team=None) -> Meeti
     if note.status != "draft":
         raise ServiceError({"note": "이미 확정된 회의록입니다."})
     if not _is_owner(note, actor):
-        raise Forbidden({"note": "시작자나 조직 관리자만 확정할 수 있습니다."})
+        raise Forbidden({"note": "진행자나 조직 관리자만 확정할 수 있습니다."})
     rec = getattr(note, "recording", None)
     if rec is not None and rec.status in ("recording", "transcribing"):
         raise ServiceError({"note": "녹음·전사가 끝난 뒤에 확정할 수 있습니다."})
@@ -196,6 +197,11 @@ def finalize_note(note, *, actor, source: str, project=None, team=None) -> Meeti
 
 # ---------- 음성 회의 녹음 (IMPL-PLAN-9 M2). Discord 봇 API만 부른다 ----------
 
+# 진행자가 음성 채널을 떠나 유예(meeting.leave_grace_s)가 지나면 봇이 이 문구를 채널에 올린다.
+HOST_LEFT_NOTICE = (
+    "회의 진행자가 나가서 회의를 종료하였습니다. 새 회의를 시작하려면 /회의시작 을 눌러 주세요."
+)
+UNLINKED_MARK = " (계정 없음)"
 DRAFT_BODY = (
     "## 요약\n(아직 없음 — `/pm-meeting {id}` 또는 웹에서 작성해 주세요.)\n\n"
     "## 결정 사항\n\n## 할 일\n\n## 미결\n"
@@ -226,6 +232,7 @@ def meeting_scope(*, org, actor, project=None, team=None) -> dict:
     return {
         "max_minutes": org_settings.effective("meeting.max_minutes", org=org, project=project),
         "keep_days": org_settings.effective("meeting.audio_keep_days", org=org),
+        "leave_grace_s": org_settings.effective("meeting.leave_grace_s", org=org),
     }
 
 
@@ -236,7 +243,7 @@ def start_recording(
     meeting_scope(org=org, actor=actor, project=project, team=team)
     # 봇은 길드당 음성 연결 하나다.
     if VoiceRecording.objects.filter(guild_id=guild_id, status="recording").exists():
-        raise ServiceError({"meeting": "이 서버에서는 이미 녹음 중입니다."})
+        raise ServiceError({"meeting": "이 Discord 서버에서는 이미 회의가 진행 중입니다."})
     now = now_kst()
     note = MeetingNote.objects.create(
         org=org,
@@ -253,7 +260,7 @@ def start_recording(
         guild_id=guild_id,
         voice_channel_id=voice_channel_id,
         started_by=actor,
-        current_owner=actor,
+        host=actor,
     )
 
 
@@ -265,7 +272,139 @@ def _notify_owner(rec, text: str):
 
     note = rec.note
     link = settings.SITE_URL + reverse("org_notes", args=[note.org_id]) + f"?note={note.pk}"
-    notify(note.org, f"{text} <{link}>", user=rec.current_owner)
+    notify(note.org, f"{text} <{link}>", user=rec.host)
+
+
+def speaker(org, discord_user_id: str, nick: str = "") -> dict:
+    """전사 화자 표기. 계정을 연결한 조직 구성원은 PM 이름, 아니면 Discord 닉네임 + '(계정 없음)'."""
+    user = resolve("discord", discord_user_id)
+    if user is not None and is_member(user, org):
+        return {
+            "discord_user_id": discord_user_id,
+            "user_id": user.pk,
+            "display_name": user.display_name,
+        }
+    return {
+        "discord_user_id": discord_user_id,
+        "user_id": None,
+        "display_name": f"{nick or discord_user_id}{UNLINKED_MARK}",
+    }
+
+
+def speaker_names(rec) -> list[dict]:
+    """`/meetings/{id}/names`. 참여자 + 계정을 연결한 조직 구성원(참여자 목록이 아직 안 올라왔을 때)."""
+    org = rec.note.org
+    out = {
+        p["discord_user_id"]: speaker(org, p["discord_user_id"], p.get("discord_name", ""))
+        for p in rec.participants or []
+        if p.get("discord_user_id")
+    }
+    linked = (
+        OrgMembership.objects.filter(
+            org=org, user__is_active=True, user__discord_linked_at__isnull=False
+        )
+        .exclude(user__discord_user_id=None)
+        .values_list("user__discord_user_id", flat=True)
+    )
+    for did in linked:
+        out.setdefault(did, speaker(org, did))
+    return list(out.values())
+
+
+# 전사 prompt 한도: whisper 계열 224토큰(docs/review-2026-10-04/L-voice-research.md:82).
+# 토큰을 정확히 세지 않고 한글 1자=2토큰, 그 밖 3자=1토큰으로 넉넉히 잡는다.
+PROMPT_TOKENS = 224
+_TERM = re.compile(r"[가-힣]{2,}|[A-Za-z][A-Za-z0-9_.\-]*[A-Za-z0-9]")
+_JOSA = (
+    "에서",
+    "으로",
+    "에게",
+    "까지",
+    "부터",
+    "을",
+    "를",
+    "이",
+    "가",
+    "은",
+    "는",
+    "의",
+    "에",
+    "로",
+    "와",
+    "과",
+    "도",
+)
+_STOP = {
+    "개선", "추가", "수정", "작업", "회의", "회의록", "정리", "확인", "문서", "기능", "관련",
+    "진행", "제목", "없는", "주간", "검토", "요청", "처리", "변경", "적용", "테스트", "구현",
+    "오류", "버그", "신규", "기존", "내용", "사항", "준비", "완료", "대응", "설정", "화면",
+    "음성", "the", "and", "for", "with", "fix", "add", "update", "of", "to", "in", "on",
+}  # fmt: skip
+
+
+def _cost(term: str) -> float:
+    return sum(2 if "가" <= c <= "힣" else 1 / 3 for c in term)
+
+
+def _terms(text: str):
+    for t in _TERM.findall(text or ""):
+        if "가" <= t[0] <= "힣" and len(t) >= 3:
+            for j in _JOSA:
+                if t.endswith(j) and len(t) - len(j) >= 2:
+                    t = t[: -len(j)]
+                    break
+        if t.lower() not in _STOP and t not in _STOP:
+            yield t
+
+
+def meeting_glossary(rec) -> str:
+    """전사 정확도용 용어집(전사 API의 prompt). 처음 진행자(started_by)가 볼 수 있는 자료에서만
+    뽑는다(결정 2-3). 진행자를 넘겨도 바꾸지 않는다 — 녹음 중 용어집이 넓어지지 않게.
+
+    참여자 이름이 먼저, 그다음 프로젝트·마일스톤 이름(가중 2)과 문서·회의록·태스크 제목에 자주 나오는
+    용어 순. 한 번만 나온 일반 용어는 뺀다.
+    """
+    from projects.models import Milestone, ProjectDoc
+    from tasks.models import Task
+
+    starter, org = rec.started_by, rec.note.org
+    projects = visible_projects(starter, org)
+    counts = Counter()
+    for weight, titles in (
+        (2, projects.values_list("name", flat=True)),
+        (2, Milestone.objects.filter(project__in=projects).values_list("name", flat=True)),
+        (1, ProjectDoc.objects.filter(project__in=projects).values_list("title", flat=True)),
+        (
+            1,
+            # ponytail: 최근 2천 건만. 태스크가 훨씬 많아지면 집계 표를 따로 둔다
+            Task.objects.filter(project__in=projects)
+            .order_by("-id")
+            .values_list("title", flat=True)[:2000],
+        ),
+        (
+            1,
+            visible_notes(starter)
+            .filter(org=org)
+            .exclude(pk=rec.note_id)
+            .values_list("title", flat=True),
+        ),
+    ):
+        for title in titles:
+            for t in set(_terms(title)):
+                counts[t] += weight
+    names = [starter.display_name] + [
+        s["display_name"].removesuffix(UNLINKED_MARK) for s in speaker_names(rec)
+    ]
+    picked, budget = [], PROMPT_TOKENS
+    for term in dict.fromkeys(
+        names + [t for t, n in counts.most_common() if n >= 2]
+    ):  # 순서 유지 중복 제거
+        cost = _cost(term) + 1  # 구분자 ", "
+        if cost > budget:
+            continue
+        picked.append(term)
+        budget -= cost
+    return ", ".join(picked)
 
 
 @transaction.atomic
@@ -274,38 +413,33 @@ def update_recording(
     *,
     status: str | None = None,
     stopped_by=None,
-    new_owner=None,
     ended_at=None,
     end_reason: str = "",
     participants: list | None = None,
     transcript_md: str | None = None,
     stats: dict | None = None,
 ) -> VoiceRecording:
-    """봇이 올리는 상태 전이·결과. 이어가기(new_owner)·종료(transcribing)·전사 결과(draft)·실패."""
+    """봇이 올리는 상태 전이·결과. 종료(transcribing)·전사문(draft)·실패. 참여자는 PM 계정으로 매핑한다."""
     rec = (
         VoiceRecording.objects.select_for_update()
-        .select_related("note", "note__org")
+        .select_related("note", "note__org", "started_by", "host")
         .get(pk=rec.pk)
     )
     note = rec.note
-    if new_owner is not None:
-        if rec.status != "recording":
-            raise ServiceError({"meeting": "녹음 중일 때만 이어갈 수 있습니다."})
-        # 이어받는 사람도 시작할 수 있는 사람이어야 한다(멤버·프로젝트·팀 가시성).
-        if not is_member(new_owner, note.org):
-            raise Forbidden({"org": "이 조직의 멤버가 아닙니다."})
-        _check_project(note.org, note.project, new_owner)
-        _check_team(note.org, note.team, new_owner)
-        rec.current_owner = new_owner
     if status is not None and status != rec.status:
         if status not in _NEXT.get(rec.status, set()):
             raise ServiceError({"status": f"{rec.status}에서 {status}(으)로 바꿀 수 없습니다."})
         if status == "transcribing":
             if end_reason == "command" and not (
                 stopped_by is not None
-                and (stopped_by.pk == rec.current_owner_id or is_admin(stopped_by, note.org))
+                and (stopped_by.pk == rec.host_id or is_admin(stopped_by, note.org))
             ):
-                raise Forbidden({"meeting": "시작자나 조직 관리자만 녹음을 마칠 수 있습니다."})
+                raise Forbidden({"meeting": "진행자나 조직 관리자만 회의를 종료할 수 있습니다."})
+            # 진행자를 넘긴 이전 진행자가 나가도 회의는 계속된다. 봇은 나간 사람을 discord_user_id로 보낸다.
+            if end_reason == "host_left" and (stopped_by is None or stopped_by.pk != rec.host_id):
+                raise ServiceError(
+                    {"meeting": "나간 사람이 지금 진행자가 아니므로 회의를 계속합니다."}
+                )
             rec.ended_at = ended_at or timezone.now()
             keep = org_settings.effective("meeting.audio_keep_days", org=note.org)
             rec.audio_expires_at = rec.ended_at + timedelta(days=keep)
@@ -319,23 +453,84 @@ def update_recording(
                 note.save(update_fields=["body_md", "version", "updated_at"])
             _notify_owner(
                 rec,
-                f"회의록 초안(전사)이 준비되었습니다. `/pm-meeting {note.pk}`로 정리하거나 "
+                f"회의록 초안(전사문)이 준비되었습니다. `/pm-meeting {note.pk}`로 정리하거나 "
                 "웹에서 작성해 주세요.",
             )
         elif status == "failed":
-            _notify_owner(rec, "음성 회의록을 만들지 못했습니다. 녹음 상태를 확인해 주세요.")
+            _notify_owner(rec, "회의록을 만들지 못했습니다. 녹음 상태를 확인해 주세요.")
     if end_reason:
         if end_reason not in dict(VoiceRecording.END_REASONS):
             raise ServiceError({"end_reason": "알 수 없는 종료 사유입니다."})
         rec.end_reason = end_reason
     if participants is not None:
-        rec.participants = participants
+        # 봇이 준 Discord 닉네임은 discord_name으로 남기고, 표시 이름·user_id는 core가 정한다.
+        rows = []
+        for p in participants:
+            did = str(p.get("discord_user_id") or "")
+            if not did:
+                continue
+            nick = p.get("discord_name") or p.get("display_name") or ""
+            rows.append({**p, "discord_name": nick, **speaker(note.org, did, nick)})
+        rec.participants = rows
+        note.attendees.set([r["user_id"] for r in rows if r["user_id"]])
     if stats is not None:
         rec.stats = stats
     if transcript_md is not None:
         transcript_md = transcript_md.replace("\r\n", "\n")
         if len(transcript_md.encode()) > MAX_BODY:
-            raise ServiceError({"transcript_md": "전사 원문이 너무 깁니다 (256KB 상한)."})
+            raise ServiceError({"transcript_md": "전사문이 너무 깁니다 (256KB 상한)."})
         rec.transcript_md = transcript_md
     rec.save()
     return rec
+
+
+@transaction.atomic
+def transfer_host(rec, *, by, to_discord_user_id: str, participants: list | None = None):
+    """`/회의진행자 @참여자`. 지금 진행자만, 대상은 음성 채널에 남아 있는 계정 연결 참여자만.
+
+    재실·연결 여부는 봇이 보낸 참여자 목록(participants, 없으면 저장된 목록) 기준이다.
+    돌려주는 값: (녹음, 채널 공지 문구).
+    """
+    if participants is not None:
+        rec = update_recording(rec, participants=participants)
+    rec = (
+        VoiceRecording.objects.select_for_update()
+        .select_related("note", "note__org", "host")
+        .get(pk=rec.pk)
+    )
+    if rec.status != "recording":
+        raise ServiceError({"meeting": "회의가 진행 중일 때만 진행자를 넘길 수 있습니다."})
+    if by is None or by.pk != rec.host_id:
+        raise Forbidden({"meeting": "지금 진행자만 진행자를 넘길 수 있습니다."})
+    row = next(
+        (
+            p
+            for p in rec.participants or []
+            if p.get("discord_user_id") == to_discord_user_id and not p.get("left_at")
+        ),
+        None,
+    )
+    if row is None:
+        raise ServiceError({"meeting": "음성 채널에 있는 참여자에게만 넘길 수 있습니다."})
+    if not row.get("user_id"):
+        raise ServiceError(
+            {
+                "meeting": "PM 계정을 연결한 참여자에게만 넘길 수 있습니다. 웹 설정에서 연결해 주세요."
+            }
+        )
+    if row["user_id"] == rec.host_id:
+        raise ServiceError({"meeting": "이미 진행자입니다."})
+    old = rec.host
+    rec.host_id = row["user_id"]
+    rec.host_changes = [
+        *(rec.host_changes or []),
+        {
+            "from_user_id": old.pk,
+            "to_user_id": rec.host_id,
+            "by_user_id": by.pk,
+            "at": timezone.now().isoformat(),
+        },
+    ]
+    rec.save(update_fields=["host", "host_changes"])
+    notice = f"회의 진행자가 {old.display_name}님에서 {row['display_name']}님으로 바뀌었습니다."
+    return rec, notice

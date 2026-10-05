@@ -757,8 +757,8 @@ SPECS: dict[str, Spec] = {
             "org",
             True,
             "meeting",
-            "음성 회의 녹음",
-            "켜면 Discord에서 /회의록으로 음성 회의를 녹음해 전사 초안을 만들 수 있습니다.",
+            "회의 녹음",
+            "켜면 Discord에서 /회의시작으로 회의를 녹음해 전사문으로 회의록 초안을 만들 수 있습니다.",
         ),
         Spec(
             "meeting.audio_keep_days",
@@ -784,6 +784,19 @@ SPECS: dict[str, Spec] = {
             "이 길이를 넘으면 녹음을 자동으로 마칩니다.",
             lo=10,
             hi=360,
+        ),
+        Spec(
+            "meeting.leave_grace_s",
+            "int",
+            10,
+            "org",
+            False,
+            "meeting",
+            "진행자 퇴장 유예(초)",
+            "회의 진행자가 음성 채널을 떠난 뒤 이 시간 안에 돌아오지 않으면 녹음을 마칩니다. "
+            "순간 끊김에 대비한 값입니다.",
+            lo=0,
+            hi=120,
         ),
         Spec(
             "meeting.default_visibility",
