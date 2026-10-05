@@ -24,10 +24,13 @@ from orgs.models import TeamMembership
 from orgs.services import ai_denied, is_member, orgs_of
 from orgs.settings import effective
 from projects.services import _log, require_level
+from tasks import work_requests as wr
 from tasks.models import ChangeLog, Task
-from tasks.services import create_task, transition
+from tasks.services import _log as _task_log
+from tasks.services import create_task, duplicate_task, transition, update_task
 
 from . import client
+from . import notify as gh_notify
 from .client import GitHubError
 from .crypto import decrypt, encrypt
 from .models import (
@@ -805,14 +808,6 @@ def _sender_login(payload) -> str:
     return ((payload.get("sender") or {}).get("login")) or ""
 
 
-# ---- pull_request_review ----
-
-
-def _on_pr_review(conn, delivery, payload):
-    """pull_request_review submitted|dismissed|edited. 본문은 G1(IMPL-PLAN-8 §3.2)."""
-    record_ignored(conn, delivery, "pull_request_review", payload)
-
-
 # ---- create (브랜치) ----
 
 
@@ -902,6 +897,39 @@ def _check_item(task, position: int):
 # ---- pull_request ----
 
 
+PR_ACTIONS = (
+    "opened",
+    "closed",
+    "reopened",
+    "ready_for_review",
+    "converted_to_draft",
+    "synchronize",
+    "edited",
+    "review_requested",
+    "review_request_removed",
+)
+
+
+def _pr_link(conn, number):
+    """같은 PR에 링크가 여럿(재개로 생긴 새 태스크)이면 열린 태스크 우선, 없으면 최신."""
+    links = list(
+        TaskGitLink.objects.filter(connection=conn, pr_number=number)
+        .select_related("task", "task__project", "task__assignee")
+        .order_by("-task_id")
+    )
+    return next((lk for lk in links if lk.task.is_open), links[0] if links else None)
+
+
+def _pr_rule(conn, action, merged):
+    if action == "closed":
+        return conn.rule_merge if merged else conn.rule_pr
+    if action in ("review_requested", "review_request_removed"):
+        return conn.rule_review
+    if action in ("synchronize", "edited"):
+        return True  # 상태를 바꾸지 않는다 — 링크 정보만 갱신
+    return conn.rule_pr
+
+
 def _on_pr(conn, delivery, payload):
     action = payload.get("action") or ""
     pr = payload.get("pull_request") or {}
@@ -909,7 +937,12 @@ def _on_pr(conn, delivery, payload):
     task, _ = _find_task(conn, pr.get("title") or "", pr.get("body") or "", branch)
     number = pr.get("number")
     summary = f"PR #{number} {action}"
-    if task is None or action not in ("opened", "closed"):
+    if task is not None and not task.is_open:
+        # PR 제목은 여전히 원 태스크 번호를 가리킨다. 재개로 이어진 열린 태스크가 있으면 그쪽이다.
+        cont = _pr_link(conn, number)
+        if cont is not None and cont.task.is_open:
+            task = cont.task
+    if task is None or action not in PR_ACTIONS:
         record_event(
             conn,
             delivery,
@@ -921,16 +954,54 @@ def _on_pr(conn, delivery, payload):
         )
         return
     merged = bool(pr.get("merged"))
-    rule_on = conn.rule_merge if (action == "closed" and merged) else conn.rule_pr
+    draft = bool(pr.get("draft"))
+    rule_on = _pr_rule(conn, action, merged)
+    if action == "reopened" and not task.is_open:
+        if rule_on:
+            reopen_as_new(conn, delivery, payload, old=task, kind="pr")
+        else:
+            record_event(
+                conn,
+                delivery,
+                kind="pull_request",
+                payload=payload,
+                summary=summary,
+                task=task,
+                result="규칙 꺼짐",
+            )
+        return
+    now = timezone.now()
     link = _link_for(conn, task)
     link.pr_number = number
     link.pr_title = (pr.get("title") or "")[:300]
     link.pr_state = "merged" if merged else ("closed" if action == "closed" else "open")
+    link.pr_draft = draft
+    head_sha = ((pr.get("head") or {}).get("sha")) or ""
+    if head_sha:
+        link.head_sha = head_sha[:40]
     if merged:
         link.merged_at = parse_ts(pr.get("merged_at"))
     if branch and not link.branch:
         link.branch = branch[:200]
+    if action == "opened":
+        link.pr_opened_at = parse_ts(pr.get("created_at"))
+        if not draft:
+            link.review_requested_at = now
+    elif action == "ready_for_review" and link.review_requested_at is None:
+        link.review_requested_at = now
+    elif action == "review_requested":
+        link.review_requested_at = now
+    elif action == "synchronize":
+        # 새 커밋: CI는 새 sha 기준으로 다시 모은다. 변경 요청 뒤의 푸시는 새 검토 라운드다.
+        link.ci_checks, link.ci_state = {}, ""
+        if link.review_state == "changes_requested":
+            link.review_requested_at, link.reviewed_at = now, None
     link.save()
+    url = pr.get("html_url") or ""
+    if action == "opened":
+        gh_notify.channel(conn, "pr_opened", f"🔀 PR #{number} 열림", task, url)
+    elif merged:
+        gh_notify.channel(conn, "pr_merged", f"🔀 PR #{number} 병합", task, url)
     if not rule_on:
         record_event(
             conn,
@@ -945,10 +1016,16 @@ def _on_pr(conn, delivery, payload):
     result = "기록만"
     actor = user_for_sender(payload)
     login = _sender_login(payload)
-    if action == "opened":
+    if action in ("opened", "reopened"):
+        result = _apply(task, "doing" if draft else "review", actor=actor, actor_login=login)
+    elif action == "ready_for_review":
         result = _apply(task, "review", actor=actor, actor_login=login)
+    elif action == "converted_to_draft" and task.status == "review":
+        result = _apply(task, "doing", actor=actor, actor_login=login)
     elif merged:
         result = _apply(task, "done", actor=actor, actor_login=login)
+    elif action in ("review_requested", "review_request_removed"):
+        result = _pr_reviewer(task, payload, number, adding=action == "review_requested")
     record_event(
         conn,
         delivery,
@@ -958,6 +1035,197 @@ def _on_pr(conn, delivery, payload):
         task=task,
         result=result,
     )
+
+
+def _pr_reviewer(task, payload, number, *, adding: bool) -> str:
+    """GitHub 리뷰 요청 ↔ 태스크 검토자. 팀 리뷰어는 무시한다. 조직 멤버·가시성·본인 검토 검사는
+    update_task가 한다 — 비공개 프로젝트를 못 보는 사람은 거기서 거부되고 사유가 남는다."""
+    gid = (payload.get("requested_reviewer") or {}).get("id")
+    if not gid:
+        return "팀 리뷰어 무시"
+    identity = GitHubIdentity.objects.filter(github_id=gid).select_related("user").first()
+    user = identity.user if identity and identity.user.is_active else None
+    if user is None:
+        return "PM 사용자 아님"
+    if (task.reviewer_id == user.pk) == adding:
+        return "변경 없음"
+    try:
+        update_task(
+            task,
+            {"reviewer": user if adding else None},
+            actor=user_for_sender(payload),
+            source="gh",
+            expected_version=task.version,
+            external_actor=_sender_login(payload),
+        )
+    except (ServiceError, ConflictError) as e:
+        return _reason(e)
+    if not adding:
+        return "검토자 해제"
+    gh_notify.dm(task, user, f"👀 PR #{number} 리뷰 요청")
+    return f"검토자 {user.display_name}"
+
+
+# ---- pull_request_review ----
+
+REVIEW_STATES = ("approved", "changes_requested", "commented")
+
+
+def _review_state(reviews: dict) -> str:
+    values = set(reviews.values())
+    if "changes_requested" in values:
+        return "changes_requested"
+    return "approved" if "approved" in values else ""
+
+
+def _on_pr_review(conn, delivery, payload):
+    """pull_request_review submitted|dismissed|edited. 태스크는 pr_number로 찾는다(제목 재탐색 안 함)."""
+    action = payload.get("action") or ""
+    review = payload.get("review") or {}
+    number = (payload.get("pull_request") or {}).get("number")
+    state = (review.get("state") or "").lower()
+    summary = f"PR #{number} 리뷰 {state or action}"
+    link = _pr_link(conn, number)
+    if link is None:
+        record_event(
+            conn,
+            delivery,
+            kind="pull_request_review",
+            payload=payload,
+            summary=summary,
+            result="연결 안 됨",
+        )
+        return
+    task = link.task
+    login = ((review.get("user") or {}).get("login")) or ""
+    reviews = dict(link.reviews or {})
+    if action == "dismissed":
+        reviews.pop(login, None)
+    elif action == "submitted" and state in REVIEW_STATES and login:
+        # 코멘트 리뷰는 GitHub에서도 앞선 승인·변경 요청을 지우지 않는다.
+        if state != "commented" or login not in reviews:
+            reviews[login] = state
+        if state != "commented":
+            link.reviewed_at = parse_ts(review.get("submitted_at"))
+    link.reviews = reviews
+    link.review_state = _review_state(reviews)
+    link.save(update_fields=["reviews", "review_state", "reviewed_at"])
+    result = "기록만"
+    if action == "submitted" and state == "changes_requested":
+        if not conn.rule_review:
+            result = "규칙 꺼짐"
+        elif task.status == "review":
+            # 반려 권한(지정 검토자·관리자)은 PM 규칙이다. GitHub에서 변경을 요청할 수 있었다면
+            # 그걸로 충분하다 — 머지처럼 웹훅 경로(actor=None)로 돌린다.
+            result = _apply(
+                task, "doing", actor=None, actor_login=login, note=f"PR #{number} 변경 요청"
+            )
+        gh_notify.dm(task, task.assignee, f"✏️ PR #{number} 변경 요청")
+        gh_notify.channel(conn, "pr_changes", f"✏️ PR #{number} 변경 요청", task)
+    elif action == "submitted" and state == "approved":
+        gh_notify.dm(task, task.assignee, f"✅ PR #{number} 승인")
+    record_event(
+        conn,
+        delivery,
+        kind="pull_request_review",
+        payload=payload,
+        summary=summary,
+        task=task,
+        result=result,
+    )
+
+
+# ---- 재개 = 신규 태스크(IMPL-PLAN-8 §4) ----
+
+
+def reopen_as_new(conn, delivery, payload, *, old, kind: str) -> Task | None:
+    """닫힌 태스크에 연결된 PR·이슈가 다시 열렸다. 원 태스크는 두고 계열(parent)로 이어지는 새 태스크를
+    만들어 그 PR·이슈에 잇는다. 담당자는 원 담당자이고, 그 사람에게 담당 요청을 보내 수락·거절하게
+    한다(§10-3). 같은 번호에 열린 태스크가 이미 있으면 그것을 돌려주고 만들지 않는다.
+    """
+    is_pr = kind == "pr"
+    event = "pull_request" if is_pr else "issues"
+    item = (payload.get("pull_request") if is_pr else payload.get("issue")) or {}
+    number = item.get("number")
+    label = "PR" if is_pr else "이슈"
+    summary = f"{label} #{number} reopened"
+    field = "pr_number" if is_pr else "issue_number"
+    existing = (
+        TaskGitLink.objects.filter(connection=conn, **{field: number}, task__status__in=Task.OPEN)
+        .select_related("task")
+        .first()
+    )
+    if existing:
+        record_event(
+            conn,
+            delivery,
+            kind=event,
+            payload=payload,
+            summary=summary,
+            task=existing.task,
+            result="이미 재개됨",
+        )
+        return existing.task
+    login = _sender_login(payload)
+    # created_by가 NOT NULL이라 None일 수 없다. source="gh"라 담당자는 그대로 정해진다.
+    actor = _import_actor(conn, payload) or old.assignee
+    note = f"{label} #{number} 재개"
+    new = duplicate_task(
+        old,
+        actor=actor,
+        source="gh",
+        title=old.title,
+        due_date=None,
+        no_due_reason=f"{note}로 생성",
+        assignee=old.assignee,
+    )
+    src = TaskGitLink.objects.filter(task=old).first()
+    link = _link_for(conn, new)
+    if src is not None:
+        link.issue_number = src.issue_number
+        link.issue_title = src.issue_title
+        link.issue_state = src.issue_state
+        link.branch = src.branch
+    if is_pr:
+        link.pr_number = number
+        link.pr_title = (item.get("title") or "")[:300]
+        link.pr_state = "open"
+        link.pr_draft = bool(item.get("draft"))
+        link.head_sha = (((item.get("head") or {}).get("sha")) or "")[:40]
+        link.pr_opened_at = src.pr_opened_at if src else None
+        link.review_requested_at = None if link.pr_draft else timezone.now()
+    else:
+        link.issue_number = number
+        link.issue_title = (item.get("title") or link.issue_title)[:300]
+        link.issue_state = "open"
+        # 이슈 하나는 열린 태스크 하나만 가리킨다.
+        RepoIssue.objects.filter(connection=conn, number=number).update(task=new)
+    link.save()
+    if is_pr:
+        # draft면 기한이 없어 "기한…" 사유로 todo에 남는다. 사람이 기한을 넣고 시작한다.
+        _apply(
+            new,
+            "doing" if link.pr_draft else "review",
+            actor=user_for_sender(payload),
+            actor_login=login,
+        )
+    _task_log(old, "reopened_as", "", new.number, actor, "gh", note=note, external_actor=login)
+    if actor != new.assignee:
+        # 원 담당자가 다시 맡을지 정한다. 본인이 다시 열었으면 이미 동의한 것이다.
+        wr.request_assign(new, new.assignee, actor, "gh", note=f"{note} — {old.number}에서 이어짐")
+    head = f"🔁 {label} #{number} 재개 → {new.number} 생성"
+    gh_notify.dm(new, new.assignee, head)
+    gh_notify.channel(conn, "reopened", head, new)
+    record_event(
+        conn,
+        delivery,
+        kind=event,
+        payload=payload,
+        summary=summary,
+        task=new,
+        result=f"{new.number} 생성",
+    )
+    return new
 
 
 # ---- issues ----
@@ -1014,6 +1282,13 @@ def _on_issues(conn, delivery, payload):
             row.task, "done", actor=user_for_sender(payload), actor_login=_sender_login(payload)
         )
         task = row.task
+    elif action == "reopened" and row.task and not row.task.is_open:
+        if conn.rule_issue:
+            # 닫힌 태스크는 되살리지 않고 계열로 이어지는 새 태스크를 만든다(§4).
+            reopen_as_new(conn, delivery, payload, old=row.task, kind="issue")
+            _mark_issues_synced(conn)
+            return
+        result = "규칙 꺼짐"
     elif (
         action == "opened"
         and conn.rule_issue
@@ -1053,6 +1328,9 @@ def _on_issues(conn, delivery, payload):
                 link.issue_state = "open"
                 link.save(update_fields=["issue_number", "issue_title", "issue_state"])
                 result = f"태스크 {task.number} 생성"
+                gh_notify.channel(
+                    conn, "issue_imported", f"📥 이슈 #{number} → {task.number} 가져옴", task
+                )
     if row.task:
         link = TaskGitLink.objects.filter(task=row.task).first()
         if link:
