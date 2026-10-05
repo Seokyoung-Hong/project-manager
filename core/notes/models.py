@@ -72,6 +72,10 @@ class VoiceRecording(models.Model):
     host = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="+")
     # 진행자 넘김 이력 [{from_user_id, to_user_id, by_user_id, at}]
     host_changes = models.JSONField(default=list, blank=True)
+    # /회의받기 넘겨받기 요청. 대기(pending)는 회의당 하나.
+    # [{id, requester_user_id, requester_discord_user_id, at, expires_at, status, responded_by_user_id, responded_at}]
+    # status: pending | approved | rejected | expired | cancelled
+    host_requests = models.JSONField(default=list, blank=True)
     started_at = models.DateTimeField(auto_now_add=True)
     ended_at = models.DateTimeField(null=True, blank=True)
     end_reason = models.CharField(max_length=20, choices=END_REASONS, blank=True)

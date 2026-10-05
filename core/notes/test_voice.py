@@ -627,3 +627,94 @@ def test_web_note_shows_host_and_participants(client, enabled, member, other, bo
     client.force_login(member)
     page = client.get(f"/orgs/{enabled.pk}/notes?note={rec.note_id}").content.decode()
     assert "진행자" in page and "참여자" in page and "다른팀원" in page
+
+
+# ---------- /회의받기 (넘겨받기 요청) ----------
+
+
+def _ask(bot, rec, who, parts=PARTS):
+    return bot(
+        "post",
+        f"/meetings/{rec.pk}/host-requests",
+        {"discord_user_id": who, "participants": parts},
+    )
+
+
+def _answer(bot, rec, req_id, who, approve):
+    return bot(
+        "post",
+        f"/meetings/{rec.pk}/host-requests/{req_id}",
+        {"discord_user_id": who, "approve": approve},
+    )
+
+
+def test_host_request_approve(enabled, member, other, bot):
+    rec = _rec(enabled, member)
+    r = _ask(bot, rec, "333")
+    assert r.status_code == 200, r.content
+    body = r.json()
+    assert body["texts"]["mention"].startswith("<@111> 님, 다른팀원님이 넘겨받기 요청을")
+    assert (body["texts"]["approve_label"], body["texts"]["reject_label"]) == ("승인", "거절")
+    rid = body["request"]["id"]
+    ok = _answer(bot, rec, rid, "111", True)
+    assert ok.status_code == 200, ok.content
+    assert ok.json()["texts"]["channel_notice"] == (
+        "회의 진행자가 팀원님에서 다른팀원님으로 바뀌었습니다."
+    )
+    rec.refresh_from_db()
+    assert rec.host == other and rec.host_requests[0]["status"] == "approved"
+    assert len(rec.host_changes) == 1
+    assert _answer(bot, rec, rid, "111", True).status_code == 400  # 이미 응답
+
+
+def test_host_request_reject_and_only_host_answers(enabled, member, other, linked_admin, bot):
+    rec = _rec(enabled, member)
+    parts = [*PARTS, {"discord_user_id": "222", "discord_name": "관"}]
+    rid = _ask(bot, rec, "333", parts).json()["request"]["id"]
+    for who in ("333", "222"):  # 요청자 본인·관리자도 진행자가 아니면 못 누른다
+        r = _answer(bot, rec, rid, who, True)
+        assert r.status_code == 403
+        assert r.json()["detail"]["meeting"].startswith("지금 회의 진행자만")
+    r = _answer(bot, rec, rid, "111", False)
+    assert r.json()["texts"]["requester_notice"] == "팀원님이 넘겨받기 요청을 거절했습니다."
+    rec.refresh_from_db()
+    assert rec.host == member and rec.host_requests[0]["status"] == "rejected"
+
+
+def test_host_request_expires(enabled, member, other, bot):
+    rec = _rec(enabled, member)
+    rid = _ask(bot, rec, "333").json()["request"]["id"]
+    rec.refresh_from_db()
+    rec.host_requests[0]["expires_at"] = "2000-01-01T00:00:00+00:00"
+    rec.save()
+    r = _answer(bot, rec, rid, "111", True)
+    assert r.status_code == 400 and "2분 안에 응답이 없어" in r.json()["detail"]["meeting"]
+    rec.refresh_from_db()
+    assert rec.host == member and rec.host_requests[0]["status"] == "expired"
+    assert _ask(bot, rec, "333").status_code == 200  # 만료된 뒤에는 새로 요청할 수 있다
+
+
+def test_host_request_one_pending_and_not_by_host(enabled, member, other, linked_admin, bot):
+    rec = _rec(enabled, member)
+    parts = [*PARTS, {"discord_user_id": "222", "discord_name": "관"}]
+    assert _ask(bot, rec, "111", parts).status_code == 400  # 진행자 본인
+    assert _ask(bot, rec, "555", parts).status_code == 400  # 계정 미연결
+    assert _ask(bot, rec, "333", parts).status_code == 200
+    r = _ask(bot, rec, "222", parts)
+    assert r.status_code == 400 and "이미 대기 중인" in r.json()["detail"]["meeting"]
+
+
+def test_host_request_cancelled_on_host_change_and_end(enabled, member, other, linked_admin, bot):
+    parts = [*PARTS, {"discord_user_id": "222", "discord_name": "관"}]
+    rec = _rec(enabled, member)
+    rid = _ask(bot, rec, "222", parts).json()["request"]["id"]
+    _host_to(bot, rec, "111", "333", parts)  # 진행자 변경
+    r = _answer(bot, rec, rid, "333", True)
+    assert r.status_code == 400 and "취소되었습니다" in r.json()["detail"]["meeting"]
+    rec.refresh_from_db()
+    assert rec.host_requests[0]["status"] == "cancelled"
+    rid2 = _ask(bot, rec, "222", parts).json()["request"]["id"]
+    bot("patch", f"/meetings/{rec.pk}", {"status": "transcribing"})  # 회의 종료
+    rec.refresh_from_db()
+    assert rec.host_requests[-1]["status"] == "cancelled"
+    assert _answer(bot, rec, rid2, "333", True).status_code == 400

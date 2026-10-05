@@ -481,6 +481,20 @@ class DiscordMeetingHostIn(Schema):
     participants: list[dict] | None = None  # 지금 음성 채널의 참여자 목록(있으면 먼저 반영)
 
 
+class DiscordMeetingHostRequestIn(Schema):
+    """`/회의받기`. discord_user_id는 요청한 참여자."""
+
+    discord_user_id: str
+    participants: list[dict] | None = None  # 지금 음성 채널의 참여자 목록(있으면 먼저 반영)
+
+
+class DiscordMeetingHostAnswerIn(Schema):
+    """넘겨받기 요청의 [승인]/[거절]. discord_user_id는 버튼을 누른 사람."""
+
+    discord_user_id: str
+    approve: bool
+
+
 class ProjectDiscordChannelIn(Schema):
     channel_id: str = ""
 
