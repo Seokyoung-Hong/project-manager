@@ -5,7 +5,7 @@ from django.utils import timezone
 from common.errors import ServiceError
 
 from .models import Invite, Organization, OrgMembership, Team, TeamMembership
-from .settings import LOCKED, SPECS, clean, display, effective
+from .settings import LOCKED, SPECS, clean, display, effective, merge_secrets
 
 # ---------- 조직 ----------
 
@@ -79,8 +79,8 @@ def set_org_settings(
     바뀐 키마다 이력을 남긴다.
     """
     require_admin(actor, org)
-    cleaned = clean("org", data, allow_locked=True)
     old = org.settings or {}
+    cleaned = clean("org", merge_secrets(data, old), allow_locked=True)
     if old != cleaned:
         from tasks.models import ChangeLog
 

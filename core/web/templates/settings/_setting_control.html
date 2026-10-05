@@ -22,6 +22,9 @@
   <label class="setting-option"><input id="setting-{{ row.spec.key }}-{{ code }}" type="checkbox" name="{{ row.spec.key }}" value="{{ code }}"{% if code in row.value %} checked{% endif %}><span>{{ clabel }}</span></label>
   {% endfor %}
 </fieldset>
+{% elif row.spec.kind == "secret" %}
+<input id="setting-{{ row.spec.key }}" class="input setting-text" type="password" name="{{ row.spec.key }}" value="" autocomplete="new-password" placeholder="{{ row.display }} · 바꿀 때만 입력"{% if row.spec.help %} aria-describedby="setting-help-{{ row.spec.key }}"{% endif %}>
+{% if row.display == "설정됨" %}<label class="setting-option"><input type="checkbox" name="clear__{{ row.spec.key }}"><span>지우기</span></label>{% endif %}
 {% else %}
 <input id="setting-{{ row.spec.key }}" class="input setting-text" name="{{ row.spec.key }}" value="{{ row.value }}"{% if row.spec.help %} aria-describedby="setting-help-{{ row.spec.key }}"{% endif %}>
 {% endif %}
