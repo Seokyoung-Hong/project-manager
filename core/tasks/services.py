@@ -463,6 +463,24 @@ def update_task(
     return task
 
 
+def can_reject(actor, task) -> bool:
+    """검토 대기를 시작 전·진행 중으로 되돌릴(반려) 수 있는가.
+
+    지정 검토자가 있으면 그 사람·조직 관리자·프로젝트 관리자, 그리고 담당자(검토 요청 철회)만.
+    검토자가 없으면 예전처럼 프로젝트를 볼 수 있는 멤버 누구나. 볼 수 있는지는 transition 입구
+    (_require_member → can_view_project)가 먼저 본다 — 비공개 프로젝트를 못 보는 검토자는 거기서 막힌다.
+    """
+    if task.status != "review":
+        return False
+    if not task.reviewer_id:
+        return True
+    return (
+        actor.pk in (task.reviewer_id, task.assignee_id)
+        or is_admin(actor, task.project.org)
+        or is_owner(actor, task.project)
+    )
+
+
 @transaction.atomic
 def transition(
     task,
@@ -515,6 +533,13 @@ def transition(
         if not reason:
             raise ServiceError({"reason": "재개 사유를 입력하세요."})
     rejecting = task.status == "review" and new_status in ("todo", "doing")
+    if rejecting and actor is not None and not can_reject(actor, task):
+        raise ServiceError(
+            {
+                "status": f"검토자 {task.reviewer.display_name}님 또는 프로젝트 관리자만 "
+                "반려할 수 있습니다."
+            }
+        )
     if (
         rejecting
         and effective("task.reject_reason_required", org=org, project=task.project)
