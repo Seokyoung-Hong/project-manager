@@ -599,13 +599,22 @@ def ack_notices(request, payload: DiscordNoticeAckIn):
 # ---------- GitHub 알림 웹훅(IMPL-PLAN-8 §10-2). 봇이 Discord 쪽을 맡고 결과를 보고한다 ----------
 
 
+# 보고는 작업 세대(job)와 함께 온다. 같은 보고가 다시 와도 결과가 같다(응답 유실 재보고).
+
+
 class GitHubHookCreatedIn(Schema):
+    job: str = ""
     webhook_id: str
     webhook_token: str
 
 
 class GitHubHookFailedIn(Schema):
+    job: str = ""
     reason: str = ""
+
+
+class GitHubHookRemovedIn(Schema):
+    webhook_id: str = ""
 
 
 @router.get("/github-hooks", response=list[dict])
@@ -615,16 +624,15 @@ def github_hook_jobs(request):
 
 @router.post("/github-hooks/{int:project_id}/created", response=dict)
 def github_hook_created(request, project_id: int, payload: GitHubHookCreatedIn):
-    return gh_hooks.on_created(
-        project_id, payload.webhook_id, payload.webhook_token
-    )  # URL은 되돌려 주지 않는다
+    # URL·토큰은 되돌려 주지 않는다
+    return gh_hooks.on_created(project_id, payload.job, payload.webhook_id, payload.webhook_token)
 
 
 @router.post("/github-hooks/{int:project_id}/failed", response=dict)
 def github_hook_failed(request, project_id: int, payload: GitHubHookFailedIn):
-    return gh_hooks.on_failed(project_id, payload.reason)
+    return gh_hooks.on_failed(project_id, payload.job, payload.reason)
 
 
 @router.post("/github-hooks/{int:project_id}/removed", response=dict)
-def github_hook_removed(request, project_id: int):
-    return gh_hooks.on_removed(project_id)
+def github_hook_removed(request, project_id: int, payload: GitHubHookRemovedIn):
+    return gh_hooks.on_removed(project_id, payload.webhook_id)

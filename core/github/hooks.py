@@ -10,12 +10,17 @@
 해제는 반대 순서다. GitHub 훅을 먼저 지우고(누른 사람 토큰) `removing`으로 두면 봇이 Discord 웹훅을 지운다.
 Discord 웹훅 URL은 토큰을 품는다. DB·로그·화면·API 응답 어디에도 원문을 남기지 않는다.
 
-상태(`RepoConnection.discord_hook`): {} 없음 | pending | active | error | removing.
+상태(`RepoConnection.discord_hook`): {} 없음 | pending | registering(core가 GitHub 등록 중) | active | error | removing.
+요청마다 세대 `job`을 두고 봇 보고는 세대·상태가 맞을 때만 반영한다. 지울 웹훅은 `cleanup` 목록에 남겨
+봇 틱마다 다시 시도한다(취소된 생성의 보상 삭제도 여기로 간다).
 """
 
 import re
+import secrets
 
 from django.core.cache import cache
+from django.db import transaction
+from django.db.models import Q
 from django.utils import timezone
 
 from common.errors import ServiceError
@@ -41,6 +46,7 @@ EVENTS = {
 DEFAULT_EVENTS = ["push", "pull_request", "issues", "release"]
 WEBHOOK_BASE = "https://discord.com/api/webhooks"
 CAPS_TTL = 3600
+BUSY = ("pending", "registering", "active", "removing")
 _TOKEN_RE = re.compile(r"^[A-Za-z0-9_\-]{20,200}$")
 _URL_RE = re.compile(r"(/api/webhooks/\d+/)[A-Za-z0-9_\-]+")
 
@@ -162,10 +168,52 @@ def _require_repo_admin(conn, token: str):
         )
 
 
-def _save(conn, new: dict, actor=None, source="web"):
-    old = conn.discord_hook or {}
-    conn.discord_hook = new
+def _locked(project_id):
+    return (
+        RepoConnection.objects.select_for_update()
+        .filter(project_id=project_id)
+        .select_related("project")
+        .first()
+    )
+
+
+def _write(conn, hook: dict):
+    """잠근 행에 쓴다. 빈 정리 목록은 남기지 않는다."""
+    hook = dict(hook)
+    if not hook.get("cleanup"):
+        hook.pop("cleanup", None)
+    conn.discord_hook = hook
     conn.save(update_fields=["discord_hook"])
+
+
+def _add_cleanup(hook: dict, webhook_id: str, hook_id=None, by=None):
+    """지울 웹훅을 정리 목록에 올린다. 봇 틱마다 다시 시도하므로 한 번 실패해도 사라지지 않는다."""
+    if not webhook_id:
+        return
+    items = [dict(c) for c in hook.get("cleanup") or []]
+    for c in items:
+        if c["webhook_id"] == webhook_id:
+            if hook_id:
+                c.update(hook_id=hook_id, by=by)
+            break
+    else:
+        items.append({"webhook_id": webhook_id, "hook_id": hook_id, "by": by})
+    hook["cleanup"] = items
+
+
+def _save(conn, new: dict, actor=None, source="web", cleanup: tuple = ()):
+    """웹 쪽 상태 변경. 정리 목록은 봇 보고가 동시에 늘릴 수 있어 잠근 최신 행의 것을 잇는다."""
+    with transaction.atomic():
+        row = _locked(conn.project_id)
+        if row is None:
+            return
+        old = dict(row.discord_hook or {})
+        new = {k: v for k, v in new.items() if k != "cleanup"}
+        new["cleanup"] = old.get("cleanup") or []
+        for webhook_id in cleanup:
+            _add_cleanup(new, webhook_id)
+        _write(row, new)
+    conn.discord_hook = row.discord_hook
     if actor is not None and old.get("state") != new.get("state"):
         _log(
             conn.project,
@@ -193,12 +241,13 @@ def request_setup(project, events, *, actor, source="web") -> dict:
     require_level(actor, project, effective("project.settings_by", org=project.org), "hook")
     if found := blockers(actor, project):
         raise ServiceError({"hook": f"{found[0]['reason']} {found[0]['fix']}".strip()})
-    if (conn.discord_hook or {}).get("state") in ("pending", "active", "removing"):
+    if (conn.discord_hook or {}).get("state") in BUSY:
         raise ServiceError({"hook": "이미 설정되어 있거나 처리 중입니다."})
     events = _events(events)
     _require_repo_admin(conn, _actor_token(actor))
     hook = {
         "state": "pending",
+        "job": secrets.token_hex(8),  # 요청 세대. 봇 보고는 이 값이 맞을 때만 반영한다
         "events": events,
         "by": actor.pk,
         "channel_id": project.discord_channel_id,
@@ -213,7 +262,7 @@ def update_events(project, events, *, actor, source="web") -> dict:
     _require(actor, project)
     hook = dict(conn.discord_hook or {})
     if hook.get("state") not in ("pending", "active"):
-        raise ServiceError({"hook": "설정된 웹훅이 없습니다."})
+        raise ServiceError({"hook": "설정된 웹훅이 없거나 처리 중입니다."})
     events = _events(events)
     if hook["state"] == "active":
         try:
@@ -231,11 +280,15 @@ def update_events(project, events, *, actor, source="web") -> dict:
 
 
 def remove(project, *, actor, source="web") -> dict:
-    """active면 GitHub 훅을 지우고 봇에 Discord 웹훅 삭제를 맡긴다. pending·error는 기록만 지운다."""
+    """active면 GitHub 훅을 지우고 봇에 Discord 웹훅 삭제를 맡긴다. 그 밖에는 기록만 지운다.
+
+    등록 중(registering)에 취소하면 `on_created`가 끝난 뒤 세대가 바뀐 것을 보고 양쪽 훅을 정리한다.
+    """
     conn = _conn(project)
     _require(actor, project)
     hook = conn.discord_hook or {}
     state = hook.get("state")
+    cleanup: tuple = ()
     if state == "active":
         try:
             client.request(
@@ -249,18 +302,24 @@ def remove(project, *, actor, source="web") -> dict:
             "webhook_id": hook.get("webhook_id", ""),
             "channel_id": hook.get("channel_id", ""),
         }
-    elif state in ("pending", "error"):
-        new = {}  # pending 중 봇이 뒤늦게 보고하면 on_created가 Discord 웹훅을 지우게 한다
+    elif state in ("pending", "registering", "error"):
+        new = {}
+        if state == "registering":  # core가 등록 도중 멈췄어도 Discord 웹훅은 남지 않게 한다
+            cleanup = (hook.get("webhook_id", ""),)
     else:
         return hook
-    _save(conn, new, actor, source)
+    _save(conn, new, actor, source, cleanup=cleanup)
     return new
 
 
 def status(project) -> dict:
-    """화면용. 비밀은 담지 않는다."""
+    """화면용. 비밀은 담지 않는다. 등록 중(registering)은 화면에서 대기(pending)로 보인다."""
     conn = getattr(project, "repo", None)
-    hook = dict((conn.discord_hook if conn else None) or {})
+    hook = {
+        k: v for k, v in ((conn.discord_hook if conn else None) or {}).items() if k != "cleanup"
+    }
+    if hook.get("state") == "registering":
+        hook["state"] = "pending"
     picked = hook.get("events") or DEFAULT_EVENTS
     hook["choices"] = [(k, label, k in picked) for k, label in EVENTS.items()]
     hook["labels"] = [EVENTS[e] for e in picked if e in EVENTS]
@@ -272,80 +331,194 @@ def status(project) -> dict:
 # ---------- 봇 ----------
 
 
+def _delete_github(full_name: str, hook_id, by) -> bool:
+    """정리용 GitHub 훅 삭제. 지웠거나 이미 없으면 True."""
+    from accounts.models import User
+
+    try:
+        client.request(
+            "DELETE",
+            f"/repos/{full_name}/hooks/{hook_id}",
+            _actor_token(User.objects.filter(pk=by).first()),
+        )
+    except GitHubError as e:
+        return e.status == 404
+    except ServiceError:
+        return False
+    return True
+
+
+def _sweep(conn) -> list[dict]:
+    """정리 목록의 GitHub 훅을 먼저 지운다. GitHub 쪽이 끝난 항목만 Discord 삭제 작업으로 돌려준다.
+
+    # ponytail: GitHub 삭제가 계속 거부되면(토큰 만료 등) 틱마다 다시 시도한다. 횟수 제한은 두지 않았다.
+    """
+    done = {
+        c["webhook_id"]
+        for c in conn.discord_hook.get("cleanup") or []
+        if c.get("hook_id") and _delete_github(conn.full_name, c["hook_id"], c.get("by"))
+    }
+    if done:
+        with transaction.atomic():
+            row = _locked(conn.project_id)
+            hook = dict(row.discord_hook or {})
+            hook["cleanup"] = [
+                {**c, "hook_id": None} if c["webhook_id"] in done else c
+                for c in hook.get("cleanup") or []
+            ]
+            _write(row, hook)
+            conn = row
+    return [c for c in conn.discord_hook.get("cleanup") or [] if not c.get("hook_id")]
+
+
 def pending_jobs() -> list[dict]:
-    """봇이 틱마다 가져가는 일. create = 그 채널에 웹훅 만들기, delete = 그 웹훅 지우기."""
+    """봇이 틱마다 가져가는 일. create = 그 채널에 웹훅 만들기, delete = 그 웹훅 지우기.
+
+    delete는 해제(removing)와 정리 목록(취소된 생성의 보상) 둘에서 나온다. 봇이 지우고 보고할 때까지 남는다.
+    """
     out = []
     for conn in RepoConnection.objects.filter(
-        discord_hook__state__in=["pending", "removing"]
+        Q(discord_hook__state__in=["pending", "removing"]) | Q(discord_hook__has_key="cleanup")
     ).order_by("pk"):
         hook = conn.discord_hook
-        out.append(
+        if hook.get("state") == "pending":
+            out.append(
+                {
+                    "project_id": conn.project_id,
+                    "action": "create",
+                    "job": hook.get("job", ""),
+                    "channel_id": hook.get("channel_id", ""),
+                    "webhook_id": "",
+                }
+            )
+        elif hook.get("state") == "removing":
+            out.append(
+                {
+                    "project_id": conn.project_id,
+                    "action": "delete",
+                    "job": "",
+                    "channel_id": hook.get("channel_id", ""),
+                    "webhook_id": hook.get("webhook_id", ""),
+                }
+            )
+        out += [
             {
                 "project_id": conn.project_id,
-                "action": "create" if hook["state"] == "pending" else "delete",
-                "channel_id": hook.get("channel_id", ""),
-                "webhook_id": hook.get("webhook_id", ""),
+                "action": "delete",
+                "job": "",
+                "channel_id": "",
+                "webhook_id": c["webhook_id"],
             }
-        )
+            for c in _sweep(conn)
+        ]
     return out
 
 
-def on_created(project_id: int, webhook_id: str, webhook_token: str) -> dict:
-    """봇이 만든 Discord 웹훅을 GitHub에 등록한다. 실패하면 봇이 그 웹훅을 지우도록 delete_webhook을 돌려준다.
+def on_created(project_id: int, job: str, webhook_id: str, webhook_token: str) -> dict:
+    """봇이 만든 Discord 웹훅을 GitHub에 등록한다. **같은 보고가 여러 번 와도 결과가 같다**(응답 유실 재보고).
 
-    # ponytail: 이 응답이 봇에 닿지 못하면 봇은 웹훅을 지우고 다음 틱에 다시 만들지만, 여기는 이미 active라
-    # GitHub 훅이 지워진 URL을 가리킨다. 드물다 — 화면에서 해제 후 다시 설정하면 된다.
+    세대(`job`)가 다르거나 그새 취소됐으면 그 웹훅을 정리 목록에 올린다. GitHub 등록 중에 취소되면
+    등록이 끝난 뒤 세대를 다시 확인해 양쪽 훅을 정리 목록으로 보낸다(보상). `delete_webhook`은
+    정리 목록을 둘 연결 행이 사라졌을 때만 True다 — 그때만 봇이 직접 지운다.
     """
     from accounts.models import User
 
-    conn = RepoConnection.objects.filter(project_id=project_id).select_related("project").first()
-    hook = dict((conn.discord_hook if conn else None) or {})
-    if hook.get("state") != "pending":
-        return {"ok": False, "delete_webhook": True}  # 그새 취소됐다
-    webhook_id, webhook_token = str(webhook_id), str(webhook_token)
-    if not (webhook_id.isdecimal() and _TOKEN_RE.match(webhook_token)):
-        _save(conn, {**hook, "state": "error", "error": "봇이 보낸 웹훅 정보가 올바르지 않습니다."})
-        return {"ok": False, "delete_webhook": True}
-    url = f"{WEBHOOK_BASE}/{webhook_id}/{webhook_token}/github"
+    job, webhook_id, webhook_token = str(job), str(webhook_id), str(webhook_token)
+    if not webhook_id.isdecimal():
+        return {"ok": False, "delete_webhook": False}  # 지울 수도 없는 값이다
+    with transaction.atomic():
+        conn = _locked(project_id)
+        if conn is None:
+            return {"ok": False, "delete_webhook": True}
+        hook = dict(conn.discord_hook or {})
+        state = hook.get("state")
+        if hook.get("job", "") == job and hook.get("webhook_id") == webhook_id:
+            if state in ("registering", "active"):
+                return {"ok": state == "active", "delete_webhook": False}  # 다시 온 같은 보고
+        if any(c["webhook_id"] == webhook_id for c in hook.get("cleanup") or []):
+            return {"ok": False, "delete_webhook": False}  # 이미 정리 대상이다
+        if hook.get("job", "") != job or state != "pending":
+            _add_cleanup(hook, webhook_id)  # 취소됐거나 다른 세대의 보고다
+            _write(conn, hook)
+            return {"ok": False, "delete_webhook": False}
+        if not _TOKEN_RE.match(webhook_token):
+            hook.update(state="error", error="봇이 보낸 웹훅 정보가 올바르지 않습니다.")
+            _add_cleanup(hook, webhook_id)
+            _write(conn, hook)
+            return {"ok": False, "delete_webhook": False}
+        hook.update(state="registering", webhook_id=webhook_id)
+        _write(conn, hook)
+        full_name, by, events = conn.full_name, hook.get("by"), hook["events"]
+
+    # GitHub 호출은 잠금 밖에서 한다. 그동안 웹에서 취소·재설정할 수 있다.
+    hook_id, error = None, ""
     try:
         data = client.request(
             "POST",
-            f"/repos/{conn.full_name}/hooks",
-            _actor_token(User.objects.filter(pk=hook.get("by")).first()),
+            f"/repos/{full_name}/hooks",
+            _actor_token(User.objects.filter(pk=by).first()),
             body={
                 "name": "web",
                 "active": True,
-                "events": hook["events"],
-                "config": {"url": url, "content_type": "json"},
+                "events": events,
+                "config": {
+                    "url": f"{WEBHOOK_BASE}/{webhook_id}/{webhook_token}/github",
+                    "content_type": "json",
+                },
             },
         )
+        hook_id = (data or {})["id"]
     except (GitHubError, ServiceError) as e:
-        _save(conn, {**hook, "state": "error", "error": _reason(e)})
-        return {"ok": False, "delete_webhook": True}
-    _save(
-        conn, {**hook, "state": "active", "webhook_id": webhook_id, "hook_id": (data or {})["id"]}
-    )
-    return {"ok": True, "delete_webhook": False}
+        error = _reason(e)
+
+    with transaction.atomic():
+        conn = _locked(project_id)
+        if conn is None:  # 그새 저장소 연결이 지워졌다. 정리 목록을 둘 곳이 없어 여기서 지운다
+            if hook_id:
+                _delete_github(full_name, hook_id, by)
+            return {"ok": False, "delete_webhook": True}
+        cur = dict(conn.discord_hook or {})
+        if cur.get("job", "") == job and cur.get("state") == "registering":
+            if hook_id:
+                cur.update(state="active", hook_id=hook_id)
+            else:
+                cur.update(state="error", error=error)
+                _add_cleanup(cur, webhook_id)
+        else:
+            _add_cleanup(cur, webhook_id, hook_id, by)  # 등록하는 사이 취소됐다: 보상 삭제
+        _write(conn, cur)
+        return {
+            "ok": cur.get("state") == "active" and cur.get("job") == job,
+            "delete_webhook": False,
+        }
 
 
-def on_failed(project_id: int, reason: str) -> dict:
-    conn = RepoConnection.objects.filter(project_id=project_id).first()
-    hook = dict((conn.discord_hook if conn else None) or {})
-    if hook.get("state") != "pending":
-        return {"ok": False}
-    text = mask(reason)[:200]
-    hook.update(
-        state="error",
-        error=f"봇이 Discord 웹훅을 만들지 못했습니다({text}). 봇 역할과 그 채널의 권한 덮어쓰기에 "
-        "웹후크 관리 권한이 있는지 확인해 주세요.",
-    )
-    _save(conn, hook)
+def on_failed(project_id: int, job: str, reason: str) -> dict:
+    with transaction.atomic():
+        conn = _locked(project_id)
+        hook = dict((conn.discord_hook if conn else None) or {})
+        if hook.get("state") != "pending" or hook.get("job", "") != str(job):
+            return {"ok": False}
+        hook.update(
+            state="error",
+            error=f"봇이 Discord 웹훅을 만들지 못했습니다({mask(reason)[:200]}). 봇 역할과 그 채널의 "
+            "권한 덮어쓰기에 웹후크 관리 권한이 있는지 확인해 주세요.",
+        )
+        _write(conn, hook)
     return {"ok": True}
 
 
-def on_removed(project_id: int) -> dict:
-    conn = RepoConnection.objects.filter(project_id=project_id).first()
-    if conn is None or (conn.discord_hook or {}).get("state") != "removing":
-        return {"ok": False}
-    _save(conn, {})
+def on_removed(project_id: int, webhook_id: str) -> dict:
+    """봇이 그 Discord 웹훅을 지웠다. 해제 중이면 끝내고, 정리 목록에서도 뺀다."""
+    webhook_id = str(webhook_id or "")
+    with transaction.atomic():
+        conn = _locked(project_id)
+        if conn is None:
+            return {"ok": False}
+        hook = dict(conn.discord_hook or {})
+        cleanup = [c for c in hook.get("cleanup") or [] if c["webhook_id"] != webhook_id]
+        if hook.get("state") == "removing" and hook.get("webhook_id", "") == webhook_id:
+            hook = {}
+        hook["cleanup"] = cleanup
+        _write(conn, hook)
     return {"ok": True}
