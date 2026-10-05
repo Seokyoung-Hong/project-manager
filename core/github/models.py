@@ -61,6 +61,11 @@ class RepoConnection(models.Model):
     rule_commit = models.BooleanField(default=True)
     rule_pr = models.BooleanField(default=True)
     rule_merge = models.BooleanField(default=True)
+    # 라운드 8 규칙 스위치. REPO_SETTING_FIELDS에는 화면(G9)과 함께 넣는다 — 먼저 넣으면
+    # 체크박스 없는 저장이 False로 덮는다.
+    rule_review = models.BooleanField(default=True)  # 리뷰 요청→검토자, 변경 요청→진행 중
+    rule_sync = models.BooleanField(default=True)  # 이슈 제목·담당자 ↔ 태스크
+    rule_milestone = models.BooleanField(default=True)  # GitHub 마일스톤 → PM 마일스톤
     last_event_at = models.DateTimeField(null=True, blank=True)
     issues_synced_at = models.DateTimeField(null=True, blank=True)
     created_by = models.ForeignKey(
@@ -114,9 +119,55 @@ class TaskGitLink(models.Model):
     pr_state = models.CharField(max_length=6, blank=True)  # open | merged | closed
     merged_at = models.DateTimeField(null=True, blank=True)
     commits = models.JSONField(default=list, blank=True)  # [{sha, message, item, at}]
+    # PR·리뷰·CI 상태. 전부 선택적(빈 값 = 모름).
+    pr_draft = models.BooleanField(default=False)
+    pr_opened_at = models.DateTimeField(null=True, blank=True)
+    head_sha = models.CharField(max_length=40, blank=True)
+    # {login: "approved"|"changes_requested"|"commented"} — 리뷰어별 마지막 리뷰. dismissed면 지운다.
+    reviews = models.JSONField(default=dict, blank=True)
+    review_state = models.CharField(max_length=20, blank=True)  # ''|approved|changes_requested
+    review_requested_at = models.DateTimeField(null=True, blank=True)
+    reviewed_at = models.DateTimeField(null=True, blank=True)
+    # {"suite:<id>"|"status:<context>": "pending"|"success"|"failure"} — head_sha 기준. sha가 바뀌면 비운다.
+    ci_checks = models.JSONField(default=dict, blank=True)
+    ci_state = models.CharField(max_length=8, blank=True)  # ''|pending|success|failure
+    ci_url = models.CharField(max_length=300, blank=True)
+    ci_at = models.DateTimeField(null=True, blank=True)
+    # PM→GitHub로 이슈 필드를 마지막으로 쓴 시각. 그 전 updated_at의 issues 이벤트는 메아리로 버린다.
+    issue_synced_at = models.DateTimeField(null=True, blank=True)
 
     def __str__(self):
         return f"{self.connection.full_name} ← {self.task_id}"
+
+
+class GitRelease(models.Model):
+    """릴리스·태그. GitEvent는 50건에 잘리므로 선반에 남기려면 표가 따로 있어야 한다."""
+
+    connection = models.ForeignKey(
+        RepoConnection, on_delete=models.CASCADE, related_name="releases"
+    )
+    tag = models.CharField(max_length=100)
+    name = models.CharField(max_length=200, blank=True)
+    url = models.CharField(max_length=300)
+    prerelease = models.BooleanField(default=False)
+    published_at = models.DateTimeField()
+    # 이름이 같은 마일스톤이 있으면 잇는다. 완료 처리는 사람이 한다.
+    milestone = models.ForeignKey(
+        "projects.Milestone",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="releases",
+    )
+
+    class Meta:
+        ordering = ["-published_at", "-id"]
+        constraints = [
+            models.UniqueConstraint(fields=["connection", "tag"], name="gitrelease_conn_tag")
+        ]
+
+    def __str__(self):
+        return f"{self.connection.full_name} {self.tag}"
 
 
 class GitEvent(models.Model):

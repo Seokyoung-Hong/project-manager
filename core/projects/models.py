@@ -90,9 +90,18 @@ class Milestone(models.Model):
         settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="+"
     )
     created_at = models.DateTimeField(auto_now_add=True)
+    # GitHub 마일스톤 번호. 저장소 하나가 프로젝트 둘에 이어지면 프로젝트마다 한 행씩 생긴다.
+    gh_number = models.PositiveIntegerField(null=True, blank=True)
 
     class Meta:
         ordering = ["target_date", "id"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["project", "gh_number"],
+                condition=models.Q(gh_number__isnull=False),
+                name="milestone_project_gh_number",
+            )
+        ]
 
     def __str__(self):
         return self.name

@@ -39,6 +39,9 @@ class TaskBriefOut(Schema):
     stop_reason: str
     # 막힘·검토 에스컬레이션이 경과일을 재는 기준.
     stopped_at: datetime | None = None
+    # 상태가 바뀐 시각·PR 리뷰 요청 시각. 검토 독촉은 리뷰 요청 → 상태 시각 → stopped_at 순으로 잰다.
+    status_since: datetime | None = None
+    review_requested_at: datetime | None = None
     updated_at: datetime | None = None
     next_action: str
     is_template: bool = False
