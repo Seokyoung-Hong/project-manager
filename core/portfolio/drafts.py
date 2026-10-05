@@ -18,7 +18,7 @@ from projects.services import visible_projects
 from tasks.models import TaskDecisionRecord
 
 from .models import PortfolioDraft, PortfolioSource
-from .sources import get_allowed_records
+from .sources import get_allowed_records, pr_evidence
 
 MAX_BODY_BYTES = 256 * 1024
 
@@ -79,9 +79,12 @@ def _selected_records(user, org_id, source_ids):
 
 
 def _snapshot(draft, records):
+    prs = {r.pk: pr_evidence(draft.owner, r.task) for r in records}
     PortfolioSource.objects.bulk_create(
         [
             PortfolioSource(
+                pr_url=(prs[record.pk] or {}).get("url", ""),
+                pr_merged_at=(prs[record.pk] or {}).get("merged_at"),
                 draft=draft,
                 decision_record=record,
                 record_kind=record.kind,
@@ -339,5 +342,16 @@ def export_markdown(user, draft_id):
     draft = get_draft(user, draft_id)
     body = draft.body_md.strip()
     if body.splitlines()[:1] == [f"# {draft.title}"]:
-        return draft.body_md
-    return f"# {draft.title}\n\n{draft.body_md}" if body else f"# {draft.title}\n"
+        text = draft.body_md
+    else:
+        text = f"# {draft.title}\n\n{draft.body_md}" if body else f"# {draft.title}\n"
+    # 병합 PR 근거는 번호·병합일·주소만(제목·본문 없음). 스냅샷이라 연결이 풀려도 남는다.
+    lines = [
+        f"- {s.task_number} — 근거: PR #{s.pr_url.rsplit('/', 1)[-1]} "
+        f"({timezone.localtime(s.pr_merged_at):%Y-%m-%d} 병합) {s.pr_url}"
+        for s in draft.portfolio_sources
+        if s.pr_url and s.pr_merged_at
+    ]
+    if lines:
+        text = text.rstrip("\n") + "\n\n## 근거 PR\n\n" + "\n".join(lines) + "\n"
+    return text
