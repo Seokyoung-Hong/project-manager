@@ -231,7 +231,7 @@ async def link_channel(
                 return f"'{category_name}' 카테고리를 찾을 수 없습니다. 기존 카테고리를 선택하거나 새 카테고리 만들기를 지정해 주세요."
             try:
                 created_category = await guild.create_category(
-                    category_name, reason=f"산돌이: {label} 채널"
+                    category_name, reason=f"유달리: {label} 채널"
                 )
                 category = created_category
             except discord.Forbidden:
@@ -250,7 +250,7 @@ async def link_channel(
             category=category,
             topic=f"{site_name} · {label} {item['name']}",
             overwrites=overwrites,
-            reason=f"산돌이: {label} 채널(비공개)",
+            reason=f"유달리: {label} 채널(비공개)",
         )
     except discord.Forbidden:
         if created_category:
@@ -285,7 +285,7 @@ async def link_channel(
         reply = _error_reply(e.response) if isinstance(e, httpx.HTTPStatusError) else None
         reply = reply or "연결을 저장하지 못했습니다."
         try:
-            await channel.delete(reason="산돌이: 연결 저장 실패로 되돌림")
+            await channel.delete(reason="유달리: 연결 저장 실패로 되돌림")
             if created_category and not created_category.channels:
                 await created_category.delete(reason="연결 실패로 빈 카테고리 되돌림")
         except discord.HTTPException:

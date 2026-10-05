@@ -1,6 +1,6 @@
-# 산돌이 PM 스킬
+# 유달리 스킬
 
-Claude Code에서 산돌이 PM을 쓰는 스킬과 `/` 명령이다. core API(`/api`)를 직접 부르며 MCP 서버에 의존하지 않는다.
+Claude Code에서 유달리를 쓰는 스킬과 `/` 명령이다. core API(`/api`)를 직접 부르며 MCP 서버에 의존하지 않는다.
 MCP 커넥터(`mcp_server/`)는 claude.ai 웹·모바일처럼 셸이 없는 클라이언트를 위한 선택 확장이다.
 
 | 명령 | 하는 일 | 쓰기 |
@@ -38,9 +38,9 @@ MCP 커넥터(`mcp_server/`)는 claude.ai 웹·모바일처럼 셸이 없는 클
    python $HOME\.claude\skills\pm\scripts\pm.py login
    ```
 
-   토큰은 `~/.config/sandol-pm/token.json`에 저장되고 로그인한 서버 주소로만 쓰인다. `pm.py logout`은 이 파일을 지운다.
-   서버 쪽 토큰은 `/settings/tokens`에 "산돌이 PM 스킬 (기기 이름)"으로 보이며, 기기를 잃어버리면 거기서 폐기한다.
-   환경 변수 `SANDOL_PM_TOKEN`을 넣으면 그것이 우선한다. 다른 서버는 `SANDOL_PM_URL`(기본 `https://project.sio2.kr`).
+   토큰은 `~/.config/udally/token.json`에 저장되고 로그인한 서버 주소로만 쓰인다. `pm.py logout`은 이 파일을 지운다.
+   서버 쪽 토큰은 `/settings/tokens`에 "유달리 스킬 (기기 이름)"으로 보이며, 기기를 잃어버리면 거기서 폐기한다.
+   환경 변수 `UDALLY_TOKEN`을 넣으면 그것이 우선한다. 다른 서버는 `UDALLY_URL`(기본 `https://project.sio2.kr`).
 
 3. Python 3.9 이상이 필요하다. 추가 패키지는 없다.
 

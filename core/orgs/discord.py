@@ -66,7 +66,7 @@ def guild_from_code(code: str, redirect_uri: str) -> str:
     ).encode()
     req = urllib.request.Request(TOKEN_URL, data=body, method="POST")
     req.add_header("Content-Type", "application/x-www-form-urlencoded")
-    req.add_header("User-Agent", "sandol-pm")
+    req.add_header("User-Agent", "udally")
     try:
         with urllib.request.urlopen(req, timeout=15) as r:  # noqa: S310 — 고정 호스트
             data = json.loads(r.read())

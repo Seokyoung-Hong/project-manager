@@ -21,7 +21,7 @@ def _guide() -> str:
 
 GUIDE = _guide()
 
-INSTRUCTIONS = """산돌이 조직 업무 관리 도구.
+INSTRUCTIONS = """유달리 — 조직 업무 관리 도구.
 - **이 서버를 처음 쓸 때 get_guide를 한 번 읽는다.** 어떤 상황에 어느 도구를 어떤 순서로
   부르는지, 무엇을 조심해야 하는지가 거기 있다. 아래는 그중 꼭 지켜야 할 것만 추린 것이다.
 - 조직마다 업무 거버넌스(태스크 쪼개기·기한·중요도·상태·팀 운영 규칙, AI에게 허용한 범위)가 있다.
@@ -71,7 +71,7 @@ class _ScopedFastMCP(FastMCP):
 
 
 mcp = _ScopedFastMCP(
-    "sandol-pm",
+    "udally",
     instructions=INSTRUCTIONS,
     stateless_http=True,
     json_response=True,
@@ -239,11 +239,11 @@ def create_project_channel(
 @mcp.tool()
 def get_guide() -> str:
     """이 서버 사용법: 상황별 도구 호출 순서, 이슈 하나를 맡았을 때의 절차, 주의점.
-    산돌이 태스크를 처음 다루기 전에 한 번 읽는다. 조직마다 다른 규칙은 get_governance에 있다."""
+    유달리를 처음 다루기 전에 한 번 읽는다. 조직마다 다른 규칙은 get_governance에 있다."""
     return GUIDE
 
 
-@mcp.resource("guide://sandol-pm", name="산돌이 PM 사용법", mime_type="text/markdown")
+@mcp.resource("guide://udally", name="유달리 사용법", mime_type="text/markdown")
 def guide_resource() -> str:
     """도구로도 읽을 수 있지만, 자원으로 두면 사람이 대화에 직접 붙일 수 있다."""
     return GUIDE

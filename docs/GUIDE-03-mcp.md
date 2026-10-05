@@ -16,7 +16,7 @@ GUIDE-00을 먼저 읽는다. 이 파트도 **core 코드를 import하지 않는
 `mcp_server/` 디렉터리에서:
 
 ```bash
-uv init --no-workspace --name sandol-mcp --python 3.12
+uv init --no-workspace --name udally-mcp --python 3.12
 uv add "mcp>=1.10,<2" "httpx>=0.27" "uvicorn>=0.30"   # mcp 2.x는 FastMCP를 MCPServer로 개명했다
 uv add --dev "pytest>=8" "pytest-asyncio>=0.23" "ruff>=0.6"
 ```
@@ -102,7 +102,7 @@ def public_base(scope) -> str:
 
 
 NO_TOKEN_MSG = (
-    "인증 토큰이 없습니다. 산돌이 설정 → API 토큰에서 발급한 개인 비밀 URL"
+    "인증 토큰이 없습니다. 유달리 설정 → API 토큰에서 발급한 개인 비밀 URL"
     "(.../u/<TOKEN>/mcp)로 연결하거나 Authorization: Bearer <TOKEN> 헤더를 보내세요."
 )
 OAUTH_MSG = "인증이 필요합니다. 클라이언트가 OAuth를 지원하면 '연결'을 눌러 로그인하세요."
@@ -121,7 +121,7 @@ async def _json(send, body: dict, status: int = 200):
 
 
 async def _unauthorized(send, scope):
-    challenge = 'Bearer realm="sandol-pm"'
+    challenge = 'Bearer realm="udally"'
     if AUTH_SERVER_URL:
         # RFC 9728. 이 한 줄이 클라이언트를 로그인 화면으로 보낸다.
         challenge += f', resource_metadata="{public_base(scope)}{PRM_PATH}"'
@@ -267,7 +267,7 @@ INSTRUCTIONS = """산돌이 팀 업무 관리 도구.
 - 진행 메모(notes)는 태스크당 한 덩어리 텍스트다. 덧붙일 때는 append_note를 쓴다. update_task(notes=...)는 통째로 바꾼다.
 """
 
-mcp = FastMCP("sandol-pm", instructions=INSTRUCTIONS, stateless_http=True, json_response=True)
+mcp = FastMCP("udally", instructions=INSTRUCTIONS, stateless_http=True, json_response=True)
 
 
 def _core() -> Core:
@@ -603,8 +603,8 @@ CMD ["python", "-m", "mcp_server"]
 
 | 클라이언트 | 설정 |
 |---|---|
-| Claude Code | `claude mcp add --transport http sandol https://project.sio2.kr/mcp --header "Authorization: Bearer <TOKEN>"` |
-| Codex CLI | `~/.codex/config.toml`에 `[mcp_servers.sandol]` `url = "https://project.sio2.kr/mcp"` `bearer_token_env_var = "SANDOL_TOKEN"` 추가, 환경 변수 `SANDOL_TOKEN=<TOKEN>` |
+| Claude Code | `claude mcp add --transport http udally https://project.sio2.kr/mcp --header "Authorization: Bearer <TOKEN>"` |
+| Codex CLI | `~/.codex/config.toml`에 `[mcp_servers.udally]` `url = "https://project.sio2.kr/mcp"` `bearer_token_env_var = "UDALLY_TOKEN"` 추가, 환경 변수 `UDALLY_TOKEN=<TOKEN>` |
 | Claude 앱 / claude.ai | 설정 → 커넥터 → 커스텀 커넥터 추가 → URL `https://project.sio2.kr/u/<TOKEN>/mcp`, 인증 없음 |
 | ChatGPT | 설정 → 커넥터(개발자 모드) → 추가 → URL `https://project.sio2.kr/u/<TOKEN>/mcp`, 인증 없음 |
 
@@ -626,7 +626,7 @@ Docker로 띄웠으면 따로 실행할 필요가 없다 — `docker compose up 
 
 - [x] 테스트·린트 통과 (16 passed, ruff 0)
 - [x] Claude Code 연결 확인 — `claude mcp add --transport http … --header`로 등록 후 `claude mcp list` → **✔ Connected** (MCP 핸드셰이크·도구 목록 성공). 같은 `list_teams` 호출은 JSON-RPC로 직접 확인했다(중첩 `claude -p`는 OAuth 만료로 불가). 확인 후 등록 해제
-- [x] Codex CLI 확인 — `codex mcp add --url … --bearer-token-env-var SANDOL_TOKEN`이 이 지시서 표의 `[mcp_servers.*]` `url`·`bearer_token_env_var` 형태를 그대로 만든다. 확인 후 제거하고 사용자 `~/.codex/config.toml`을 md5 동일하게 원복
+- [x] Codex CLI 확인 — `codex mcp add --url … --bearer-token-env-var UDALLY_TOKEN`이 이 지시서 표의 `[mcp_servers.*]` `url`·`bearer_token_env_var` 형태를 그대로 만든다. 확인 후 제거하고 사용자 `~/.codex/config.toml`을 md5 동일하게 원복
 - [ ] Claude 앱·ChatGPT 커넥터 등록  ← 사용자 인프라 필요 — 공개 URL이 필요하다. `/u/<TOKEN>/mcp` 경로 자체는 도구 14개로 동작 확인
 - [x] 토큰 폐기·오류 토큰 → "토큰이 유효하지 않습니다" (A14)
 - [x] MCP로 상태를 바꾸면 변경 이력 `source == "mcp"`(화면 표기 "AI") (A05)

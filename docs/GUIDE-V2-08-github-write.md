@@ -346,7 +346,7 @@ cd core && uv run ruff check . && uv run pytest -q
 여기까지가 v1이다. `GUIDE-V2-00` §4의 "넣지 않는 것"이 그대로 남아 있는지 확인하고, [IMPL-PLAN-2.md](IMPL-PLAN-2.md) §3의 완료 조건을 점검한다.
 
 - 테스트 전부 통과(SQLite·Postgres), `ruff` 오류 0
-- 목업 `산돌이 신규 기능 목업.dc.html`과 나란히 놓고 화면 대조
+- 목업 `유달리 신규 기능 목업.dc.html`과 나란히 놓고 화면 대조
 - 검수 시나리오 A01~A14·A18·B01~B05
 - 실제 저장소에서 브랜치 → PR → 머지 한 사이클이 태스크를 끝까지 옮긴다
 

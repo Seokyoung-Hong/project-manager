@@ -1,4 +1,4 @@
-# 산돌이 태스크
+# 유달리
 
 팀의 태스크를 한곳에서 보고, 오늘 할 일을 고르고, 마감·주간 현황을 자동으로 알리는 업무 관리 웹앱.
 세 파트로 나뉘며 서로 HTTP API로만 통신한다.
@@ -194,11 +194,11 @@ docker compose exec -T web python manage.py loaddata --format=json - < devdata.j
 python -m http.server 8765
 ```
 
-`http://127.0.0.1:8765/산돌이 업무 목업 v2.dc.html` 을 연다. 화면 문구·색·크기의 원본은 아래 디자인 핸드오프 절이다.
+`http://127.0.0.1:8765/유달리 업무 목업 v2.dc.html` 을 연다. 화면 문구·색·크기의 원본은 아래 디자인 핸드오프 절이다.
 
 ---
 
-# 디자인 핸드오프: 산돌이 태스크 (팀 태스크 관리 웹앱)
+# 디자인 핸드오프: 유달리 (팀 태스크 관리 웹앱)
 
 > 여기의 팀은 개명 전 용어로 조직을 뜻한다.
 
@@ -226,11 +226,11 @@ python -m http.server 8765
 ## About the Design Files
 이 번들의 `.dc.html` 파일은 **HTML로 만든 디자인 레퍼런스(프로토타입)**다. 의도한 모양과 동작을 보여주는 것이 목적이며, 그대로 프로덕션에 복사하는 코드가 아니다. 대상 코드베이스의 기존 환경(React, Vue, SwiftUI 등)과 패턴·라이브러리로 **다시 구현**해야 한다. 아직 환경이 없다면 프로젝트에 가장 적합한 프레임워크를 선택해 구현한다.
 
-- `산돌이 업무 목업 v2.dc.html` — 전체 앱 (템플릿 + 상태 로직 클래스). 색·간격·타이포는 인라인 스타일이 기준이고, 상단 `<style>`은 그리드·sticky·반응형(1150px/700px) 레이아웃만 담는다. 하단 `<script data-dc-script>` 안의 `class Component`가 상태·파생값·핸들러의 단일 진실 원천이다. 구현 시 이 클래스의 `renderVals()`를 읽으면 화면에 필요한 모든 파생 데이터를 알 수 있다.
+- `유달리 업무 목업 v2.dc.html` — 전체 앱 (템플릿 + 상태 로직 클래스). 색·간격·타이포는 인라인 스타일이 기준이고, 상단 `<style>`은 그리드·sticky·반응형(1150px/700px) 레이아웃만 담는다. 하단 `<script data-dc-script>` 안의 `class Component`가 상태·파생값·핸들러의 단일 진실 원천이다. 구현 시 이 클래스의 `renderVals()`를 읽으면 화면에 필요한 모든 파생 데이터를 알 수 있다.
 - `TaskRow2.dc.html` — 태스크 행(카드) 컴포넌트.
 - `support.js` — 프로토타입 런타임. 구현과 무관, 무시.
 
-브라우저에서 `산돌이 업무 목업 v2.dc.html`을 열면 동작을 직접 확인할 수 있다.
+브라우저에서 `유달리 업무 목업 v2.dc.html`을 열면 동작을 직접 확인할 수 있다.
 
 ## Fidelity
 **High-fidelity.** 색·타이포·간격·상태·문구가 최종안이다. 코드베이스의 컴포넌트 라이브러리로 픽셀 단위로 재현하되, 아래 토큰을 그대로 매핑한다. 데스크톱 우선(~1280px 기준)이며 flex-wrap 기반으로 좁은 폭에서도 깨지지 않게 흐른다. 700px 이하 모바일 레이아웃 적용: 두 줄 상단 메뉴, 가로 스크롤 프로젝트 메뉴, 단독 상세 화면.
@@ -297,7 +297,7 @@ python -m http.server 8765
 
 ## Screens / Views
 
-공통 셸: 상단 헤더 64px, `--bg-surface` 배경 + 하단 1px `--border`. 좌측 로고 "산돌이 태스크" 20px/700. 내비 버튼 4개(오늘, 내 태스크, 팀 현황, 검색) 44px 높이, radius 8, 기본 `--text-secondary`, 선택 시 `--primary-bg` 배경 + `--primary` 글자 + weight 700. 우측 '빠른 추가' 버튼(`--primary-bg`/`--primary`)과 아바타. 좌측 프로젝트 레일 190px(sticky). 본문은 `--bg-page` 위에 24px 여백, 흰 카드(`--bg-surface`, radius 12, 1px `--border`, 그림자 없음, padding 24). 우측에 상세 패널(aside 380px, sticky, padding 20)이 붙고, "크게 보기" 시 본문을 숨기고 패널이 전체 폭(2열 grid `repeat(auto-fit, minmax(380px,1fr))`)을 차지한다. 1150px 이하에서는 상세가 열리면 본문 대신 상세만 표시한다.
+공통 셸: 상단 헤더 64px, `--bg-surface` 배경 + 하단 1px `--border`. 좌측 로고 "유달리" 20px/700. 내비 버튼 4개(오늘, 내 태스크, 팀 현황, 검색) 44px 높이, radius 8, 기본 `--text-secondary`, 선택 시 `--primary-bg` 배경 + `--primary` 글자 + weight 700. 우측 '빠른 추가' 버튼(`--primary-bg`/`--primary`)과 아바타. 좌측 프로젝트 레일 190px(sticky). 본문은 `--bg-page` 위에 24px 여백, 흰 카드(`--bg-surface`, radius 12, 1px `--border`, 그림자 없음, padding 24). 우측에 상세 패널(aside 380px, sticky, padding 20)이 붙고, "크게 보기" 시 본문을 숨기고 패널이 전체 폭(2열 grid `repeat(auto-fit, minmax(380px,1fr))`)을 차지한다. 1150px 이하에서는 상세가 열리면 본문 대신 상세만 표시한다.
 
 ### 1. 오늘 (Today)
 - **상단**: 날짜 22px/700 ("2026년 9월 9일 (수)") + `todayHint`("오늘 태스크 N건", `--text-secondary`). 아래 지표 3개를 한 줄 텍스트 버튼(값 19px/700 + 라벨 13px `--text-secondary`)으로: 오늘 완료, 지난 7일 완료, 남은 내 태스크. 각각 내 태스크 화면의 해당 목록(상태 필터 `doneToday` / `done7` / 전체 미완료)으로 이동하므로 숫자와 목록 건수가 일치한다.
@@ -402,7 +402,7 @@ Dark (`[data-theme=dark]`)
 - 아이콘: 링크 복사 아이콘만 인라인 SVG(16 viewBox, stroke 1.6). 그 외 아이콘 없음. 프로젝트 상태 이모지는 텍스트로 포함.
 
 ## Files
-- `산돌이 업무 목업 v2.dc.html` — 전체 앱 프로토타입 (템플릿 + `class Component` 로직 + 예시 데이터)
+- `유달리 업무 목업 v2.dc.html` — 전체 앱 프로토타입 (템플릿 + `class Component` 로직 + 예시 데이터)
 - `TaskRow2.dc.html` — 태스크 행 컴포넌트
 - `support.js` — 프로토타입 런타임 (참고용, 구현 대상 아님)
 

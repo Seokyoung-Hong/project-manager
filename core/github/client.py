@@ -35,7 +35,7 @@ def request(method: str, path: str, token: str, *, body=None, accept="applicatio
     req.add_header("Authorization", f"Bearer {token}")
     req.add_header("Accept", accept)
     req.add_header("X-GitHub-Api-Version", "2022-11-28")
-    req.add_header("User-Agent", "sandol-pm")
+    req.add_header("User-Agent", "udally")
     if data is not None:
         req.add_header("Content-Type", "application/json")
     try:
@@ -134,7 +134,7 @@ def _oauth_post(body: bytes) -> dict:
         "https://github.com/login/oauth/access_token", data=body, method="POST"
     )
     req.add_header("Accept", "application/json")
-    req.add_header("User-Agent", "sandol-pm")
+    req.add_header("User-Agent", "udally")
     try:
         with urllib.request.urlopen(req, timeout=TIMEOUT) as r:  # noqa: S310 — 고정 호스트
             data = json.loads(r.read())

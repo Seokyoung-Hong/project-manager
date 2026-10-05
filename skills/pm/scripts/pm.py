@@ -1,4 +1,4 @@
-"""산돌이 PM core API를 부르는 표준 라이브러리 스크립트. 스킬이 모두 이것 하나를 쓴다.
+"""유달리 core API를 부르는 표준 라이브러리 스크립트. 스킬이 모두 이것 하나를 쓴다.
 
     pm.py GET /api/tasks status=doing q=메뉴       쿼리는 key=value
     pm.py POST /api/tasks -  < body.json          본문은 표준입력(-) 또는 인자 JSON
@@ -8,8 +8,8 @@
     pm.py apidoc 프로젝트ID put 파일|URL             프로젝트 API 문서 올리기(URL은 이 컴퓨터가 받는다)
     pm.py login | logout                          브라우저 OAuth로 토큰 받기 / 지우기
 
-토큰은 환경 변수 SANDOL_PM_TOKEN, 없으면 `pm.py login`이 저장한 ~/.config/sandol-pm/token.json에서 읽는다.
-주소는 SANDOL_PM_URL(기본 https://project.sio2.kr). 저장한 토큰은 받은 주소로만 보낸다.
+토큰은 환경 변수 UDALLY_TOKEN, 없으면 `pm.py login`이 저장한 ~/.config/udally/token.json에서 읽는다.
+주소는 UDALLY_URL(기본 https://project.sio2.kr). 저장한 토큰은 받은 주소로만 보낸다.
 모든 요청에 X-Source: ai 를 붙인다. 조직의 AI 정책(ai.*)이 이 헤더로 걸린다.
 """
 
@@ -34,16 +34,16 @@ USAGE = (
     "usage: pm.py METHOD /api/... [key=value ...|JSON|-] [--key ID]  |  pm.py spec [경로 일부]  |  "
     "pm.py apidoc 프로젝트ID [경로 일부 | put 파일|URL]  |  pm.py login|logout"
 )
-TOKEN_FILE = Path.home() / ".config" / "sandol-pm" / "token.json"
+TOKEN_FILE = Path.home() / ".config" / "udally" / "token.json"
 
 
 def _base():
-    return os.environ.get("SANDOL_PM_URL", "https://project.sio2.kr").rstrip("/")
+    return os.environ.get("UDALLY_URL", "https://project.sio2.kr").rstrip("/")
 
 
 def _token(base):
-    if os.environ.get("SANDOL_PM_TOKEN"):
-        return os.environ["SANDOL_PM_TOKEN"]
+    if os.environ.get("UDALLY_TOKEN"):
+        return os.environ["UDALLY_TOKEN"]
     try:
         saved = json.loads(TOKEN_FILE.read_text(encoding="utf-8"))
     except (OSError, ValueError):
@@ -65,8 +65,8 @@ def login():
             self.end_headers()
             # 브라우저는 스크립트가 열지 않은 탭의 window.close()를 막을 수 있다. 그때는 문구가 남는다.
             self.wfile.write(
-                "<!doctype html><meta charset=utf-8><title>산돌이 PM</title>"
-                "<p>산돌이 PM 로그인이 끝났습니다. 창이 자동으로 닫히지 않으면 닫아 주세요.</p>"
+                "<!doctype html><meta charset=utf-8><title>유달리</title>"
+                "<p>유달리 로그인이 끝났습니다. 창이 자동으로 닫히지 않으면 닫아 주세요.</p>"
                 "<script>setTimeout(() => window.close(), 300)</script>".encode()
             )
 
@@ -77,7 +77,7 @@ def login():
     server.timeout = 300
     redirect = f"http://127.0.0.1:{server.server_port}/callback"
     client = _post(f"{base}/oauth/register", json.dumps(
-        {"client_name": f"산돌이 PM 스킬 ({socket.gethostname()})", "redirect_uris": [redirect]}
+        {"client_name": f"유달리 스킬 ({socket.gethostname()})", "redirect_uris": [redirect]}
     ).encode(), "application/json")
     verifier, state = secrets.token_urlsafe(48), secrets.token_urlsafe(16)
     challenge = base64.urlsafe_b64encode(hashlib.sha256(verifier.encode()).digest()).rstrip(b"=").decode()

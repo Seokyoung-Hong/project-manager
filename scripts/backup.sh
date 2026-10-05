@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# 산돌이 PM 일일 백업: DB 덤프 + 볼륨 tar + 보존 정리 + 오프사이트 복사.
+# 유달리 일일 백업: DB 덤프 + 볼륨 tar + 보존 정리 + 오프사이트 복사.
 # env: PM_DIR, BACKUP_DIR, KEEP_DAYS, OFFSITE_DIR(비면 생략), PM_PROJECT(compose 프로젝트명, 볼륨 접두사)
 set -euo pipefail
 

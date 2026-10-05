@@ -459,7 +459,7 @@ wheels = [
 ]
 
 [[package]]
-name = "sandol-core"
+name = "udally-core"
 version = "0.1.0"
 source = { virtual = "." }
 dependencies = [

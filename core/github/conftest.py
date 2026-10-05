@@ -15,7 +15,7 @@ def gh(settings):
     settings.GITHUB_WEBHOOK_SECRET = SECRET.decode()
     settings.CREDENTIAL_KEY = Fernet.generate_key().decode()
     settings.GITHUB_APP_ID = "1"
-    settings.GITHUB_APP_SLUG = "sandol-test"
+    settings.GITHUB_APP_SLUG = "udally-test"
     settings.GITHUB_CLIENT_ID = "Iv1.test"
     settings.GITHUB_CLIENT_SECRET = "client-secret"
     return settings

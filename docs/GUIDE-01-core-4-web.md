@@ -5,7 +5,7 @@
 
 이전: [01-3](GUIDE-01-core-3-api.md). Django 템플릿 + HTMX + 직접 쓴 CSS. SPA 없음. 뷰는 전부 함수형이고 업무 규칙은 services만 부른다.
 
-개정 2026-09-10: 목업(`README.md`, `산돌이 업무 목업 v2.dc.html`, `TaskRow2.dc.html`) 기준으로 전면 재작성. 색·크기·문구는 README 표가 원본이다. 이 문서와 README가 다르면 README를 따르고 완료 보고에 적는다.
+개정 2026-09-10: 목업(`README.md`, `유달리 업무 목업 v2.dc.html`, `TaskRow2.dc.html`) 기준으로 전면 재작성. 색·크기·문구는 README 표가 원본이다. 이 문서와 README가 다르면 README를 따르고 완료 보고에 적는다.
 
 개정 2026-09-10 (Discord 봇): 프로필의 Discord ID 입력칸 → `[Discord 연결]` 코드 발급 카드, 알림 채널 화면·웹훅 뷰·라우트 삭제, `/ops` 내보내기 필드 조정.
 
@@ -332,7 +332,7 @@ dialog::backdrop { background: rgba(15,50,60,.35); }
 ### `core/web/static/app.js` (전체)
 
 ```js
-// 산돌이 태스크 — 표시 보조만. 상태와 규칙은 서버에 있다.
+// 유달리 — 표시 보조만. 상태와 규칙은 서버에 있다.
 (function () {
   var body = document.body;
   var t1, t2;
@@ -1818,14 +1818,14 @@ User 필드 허용 목록이 곧 백업의 경계다. `discord_linked_at`은 넣
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{% block title %}산돌이 태스크{% endblock %}</title>
+  <title>{% block title %}유달리{% endblock %}</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
   <link rel="stylesheet" href="{% static 'app.css' %}">
   <script src="{% static 'vendor/htmx.min.js' %}"></script>
 </head>
 <body hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}' data-page-url="{% block page_url %}{{ page_url }}{% endblock %}">
 <header class="header">
-  <a class="logo" href="{% url 'today' %}">산돌이 태스크</a>
+  <a class="logo" href="{% url 'today' %}">유달리</a>
   {% if user.is_authenticated %}
   <nav class="nav" aria-label="주 메뉴">
     <a href="{% url 'today' %}"{% if nav == "today" %} aria-current="page"{% endif %}>오늘</a>
@@ -2521,7 +2521,7 @@ uv run ruff check .
 uv run python manage.py runserver
 ```
 
-목업을 나란히 띄운다: 저장소 루트에서 `python -m http.server 8765` 후 `http://127.0.0.1:8765/산돌이 업무 목업 v2.dc.html`. 브라우저에서 순서대로 해 본다. 전부 되면 통과.
+목업을 나란히 띄운다: 저장소 루트에서 `python -m http.server 8765` 후 `http://127.0.0.1:8765/유달리 업무 목업 v2.dc.html`. 브라우저에서 순서대로 해 본다. 전부 되면 통과.
 
 1. `/signup`으로 새 계정 `u2` 가입 → `/today`로 이동하고 "초대 링크가 필요합니다" 안내가 보인다.
 2. `u1`(Step 3에서 만든 계정)로 로그인 → `/teams/1/members`에서 초대 링크 발급 → 링크 복사.

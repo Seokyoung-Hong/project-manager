@@ -80,7 +80,7 @@ async def test_middleware_rejects_missing_token(monkeypatch):
     monkeypatch.setattr(auth_mod, "AUTH_SERVER_URL", "")
     sent = await _call("/mcp")
     assert sent[0]["status"] == 401
-    assert dict(sent[0]["headers"])[b"www-authenticate"] == b'Bearer realm="sandol-pm"'
+    assert dict(sent[0]["headers"])[b"www-authenticate"] == b'Bearer realm="udally"'
     assert sent[1]["body"].decode() == NO_TOKEN_MSG
 
 
@@ -90,7 +90,7 @@ async def test_401_points_at_the_metadata_when_oauth_is_on(monkeypatch):
     sent = await _call("/mcp", [(b"host", b"mcp.example.test"), (b"x-forwarded-proto", b"https")])
     assert sent[0]["status"] == 401
     assert dict(sent[0]["headers"])[b"www-authenticate"] == (
-        b'Bearer realm="sandol-pm", resource_metadata='
+        b'Bearer realm="udally", resource_metadata='
         b'"https://mcp.example.test/.well-known/oauth-protected-resource"'
     )
 

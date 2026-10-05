@@ -313,7 +313,7 @@ core의 `api/context.py: ctx()`가 그것을 `source="mcp"`로 바꿔 services�
 |---|---|---|
 | `SIGNUP_OPEN` | `1` | 0이면 `/signup` 닫힘. 초대 링크로 들어온 사람만 가입(링크에 가입 폼) |
 | `ORG_CREATE_BY` | `anyone` | `superuser`면 `/orgs/new`가 superuser에게만. PLAN §12-1 미결의 답 |
-| `SITE_NAME` | `산돌이 업무` | 이미 있다 |
+| `SITE_NAME` | `유달리` | 이미 있다 |
 
 DB에 두지 않는 이유: 바꾸는 사람이 운영자 한 명이고, 바꾸는 일이 연 1회다. `/ops`에 현재 값을 표로 보여 주기만 한다.
 

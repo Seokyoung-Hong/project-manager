@@ -682,7 +682,7 @@ wheels = [
 ]
 
 [[package]]
-name = "sandol-discord"
+name = "udally-discord"
 version = "0.1.0"
 source = { virtual = "." }
 dependencies = [

@@ -4,10 +4,10 @@
     "width": 1280,
     "url": "https://project.sio2.kr/login",
     "status": 200,
-    "text": "산돌이 태스크\n로그인\n아이디\n비밀번호\n로그인\nGitHub로 로그인\n\n계정이 없으면 가입하세요.",
+    "text": "유달리\n로그인\n아이디\n비밀번호\n로그인\nGitHub로 로그인\n\n계정이 없으면 가입하세요.",
     "links": [
       {
-        "text": "산돌이 태스크",
+        "text": "유달리",
         "href": "/today"
       },
       {
@@ -31,10 +31,10 @@
     "width": 390,
     "url": "https://project.sio2.kr/login",
     "status": 200,
-    "text": "산돌이 태스크\n로그인\n아이디\n비밀번호\n로그인\nGitHub로 로그인\n\n계정이 없으면 가입하세요.",
+    "text": "유달리\n로그인\n아이디\n비밀번호\n로그인\nGitHub로 로그인\n\n계정이 없으면 가입하세요.",
     "links": [
       {
-        "text": "산돌이 태스크",
+        "text": "유달리",
         "href": "/today"
       },
       {

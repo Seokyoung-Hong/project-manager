@@ -4,7 +4,7 @@
     "url": "https://project.sio2.kr/login",
     "status": 200,
     "title": "로그인",
-    "text": "산돌이 태스크\n로그인\n아이디\n비밀번호\n로그인\n\n계정이 없으면 가입하세요.",
+    "text": "유달리\n로그인\n아이디\n비밀번호\n로그인\n\n계정이 없으면 가입하세요.",
     "overflow": {
       "scroll": 1280,
       "viewport": 1280
@@ -23,7 +23,7 @@
     "url": "https://project.sio2.kr/login",
     "status": 200,
     "title": "로그인",
-    "text": "산돌이 태스크\n로그인\n아이디\n비밀번호\n로그인\n\n계정이 없으면 가입하세요.",
+    "text": "유달리\n로그인\n아이디\n비밀번호\n로그인\n\n계정이 없으면 가입하세요.",
     "overflow": {
       "scroll": 390,
       "viewport": 390

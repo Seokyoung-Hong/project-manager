@@ -11,7 +11,7 @@
 
 | | `<SITE_URL>` | 앱 이름 예 |
 |---|---|---|
-| 운영용 | `https://pm.<도메인>` | `sandol-pm` |
+| 운영용 | `https://pm.<도메인>` | `udally` |
 | 개발용 | `https://project.dorm.sio2.kr` | `sandol-pm-dev` |
 
 - 개발 서버도 **공개 도메인 뒤에 둔다.** GitHub는 `localhost`로 웹훅을 보낼 수 없다. 리버스 프록시가 TLS를 끝내고 Django로 넘긴다(§4).

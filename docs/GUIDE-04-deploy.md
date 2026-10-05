@@ -185,7 +185,7 @@ SEND_HOUR=9
 WEEKLY_WEEKDAY=0
 WEEKLY_HOUR=9
 LLM_PROVIDER=
-SITE_NAME=산돌이 업무
+SITE_NAME=유달리
 ```
 
 `.env`도 `.env.discord`도 git에 넣지 않는다(`.gitignore`에 둘 다 있음).
@@ -267,7 +267,7 @@ docker run --rm hello-world
 
 Cloudflare 대시보드 → Zero Trust → Networks → Tunnels:
 
-1. **Create a tunnel** → Cloudflared → 이름 `sandol-pm` → 나오는 토큰(`eyJ...`)을 `.env`의 `CLOUDFLARE_TUNNEL_TOKEN`에 넣는다.
+1. **Create a tunnel** → Cloudflared → 이름 `udally` → 나오는 토큰(`eyJ...`)을 `.env`의 `CLOUDFLARE_TUNNEL_TOKEN`에 넣는다.
 2. **Public Hostname** 두 개 추가:
 
 | Subdomain | Domain | Service |
@@ -344,7 +344,7 @@ docker compose logs --tail=50 web cloudflared
 3. 로컬 개발 빠른 시작: `cd core && uv sync && uv run python manage.py migrate && uv run python manage.py runserver`, 테스트 명령.
 4. Docker 로컬 실행(Step 4)과 서버 배포(Step 5~7) 요약, 자세한 건 이 문서로 링크.
 5. 환경 변수 표(`.env.example`과 `.env.discord.example` 항목 설명. 두 파일로 나눈 이유 한 줄 포함).
-6. 목업 보는 법: 루트에서 `python -m http.server 8765` 후 `산돌이 업무 목업 v2.dc.html` 열기.
+6. 목업 보는 법: 루트에서 `python -m http.server 8765` 후 `유달리 업무 목업 v2.dc.html` 열기.
 
 ---
 

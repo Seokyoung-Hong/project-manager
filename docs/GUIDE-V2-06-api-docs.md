@@ -68,7 +68,7 @@ def fetch_spec(url: str) -> dict:
     parsed = urlparse(url)
     if parsed.scheme not in ("http", "https") or not parsed.netloc:
         raise ServiceError({"spec": "http:// 또는 https:// 주소를 입력하세요."})
-    req = Request(url, headers={"Accept": "application/json", "User-Agent": "sandol-pm"})
+    req = Request(url, headers={"Accept": "application/json", "User-Agent": "udally"})
     try:
         with urlopen(req, timeout=SPEC_TIMEOUT) as r:  # noqa: S310 — 스킴을 위에서 검사했다
             raw = r.read(SPEC_MAX + 1)

@@ -1,7 +1,7 @@
 # 구현 계획 v2 — 조직·팀 재구성과 GitHub 통합 (NewMock 라운드)
 
 작성일: 2026-09-11
-기준: `NewMock/README.md`(핸드오프), `NewMock/산돌이 신규 기능 목업.dc.html`, 현재 코드(커밋 `3b2fbee`, core 테스트 145개), 2026-09-11 대화에서 확정한 결정
+기준: `NewMock/README.md`(핸드오프), `NewMock/유달리 신규 기능 목업.dc.html`, 현재 코드(커밋 `3b2fbee`, core 테스트 145개), 2026-09-11 대화에서 확정한 결정
 선행 문서: [IMPL-PLAN.md](IMPL-PLAN.md)(09-10 정합 결정, 1~3단계 완료), [GUIDE-00](GUIDE-00-rules.md)
 
 ---
@@ -24,8 +24,8 @@ NewMock은 개발업무 통합 기능 묶음이지만, 대화에서 확정된 �
 | 파일 | 상태 | 처리 |
 |---|---|---|
 | `README.md` | **신규** 핸드오프. 이 계획의 1차 근거 | 저장소 루트 README의 디자인 핸드오프 절 뒤에 "2026-09-11 개발업무 통합" 절로 붙인다 |
-| `산돌이 신규 기능 목업.dc.html` | **신규**. 신규 6화면 + IA 정리된 기존 화면 | 저장소 루트로 복사 **완료**(2026-09-11). `.claude/launch.json`의 `mockup` 서버로 나란히 비교 |
-| `산돌이 업무 목업 v2.dc.html`, `TaskRow2.dc.html` | 저장소 사본보다 **오래된 판**이다. NewMock 판에는 09-10에 지운 `--brand-grad` 헤더·진행률 바·그림자가 남아 있고 반응형 CSS와 `.task-row2` 클래스가 없다 | **무시.** 저장소 사본을 유지한다. README도 "이전 라운드 참고용"이라 적었다 |
+| `유달리 신규 기능 목업.dc.html` | **신규**. 신규 6화면 + IA 정리된 기존 화면 | 저장소 루트로 복사 **완료**(2026-09-11). `.claude/launch.json`의 `mockup` 서버로 나란히 비교 |
+| `유달리 업무 목업 v2.dc.html`, `TaskRow2.dc.html` | 저장소 사본보다 **오래된 판**이다. NewMock 판에는 09-10에 지운 `--brand-grad` 헤더·진행률 바·그림자가 남아 있고 반응형 CSS와 `.task-row2` 클래스가 없다 | **무시.** 저장소 사본을 유지한다. README도 "이전 라운드 참고용"이라 적었다 |
 | `support.js` | 공백 차이뿐 | 무시 |
 
 목업의 `class Component` 상태(`tasksByProject`, `gitLinks`, `notes`, `keys`, `spec`)는 전부 서버 상태다. 09-10 라운드와 같은 원칙으로 뷰가 context를 만들고 템플릿이 그린다. React·빌드 도구 금지는 그대로다.

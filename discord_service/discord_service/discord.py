@@ -8,7 +8,7 @@ log = logging.getLogger(__name__)
 API = "https://discord.com/api/v10"
 MAX_LEN = 1900  # Discord content 한도 2000자, 여유
 # Discord는 봇 요청에 User-Agent를 요구한다. 없으면 Cloudflare가 40333으로 막는다.
-UA = "DiscordBot (https://github.com/sandol-pm, 0.1)"
+UA = "DiscordBot (https://project.sio2.kr, 0.1)"
 STALE_CHANNEL = 10003  # 캐시해 둔 DM 채널이 사라졌다. 한 번 다시 열면 된다.
 # 3회 루프에 넣지 않고 즉시 포기할 코드들. 50007·50278·10013은 그 사용자에 대해 영구적이고,
 # 재시도하면 10분당 1만 invalid-request 예산만 태운다(LXC는 egress IP가 하나다).

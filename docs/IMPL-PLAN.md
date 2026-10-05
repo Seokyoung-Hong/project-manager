@@ -1,7 +1,7 @@
 # 구현 계획 v1 — 지시서와 목업 정합, 실행 순서
 
 작성일: 2026-09-10
-기준 문서: [PLAN.md](../PLAN.md) v0.3, [GUIDE-00](GUIDE-00-rules.md)~[04](GUIDE-04-deploy.md), [README.md](../README.md)(목업 핸드오프, 2026-09-10), `산돌이 업무 목업 v2.dc.html`, `TaskRow2.dc.html`
+기준 문서: [PLAN.md](../PLAN.md) v0.3, [GUIDE-00](GUIDE-00-rules.md)~[04](GUIDE-04-deploy.md), [README.md](../README.md)(목업 핸드오프, 2026-09-10), `유달리 업무 목업 v2.dc.html`, `TaskRow2.dc.html`
 현재 상태: 코드 없음. git 미초기화. 로컬 도구 준비됨(uv 0.12, git 2.52, Docker 29, Python 3.14 — uv가 3.12를 받아 쓴다).
 
 ---

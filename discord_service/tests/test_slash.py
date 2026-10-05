@@ -54,7 +54,7 @@ class FakeInteraction:
 def _tree(fake: FakeCore, seen=None):
     client = discord.Client(intents=discord.Intents.none())
     tree = app_commands.CommandTree(client)
-    cfg = SimpleNamespace(site_name="산돌이 업무", guild_id="1", members_intent=False)
+    cfg = SimpleNamespace(site_name="유달리", guild_id="1", members_intent=False)
     slash.register(tree, GUILD, cfg, make_core(fake), {} if seen is None else seen)
     return tree
 
@@ -284,8 +284,8 @@ def test_other_autocompletes_use_their_own_lists():
     fake.orgs_data = [org(1, guild_id="1")]
     tree = _tree(fake)
     assert [
-        c.name for c in run(_ac(tree, "태스크만들기", "프로젝트")(FakeInteraction(), "산"))
-    ] == ["산돌이 봇"]
+        c.name for c in run(_ac(tree, "태스크만들기", "프로젝트")(FakeInteraction(), "유"))
+    ] == ["유달리 봇"]
     here = FakeInteraction(guild=SimpleNamespace(id=1))
     assert [c.value for c in run(_ac(tree, "팀채널", "팀")(here, ""))] == [1]
     assert [c.name for c in run(_ac(tree, "태스크수정", "담당자")(FakeInteraction(), "팀"))] == [

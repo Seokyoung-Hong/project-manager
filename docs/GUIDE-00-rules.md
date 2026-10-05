@@ -67,7 +67,7 @@ core는 Discord로 나가는 요청을 한 곳도 하지 않는다(발송은 `di
 
 프론트엔드: HTMX를 **파일로 내려받아** `core/web/static/vendor/`에 둔다. CSS 프레임워크 없음. 디자인 토큰과 컴포넌트 스타일은 `core/web/static/app.css` 한 파일에 직접 쓴다(GUIDE-01-4). CDN 링크 금지. **예외 한 줄:** Pretendard 폰트 CSS(`https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css`)는 `<link>`로 쓴다. npm, Tailwind, React, 빌드 도구 금지.
 
-디자인 원본: `README.md`(핸드오프)와 `산돌이 업무 목업 v2.dc.html`, `TaskRow2.dc.html`, 그리고 이번 라운드의 **`산돌이 신규 기능 목업.dc.html`**. 색·크기·문구는 README 표를 따른다. 목업의 `class Component`는 참고용이며 옮겨 쓰지 않는다. `NewMock/` 폴더 안의 `v2`·`TaskRow2` 사본은 저장소 사본보다 오래된 판이므로 보지 않는다.
+디자인 원본: `README.md`(핸드오프)와 `유달리 업무 목업 v2.dc.html`, `TaskRow2.dc.html`, 그리고 이번 라운드의 **`유달리 신규 기능 목업.dc.html`**. 색·크기·문구는 README 표를 따른다. 목업의 `class Component`는 참고용이며 옮겨 쓰지 않는다. `NewMock/` 폴더 안의 `v2`·`TaskRow2` 사본은 저장소 사본보다 오래된 판이므로 보지 않는다.
 
 ### 하지 말 것
 
@@ -162,7 +162,7 @@ project-manager/
     GUIDE-03-mcp.md                   │
     GUIDE-04-deploy.md                ┘
   README.md               목업 핸드오프(디자인 원본) + 실행 안내
-  산돌이 업무 목업 v2.dc.html, TaskRow2.dc.html, 산돌이 신규 기능 목업.dc.html, support.js
+  유달리 업무 목업 v2.dc.html, TaskRow2.dc.html, 유달리 신규 기능 목업.dc.html, support.js
                           디자인 참고 파일. 구현 대상 아님
   compose.yml             GUIDE-04. 이번 라운드에서 바뀌지 않는다
   .env.example            GUIDE-04 + GUIDE-V2-07(GitHub App 설정 5개, CREDENTIAL_KEY)

@@ -25,7 +25,7 @@ git init
 3. `core/` 디렉터리를 만들고 그 안에서:
 
 ```bash
-uv init --no-workspace --name sandol-core --python 3.12
+uv init --no-workspace --name udally-core --python 3.12
 uv add "django>=5.2,<6" "django-ninja>=1.3" "psycopg[binary]>=3.2" "dj-database-url>=2.3" "gunicorn>=23" "whitenoise>=6.7"
 uv add --dev "pytest>=8" "pytest-django>=4.9" "ruff>=0.6"
 ```

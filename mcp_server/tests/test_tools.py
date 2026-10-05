@@ -308,8 +308,8 @@ def test_get_guide_returns_the_skill_document_without_frontmatter(with_token):
     from mcp_server.server import GUIDE, get_guide
 
     assert get_guide() == GUIDE
-    assert GUIDE.startswith("# 산돌이 PM 사용법")
-    assert "name: sandol-pm" not in GUIDE  # 머리말은 스킬 형식이라 떼고 낸다
+    assert GUIDE.startswith("# 유달리 사용법")
+    assert "name: udally" not in GUIDE  # 머리말은 스킬 형식이라 떼고 낸다
     assert "get_governance" in GUIDE
 
 
