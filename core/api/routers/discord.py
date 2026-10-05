@@ -48,6 +48,7 @@ from ..schemas import (
     DiscordExtendIn,
     DiscordGuildReportIn,
     DiscordLinkIn,
+    DiscordMeetingHostIn,
     DiscordMeetingIn,
     DiscordMeetingPatchIn,
     DiscordMeetingStartIn,
@@ -643,7 +644,7 @@ def github_hook_removed(request, project_id: int, payload: GitHubHookRemovedIn):
     return gh_hooks.on_removed(project_id, payload.webhook_id)
 
 
-# ---------- 음성 회의 녹음 (IMPL-PLAN-9 M2) ----------
+# ---------- 회의·녹음 (IMPL-PLAN-9 M2). 명령: /회의시작 · /회의종료 · /회의진행자 ----------
 
 
 def _stt(org) -> dict:
@@ -678,19 +679,20 @@ def _recording_out(rec) -> dict:
         "id": rec.pk,
         "note_id": rec.note_id,
         "status": rec.status,
-        "current_owner": {
-            "id": rec.current_owner_id,
-            "discord_user_id": rec.current_owner.discord_user_id,
-        },
+        # 진행자(host). 봇은 이 사람이 음성 채널을 떠나면 유예 뒤 회의를 종료한다.
+        "host": {"id": rec.host_id, "discord_user_id": rec.host.discord_user_id},
+        "host_changes": rec.host_changes,
         "ended_at": rec.ended_at,
         "end_reason": rec.end_reason,
         "audio_expires_at": rec.audio_expires_at,
+        # 봇이 텍스트 채널에 그대로 올린다. 진행자 퇴장으로 끝났을 때만 있다.
+        "channel_notice": notes_svc.HOST_LEFT_NOTICE if rec.end_reason == "host_left" else "",
     }
 
 
 def _recording(recording_id: int):
     rec = (
-        VoiceRecording.objects.select_related("note", "note__org", "current_owner")
+        VoiceRecording.objects.select_related("note", "note__org", "host")
         .filter(pk=recording_id)
         .first()
     )
@@ -701,7 +703,7 @@ def _recording(recording_id: int):
 
 @router.post("/meetings/check", response=dict)
 def meeting_check(request, payload: DiscordMeetingIn):
-    """녹음을 시작해도 되는가(멤버·프로젝트/팀 가시성·meeting.recording_enabled). 거절은 403/400."""
+    """`/회의시작`을 받아도 되는가(조직 구성원·프로젝트/팀 가시성·meeting.recording_enabled). 거절은 403/400."""
     args = _meeting_args(payload)
     conf = notes_svc.meeting_scope(**args)
     return {"ok": True, "org_id": args["org"].pk, **conf, "stt": _stt(args["org"])}
@@ -709,7 +711,7 @@ def meeting_check(request, payload: DiscordMeetingIn):
 
 @router.post("/meetings", response=dict)
 def meeting_start(request, payload: DiscordMeetingStartIn):
-    """녹음 + 초안 회의록(draft, source=voice)을 만든다. 길드당 하나."""
+    """회의(녹음 + 초안 회의록)를 시작한다. 실행자가 진행자. Discord 서버(길드)당 하나."""
     args = _meeting_args(payload)
     rec = notes_svc.start_recording(
         **args,
@@ -721,22 +723,24 @@ def meeting_start(request, payload: DiscordMeetingStartIn):
         **_recording_out(rec),
         **notes_svc.meeting_scope(**args),
         "stt": _stt(args["org"]),
+        "glossary": notes_svc.meeting_glossary(rec),
     }
 
 
 @router.patch("/meetings/{int:recording_id}", response=dict)
 def meeting_update(request, recording_id: int, payload: DiscordMeetingPatchIn):
-    """이어가기·종료(transcribing)·전사 결과(draft)·실패. 상태는 앞으로만 간다."""
+    """종료(transcribing)·전사문(draft)·실패·참여자 목록. 상태는 앞으로만 간다.
+
+    `/회의종료`는 `end_reason=command` + 실행자. 진행자가 나가 유예(leave_grace_s)가 지나면
+    `end_reason=host_left` + 나간 사람으로 보낸다 — 지금 진행자가 아니면 400(회의 계속). 응답의
+    `channel_notice`를 텍스트 채널에 올린다.
+    """
     rec = _recording(recording_id)
     stopped_by = user_by_discord_id(payload.discord_user_id) if payload.discord_user_id else None
-    new_owner = (
-        _actor(payload.takeover_discord_user_id) if payload.takeover_discord_user_id else None
-    )
     rec = notes_svc.update_recording(
         rec,
         status=payload.status,
         stopped_by=stopped_by,
-        new_owner=new_owner,
         ended_at=payload.ended_at,
         end_reason=payload.end_reason,
         participants=payload.participants,
@@ -748,16 +752,26 @@ def meeting_update(request, recording_id: int, payload: DiscordMeetingPatchIn):
 
 @router.get("/meetings/{int:recording_id}/names", response=dict)
 def meeting_names(request, recording_id: int):
-    """전사 화자 표기용 `discord_user_id → 표시명·user_id`(연결한 조직 멤버)와 전사 설정."""
+    """전사문 화자 표기(PM 이름, 미연결자는 'Discord 닉네임 (계정 없음)')·전사 설정·용어집."""
     rec = _recording(recording_id)
-    org = rec.note.org
-    users = User.objects.filter(org_memberships__org=org, discord_linked_at__isnull=False).exclude(
-        discord_user_id=None
-    )
     return {
-        "names": [
-            {"discord_user_id": u.discord_user_id, "user_id": u.pk, "display_name": u.display_name}
-            for u in users
-        ],
-        "stt": _stt(org),
+        "names": notes_svc.speaker_names(rec),
+        "stt": _stt(rec.note.org),
+        "glossary": notes_svc.meeting_glossary(rec),
     }
+
+
+@router.post("/meetings/{int:recording_id}/host", response=dict)
+def meeting_host(request, recording_id: int, payload: DiscordMeetingHostIn):
+    """`/회의진행자 @참여자`. 지금 진행자만. 대상의 재실·계정 연결은 함께 보낸 참여자 목록 기준.
+
+    응답의 `channel_notice`를 채널에 올린다. 녹음·회의록은 그대로 이어진다.
+    """
+    rec = _recording(recording_id)
+    rec, notice = notes_svc.transfer_host(
+        rec,
+        by=user_by_discord_id(payload.discord_user_id),
+        to_discord_user_id=payload.target_discord_user_id,
+        participants=payload.participants,
+    )
+    return {**_recording_out(_recording(rec.pk)), "channel_notice": notice}

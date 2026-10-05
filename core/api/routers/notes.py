@@ -1,6 +1,6 @@
-"""회의록 사용자 API(IMPL-PLAN-9 v2 §4.1). 사용자의 AI(MCP·스킬)가 음성 회의 전사를 읽고 정리한다.
+"""회의록 사용자 API(IMPL-PLAN-9 v2 §4.1). 사용자의 AI(MCP·스킬)가 회의의 전사문을 읽고 회의록을 정리한다.
 
-가시성은 `visible_notes` 하나(초안은 시작자·조직 관리자만). AI 편집은 `ai.edit_text` 정책을 타고,
+가시성은 `visible_notes` 하나(초안은 진행자·조직 관리자만). AI 편집은 `ai.edit_text` 정책을 타고,
 확정은 AI가 할 수 없다(사람이 웹에서).
 """
 
@@ -35,6 +35,7 @@ def note_out(n, *, body: bool = True, transcript: bool = False) -> dict:
         "version": n.version,
         "updated_at": n.updated_at,
         "task_ids": [t.pk for t in n.tasks.all()],
+        "attendees": [{"id": u.pk, "display_name": u.display_name} for u in n.attendees.all()],
         "recording": None
         if rec is None
         else {
@@ -59,7 +60,7 @@ def _qs(request):
     return (
         ns.visible_notes(request.auth)
         .select_related("project", "created_by", "org", "recording")
-        .prefetch_related("tasks")
+        .prefetch_related("tasks", "attendees")
     )
 
 
@@ -84,7 +85,7 @@ def list_notes(request, org_id: int, status: str | None = None, project: int | N
 
 @router.get("/notes/{note_id}", response=dict)
 def get_note(request, note_id: int, transcript: bool = False):
-    """본문까지. transcript=1이면 녹음의 전사 원문·통계·참여자를 함께 준다."""
+    """본문까지. transcript=1이면 전사문·통계·참여자를 함께 준다."""
     return note_out(_note_or_404(request, note_id), transcript=transcript)
 
 

@@ -7,7 +7,7 @@ from cryptography.fernet import Fernet
 from django.utils import timezone
 
 from accounts.models import ApiToken, User
-from notes.models import MeetingNote
+from notes.models import MeetingNote, VoiceRecording
 from notes.services import create_note, start_recording, visible_notes
 from orgs.models import OrgMembership
 from orgs.services import create_team, set_org_settings
@@ -93,11 +93,16 @@ def test_draft_visible_only_to_starter_and_admin(enabled, member, other, admin):
     assert note not in visible_notes(other)
 
 
-def test_takeover_owner_sees_draft(enabled, member, other, bot):
+def test_participant_does_not_see_draft(enabled, member, other, bot):
+    """참여자로 들어가도 초안은 진행자·관리자만 본다."""
     rec = _rec(enabled, member)
-    r = bot("patch", f"/meetings/{rec.pk}", {"takeover_discord_user_id": "333"})
+    r = bot(
+        "patch",
+        f"/meetings/{rec.pk}",
+        {"participants": [{"discord_user_id": "333", "discord_name": "닉"}]},
+    )
     assert r.status_code == 200, r.content
-    assert rec.note in visible_notes(other)
+    assert rec.note not in visible_notes(other)
 
 
 def test_final_note_follows_project_and_private_team(org, admin, member, other):
@@ -170,7 +175,7 @@ def test_start_stop_draft_flow(enabled, member, other, bot):
         "post", "/meetings", {"discord_user_id": "111", "guild_id": "g1", "voice_channel_id": "v2"}
     )
     assert again.status_code == 400
-    # 종료 명령은 시작자·관리자만
+    # /회의종료는 진행자·관리자만
     r = bot(
         "patch",
         f"/meetings/{rid}",
@@ -215,19 +220,179 @@ def test_transcript_upload_fills_template_and_notifies(enabled, member, bot):
     assert Notice.objects.filter(user=member, text__contains="회의록 초안").exists()
 
 
-def test_takeover_requires_member(enabled, member, bot):
+HOST_LEFT = (
+    "회의 진행자가 나가서 회의를 종료하였습니다. 새 회의를 시작하려면 /회의시작 을 눌러 주세요."
+)
+
+
+def test_host_left_returns_channel_notice(enabled, member, bot):
     rec = _rec(enabled, member)
+    check = bot("post", "/meetings/check", {"discord_user_id": "111", "guild_id": "g1"}).json()
+    assert check["leave_grace_s"] == 10
+    r = bot(
+        "patch",
+        f"/meetings/{rec.pk}",
+        {"status": "transcribing", "end_reason": "host_left", "discord_user_id": "111"},
+    )
+    assert r.json()["channel_notice"] == HOST_LEFT
+    assert r.json()["host"]["discord_user_id"] == "111"
+
+
+def _host_to(bot, rec, by, target, parts):
+    return bot(
+        "post",
+        f"/meetings/{rec.pk}/host",
+        {"discord_user_id": by, "target_discord_user_id": target, "participants": parts},
+    )
+
+
+PARTS = [
+    {"discord_user_id": "111", "discord_name": "a"},
+    {"discord_user_id": "333", "discord_name": "b"},
+    {"discord_user_id": "555", "discord_name": "손님"},
+]
+
+
+def test_only_host_can_hand_over(enabled, member, other, bot):
+    rec = _rec(enabled, member)
+    assert _host_to(bot, rec, "333", "111", PARTS).status_code == 403  # 진행자가 아니다
+    assert _host_to(bot, rec, "111", "555", PARTS).status_code == 400  # 계정 미연결
+    gone = [*PARTS[:1], {**PARTS[1], "left_at": "2026-10-06T10:00:00"}]
+    assert _host_to(bot, rec, "111", "333", gone).status_code == 400  # 채널에 없다
+    r = _host_to(bot, rec, "111", "333", PARTS)
+    assert r.status_code == 200, r.content
+    assert r.json()["channel_notice"] == "회의 진행자가 팀원님에서 다른팀원님으로 바뀌었습니다."
+    rec.refresh_from_db()
+    assert rec.host == other and rec.started_by == member
+    assert [(c["from_user_id"], c["to_user_id"]) for c in rec.host_changes] == [
+        (member.pk, other.pk)
+    ]
+    # 이전 진행자는 다시 넘길 수 없다
+    assert _host_to(bot, rec, "111", "111", PARTS).status_code == 403
+
+
+def test_permissions_follow_host(client, enabled, member, other, bot):
+    rec = _rec(enabled, member)
+    _host_to(bot, rec, "111", "333", PARTS)
+    assert rec.note not in visible_notes(member)  # 이전 진행자(처음 시작한 사람)는 권한 없음
+    assert rec.note in visible_notes(other)
+    old = client.get(f"/api/notes/{rec.note_id}", headers=_h(_token(member, ai=False)))
+    assert old.status_code == 404
+    patch = client.patch(
+        f"/api/notes/{rec.note_id}",
+        {"version": 1, "title": "새 제목"},
+        content_type="application/json",
+        headers=_h(_token(other, ai=False)),
+    )
+    assert patch.status_code == 200
+    # 종료도 지금 진행자만
+    stop = {"status": "transcribing", "end_reason": "command"}
+    assert (
+        bot("patch", f"/meetings/{rec.pk}", {**stop, "discord_user_id": "111"}).status_code == 403
+    )
+    assert (
+        bot("patch", f"/meetings/{rec.pk}", {**stop, "discord_user_id": "333"}).status_code == 200
+    )
+
+
+def test_old_host_leaving_does_not_end_meeting(enabled, member, other, bot):
+    rec = _rec(enabled, member)
+    _host_to(bot, rec, "111", "333", PARTS)
+    left = {"status": "transcribing", "end_reason": "host_left"}
+    r = bot("patch", f"/meetings/{rec.pk}", {**left, "discord_user_id": "111"})
+    assert r.status_code == 400
+    rec.refresh_from_db()
+    assert rec.status == "recording"
+    r = bot("patch", f"/meetings/{rec.pk}", {**left, "discord_user_id": "333"})
+    assert r.status_code == 200 and r.json()["channel_notice"] == HOST_LEFT
+
+
+def test_participants_map_to_pm_accounts(client, enabled, member, linked_admin, bot):
+    """연결한 조직 멤버는 PM 이름·참석자, 미연결·외부인은 'Discord 닉네임 (계정 없음)'."""
     User.objects.create_user(
         "stranger", password="pw12345678", discord_user_id="999", discord_linked_at=timezone.now()
     )
-    r = bot("patch", f"/meetings/{rec.pk}", {"takeover_discord_user_id": "999"})
-    assert r.status_code == 403
-
-
-def test_names_lists_linked_members(enabled, member, linked_admin, bot):
     rec = _rec(enabled, member)
-    names = bot("get", f"/meetings/{rec.pk}/names").json()["names"]
-    assert {n["discord_user_id"] for n in names} == {"111", "222"}
+    parts = [
+        {"discord_user_id": "111", "discord_name": "멤버닉"},
+        {"discord_user_id": "999", "discord_name": "외부닉"},
+        {"discord_user_id": "555", "discord_name": "손님"},
+    ]
+    assert bot("patch", f"/meetings/{rec.pk}", {"participants": parts}).status_code == 200
+    rec.refresh_from_db()
+    assert [p["display_name"] for p in rec.participants] == [
+        "팀원",
+        "외부닉 (계정 없음)",
+        "손님 (계정 없음)",
+    ]
+    assert list(rec.note.attendees.all()) == [member]
+    names = {
+        n["discord_user_id"]: n for n in bot("get", f"/meetings/{rec.pk}/names").json()["names"]
+    }
+    assert names["111"]["display_name"] == "팀원" and names["111"]["user_id"] == member.pk
+    assert names["555"] == {
+        "discord_user_id": "555",
+        "user_id": None,
+        "display_name": "손님 (계정 없음)",
+    }
+    assert names["222"]["display_name"] == "관리자"  # 아직 참가 전인 연결 멤버
+    got = client.get(f"/api/notes/{rec.note_id}", headers=_h(_token(member, ai=False))).json()
+    assert got["attendees"] == [{"id": member.pk, "display_name": "팀원"}]
+
+
+def test_glossary_only_from_starter_visible_material(enabled, admin, member, bot):
+    from projects.docs import create_doc
+    from tasks.services import create_task
+
+    open_p = create_project(org=enabled, name="학식API 개편", actor=admin, owners=[admin])
+    secret = create_project(org=enabled, name="비밀프로젝트 오메가", actor=admin, owners=[admin])
+    set_visibility(secret, "teams", actor=admin)
+    for title in ("결제모듈 연동", "결제모듈 장애 대응"):
+        create_task(project=open_p, title=title, actor=admin, source="web", no_due_reason="테스트")
+    for title in ("기밀코드 분석", "기밀코드 이관"):
+        create_task(project=secret, title=title, actor=admin, source="web", no_due_reason="테스트")
+    create_doc(project=secret, actor=admin, title="오메가 설계서")
+    team = create_team(org=enabled, name="비밀팀", actor=admin)
+    team.is_private = True
+    team.save()
+    for _ in range(2):
+        n = create_note(org=enabled, actor=admin, title="극비회의 안건")
+        MeetingNote.objects.filter(pk=n.pk).update(team=team)
+    r = bot(
+        "post",
+        "/meetings",
+        {"discord_user_id": "111", "guild_id": "g1", "voice_channel_id": "v1"},
+    )
+    glossary = r.json()["glossary"]
+    assert (
+        "팀원" in glossary and "결제모듈" in glossary and "학식" in glossary and "API" in glossary
+    )
+    for leaked in ("오메가", "기밀코드", "극비회의", "비밀프로젝트"):
+        assert leaked not in glossary
+    # 관리자가 시작하면 비공개 자료도 들어간다(같은 함수, 다른 진행자)
+    from notes.services import meeting_glossary
+
+    rec = VoiceRecording.objects.get(pk=r.json()["id"])
+    rec.started_by = admin
+    assert "기밀코드" in meeting_glossary(rec)
+
+
+def test_glossary_fits_prompt_budget(enabled, admin, member):
+    from notes.services import PROMPT_TOKENS, _cost, meeting_glossary
+    from tasks.services import create_task
+
+    p = create_project(org=enabled, name="큰프로젝트", actor=admin, owners=[admin])
+    for i in range(60):
+        for _ in range(2):
+            create_task(
+                project=p,
+                title=f"용어{i:03d}가나다라 처리",
+                actor=admin,
+                source="web",
+                no_due_reason="테스트",
+            )
+    g = meeting_glossary(_rec(enabled, member))
+    assert g and sum(_cost(t) + 1 for t in g.split(", ")) <= PROMPT_TOKENS
 
 
 # ---------- 회의록 사용자 API ----------
@@ -454,3 +619,11 @@ def test_ai_change_request_never_stores_plaintext_key(client, enabled, admin):
     )
     assert r.status_code == 202, r.content
     assert KEY not in json.dumps(ChangeRequest.objects.get().proposed, ensure_ascii=False)
+
+
+def test_web_note_shows_host_and_participants(client, enabled, member, other, bot):
+    rec = _rec(enabled, member, title="웹 회의")
+    bot("patch", f"/meetings/{rec.pk}", {"participants": PARTS})
+    client.force_login(member)
+    page = client.get(f"/orgs/{enabled.pk}/notes?note={rec.note_id}").content.decode()
+    assert "진행자" in page and "참여자" in page and "다른팀원" in page
