@@ -131,11 +131,6 @@ ul.stack, ol.stack { list-style: none; margin: 0; padding: 0; }
   font-family: var(--f-display); font-weight: 400; font-size: var(--fs-2xl); color: var(--c-ink); text-decoration: none;
   display: inline-flex; align-items: center; gap: var(--sp-2);
 }
-.studio-mark {
-  display: inline-grid; place-items: center; width: 36px; height: 36px; flex: none; border-radius: var(--r-md);
-  background: var(--c-yellow); color: var(--c-ink); transform: rotate(-8deg); font-size: var(--fs-2xl); font-style: normal;
-  box-shadow: var(--sh-1);
-}
 /* 로고 파일(static/brand/): 워드마크 udally.svg, 정사각 아이콘 udally-icon.svg */
 .brand-logo { display: block; flex: none; height: 34px; width: auto; aspect-ratio: 769 / 290; object-fit: contain; } /* 워드마크 비율 고정, 줄어들지 않음 */
 .nav { display: flex; gap: var(--sp-1); padding: 5px; border-radius: var(--r-pill); background: var(--c-soft); }
@@ -1064,7 +1059,6 @@ details.card.settings-section { padding: 0; gap: 0; }
   .header > .switcher > summary.logo { max-width: 100%; }
   .header > .spacer { display: none; }
   .logo { font-size: var(--fs-xl); }
-  .studio-mark { width: 30px; height: 30px; font-size: var(--fs-h3); }
   /* 탭이 늘어도 줄이 꺾이지 않게 가로 스크롤로 흘린다 */
   .nav { grid-column: 1 / -1; grid-row: 2; width: 100%; overflow-x: auto; scrollbar-width: none; padding: 3px; }
   .nav::-webkit-scrollbar { display: none; }
