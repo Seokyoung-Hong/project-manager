@@ -9,11 +9,18 @@ from datetime import date
 from django.db.models import Q
 
 from projects.models import Milestone
-from projects.services import can_view_project, sync_milestone
+from projects.services import can_view_project, sync_milestone, visible_projects
 
 from . import notify
-from .models import GitRelease
-from .services import _import_actor, parse_ts, record_event, record_ignored, repo_state
+from .models import GitRelease, RepoConnection
+from .services import (
+    _import_actor,
+    can_view_repo,
+    parse_ts,
+    record_event,
+    record_ignored,
+    repo_state,
+)
 
 # ---------- 마일스톤 ----------
 
@@ -94,10 +101,33 @@ def on_release(conn, delivery, payload):
     record_event(conn, delivery, kind="release", payload=payload, summary=summary, result=result)
 
 
+def can_see_releases(user, project) -> bool:
+    """릴리스(태그·이름·URL)를 보여 줘도 되는가. 화면·API의 릴리스 경로는 전부 여기를 지난다.
+    프로젝트를 볼 수 있고 GitHub에서 그 저장소를 볼 수 있는 사람만(비공개 저장소 보호)."""
+    return can_view_project(user, project) and repo_state(user, project)["state"] == "ok"
+
+
 def releases_for(project, user, limit: int = 5) -> list[GitRelease]:
-    """선반·로드맵·API용 최근 릴리스. 프로젝트를 볼 수 있고 GitHub에서 저장소를 볼 수 있는 사람만."""
-    if not can_view_project(user, project) or repo_state(user, project)["state"] != "ok":
+    """선반·API용 최근 릴리스."""
+    if not can_see_releases(user, project):
         return []
     return list(
         GitRelease.objects.filter(connection=project.repo).select_related("milestone")[:limit]
     )
+
+
+def releases_by_milestone(user, milestones) -> dict[int, list[GitRelease]]:
+    """로드맵 칩용 {마일스톤 id: 릴리스}. 릴리스를 볼 수 없는 프로젝트의 마일스톤은 뺀다."""
+    # can_see_releases와 같은 규칙을 묶음으로(프로젝트 수만큼 쿼리가 늘지 않게).
+    pids = {ms.project_id for ms in milestones}
+    visible = set(visible_projects(user).filter(pk__in=pids).values_list("pk", flat=True))
+    allowed = {
+        c.project_id
+        for c in RepoConnection.objects.filter(project_id__in=visible)
+        if can_view_repo(user, c.full_name)
+    }
+    shown = [ms for ms in milestones if ms.project_id in allowed]
+    out = {}
+    for rel in GitRelease.objects.filter(milestone__in=shown):
+        out.setdefault(rel.milestone_id, []).append(rel)
+    return out

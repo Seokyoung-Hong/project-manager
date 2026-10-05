@@ -226,3 +226,27 @@ def test_releases_for_needs_repo_access(conn, admin, member):
     admin.github.save()
     admin.refresh_from_db()
     assert [r.tag for r in releases_for(conn.project, admin)] == ["v1"]
+
+
+def test_roadmap_hides_releases_without_repo_access(client, conn, org, project, admin, member):
+    """Sol 검토 결함 1: 프로젝트는 보이지만 저장소를 못 보는 멤버에게 릴리스가 새면 안 된다."""
+    ms = create_milestone(
+        project=project, name="v9", target_date=today_kst() + timedelta(days=10), actor=admin
+    )
+    GitRelease.objects.create(
+        connection=conn,
+        tag="PRIVATE_TAG",
+        name="비밀 릴리스",
+        url="https://github.com/o/r/releases/tag/PRIVATE_TAG",
+        published_at=timezone.now(),
+        milestone=ms,
+    )
+    client.force_login(member)  # 조직 멤버, GitHub 미연결
+    body = client.get(f"/orgs/{org.pk}/roadmap").content.decode()
+    assert "v9" in body and "PRIVATE_TAG" not in body and "비밀 릴리스" not in body
+
+    _link_github(admin)
+    admin.github.repos = ["o/r"]
+    admin.github.save()
+    client.force_login(admin)
+    assert "PRIVATE_TAG" in client.get(f"/orgs/{org.pk}/roadmap").content.decode()

@@ -8,7 +8,7 @@ from django.views.decorators.http import require_POST
 
 from common.errors import ServiceError
 from github import writes
-from github.models import GitRelease
+from github.sync import releases_by_milestone
 from orgs import services as osv
 from projects.models import Milestone, ProjectDependency
 from projects.services import (
@@ -72,10 +72,8 @@ def capacity(request, org_id):
 def roadmap(request, org_id):
     org = org_or_404(request.user, org_id)
     data = roadmap_data(org, viewer=request.user)
-    # 마일스톤에 이어진 릴리스 태그 칩(§3.10). 한 번에 읽는다.
-    by_ms = {}
-    for rel in GitRelease.objects.filter(milestone__in=[r["ms"] for r in data["rows"]]):
-        by_ms.setdefault(rel.milestone_id, []).append(rel)
+    # 마일스톤에 이어진 릴리스 태그 칩(§3.10). 저장소를 볼 수 있는 프로젝트만.
+    by_ms = releases_by_milestone(request.user, [r["ms"] for r in data["rows"]])
     for r in data["rows"]:
         r["releases"] = by_ms.get(r["ms"].pk, [])
     return render(
