@@ -132,7 +132,7 @@ ul.stack, ol.stack { list-style: none; margin: 0; padding: 0; }
   display: inline-flex; align-items: center; gap: var(--sp-2);
 }
 /* 로고 파일(static/brand/): 워드마크 udally.svg, 정사각 아이콘 udally-icon.svg */
-.brand-logo { display: block; flex: none; height: 34px; width: auto; aspect-ratio: 769 / 290; object-fit: contain; } /* 워드마크 비율 고정, 줄어들지 않음 */
+.brand-logo { display: block; flex: none; height: 38px; width: auto; aspect-ratio: 810 / 328; object-fit: contain; } /* 워드마크 비율 고정, 줄어들지 않음 */
 .nav { display: flex; gap: var(--sp-1); padding: 5px; border-radius: var(--r-pill); background: var(--c-soft); }
 .nav a {
   display: inline-flex; align-items: center; gap: var(--sp-1); height: 40px; padding: 0 15px; border-radius: var(--r-pill);

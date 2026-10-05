@@ -19,7 +19,7 @@
   {# 조직 이름이 곧 전환 손잡이다. 열면 다른 조직과 새 조직 만들기가 나온다. #}
   <details class="menu switcher">
     <summary class="logo" aria-label="조직 전환">
-      <img class="brand-logo" src="{% static 'brand/udally.svg' %}" alt="유달리" width="90" height="34"><span>{{ current_org.name|default:"유달리" }}</span>
+      <img class="brand-logo" src="{% static 'brand/udally.svg' %}" alt="유달리" width="94" height="38"><span>{{ current_org.name|default:"유달리" }}</span>
       <svg class="caret" viewBox="0 0 12 12" width="12" height="12" aria-hidden="true">
         <path d="M2 4.5 6 8.5 10 4.5" fill="none" stroke="currentColor" stroke-width="1.6"
               stroke-linecap="round" stroke-linejoin="round"/>
@@ -33,7 +33,7 @@
     </div>
   </details>
   {% else %}
-  <a class="logo" href="{% url 'today' %}"><img class="brand-logo" src="{% static 'brand/udally.svg' %}" alt="유달리" width="90" height="34"></a>
+  <a class="logo" href="{% url 'today' %}"><img class="brand-logo" src="{% static 'brand/udally.svg' %}" alt="유달리" width="94" height="38"></a>
   {% endif %}
   {% if user.is_authenticated %}
   <nav class="nav" aria-label="주 메뉴">
