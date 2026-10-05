@@ -41,13 +41,17 @@ GitHub → 오른쪽 위 프로필 → Settings → Developer settings → GitHu
 
 **Repository permissions**
 
-| 권한 | 값 |
-|---|---|
-| Contents | Read and write |
-| Issues | Read and write |
-| Pull requests | Read |
-| Metadata | Read (자동으로 켜져 있다) |
-| Administration | **No access** (기본값 그대로 둔다) |
+| 권한 | 값 | 쓰는 기능 |
+|---|---|---|
+| Contents | Read and write | 브랜치 만들기, 릴리스 → 결과 선반 |
+| Issues | Read and write | 이슈 ↔ 태스크, 마일스톤 동기화 |
+| Pull requests | Read | PR 상태·리뷰·검토 독촉·주간 지표 |
+| **Checks** | **Read** | CI 배지·CI 실패 알림(라운드 8) |
+| **Commit statuses** | **Read** | 외부 CI의 commit status(라운드 8) |
+| **Webhooks** | **Read and write** | GitHub 알림 → Discord 채널 웹훅 자동 설정(§7, 라운드 8) |
+| Metadata | Read (자동으로 켜져 있다) | |
+| Administration | **No access** (기본값 그대로 둔다) | |
+| Actions·Pull requests Write | **No access** | 쓰지 않는다 |
 
 **Organization permissions**
 
@@ -59,9 +63,17 @@ GitHub → 오른쪽 위 프로필 → Settings → Developer settings → GitHu
 
 ### Subscribe to events
 
-Push · Create · Pull request · Issues · Membership · Team
+Push · Create · Pull request · Issues · Membership · Team ·
+**Pull request review** · **Check suite** · **Status** · **Milestone** · **Release**
 
-(권한을 고른 뒤에야 체크할 수 있는 항목이 나타난다.)
+(권한을 고른 뒤에야 체크할 수 있는 항목이 나타난다. Check suite는 Checks, Status는 Commit statuses 권한을
+고른 뒤에 보인다. 라운드 8 이벤트 다섯 개는 `pull_request_review`·`check_suite`·`status`·`milestone`·`release`다.)
+
+**이미 만든 앱을 라운드 8로 올릴 때**: 이벤트 구독을 먼저 켜고, Checks·Commit statuses·Webhooks 권한을 추가한다.
+권한 추가는 설치 계정(조직·개인)마다 **재승인**이 필요하다 — 조직 관리자(개인 계정은 그 사람)에게 GitHub 알림이 가고,
+승인 전에는 새 권한을 쓰는 기능만 꺼진 채 나머지는 그대로 돈다(§6). 승인하면 PM이 `new_permissions_accepted`
+이벤트를 받아 점검 결과를 새로 묻는다. 확인은 PM **조직 → GitHub 탭의 "앱 권한 · 이벤트 점검" 표**에서 한다:
+CI·리뷰·마일스톤·릴리스·Discord 웹훅 줄이 전부 켜짐이면 끝이고, 꺼진 줄에는 빠진 권한·구독이 적혀 있다.
 
 `installation`과 `installation_repositories`는 **목록에 없다. 찾지 말 것.** 모든 GitHub App에 자동으로
 전달되는 이벤트라 구독 항목이 아니다(목록의 "Installation target"은 설치 대상 개명으로 다른 이벤트다).
