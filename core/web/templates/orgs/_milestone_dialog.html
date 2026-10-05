@@ -13,6 +13,10 @@
     <legend>상태</legend>
     <div class="radios">{% for code, label in statuses %}<label class="radio-card"><input type="radio" name="status" value="{{ code }}"{% if values.status == code %} checked{% endif %}><b>{{ label }}</b></label>{% endfor %}</div>
   </fieldset>
+  {% if can_github %}
+  <label class="check"><input type="checkbox" name="github"{% if ms.gh_number %} checked{% endif %}> GitHub에도 반영{% if ms.gh_number %} <code>마일스톤 #{{ ms.gh_number }}</code>{% endif %}</label>
+  <p class="muted t12">저장소가 연결된 프로젝트만, 내 GitHub 계정으로 마일스톤을 만들거나 고칩니다. GitHub 쪽이 실패해도 여기 저장은 그대로 남고 경고로 알려 드립니다.</p>
+  {% endif %}
   {% for msg in errors.values %}<div class="error">{{ msg }}</div>{% endfor %}
   <div class="row">
     <button class="btn primary">{% if ms %}변경 내용 저장{% else %}마일스톤 만들기{% endif %}</button>

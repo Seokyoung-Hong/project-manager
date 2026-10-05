@@ -487,6 +487,9 @@ REPO_SETTING_FIELDS = (
     "rule_commit",
     "rule_pr",
     "rule_merge",
+    # 라운드 8(G9): 화면 체크박스와 같은 커밋에서 넣는다. rule_sync는 §10-1로 쓰지 않는다.
+    "rule_review",
+    "rule_milestone",
 )
 
 
@@ -530,8 +533,41 @@ def disconnect_repo(*, project, actor, source: str = "web") -> bool:
     conn = getattr(project, "repo", None)
     if conn is None:
         return False
+    if (conn.discord_hook or {}).get("state") in ("pending", "active", "error"):
+        from . import hooks
+
+        # GitHub 저장소의 Discord 알림 훅을 먼저 지운다(누른 사람 토큰). 실패하면 해제도 멈춘다 —
+        # 연결을 지우고 나면 그 훅을 찾아 지울 길이 없다.
+        # ponytail: 봇이 지울 Discord 쪽 웹훅은 연결 행과 함께 사라져 채널에 남는다(GitHub 훅이 없어 조용하다).
+        # 남는 게 문제가 되면 정리 작업을 연결 밖(프로젝트)에 두는 표를 만든다.
+        hooks.remove(project, actor=actor, source=source)
     conn.delete()
     return True
+
+
+def continuation(task) -> dict:
+    """재개(PR·이슈 reopened, §4)로 이어진 계열. 원 태스크의 `reopened_as` 이력이 근거다.
+
+    {"by": 이 태스크를 이어받은 가장 최근 새 태스크 | None, "from": 이 태스크가 이어받은 원 태스크 | None}.
+    둘 다 같은 프로젝트 안이라 가시성은 태스크와 같다.
+    """
+    by = from_ = None
+    log = (
+        ChangeLog.objects.filter(target_type="task", target_id=task.pk, field="reopened_as")
+        .order_by("-id")
+        .first()
+    )
+    if log:
+        num = log.new_value.removeprefix("TASK-")
+        by = Task.objects.filter(project=task.project, pk=num).first() if num.isdecimal() else None
+    src = (
+        ChangeLog.objects.filter(field="reopened_as", new_value=task.number, target_type="task")
+        .order_by("-id")
+        .first()
+    )
+    if src:
+        from_ = Task.objects.filter(project=task.project, pk=src.target_id).first()
+    return {"by": by, "from": from_}
 
 
 # ---------- 이벤트 공통 ----------

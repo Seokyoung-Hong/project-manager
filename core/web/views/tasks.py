@@ -11,7 +11,7 @@ from django.views.decorators.http import require_POST
 
 from common.dates import today_kst
 from common.errors import ConflictError, ServiceError
-from github.services import pr_compare_url, repo_state, sync_issues_if_stale
+from github.services import continuation, pr_compare_url, repo_state, sync_issues_if_stale
 from github.writes import default_branch_name
 from notes.services import visible_notes
 from projects.services import visible_projects
@@ -47,10 +47,14 @@ def _git_ctx(request, task) -> dict:
     if rs["state"] == "ok" and not (link and link.issue_number):
         sync_issues_if_stale(rs["conn"])
         issues = rs["conn"].issues.filter(state="open", task__isnull=True)[:50]
+    reviews = list((link.reviews or {}).values()) if link else []
     return {
         "gh": {
             **rs,
             "link": link,
+            "approved": reviews.count("approved"),
+            "changes": reviews.count("changes_requested"),
+            **{f"continued_{k}": v for k, v in continuation(task).items()},
             "issues": issues,
             "pr_url": pr_compare_url(link) if link and link.branch else None,
             "default_branch_name": default_branch_name(task) if rs["state"] == "ok" else "",

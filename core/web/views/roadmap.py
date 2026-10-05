@@ -8,6 +8,7 @@ from django.views.decorators.http import require_POST
 
 from common.errors import ServiceError
 from github import writes
+from github.models import GitRelease
 from orgs import services as osv
 from projects.models import Milestone, ProjectDependency
 from projects.services import (
@@ -71,6 +72,12 @@ def capacity(request, org_id):
 def roadmap(request, org_id):
     org = org_or_404(request.user, org_id)
     data = roadmap_data(org, viewer=request.user)
+    # 마일스톤에 이어진 릴리스 태그 칩(§3.10). 한 번에 읽는다.
+    by_ms = {}
+    for rel in GitRelease.objects.filter(milestone__in=[r["ms"] for r in data["rows"]]):
+        by_ms.setdefault(rel.milestone_id, []).append(rel)
+    for r in data["rows"]:
+        r["releases"] = by_ms.get(r["ms"].pk, [])
     return render(
         request,
         "orgs/roadmap.html",
@@ -147,6 +154,8 @@ def _milestone_dialog(request, org, ms=None, errors=None):
             "statuses": Milestone.STATUSES,
             "values": values,
             "errors": errors or {},
+            # "GitHub에도 반영"(§3.9): 누른 사람이 GitHub를 연결했을 때만. 저장소 유무는 저장할 때 본다.
+            "can_github": getattr(request.user, "github", None) is not None,
         },
     )
 

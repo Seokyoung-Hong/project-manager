@@ -12,6 +12,7 @@ from common.dates import today_kst
 from common.errors import ConflictError, ServiceError
 from github import services as gh_services
 from github.client import GitHubError
+from github.sync import releases_for
 from orgs.settings import GROUPS, effective, locked_keys, specs_for
 from orgs.settings import display as org_display
 from projects.models import Project
@@ -90,6 +91,8 @@ def shelf_context(request, project, params=None) -> dict:
         "shelf_more": max(0, matched - shown),
         "shelf_next": page + 1,
         "shelf_page": page,
+        # 릴리스 띠(§3.10): 첫 쪽에만, 저장소를 볼 수 있는 사람에게만(releases_for가 가린다).
+        "releases": releases_for(project, request.user) if page == 1 else [],
     }
 
 

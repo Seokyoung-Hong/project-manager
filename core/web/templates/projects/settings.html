@@ -47,6 +47,8 @@
       <label class="row"><input type="checkbox" name="rule_commit" {% if repo_state.conn.rule_commit %}checked{% endif %}> 커밋 → 체크리스트</label>
       <label class="row"><input type="checkbox" name="rule_pr" {% if repo_state.conn.rule_pr %}checked{% endif %}> PR 오픈 → 검토 대기</label>
       <label class="row"><input type="checkbox" name="rule_merge" {% if repo_state.conn.rule_merge %}checked{% endif %}> 머지 → 완료</label>
+      <label class="row"><input type="checkbox" name="rule_review" {% if repo_state.conn.rule_review %}checked{% endif %}> 리뷰 요청 → 검토자 지정, 변경 요청 → 진행 중</label>
+      <label class="row"><input type="checkbox" name="rule_milestone" {% if repo_state.conn.rule_milestone %}checked{% endif %}> GitHub 마일스톤 → 로드맵 마일스톤</label>
     </div>
     <button class="btn sm primary">저장소 규칙 저장</button>
   </form>
