@@ -7,6 +7,7 @@ from ninja.errors import HttpError
 
 from accounts.models import User
 from github import services as gh_services
+from github import sync as gh_sync
 from orgs.models import Team
 from projects.models import Project
 from projects.services import (
@@ -172,6 +173,20 @@ def get_repo(request, project_id: int):
         "url": conn.url,
         "auto_import": conn.auto_import and not gh_services.is_user_install(project.org),
         "import_label": conn.import_label,
+        # rule_sync는 이슈 양방향 동기화를 하지 않기로 해(§10-1) 내놓지 않는다.
+        "rule_review": conn.rule_review,
+        "rule_milestone": conn.rule_milestone,
+        "releases": [
+            {
+                "tag": r.tag,
+                "name": r.name,
+                "url": r.url,
+                "prerelease": r.prerelease,
+                "published_at": r.published_at,
+                "milestone": r.milestone.name if r.milestone else None,
+            }
+            for r in gh_sync.releases_for(project, request.auth)
+        ],
     }
 
 

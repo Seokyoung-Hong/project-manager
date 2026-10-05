@@ -1210,11 +1210,12 @@ def reopen_as_new(conn, delivery, payload, *, old, kind: str) -> Task | None:
             actor_login=login,
         )
     _task_log(old, "reopened_as", "", new.number, actor, "gh", note=note, external_actor=login)
-    if actor != new.assignee:
-        # 원 담당자가 다시 맡을지 정한다. 본인이 다시 열었으면 이미 동의한 것이다.
-        wr.request_assign(new, new.assignee, actor, "gh", note=f"{note} — {old.number}에서 이어짐")
     head = f"🔁 {label} #{number} 재개 → {new.number} 생성"
-    gh_notify.dm(new, new.assignee, head)
+    if actor != new.assignee:
+        # 원 담당자가 다시 맡을지 정한다. 담당 요청 알림 하나에 재개 안내를 담으므로 재개 DM은 따로 없다.
+        wr.request_assign(new, new.assignee, actor, "gh", note=f"{note} — {old.number}에서 이어짐")
+    else:
+        gh_notify.dm(new, new.assignee, head)  # 본인이 다시 열었으면 담당 요청 없이 DM만
     gh_notify.channel(conn, "reopened", head, new)
     record_event(
         conn,
