@@ -752,7 +752,7 @@ def fetch_spec(url: str) -> dict:
     # 거기까지 막아야 하면 IP로 직접 연결하고 Host 헤더를 세우는 방식으로 바꾼다.
     """
     url = _check_public(url)
-    req = Request(url, headers={"Accept": "application/json", "User-Agent": "sandol-pm"})
+    req = Request(url, headers={"Accept": "application/json", "User-Agent": "udally"})
     opener = build_opener(_SafeRedirect)
     try:
         with opener.open(req, timeout=SPEC_TIMEOUT) as r:  # noqa: S310 — 위에서 검사했다

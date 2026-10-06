@@ -26,7 +26,7 @@ def _cfg(tmp_path):
         weekly_hour=9,
         llm_provider="",
         db_path=str(tmp_path / "s.sqlite"),
-        site_name="산돌이 업무",
+        site_name="유달리",
     )
 
 
@@ -50,7 +50,7 @@ def test_only_tasks_core_selected_are_sent(store, fake_bot, bot):
 
 def test_deadline_dm_shows_title_project_due_status_and_link(store, fake_bot, bot):
     """번호만으로는 무슨 일인지 모른다. 제목·프로젝트·D-n·상태·웹 링크가 다 있어야 한다."""
-    other = {"id": 2, "name": "산돌이 봇", "org_id": 1, "discord_channel_id": ""}
+    other = {"id": 2, "name": "유달리 봇", "org_id": 1, "discord_channel_id": ""}
     core = make_core(
         FakeCore(
             [
@@ -66,7 +66,7 @@ def test_deadline_dm_shows_title_project_due_status_and_link(store, fake_bot, bo
     assert lines[2:6] == [
         "**학식 API**",
         "• [TASK-1 할 일 1](<http://pm/tasks/1>) · 2일 초과 (9월 7일) · 진행 중",
-        "**산돌이 봇**",
+        "**유달리 봇**",
         "• [TASK-2 할 일 2](<http://pm/tasks/2>) · 1일 초과 (9월 8일) · 막힘(서류 대기)",
     ]
     assert "했어" not in msg and "해요" not in msg

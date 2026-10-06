@@ -23,7 +23,7 @@ GUIDE-00을 먼저 읽는다. 이 파트는 **core 코드를 한 줄도 import�
 `discord_service/` 디렉터리에서:
 
 ```bash
-uv init --no-workspace --name sandol-discord --python 3.12
+uv init --no-workspace --name udally-discord --python 3.12
 uv add "httpx>=0.27" "discord.py>=2.4,<3"
 uv add --dev "pytest>=8" "ruff>=0.6"
 uv lock
@@ -33,9 +33,9 @@ uv lock
 
 ```toml
 [project]
-name = "sandol-discord"
+name = "udally-discord"
 version = "0.1.0"
-description = "산돌이 태스크 — Discord 알림 서비스"
+description = "유달리 — Discord 알림 서비스"
 requires-python = ">=3.12"
 dependencies = [
     "httpx>=0.27",
@@ -153,7 +153,7 @@ class Config:
             weekly_hour=int(os.environ.get("WEEKLY_HOUR", "9")),
             llm_provider=os.environ.get("LLM_PROVIDER", "").strip().lower(),
             db_path=os.environ.get("DB_PATH", "/data/discord.sqlite"),
-            site_name=os.environ.get("SITE_NAME", "산돌이 업무"),
+            site_name=os.environ.get("SITE_NAME", "유달리"),
         )
 ```
 
@@ -422,7 +422,7 @@ log = logging.getLogger(__name__)
 API = "https://discord.com/api/v10"
 MAX_LEN = 1900  # Discord content 한도 2000자, 여유
 # Discord는 봇 요청에 User-Agent를 요구한다. 없으면 Cloudflare가 40333으로 막는다.
-UA = "DiscordBot (https://github.com/sandol-pm, 0.1)"
+UA = "DiscordBot (https://project.sio2.kr, 0.1)"
 STALE_CHANNEL = 10003  # 캐시해 둔 DM 채널이 사라졌다. 한 번 다시 열면 된다.
 # 3회 루프에 넣지 않고 즉시 포기할 코드들. 50007·50278·10013은 그 사용자에 대해 영구적이고,
 # 재시도하면 10분당 1만 invalid-request 예산만 태운다(LXC는 egress IP가 하나다).

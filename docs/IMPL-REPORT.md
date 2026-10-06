@@ -113,7 +113,7 @@ Docker 이미지 3개 빌드·기동, Postgres 16 테스트, discord 발송 경�
   `tests/{conftest,test_auth,test_tools}.py`
 - 검증: `uv run pytest -q` → **16 passed**. `ruff check` 0. core 미의존 확인.
   **실제 core를 띄운 상태로 E2E 확인**:
-  1. 헤더 인증 `initialize` → 200, 서버 이름 `sandol-pm`
+  1. 헤더 인증 `initialize` → 200, 서버 이름 `udally`
   2. `tools/call list_teams` → 실제 팀 데이터 반환
   3. URL 토큰 경로 `/u/<TOKEN>/mcp` → `tools/list` 도구 **14개**
   4. `append_note` → 기존 메모 뒤에 줄 추가
@@ -213,7 +213,7 @@ Docker 이미지 3개 빌드·기동, Postgres 16 테스트, discord 발송 경�
 
 ## 목업 대조 (GUIDE-01-5 §7.9)
 
-목업(`python -m http.server 8765` → `산돌이 업무 목업 v2.dc.html`)을 실제로 띄우고, 다섯 화면의
+목업(`python -m http.server 8765` → `유달리 업무 목업 v2.dc.html`)을 실제로 띄우고, 다섯 화면의
 화면 문구를 목업·내 구현 양쪽에서 기계적으로 뽑아 대조했다.
 
 **일치한 것.** 상세 패널이 거의 그대로 일치한다 — `목표일` / `2026년 9월 4일 (초과)` /

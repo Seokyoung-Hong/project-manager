@@ -1,7 +1,7 @@
 [project]
-name = "sandol-core"
+name = "udally-core"
 version = "0.1.0"
-description = "산돌이 태스크 — core (Django + Django Ninja)"
+description = "유달리 — core (Django + Django Ninja)"
 requires-python = ">=3.12"
 dependencies = [
     "cryptography>=43",

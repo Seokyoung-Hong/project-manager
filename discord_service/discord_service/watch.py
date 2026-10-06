@@ -52,7 +52,7 @@ async def reconcile(guild: discord.Guild, channel, grant_ids: list[str], store: 
             await channel.set_permissions(
                 member,
                 overwrite=discord.PermissionOverwrite(**GRANT),
-                reason="산돌이: 채널 자동 관리",
+                reason="유달리: 채널 자동 관리",
             )
         except discord.HTTPException as e:
             log.warning("덮어쓰기 추가 실패(channel=%s user=%s): %s", cid, uid, e)
@@ -66,7 +66,7 @@ async def reconcile(guild: discord.Guild, channel, grant_ids: list[str], store: 
         if member is not None and channel.overwrites_for(member).pair() == _grant_pair():
             try:
                 await channel.set_permissions(
-                    member, overwrite=None, reason="산돌이: 채널 자동 관리"
+                    member, overwrite=None, reason="유달리: 채널 자동 관리"
                 )
             except discord.HTTPException as e:
                 log.warning("덮어쓰기 제거 실패(channel=%s user=%s): %s", cid, uid, e)

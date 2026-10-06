@@ -110,7 +110,7 @@ def test_two_orgs_scheduled_together_post_to_their_own_channel(tmp_path, store, 
         weekly_hour=9,
         llm_provider="",
         db_path=str(tmp_path / "s.sqlite"),
-        site_name="산돌이 업무",
+        site_name="유달리",
     )
     # 8/31은 월요일이라(last_monday 기준) weekly_weekday=0과 맞는 날을 고른다.
     monday = datetime(2026, 8, 31, 10, tzinfo=KST)
@@ -145,7 +145,7 @@ def test_unknown_weekly_is_not_reposted_on_the_next_tick(tmp_path, store, bot, m
         weekly_hour=9,
         llm_provider="",
         db_path=str(tmp_path / "s.sqlite"),
-        site_name="산돌이 업무",
+        site_name="유달리",
     )
     monday = datetime(2026, 8, 31, 10, tzinfo=KST)
     tick(cfg, make_core(fake), bot, store, monday)

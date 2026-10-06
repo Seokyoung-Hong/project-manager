@@ -1,6 +1,6 @@
 # mcp_server
 
-산돌이 태스크를 AI 클라이언트(Claude 앱·claude.ai, ChatGPT, Codex CLI 등)에 연결하는 MCP 서버. 선택 확장이다 — Claude Code는 [`skills/`](../skills/)가 기본 경로다.
+유달리를 AI 클라이언트(Claude 앱·claude.ai, ChatGPT, Codex CLI 등)에 연결하는 MCP 서버. 선택 확장이다 — Claude Code는 [`skills/`](../skills/)가 기본 경로다.
 core 코드를 import하지 않는다. core의 HTTP API만 호출하는 얇은 껍데기이고 상태를 두지 않는다.
 
 ## 환경 변수
@@ -66,8 +66,8 @@ MCP_ALLOWED_HOSTS=project.sio2.kr
 | 클라이언트 | 방식 | 설정 |
 |---|---|---|
 | Claude 앱 / claude.ai | OAuth | 설정 → 커넥터 → 커스텀 커넥터 추가 → URL `https://project.sio2.kr/mcp`. '연결'을 누르면 로그인·허용 화면이 뜬다 |
-| Claude Code | 헤더 | `claude mcp add --transport http sandol https://project.sio2.kr/mcp --header "Authorization: Bearer <TOKEN>"` |
-| Codex CLI | 헤더 | `~/.codex/config.toml`에 `[mcp_servers.sandol]` `url = "https://project.sio2.kr/mcp"` `bearer_token_env_var = "SANDOL_TOKEN"` 추가, 환경 변수 `SANDOL_TOKEN=<TOKEN>` |
+| Claude Code | 헤더 | `claude mcp add --transport http udally https://project.sio2.kr/mcp --header "Authorization: Bearer <TOKEN>"` |
+| Codex CLI | 헤더 | `~/.codex/config.toml`에 `[mcp_servers.udally]` `url = "https://project.sio2.kr/mcp"` `bearer_token_env_var = "UDALLY_TOKEN"` 추가, 환경 변수 `UDALLY_TOKEN=<TOKEN>` |
 | 그 밖 | 개인 비밀 URL | URL `https://project.sio2.kr/u/<TOKEN>/mcp`, 인증 없음 |
 
 개인 비밀 URL은 비밀번호와 같다. 공유하지 말고, 유출되면 `/settings/tokens`에서 폐기한다.
@@ -80,11 +80,11 @@ MCP_ALLOWED_HOSTS=project.sio2.kr
 |---|---|---|
 | `instructions` | `server.py`의 `INSTRUCTIONS`. 꼭 지켜야 할 것만 | 연결 즉시 모델의 문맥에 들어간다. 짧게 유지한다 |
 | `get_guide` 도구 | `skill/SKILL.md` 본문 | 에이전트가 필요할 때 스스로 부른다. 모든 클라이언트에서 통한다 |
-| `guide://sandol-pm` 자원 | 같은 글 | 자원을 보여 주는 클라이언트에서 사람이 대화에 붙인다 |
+| `guide://udally` 자원 | 같은 글 | 자원을 보여 주는 클라이언트에서 사람이 대화에 붙인다 |
 
 글은 `skill/SKILL.md` **한 곳**에만 있다. 도구와 자원은 그 파일을 읽어 낸다 — 사본을 두면
 한쪽만 고쳐진다. 조직마다 다른 규칙(거버넌스)은 여기가 아니라 `get_governance`가 낸다.
-같은 파일을 `.claude/skills/sandol-pm/SKILL.md`로 복사하면 스킬로도 쓸 수 있다.
+같은 파일을 `.claude/skills/udally/SKILL.md`로 복사하면 스킬로도 쓸 수 있다.
 
 ## MCP 도구
 

@@ -261,7 +261,7 @@ class FakeCore:
                         "org_id": 1,
                         "discord_channel_id": self.channels["project"],
                     },
-                    {"id": 2, "name": "산돌이 봇", "org_id": 1, "discord_channel_id": ""},
+                    {"id": 2, "name": "유달리 봇", "org_id": 1, "discord_channel_id": ""},
                 ],
             )
         if cmd == "teams":

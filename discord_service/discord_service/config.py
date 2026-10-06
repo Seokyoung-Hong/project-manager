@@ -39,7 +39,7 @@ class Config:
             weekly_hour=int(os.environ.get("WEEKLY_HOUR", "9")),
             llm_provider=os.environ.get("LLM_PROVIDER", "").strip().lower(),
             db_path=os.environ.get("DB_PATH", "/data/discord.sqlite"),
-            site_name=os.environ.get("SITE_NAME", "산돌이 업무"),
+            site_name=os.environ.get("SITE_NAME", "유달리"),
             members_intent=os.environ.get("DISCORD_MEMBERS_INTENT", "").strip().lower()
             in ("1", "true", "yes", "on"),
         )

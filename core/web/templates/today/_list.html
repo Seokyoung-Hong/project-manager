@@ -29,7 +29,7 @@
   {% if counts.auto_pulled %}<p class="muted t13">목표일이 {{ auto_pull_days }}일 이내인 태스크 자동 추가 {{ counts.auto_pulled }}건.</p>{% endif %}
   {% if counts.excluded %}<p class="muted t13">오늘 목록에서 뺀 태스크 {{ counts.excluded }}건 · <button type="button" class="btn link" hx-post="{% url 'today_restore' %}{% if today_state_query %}?{{ today_state_query }}{% endif %}" hx-target="#today-list" hx-swap="outerHTML">오늘 목록에 복원</button></p>{% endif %}
   <ul class="tasks">
-    {% for r in rows %}{% task_row r %}{% empty %}<li class="empty">오늘 목록에 태스크가 없습니다. 내 태스크에서 “오늘 목록에 추가”를 누르면 여기에 표시됩니다.</li>{% endfor %}
+    {% for r in rows %}{% task_row r %}{% empty %}<li class="empty">오늘 목록이 비어 있습니다. 유달리 여유로운 날입니다. 내 태스크에서 “오늘 목록에 추가”를 누르면 여기에 표시됩니다.</li>{% endfor %}
   </ul>
   <details class="today-done"><summary>오늘 완료 ({{ done_rows|length }})</summary><ul class="tasks mt-2">{% for r in done_rows %}{% task_row r %}{% endfor %}</ul></details>
 </section>

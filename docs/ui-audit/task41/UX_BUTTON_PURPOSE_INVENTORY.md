@@ -37,10 +37,10 @@ GET/POST는 클릭·폼 제출을 구분한다. 펼치기·취소·복사 등 JS
 
 | ID·근거 | 현재 문구 / 접근성 이름 | 사용자 목적 | 예상·실제 결과 | 권장 문구·보조 안내 | 동작 근거·판정 |
 | --- | --- | --- | --- | --- | --- |
-| B008 · `core/web/templates/base.html:17` | {{ current_org.name\|default:"산돌이 태스크" }} / 접근성: 조직 전환 | 해당 묶음·상세 내용 확인 | HTML details 접힘/펼침; 데이터 변경 없음 | 문맥이 드러나는 현재 제목 유지 | core/web/templates/base.html:17 · 소스 대응 |
+| B008 · `core/web/templates/base.html:17` | {{ current_org.name\|default:"유달리" }} / 접근성: 조직 전환 | 해당 묶음·상세 내용 확인 | HTML details 접힘/펼침; 데이터 변경 없음 | 문맥이 드러나는 현재 제목 유지 | core/web/templates/base.html:17 · 소스 대응 |
 | B009 · `core/web/templates/base.html:26` | {{ o.name }} | 조직 업무 확인 | GET · 선택 조직의 개요 표시 | 유지 | core/web/views/orgs.py:65 · 소스 동작 대조 |
 | B010 · `core/web/templates/base.html:28` | ＋ 새 조직 만들기 | 새 조직 생성 | GET · GET 생성 폼; 유효 POST 조직 생성 | 조직 만들기 | core/web/views/orgs.py:51 · 소스 동작 대조 |
-| B011 · `core/web/templates/base.html:32` | 산돌이 태스크 | 오늘 할 일 확인 | GET · 오늘 목록; cal/day/quick 파라미터에 따라 달력·빠른 추가 표시 | 유지 | core/web/views/today.py:139 · 소스 동작 대조 |
+| B011 · `core/web/templates/base.html:32` | 유달리 | 오늘 할 일 확인 | GET · 오늘 목록; cal/day/quick 파라미터에 따라 달력·빠른 추가 표시 | 유지 | core/web/views/today.py:139 · 소스 동작 대조 |
 | B012 · `core/web/templates/base.html:36` | 오늘 | 오늘 할 일 확인 | GET · 오늘 목록; cal/day/quick 파라미터에 따라 달력·빠른 추가 표시 | 유지 | core/web/views/today.py:139 · 소스 동작 대조 |
 | B013 · `core/web/templates/base.html:37` | 내 태스크 | 담당 태스크 확인 | GET · 담당자·묶음·정렬·필터 조건에 맞는 태스크 목록 표시 | 유지 | core/web/views/me.py:15 · 소스 동작 대조 |
 | B014 · `core/web/templates/base.html:38` | 프로젝트 | 현재 프로젝트 작업 열기 | GET project_index는 최근/첫 프로젝트로 이동; 프로젝트 전체 목록 아님 | 프로젝트 유지 + 현재 프로젝트 전환 손잡이; 목록이라고 안내 금지 | core/web/views/projects.py:67 · 개별 검토 |

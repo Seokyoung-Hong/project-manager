@@ -65,7 +65,7 @@ cd core && DATABASE_URL=postgres://pm:pm@127.0.0.1:5432/pm uv run pytest -q
 화면이 바뀐 단계는 목업과 나란히 놓고 본다.
 
 ```bash
-python -m http.server 8765      # 저장소 루트. 산돌이 신규 기능 목업.dc.html 을 연다
+python -m http.server 8765      # 저장소 루트. 유달리 신규 기능 목업.dc.html 을 연다
 ```
 
 6. 커밋한다. 메시지 형식은 `feat: <단계 요약>` 또는 `refactor:`·`fix:`.

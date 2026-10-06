@@ -1,6 +1,7 @@
 {% extends "base.html" %}{% block title %}로그인{% endblock %}
 {% block auth %}
 <h1 class="t24">로그인</h1>
+<p class="t13 muted">일은 차근차근, 우리는 무럭무럭. 유달리가 할 일과 AI에게 맡긴 일을 정리해 팀이 자랄 여유를 만듭니다.</p>
 <form method="post" class="stack">{% csrf_token %}
   {% for e in form.non_field_errors %}<div class="error">{{ e }}</div>{% endfor %}
   {% include "_fields.html" %}

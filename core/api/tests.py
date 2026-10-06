@@ -337,7 +337,7 @@ def _post(client, raw, url, body=None):
 @pytest.fixture
 def bot(db):
     """봇 계정. 이 경로에서 봇의 팀 범위는 쓰이지 않는다 — 행위자는 항상 연결된 사람이다."""
-    return User.objects.create_user("discord-bot", password="pw12345678", display_name="산돌이 봇")
+    return User.objects.create_user("discord-bot", password="pw12345678", display_name="유달리 봇")
 
 
 @pytest.fixture

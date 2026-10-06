@@ -77,7 +77,7 @@ class Fake(BaseHTTPRequestHandler):
 
 
 def run(*args, stdin=""):
-    env = {**os.environ, "SANDOL_PM_TOKEN": "tok", "SANDOL_PM_URL": f"http://127.0.0.1:{server.server_port}"}
+    env = {**os.environ, "UDALLY_TOKEN": "tok", "UDALLY_URL": f"http://127.0.0.1:{server.server_port}"}
     return subprocess.run([sys.executable, str(PM), *args], input=stdin, capture_output=True,
                           text=True, encoding="utf-8", env=env)
 
@@ -139,15 +139,15 @@ assert pm._unmangle(["C:/Program Files/Git/api/me"]) == ["C:/Program Files/Git/a
 # OAuth 로그인: 브라우저 대신 스레드가 인가 주소를 열고, 저장한 토큰은 받은 주소로만 쓴다.
 with tempfile.TemporaryDirectory() as tmp:
     pm.TOKEN_FILE = Path(tmp) / "token.json"
-    os.environ.pop("SANDOL_PM_TOKEN", None)
-    os.environ["SANDOL_PM_URL"] = f"http://127.0.0.1:{server.server_port}"
+    os.environ.pop("UDALLY_TOKEN", None)
+    os.environ["UDALLY_URL"] = f"http://127.0.0.1:{server.server_port}"
     pm.webbrowser.open = lambda url: threading.Thread(target=urlopen, args=(url,)).start()
     assert pm.login()["scope"] == "read"
     token_req = next(r for r in reversed(seen) if r["path"] == "/oauth/token")
     assert token_req["headers"]["Content-Type"] == "application/x-www-form-urlencoded"
     pm.call("GET", "/api/me")
     assert seen.pop()["headers"]["Authorization"] == "Bearer oauth-tok"
-    os.environ["SANDOL_PM_URL"] = "http://127.0.0.1:1"
+    os.environ["UDALLY_URL"] = "http://127.0.0.1:1"
     try:
         pm.call("GET", "/api/me")
         raise AssertionError("다른 주소로 저장한 토큰을 보냈다")

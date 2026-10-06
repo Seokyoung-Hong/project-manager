@@ -98,7 +98,7 @@ Browser tab: 2, Title: "API 토큰", URL: "http://127.0.0.1:8017/settings/tokens
 						97 text Claude Code
 						98 text MCP · 헤더
 					99 cell
-						100 text claude mcp add --transport http sandol http://127.0.0.1:8017/mcp --header "Authorization: Bearer <TOKEN>"
+						100 text claude mcp add --transport http udally http://127.0.0.1:8017/mcp --header "Authorization: Bearer <TOKEN>"
 						101 button 복사
 				102 row
 					103 cell
@@ -107,11 +107,11 @@ Browser tab: 2, Title: "API 토큰", URL: "http://127.0.0.1:8017/settings/tokens
 					106 cell
 						107 text ~/.codex/config.toml
 						108 text 에 
-						109 text [mcp_servers.sandol]
+						109 text [mcp_servers.udally]
 						110 text url = "http://127.0.0.1:8017/mcp"
-						111 text bearer_token_env_var = "SANDOL_TOKEN"
+						111 text bearer_token_env_var = "UDALLY_TOKEN"
 						112 text  추가, 환경 변수 
-						113 text SANDOL_TOKEN=<TOKEN>
+						113 text UDALLY_TOKEN=<TOKEN>
 				114 row
 					115 cell
 						116 text 그 밖의 클라이언트

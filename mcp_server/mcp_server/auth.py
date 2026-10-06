@@ -38,7 +38,7 @@ def public_base(scope) -> str:
 
 
 NO_TOKEN_MSG = (
-    "인증 토큰이 없습니다. 산돌이 설정 → API 토큰에서 발급한 개인 비밀 URL"
+    "인증 토큰이 없습니다. 유달리 설정 → API 토큰에서 발급한 개인 비밀 URL"
     "(.../u/<TOKEN>/mcp)로 연결하거나 Authorization: Bearer <TOKEN> 헤더를 보내세요."
 )
 OAUTH_MSG = "인증이 필요합니다. 클라이언트가 OAuth를 지원하면 '연결'을 눌러 로그인하세요."
@@ -57,7 +57,7 @@ async def _json(send, body: dict, status: int = 200):
 
 
 async def _unauthorized(send, scope):
-    challenge = 'Bearer realm="sandol-pm"'
+    challenge = 'Bearer realm="udally"'
     if AUTH_SERVER_URL:
         # RFC 9728. 이 한 줄이 클라이언트를 로그인 화면으로 보낸다.
         challenge += f', resource_metadata="{public_base(scope)}{PRM_PATH}"'

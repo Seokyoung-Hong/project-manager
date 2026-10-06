@@ -1,7 +1,7 @@
 [project]
-name = "sandol-discord"
+name = "udally-discord"
 version = "0.1.0"
-description = "산돌이 태스크 — Discord 알림 서비스"
+description = "유달리 — Discord 알림 서비스"
 requires-python = ">=3.12"
 dependencies = [
     "aiohttp>=3.9",

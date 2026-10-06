@@ -31,7 +31,7 @@ def _client_id(settings):
 
 @pytest.fixture
 def bot_token(db):
-    bot = User.objects.create_user("discord-bot", password="pw12345678", display_name="산돌이 봇")
+    bot = User.objects.create_user("discord-bot", password="pw12345678", display_name="유달리 봇")
     _, raw = ApiToken.issue(bot, "봇", "bot")
     return raw
 

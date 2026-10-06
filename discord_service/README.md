@@ -1,6 +1,6 @@
 # discord_service
 
-산돌이 태스크의 Discord **봇**이다. 두 가지를 한다.
+유달리의 Discord **봇**이다. 두 가지를 한다.
 
 1. **발송** — 마감 알림(D-3 · D-1 · 당일 · 기한 초과)을 **담당자 개인 DM**으로, 주간 보고를 팀 채널로 보낸다.
 2. **수신** — 봇에게 온 **평문 DM**을 읽어 `오늘` · `완료` · `연장` · `연결` 명령을 처리한다.
@@ -28,7 +28,7 @@ Webhook은 쓰지 않는다 — 발송은 봇 토큰으로 `discord.com/api/v10`
 | `WEEKLY_HOUR` | | `9` | 주간 보고 시각(시) |
 | `LLM_PROVIDER` | | (빈 값) | **미구현.** 어떤 값을 넣어도 고정 형식 보고서가 나간다(summarize.py `_llm`이 비어 있다). 비워 둔다 |
 | `DB_PATH` | | `/data/discord.sqlite` | 발송 기록·DM 채널 캐시 SQLite 경로 |
-| `SITE_NAME` | | `산돌이 업무` | 테스트 메시지에 쓰는 이름 |
+| `SITE_NAME` | | `유달리` | 테스트 메시지에 쓰는 이름 |
 
 `DISCORD_BOT_TOKEN`과 `CORE_TOKEN`은 **`.env.discord`에만** 둔다(core(web) 프로세스에는 넣지 않는다).
 채널 id는 비밀이 아니다. 개발자 모드를 켜고 채널 우클릭 → ID 복사로 얻는다.

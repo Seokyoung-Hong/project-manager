@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
 <meta charset="utf-8">
-<title>산돌이 태스크</title>
+<title>유달리</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <script src="./support.js"></script>
 </head>
@@ -74,7 +74,7 @@ section[aria-label="지금 할 일"]>div>div:first-child{font-size:23px!importan
 </helmet>
 <div class="task-app" style="display:flex;flex-direction:column;min-height:100vh;background:var(--bg-page);color:var(--text-primary);font-family:Pretendard,-apple-system,'Apple SD Gothic Neo','Noto Sans KR',sans-serif;font-size:17px;line-height:26px">
   <header class="app-header" style="display:flex;align-items:center;gap:24px;min-height:64px;padding:10px 20px;background:var(--bg-surface);color:var(--text-primary);border-bottom:1px solid var(--border)">
-    <div style="font-size:20px;font-weight:700;letter-spacing:-0.02em;white-space:nowrap">산돌이 태스크</div>
+    <div style="font-size:20px;font-weight:700;letter-spacing:-0.02em;white-space:nowrap">유달리</div>
     <nav aria-label="주 메뉴" style="display:flex;gap:4px;flex-wrap:wrap">
       <button onClick="{{ goToday }}" aria-current="{{ nav.today }}" style="font:inherit;display:flex;align-items:center;justify-content:center;height:44px;padding:0 14px;border-radius:8px;border:0;cursor:pointer;color:{{ navColor.today }};font-size:15px;font-weight:{{ navW.today }};background:{{ navBg.today }}">오늘</button>
       <button onClick="{{ goMe }}" aria-current="{{ nav.me }}" style="font:inherit;display:flex;align-items:center;justify-content:center;height:44px;padding:0 14px;border-radius:8px;border:0;cursor:pointer;color:{{ navColor.me }};font-size:15px;font-weight:{{ navW.me }};background:{{ navBg.me }}">내 태스크</button>

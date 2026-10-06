@@ -86,9 +86,7 @@ def run(coro):
 
 def _link(guild, fake, kind="team", item_id=1, category=None, uid=DID, user=None):
     user = member() if user is None else user
-    return run(
-        link_channel(guild, user, make_core(fake), uid, kind, item_id, category, "산돌이 업무")
-    )
+    return run(link_channel(guild, user, make_core(fake), uid, kind, item_id, category, "유달리"))
 
 
 @pytest.fixture
@@ -108,7 +106,7 @@ def test_creates_links_and_replies(fake):
     g = FakeGuild()
     reply = _link(g, fake)
     ch = g.created[0]
-    assert (ch.name, ch.topic, ch.category) == ("백엔드", "산돌이 업무 · 팀 백엔드", None)
+    assert (ch.name, ch.topic, ch.category) == ("백엔드", "유달리 · 팀 백엔드", None)
     assert fake.channels["team"] == str(ch.id)
     assert reply == f"<#{ch.id}> 비공개 채널을 만들고 백엔드 팀에 연결했습니다."
     # 인가 선확인(같은 값 되쓰기) → 허용 집합 조회 → 생성 → 연결 확인(created)

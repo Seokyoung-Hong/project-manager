@@ -1,6 +1,6 @@
 ---
 name: pm-from-issue
-description: GitHub 이슈를 산돌이 태스크로 가져온다. 번호를 주면 그 이슈를, 없으면 아직 태스크가 없는 이슈 목록에서 골라 가져오고 기한·완료 조건을 채운다.
+description: GitHub 이슈를 유달리 태스크로 가져온다. 번호를 주면 그 이슈를, 없으면 아직 태스크가 없는 이슈 목록에서 골라 가져오고 기한·완료 조건을 채운다.
 argument-hint: "[#이슈번호 ...]"
 disable-model-invocation: true
 ---
