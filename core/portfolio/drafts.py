@@ -14,8 +14,8 @@ from django.utils import timezone
 from common.errors import ConflictError, ServiceError
 from orgs.models import Organization
 from orgs.services import is_member
-from projects.services import visible_projects
 from tasks.models import TaskDecisionRecord
+from tasks.services import visible_tasks
 
 from .models import PortfolioDraft, PortfolioSource
 from .sources import get_allowed_records, pr_evidence
@@ -119,7 +119,7 @@ def _check_sources(user, draft):
         for record in TaskDecisionRecord.objects.filter(
             pk__in=ids,
             task__project__org_id=draft.org_id,
-            task__project__in=visible_projects(user),
+            task__in=visible_tasks(user),
         ).select_related("task", "task__project")
     }
 

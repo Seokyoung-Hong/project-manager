@@ -43,6 +43,8 @@ TOOL_NAMES = {
     "create_task",
     "duplicate_task",
     "update_task",
+    "link_task_project",
+    "unlink_task_project",
     "transition_task",
     "extend_task",
     "append_note",
@@ -273,7 +275,7 @@ async def test_tool_names_registered(fake_core):
     finally:
         current_token.reset(tok)
     assert {t.name for t in tools} == TOOL_NAMES
-    assert len(TOOL_NAMES) == 77
+    assert len(TOOL_NAMES) == 79
 
 
 def test_governance_tool(fake_core, with_token):
@@ -388,3 +390,26 @@ def test_new_doc_tools_send_expected_requests(fake_core, with_token):
         "org_id": 1,
         "parent_id": 9,
     }
+
+
+def test_link_task_project_refuses_without_explicit_permission(fake_core, with_token):
+    """열람자가 늘어나는 연결은 명시 인자 없이 거부하고 사용자 허락을 받으라고 안내한다."""
+    out = fn("link_task_project")(1, 5)
+    assert out["refused"] == "visibility_widening"
+    assert "2명" in out["message"] and "허락" in out["next"]
+    assert last_body(fake_core) == {"project_id": 5, "confirm_visibility_widening": False}
+    out = fn("link_task_project")(1, 5, confirm_visibility_widening=True)
+    assert out["status"] == "pending" and "승인" in out["next"]
+    assert fn("unlink_task_project")(1, 5) == {"ok": True}
+    assert fake_core.calls[-1][:2] == ("DELETE", "/api/tasks/1/projects/5")
+
+
+def test_create_task_sends_links(fake_core, with_token):
+    fn("create_task")(1, "새 일", no_due_reason="-", linked_project_ids=[5])
+    body = last_body(fake_core)
+    assert body["linked_project_ids"] == [5] and body["confirm_visibility_widening"] is False
+
+
+def test_no_approve_tool_for_ai():
+    """열람 확대 승인·거절은 사람만 한다 — MCP에는 도구가 없다."""
+    assert not any("approve" in n or "reject" in n for n in TOOL_NAMES)

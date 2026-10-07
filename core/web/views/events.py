@@ -24,8 +24,8 @@ from django.db import connection
 from django.http import StreamingHttpResponse
 from django.utils import timezone
 
-from projects.services import visible_projects
 from tasks.models import Task
+from tasks.services import visible_tasks
 
 from .common import current_org
 
@@ -67,7 +67,8 @@ def _changed_since(org, since, user=None):
     """
     qs = Task.objects.filter(project__org=org, updated_at__gt=since)
     if user is not None:
-        qs = qs.filter(project__in=visible_projects(user, org))
+        # 열람 = 주 ∪ 확정 연결(visible_tasks). 연결·승인이 updated_at을 올려 새 열람자에게도 바로 간다.
+        qs = visible_tasks(user).filter(project__org=org, updated_at__gt=since)
     return list(qs.order_by("updated_at").values_list("pk", "updated_at")[:50])
 
 

@@ -14,9 +14,9 @@ def _iso(value):
 def _reviewer_sees(t) -> bool:
     if t.reviewer_id is None:
         return False
-    from tasks.services import can_see
+    from tasks.services import _sees_task
 
-    return can_see(t.reviewer, t.project)
+    return _sees_task(t.reviewer, t, t.project)
 
 
 def task_brief(t) -> dict:

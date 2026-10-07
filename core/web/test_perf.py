@@ -17,14 +17,23 @@ from common.dates import today_kst
 from orgs.models import OrgMembership
 from orgs.services import add_team_member, create_team
 from projects.services import create_milestone, create_project
-from tasks.services import add_link, checklist_add, create_task, today_add
+from tasks.services import (
+    add_link,
+    approve_link,
+    checklist_add,
+    create_task,
+    link_project,
+    today_add,
+)
 
 _seq = count()
 
 
 def _seed(org, admin, member, k):
-    """k묶음을 더한다: 팀·팀원·프로젝트(공개/팀 한정)·링크·마일스톤·태스크(체크리스트 포함)."""
+    """k묶음을 더한다: 팀·팀원·프로젝트(공개/팀 한정)·링크·마일스톤·태스크(체크리스트 포함)·
+    연결 프로젝트(앞 묶음의 프로젝트에 확정 연결 — 연결이 늘어도 쿼리 수가 같아야 한다)."""
     today = today_kst()
+    prev = None
     for _ in range(k):
         i = next(_seq)
         u = User.objects.create_user(f"perf{i}", password="pw12345678", display_name=f"사람{i}")
@@ -56,8 +65,13 @@ def _seed(org, admin, member, k):
                 no_due_reason="" if due else "미정",
             )
             checklist_add(t, "확인", actor=admin)
+            if prev is not None:
+                link = link_project(t, prev, actor=admin, confirm_widening=True)
+                if link.status == "pending":
+                    approve_link(link, actor=admin)
             if due == today + timedelta(days=2):
                 today_add(member, t)
+        prev = p
 
 
 def _queries(client, url, headers=None) -> int:
@@ -90,6 +104,8 @@ API = [
     "/api/orgs/{org}",
     "/api/orgs/{org}/teams",
     "/api/today",
+    "/api/tasks",
+    "/api/tasks?project=1",
     "/api/reports/weekly?org={org}&week_start={monday}",  # 주간 보고 by_project
 ]
 

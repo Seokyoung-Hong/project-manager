@@ -38,6 +38,8 @@ NEEDS: dict[str, str] = {
     "create_task": "write",
     "duplicate_task": "write",
     "update_task": "write",
+    "link_task_project": "write",
+    "unlink_task_project": "write",
     "transition_task": "write",
     "extend_task": "write",
     "append_note": "write",

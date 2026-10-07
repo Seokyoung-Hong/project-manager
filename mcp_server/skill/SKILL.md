@@ -31,6 +31,7 @@ description: 유달리(조직 업무 관리)를 MCP로 다룬다. 태스크를 �
 | 팀에서 빼기 | `remove_team_member` — 조직 멤버십과 태스크는 그대로 남는다 |
 | 프로젝트 담당 팀 | `get_project`로 version → `set_project_teams` |
 | 주간 보고 | `get_weekly_report_data` — 여기 없는 진척은 만들어 쓰지 않는다 |
+| 다른 프로젝트에도 연결 | `link_task_project` — 해제·승인 요청 취소는 `unlink_task_project`. 아래 규칙 "열람 확대" |
 
 ## 이슈 기반 AI 개발과 의사결정 기록
 
@@ -77,6 +78,11 @@ description: 유달리(조직 업무 관리)를 MCP로 다룬다. 태스크를 �
 - Discord 채널 관리는 조직 관리자 전용이다. list_discord_channels와 plan_project_channel_assignments로 채널명·ID·카테고리를 확인한다. 현재 연결은 유지하고, 후보를 사용자에게 제시한 뒤 assign_project_channel을 호출한다. 후보가 없으면 기존 카테고리를 우선 제안하고, 적합한 카테고리가 없을 때만 새 이름을 제안한다. create_project_channel 실행 전에 채널명과 카테고리를 확인받는다.
 - 연결만 해제할 때는 unlink_project_channel을 쓴다. Discord 채널 삭제 도구와 혼동하지 않는다.
 - 집계 숫자는 서버가 준 값만 말한다. 진척을 추정해 단정하지 않는다.
+- **열람 확대**: 한 작업이 여러 프로젝트에 "관련"되면 연결, 프로젝트마다 "따로 하는" 작업이면 나누기.
+  연결로 지금 태스크를 못 보던 사람이 보게 되면 `link_task_project`·`create_task(linked_project_ids)`는
+  `{"refused": "visibility_widening", "message", "next"}`로 거부한다. `message`를 사용자에게 그대로
+  보여 주고 **허락을 받은 뒤에만** `confirm_visibility_widening=true`로 다시 부른다. 허락 없이 true를
+  넣지 않는다. 그래도 연결은 관리자 승인 대기(`pending`)로 남고, 승인·거절은 관리자가 웹에서 한다(AI는 못 한다).
 - 한 번에 여러 태스크를 바꿀 때는 무엇을 바꿀지 먼저 나열하고 확인받는다.
 
 ## 설치

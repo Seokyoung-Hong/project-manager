@@ -1,7 +1,7 @@
 from datetime import date
 
 from django.conf import settings
-from django.db.models import F
+from django.db.models import Exists, F, OuterRef, Q
 from django.utils.dateparse import parse_datetime
 from ninja import Router
 from ninja.errors import HttpError
@@ -17,15 +17,20 @@ from orgs.services import ai_denied
 from orgs.settings import effective
 from projects.services import visible_projects
 from tasks.brief import task_brief
-from tasks.models import ChangeLog, Task
+from tasks.models import ChangeLog, Task, TaskProject
 from tasks.services import (
+    WideningRequired,
+    approve_link,
     create_task,
     delete_task,
     duplicate_task,
     extend_due,
+    link_project,
+    reject_link,
     replace_checklist,
     set_template,
     transition,
+    unlink_project,
     update_task,
     visible_tasks,
 )
@@ -36,11 +41,14 @@ from ..schemas import (
     ConflictOut,
     ErrorOut,
     ExtendIn,
+    LinkedProjectOut,
+    LinkRejectIn,
     TaskCreateIn,
     TaskDuplicateIn,
     TaskListOut,
     TaskOut,
     TaskPatchIn,
+    TaskProjectIn,
     TransitionIn,
 )
 from ..serialize import changelog_out, task_out
@@ -62,9 +70,11 @@ def list_tasks(
     include_archived: bool = False,
     include_templates: bool = False,
     parent: int | None = None,
+    primary_only: bool = False,
     limit: int = 50,
     offset: int = 0,
 ):
+    """project는 그 프로젝트에 연결된 태스크도 포함한다(primary_only=true면 주 프로젝트만)."""
     qs = visible_tasks(request.auth)
     if not include_templates:
         qs = qs.filter(is_template=False)
@@ -73,7 +83,13 @@ def list_tasks(
     if org is not None:
         qs = qs.filter(project__org_id=org)
     if project is not None:
-        qs = qs.filter(project_id=project)
+        if primary_only:
+            qs = qs.filter(project_id=project)
+        else:
+            linked = TaskProject.objects.filter(
+                task_id=OuterRef("pk"), project_id=project, status="active"
+            )
+            qs = qs.filter(Q(project_id=project) | Exists(linked))
     if assignee is not None:
         qs = qs.filter(assignee_id=assignee)
     if status:
@@ -247,7 +263,18 @@ def history(request, task_id: int):
     return [changelog_out(log) for log in logs]
 
 
-@router.post("", response={201: TaskOut, 400: ErrorOut})
+def _widening_400(e: WideningRequired):
+    """열람 확대 확인이 필요하다. MCP는 이 모양(error=visibility_widening)을 보고 거부·안내한다."""
+    return 400, {
+        "detail": e.errors["confirm"],
+        "error": "visibility_widening",
+        "message": e.errors["confirm"],
+        "widening_count": len(e.users),
+        "widening": [{"id": u.pk, "display_name": u.display_name} for u in e.users[:5]],
+    }
+
+
+@router.post("", response={201: TaskOut, 400: dict})
 def create_task_ep(request, payload: TaskCreateIn):
     project = visible_projects(request.auth).filter(pk=payload.project_id).first()
     if project is None:
@@ -258,19 +285,24 @@ def create_task_ep(request, payload: TaskCreateIn):
         if assignee is None:
             raise HttpError(400, "담당자를 찾을 수 없습니다.")
     c = ctx(request)
-    task = create_task(
-        project=project,
-        title=payload.title,
-        assignee=assignee,
-        description=payload.description,
-        done_when=payload.done_when,
-        next_action=payload.next_action,
-        priority=payload.priority,
-        due_date=payload.due_date,
-        no_due_reason=payload.no_due_reason,
-        idempotency_key=idem_key(request),
-        **c,
-    )
+    try:
+        task = create_task(
+            project=project,
+            title=payload.title,
+            assignee=assignee,
+            description=payload.description,
+            done_when=payload.done_when,
+            next_action=payload.next_action,
+            priority=payload.priority,
+            due_date=payload.due_date,
+            no_due_reason=payload.no_due_reason,
+            idempotency_key=idem_key(request),
+            linked_project_ids=payload.linked_project_ids,
+            confirm_widening=payload.confirm_visibility_widening,
+            **c,
+        )
+    except WideningRequired as e:
+        return _widening_400(e)
     if payload.checklist is not None and not task.checklist.exists():
         replace_checklist(
             task, [i.dict() for i in payload.checklist], actor=c["actor"], source=c["source"]
@@ -363,3 +395,69 @@ def extend_ep(request, task_id: int, payload: ExtendIn):
         task, payload.due_date, payload.reason, expected_version=payload.version, **ctx(request)
     )
     return task_out(task, request.auth)
+
+
+# ---------- 연결 프로젝트(IMPL-PLAN-11 §3.7, 결정 2-1) ----------
+
+
+def _link_or_404(task, project_id):
+    link = (
+        TaskProject.objects.filter(task=task, project_id=project_id)
+        .select_related("project", "created_by", "task__project__org")
+        .first()
+    )
+    if link is None:
+        raise HttpError(404, "연결된 프로젝트가 아닙니다.")
+    return link
+
+
+def _link_out(link) -> dict:
+    return {"id": link.project_id, "name": link.project.name, "status": link.status}
+
+
+@router.post("/{task_id}/projects", response={201: LinkedProjectOut, 400: dict})
+def link_project_ep(request, task_id: int, payload: TaskProjectIn):
+    """태스크를 프로젝트에 연결한다. 열람자가 늘어나면 confirm_visibility_widening 없이는
+    400 visibility_widening, 있으면 status=pending(관리자 승인 대기)으로 만든다."""
+    task = task_or_404(request, task_id)
+    project = visible_projects(request.auth).filter(pk=payload.project_id).first()
+    if project is None:
+        raise HttpError(404, "프로젝트를 찾을 수 없습니다.")
+    try:
+        link = link_project(
+            task, project, confirm_widening=payload.confirm_visibility_widening, **ctx(request)
+        )
+    except WideningRequired as e:
+        return _widening_400(e)
+    return 201, _link_out(link)
+
+
+@router.delete("/{task_id}/projects/{project_id}", response={204: None, 400: ErrorOut})
+def unlink_project_ep(request, task_id: int, project_id: int):
+    """연결 해제·승인 요청 취소."""
+    task = task_or_404(request, task_id)
+    link = _link_or_404(task, project_id)
+    unlink_project(task, link.project, **ctx(request))
+    return 204, None
+
+
+@router.post(
+    "/{task_id}/projects/{project_id}/approve",
+    response={200: LinkedProjectOut, 400: ErrorOut, 403: ErrorOut},
+)
+def approve_link_ep(request, task_id: int, project_id: int):
+    """열람 확대 승인. 주 프로젝트가 비공개면 그 프로젝트 관리자·조직 관리자, 아니면 조직 관리자.
+    AI(MCP) 요청은 거부한다."""
+    link = _link_or_404(task_or_404(request, task_id), project_id)
+    return _link_out(approve_link(link, **ctx(request)))
+
+
+@router.post(
+    "/{task_id}/projects/{project_id}/reject",
+    response={204: None, 400: ErrorOut, 403: ErrorOut},
+)
+def reject_link_ep(request, task_id: int, project_id: int, payload: LinkRejectIn):
+    """열람 확대 거절. 승인과 같은 사람만, AI(MCP)는 거부한다."""
+    link = _link_or_404(task_or_404(request, task_id), project_id)
+    reject_link(link, reason=payload.reason, **ctx(request))
+    return 204, None

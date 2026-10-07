@@ -64,6 +64,8 @@ def test_needs_table_covers_every_tool():
         "create_task",
         "duplicate_task",
         "update_task",
+        "link_task_project",
+        "unlink_task_project",
         "transition_task",
         "extend_task",
         "append_note",
