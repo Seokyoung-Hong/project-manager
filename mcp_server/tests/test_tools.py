@@ -78,6 +78,10 @@ TOOL_NAMES = {
     "get_doc",
     "create_doc",
     "update_doc",
+    "list_doc_revisions",
+    "revert_doc",
+    "move_doc",
+    "import_docs",
     "search",
     "fetch",
 }
@@ -269,7 +273,7 @@ async def test_tool_names_registered(fake_core):
     finally:
         current_token.reset(tok)
     assert {t.name for t in tools} == TOOL_NAMES
-    assert len(TOOL_NAMES) == 73
+    assert len(TOOL_NAMES) == 77
 
 
 def test_governance_tool(fake_core, with_token):
@@ -352,3 +356,35 @@ def test_list_attachments_is_read_only_call(fake_core, with_token):
         fn("list_attachments")(1, all_versions=True)
     method, path, _, _ = fake_core.calls[-1]
     assert (method, path) == ("GET", "/api/tasks/1/attachments?all=true")
+
+
+def test_new_doc_tools_send_expected_requests(fake_core, with_token):
+    """가짜 core에는 이 끝점들이 없다 — 보낸 경로·본문만 본다."""
+    with pytest.raises(CoreError):
+        fn("move_doc")(doc_id=5, to_top=True)
+    assert fake_core.calls[-1][1] == "/api/project-docs/5/move"
+    assert last_body(fake_core) == {"parent_id": None}
+
+    with pytest.raises(CoreError):
+        fn("revert_doc")(doc_id=5, revision_id=3, version=4)
+    assert fake_core.calls[-1][1] == "/api/project-docs/5/revert"
+    assert last_body(fake_core) == {"revision_id": 3, "version": 4}
+
+    files = [{"name": "a.md", "content": "x"}]
+    with pytest.raises(CoreError):
+        fn("import_docs")(org_id=1, files=files, parent_id=2)
+    assert fake_core.calls[-1][1] == "/api/orgs/1/docs/import"
+    assert last_body(fake_core) == {"files": files, "parent_id": 2}
+
+    with pytest.raises(CoreError):
+        fn("list_doc_revisions")(5)
+    assert fake_core.calls[-1][1] == "/api/project-docs/5/revisions"
+
+    fn("create_doc")(title="t", org_id=1, parent_id=9)
+    assert last_body(fake_core) == {
+        "title": "t",
+        "body_md": "",
+        "project_id": None,
+        "org_id": 1,
+        "parent_id": 9,
+    }

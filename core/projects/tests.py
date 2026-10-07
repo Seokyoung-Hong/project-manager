@@ -11,9 +11,9 @@ from orgs.services import create_org
 from projects.docs import (
     create_doc,
     delete_doc,
+    project_docs,
     update_doc,
     upload_doc,
-    visible_docs,
 )
 from projects.services import (
     archive_project,
@@ -589,8 +589,8 @@ def test_docs_keep_creation_order(project, member):
     second = create_doc(project=project, actor=member, title="운영")
     update_doc(first, "body_md", "나중에 고쳐도", actor=member, expected_version=first.version)
     # 수정해도 목록이 뒤집히지 않아야 문서를 다시 찾을 수 있다
-    assert [d.title for d in visible_docs(project)] == [first.title, second.title]
-    assert second.pk in [d.pk for d in visible_docs(project)]
+    assert [d.title for d in project_docs(project)] == [first.title, second.title]
+    assert second.pk in [d.pk for d in project_docs(project)]
 
 
 def test_doc_links_only_same_project_tasks(project, org, admin, member, task):
