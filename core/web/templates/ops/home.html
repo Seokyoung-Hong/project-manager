@@ -1,0 +1,17 @@
+{% extends "ops/base.html" %}{% block title %}운영 콘솔{% endblock %}
+{% block ops %}
+{% if superusers_without_staff %}<div class="notice warn" role="status">최고 운영자 {{ superusers_without_staff }}명은 운영 콘솔 권한이 없습니다. 운영 콘솔을 쓰려면 Django 관리 화면에서 운영자 권한(is_staff)을 함께 켜 주세요.</div>{% endif %}
+<section class="card">
+  <div class="card-head"><h2>최근 감사 기록</h2></div>
+  <div class="table-scroll" tabindex="0">
+  <table class="grid">
+    <thead><tr><th>시각</th><th>행위자</th><th>동작</th><th>대상</th><th>사유</th></tr></thead>
+    <tbody>
+    {% for a in audits %}
+    <tr><td>{{ a.created_at|date:"Y-m-d H:i" }}</td><td>{{ a.actor_username }}</td><td>{{ a.get_action_display }}</td><td>{{ a.target_label }}</td><td class="muted t13">{{ a.reason }}</td></tr>
+    {% empty %}<tr><td colspan="5" class="empty-cell">감사 기록이 아직 없습니다.</td></tr>{% endfor %}
+    </tbody>
+  </table>
+  </div>
+</section>
+{% endblock %}

@@ -197,6 +197,7 @@ urlpatterns = [
     path("settings/tokens", settings.tokens, name="tokens"),
     path("settings/tokens/<int:token_id>/revoke", settings.token_revoke, name="token_revoke"),
     path("ops", ops.ops, name="ops"),
+    path("ops/system", ops.system, name="ops_system"),
     path("ops/unlock", ops.unlock_login, name="ops_unlock"),
     path("ops/export.json", ops.export_json, name="export_json"),
     path("ops/design", ops.design, name="ops_design"),

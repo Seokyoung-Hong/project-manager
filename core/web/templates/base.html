@@ -36,6 +36,7 @@
   <a class="logo" href="{% url 'today' %}"><img class="brand-logo" src="{% static 'brand/udally.svg' %}" alt="유달리" width="94" height="38"></a>
   {% endif %}
   {% if user.is_authenticated %}
+  {% block header_nav %}
   <nav class="nav" aria-label="주 메뉴">
     <a href="{% url 'today' %}"{% if nav == "today" %} aria-current="page"{% endif %}>오늘</a>
     <a href="{% url 'me' %}"{% if nav == "me" %} aria-current="page"{% endif %}>내 태스크</a>
@@ -44,12 +45,15 @@
     <a href="{% url 'org' %}"{% if nav == "org" %} aria-current="page"{% endif %}>조직</a>
     <a href="{% url 'search' %}"{% if nav == "search" %} aria-current="page"{% endif %}>검색</a>
   </nav>
+  {% endblock %}
   <span class="spacer"></span>
+  {% block header_actions %}
   {% if nav == "today" %}
   <button type="button" class="btn sm tint" data-action="toggle" data-target="#quick" data-alt="닫기">빠른 추가</button>
   {% else %}
   <a class="btn sm tint" href="{% url 'today' %}?quick=1">빠른 추가</a>
   {% endif %}
+  {% endblock %}
   <details class="menu">
     <summary class="avatar" aria-label="내 메뉴" title="계정·설정">{{ user.display_name|initial }}<svg class="caret" width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M2 4l3 3 3-3"/></svg></summary>
     <div class="menu-list">
@@ -57,7 +61,7 @@
       <a href="{% url 'profile' %}">프로필</a>
       <a href="{% url 'portfolio' %}">내 포트폴리오</a>
       <a href="{% url 'tokens' %}">API 토큰</a>
-      {% if user.is_staff %}<a href="{% url 'ops' %}">운영 상태</a>{% endif %}
+      {% if user.is_staff %}<a href="{% url 'ops' %}">운영 콘솔</a>{% endif %}
       <form method="post" action="{% url 'logout' %}">{% csrf_token %}<button type="submit">로그아웃</button></form>
     </div>
   </details>

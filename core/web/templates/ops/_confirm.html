@@ -1,0 +1,13 @@
+{# 운영 콘솔 변경 확인 대화상자. GET이 이 조각을, 같은 URL의 POST가 실행을 맡는다(IMPL-PLAN-10 §5.2). #}
+<form method="post" action="{{ action_url }}" class="stack">{% csrf_token %}
+  {% for k, v in hidden.items %}<input type="hidden" name="{{ k }}" value="{{ v }}">{% endfor %}
+  <h2 class="t20">{{ title }}</h2>
+  <p class="t13">{{ summary }}</p>
+  <label class="field">사유 <textarea name="reason" class="textarea" required minlength="5" maxlength="300"></textarea></label>
+  {% if confirm_value %}<label class="field">확인을 위해 <code>{{ confirm_value }}</code>를 그대로 입력해 주세요
+    <input name="confirm" class="input" autocomplete="off" required></label>{% endif %}
+  <div class="row">
+    <button class="btn {% if danger %}danger{% else %}primary{% endif %}">{{ button }}</button>
+    <button type="button" class="btn link" data-action="close-dialog">취소</button>
+  </div>
+</form>

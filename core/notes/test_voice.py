@@ -558,9 +558,11 @@ def test_api_key_encrypted_masked_everywhere(client, enabled, admin, member, bot
     client.force_login(admin)
     page = client.get(f"/orgs/{enabled.pk}/settings").content.decode()
     assert KEY not in page and stored not in page
-    admin.is_staff = True
+    admin.is_staff = admin.is_superuser = True
     admin.save()
-    export = client.get("/ops/export.json").content.decode()
+    export = client.post(
+        "/ops/export.json", {"reason": "비밀값 점검 내보내기", "confirm": "export"}
+    ).content.decode()
     assert KEY not in export and stored[4:] not in export
     # GET 값을 그대로 되돌려 PUT해도 유지된다
     values = client.get(url, headers=h).json()["values"]
