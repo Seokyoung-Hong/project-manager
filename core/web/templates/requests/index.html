@@ -7,7 +7,34 @@
 <nav class="tabs" aria-label="요청함">
   <a href="{% url 'request_index' %}"{% if tab == "received" %} aria-current="page"{% endif %}>받은 요청</a>
   <a href="{% url 'request_index' %}?tab=sent"{% if tab == "sent" %} aria-current="page"{% endif %}>보낸 요청</a>
+  {% if link_count or tab == "links" %}<a href="{% url 'request_index' %}?tab=links"{% if tab == "links" %} aria-current="page"{% endif %}>연결 승인 {{ link_count }}</a>{% endif %}
 </nav>
+{% if tab == "links" %}
+<section class="card">
+  <p class="muted t13">다른 프로젝트에 태스크를 연결하면 그 프로젝트의 열람자가 새로 태스크를 보게 됩니다. 승인하면 연결이 확정되고, 거절하면 연결 요청이 지워집니다.</p>
+  <p class="table-scroll-hint">좌우로 밀어 요청한 사람과 시각을 보세요.</p>
+  <div class="table-scroll" tabindex="0" role="region" aria-label="연결 승인 대기 목록, 좌우로 스크롤 가능">
+  <table class="grid request-table">
+    <thead><tr><th>태스크</th><th>주 프로젝트</th><th>연결하려는 프로젝트</th><th>요청한 사람</th><th>시각</th><th>처리</th></tr></thead>
+    <tbody>
+    {% for lk in link_rows %}
+    <tr>
+      <td><a href="{% url 'task_detail' lk.task_id %}">{{ lk.task.number }} {{ lk.task.title }}</a></td>
+      <td>{{ lk.task.project.name }}{% if lk.task.project.visibility != "org" %} <span class="badge">담당 팀만</span>{% endif %}</td>
+      <td>{{ lk.project.name }}</td>
+      <td>{{ lk.created_by.display_name }}</td>
+      <td>{{ lk.created_at|date:"m-d H:i" }}</td>
+      <td class="row">
+        <form method="post" action="{% url 'task_project_approve' lk.task_id lk.project_id %}">{% csrf_token %}<button class="btn sm">승인</button></form>
+        <form method="post" action="{% url 'task_project_reject' lk.task_id lk.project_id %}">{% csrf_token %}<button class="btn sm">거절</button></form>
+      </td>
+    </tr>
+    {% empty %}<tr><td colspan="6" class="empty-cell">승인을 기다리는 연결이 없습니다.</td></tr>{% endfor %}
+    </tbody>
+  </table>
+  </div>
+</section>
+{% else %}
 <section class="card">
   <p class="table-scroll-hint">좌우로 밀어 기한과 시각을 보세요.</p>
   <div class="table-scroll" tabindex="0" role="region" aria-label="요청 목록, 좌우로 스크롤 가능">
@@ -29,4 +56,5 @@
   </table>
   </div>
 </section>
+{% endif %}
 {% endblock %}

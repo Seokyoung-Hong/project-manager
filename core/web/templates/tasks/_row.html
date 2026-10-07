@@ -6,7 +6,7 @@
     {% if not in_today_page and not in_board %}hx-get="{% url 'task_row' task.pk %}?{{ row_query }}" hx-trigger="task-changed[event.detail.id=={{ task.pk }}] from:body" hx-swap="outerHTML"{% endif %}>
   <div class="main{% if show_next %} has-next{% endif %}">
     {% if show_next %}<div class="next">{{ task.next_action }}</div>{% endif %}
-    <div class="proj">{{ task.project.name }}</div>
+    <div class="proj">{{ task.project.name }}{% if linked %} <span class="linked-mark" title="연결 프로젝트: {{ linked_names }}">↔ {{ linked|length }}</span>{% endif %}</div>
     <div class="title">{{ task.title }}</div>
     <div class="meta">
       {% if not hide_assignee %}<span>{{ task.assignee.display_name }}</span>{% endif %}

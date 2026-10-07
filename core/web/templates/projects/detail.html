@@ -27,6 +27,7 @@
     <div class="tile"><b>{{ stats.review }}</b><span>검토 대기</span></div>
     <div class="tile"><b{% if stats.blocked %} class="danger"{% endif %}>{{ stats.blocked }}</b><span>막힘</span></div>
   </div>
+  {% if has_linked %}<p class="muted t12 linked-note">↔ 표시는 다른 프로젝트에도 연결된 태스크입니다. 연결 태스크는 여러 프로젝트에 셉니다.</p>{% endif %}
 </div>
 <section class="card project-task-surface" id="project-tasks">
   <div class="card-head">

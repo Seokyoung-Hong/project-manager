@@ -17,6 +17,7 @@ from orgs.models import ChangeRequest, Invite, OrgMembership, TeamMembership
 from orgs.settings import GROUPS, SPECS, display, effective, enforced, locked_keys, specs_for
 from projects.services import project_stats_bulk, visible_projects
 from reports.services import org_status
+from tasks.models import TaskProject
 
 from ..forms import InviteForm, OrgForm
 from .common import apply_service_error, can_admin, current_org, not_admin, org_or_404
@@ -97,6 +98,7 @@ def org_detail(request, org_id):
             "org": org,
             "tiles": tiles,
             "project_rows": [(p, stats[p.pk]) for p in projects],
+            "has_linked": TaskProject.objects.filter(status="active", project__org=org).exists(),
             "by_assignee": st["by_assignee"],
             "me_url": me_url,
             "include_archived": include_archived,

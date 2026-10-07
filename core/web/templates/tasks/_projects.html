@@ -1,0 +1,37 @@
+{# 연결 프로젝트 칸(IMPL-PLAN-11 §3.6). 패널의 독립 구역 — 다른 구역(하위 태스크 등)은 이 옆에 같은 방식으로 붙인다. #}
+<div class="section" id="task-projects">
+  <div class="label">연결 프로젝트</div>
+  {% if linked_projects %}
+  <ul class="project-links" aria-label="연결 프로젝트">
+    {% for lp in linked_projects %}
+    <li class="tag">
+      {{ lp.name }}{% if lp.status == "pending" %} <span class="badge warn">승인 대기</span>{% endif %}
+      {% if lp.status == "pending" and can_approve_links %}
+      <form hx-post="{% url 'task_project_approve' task.pk lp.id %}" hx-target="#panel" hx-swap="innerHTML"><button class="btn sm">승인</button></form>
+      <form hx-post="{% url 'task_project_reject' task.pk lp.id %}" hx-target="#panel" hx-swap="innerHTML"><button class="btn sm">거절</button></form>
+      {% endif %}
+      <form hx-post="{% url 'task_project_unlink' task.pk lp.id %}" hx-target="#panel" hx-swap="innerHTML">
+        <button class="btn sm icon" aria-label="{{ lp.name }} {% if lp.status == 'pending' %}승인 요청 취소{% else %}연결 해제{% endif %}" title="{% if lp.status == 'pending' %}승인 요청 취소{% else %}연결 해제{% endif %}">×</button>
+      </form>
+    </li>
+    {% endfor %}
+  </ul>
+  {% if has_active_links %}<p class="muted t12">연결 프로젝트의 열람자도 이 태스크를 봅니다.</p>{% endif %}
+  {% endif %}
+  {% if widening %}
+  <form class="notice warn" role="alert" hx-post="{% url 'task_project_link' task.pk %}" hx-target="#panel" hx-swap="innerHTML">
+    <span>⚠ {{ widening.message }} 승인자는 {{ widening.approvers }}입니다.</span>
+    <input type="hidden" name="project" value="{{ widening.project_id }}">
+    <input type="hidden" name="confirm" value="1">
+    <button class="btn sm">승인 요청 보내기</button>
+  </form>
+  {% elif link_choices %}
+  <form class="row" hx-post="{% url 'task_project_link' task.pk %}" hx-target="#panel" hx-swap="innerHTML">
+    <select name="project" class="select auto" aria-label="연결할 프로젝트">
+      {% for p in link_choices %}<option value="{{ p.pk }}">{{ p.name }}</option>{% endfor %}
+    </select>
+    <button class="btn sm">연결 추가</button>
+  </form>
+  <p class="muted t12">한 작업이 여러 프로젝트에 관련되면 연결, 프로젝트마다 따로 하는 일이면 나누기를 쓰세요.</p>
+  {% endif %}
+</div>

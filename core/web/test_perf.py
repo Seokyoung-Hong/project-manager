@@ -98,6 +98,7 @@ WEB = [
     "/orgs/{org}/roadmap",
     "/orgs/{org}/capacity",
     "/search?q=할",
+    "/requests?tab=links",
 ]
 API = [
     "/api/projects",

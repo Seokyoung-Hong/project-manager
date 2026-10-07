@@ -18,8 +18,9 @@ def _line(task) -> str:
 
 def channel(conn, kind: str, head: str, task=None, extra: str = "") -> None:
     """`notify.github_channel_events`에 kind가 있고 프로젝트 채널이 있을 때만.
-    비공개 프로젝트도 자기 채널이면 올린다."""
-    project = conn.project
+    비공개 프로젝트도 자기 채널이면 올린다. 태스크가 있으면 그 **주 프로젝트** 채널이다 — 연결 태스크가
+    연동 프로젝트(다른 저장소)를 따르더라도 알림은 번호·알림의 소유자인 주 프로젝트로 간다(IMPL-PLAN-11 §3.4)."""
+    project = task.project if task is not None else conn.project
     if kind not in effective("notify.github_channel_events", org=project.org, project=project):
         return
     if not project.discord_channel_id:

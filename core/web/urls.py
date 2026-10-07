@@ -26,6 +26,7 @@ from .views import (
     search,
     settings,
     split,
+    task_projects,
     tasks,
     teams,
     today,
@@ -327,4 +328,21 @@ urlpatterns = [
     path("tasks/<int:task_id>/git/project", github.git_project, name="git_project"),
     # ---- IMPL-PLAN-11 S1: 사람별로 나누기 ----
     path("tasks/<int:task_id>/split", split.task_split, name="task_split"),
+    # ---- IMPL-PLAN-11 P2: 연결 프로젝트 ----
+    path("tasks/<int:task_id>/projects", task_projects.link, name="task_project_link"),
+    path(
+        "tasks/<int:task_id>/projects/<int:project_id>/unlink",
+        task_projects.unlink,
+        name="task_project_unlink",
+    ),
+    path(
+        "tasks/<int:task_id>/projects/<int:project_id>/approve",
+        task_projects.approve,
+        name="task_project_approve",
+    ),
+    path(
+        "tasks/<int:task_id>/projects/<int:project_id>/reject",
+        task_projects.reject,
+        name="task_project_reject",
+    ),
 ]

@@ -11,6 +11,7 @@ from common.errors import ServiceError
 from orgs.models import Team
 from orgs.services import orgs_of
 from projects.services import visible_projects
+from tasks import services as ts
 from tasks import work_requests as wr
 
 from .common import current_org, org_or_404
@@ -27,12 +28,20 @@ def _pending_first(qs):
 
 @login_required
 def request_index(request):
-    tab = "sent" if request.GET.get("tab") == "sent" else "received"
-    if tab == "sent":
-        qs = wr.visible_requests(request.user).filter(requested_by=request.user)
+    tab = request.GET.get("tab")
+    tab = tab if tab in ("sent", "links") else "received"
+    # 열람 확대 승인 대기(IMPL-PLAN-11 결정 2-1). 승인할 수 있는 사람에게만 탭이 보인다.
+    links = ts.pending_links_for(request.user)
+    ctx = {"tab": tab, "link_count": links.count()}
+    if tab == "links":
+        ctx["link_rows"] = list(links)
+    elif tab == "sent":
+        ctx["rows"] = _pending_first(
+            wr.visible_requests(request.user).filter(requested_by=request.user)
+        )
     else:
-        qs = wr.received(request.user)
-    return render(request, "requests/index.html", {"tab": tab, "rows": _pending_first(qs)})
+        ctx["rows"] = _pending_first(wr.received(request.user))
+    return render(request, "requests/index.html", ctx)
 
 
 @login_required

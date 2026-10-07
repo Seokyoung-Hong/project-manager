@@ -73,6 +73,7 @@
         <p class="muted t13">{{ task.status_hint }}</p>
         {% if not task.is_template %}{% split_hint task %}{% endif %}
       </div>
+      {% include "tasks/_projects.html" %}
       {% if task.is_stopped or block_pending or reject_pending %}{% include "tasks/_stop.html" %}{% endif %}
       {% if series %}{% include "tasks/_series.html" %}{% endif %}
       <label class="field">설명
