@@ -21,6 +21,8 @@ from tasks.models import Task
 from tasks.services import (
     attach_linked,
     get_visible_task,
+    hidden_task_refs,
+    mask_task_refs,
     today_flag,
     today_membership,
     visible_tasks,
@@ -237,16 +239,8 @@ def _display(field, raw: str, viewer=None) -> str:
         if p is None:
             return raw
         return p.name if viewer is None or can_view_project(viewer, p) else "볼 수 없는 프로젝트"
-    if field in ("group", "split"):
-        # 상위·하위 번호(IMPL-PLAN-12 §4.1): 보는 사람이 못 보는 태스크는 번호를 내지 않는다.
-        nums = [n for n in raw.split(",") if n]
-        if viewer is None:
-            return ", ".join(nums)
-        ids = [int(n[5:]) for n in nums if n[5:].isdecimal()]
-        seen = set(visible_tasks(viewer).filter(pk__in=ids).values_list("pk", flat=True))
-        return ", ".join(
-            n if n[5:].isdecimal() and int(n[5:]) in seen else "볼 수 없는 태스크" for n in nums
-        )
+    if field in ("group", "split"):  # 못 보는 번호는 history_rows가 이미 가렸다(R5)
+        return raw.replace(",", ", ")
     if field == "owners":
         names = [u.display_name for u in User.objects.filter(pk__in=raw.split(","))]
         return ", ".join(names) or raw
@@ -255,16 +249,20 @@ def _display(field, raw: str, viewer=None) -> str:
 
 def history_rows(logs, viewer=None) -> list[dict]:
     """ChangeLog → 패널 표시용. 최신이 먼저. viewer가 있으면 못 보는 연결 프로젝트 이름을 숨긴다."""
+    logs = list(logs)
+    hidden = hidden_task_refs(logs, viewer) if viewer is not None else set()
     rows = []
     for log in logs:
-        to = _display(log.field, log.new_value, viewer)
+        to = _display(log.field, mask_task_refs(log.field, log.new_value, hidden), viewer)
         if log.note:
             to += f" ({log.note})"
         at = timezone.localtime(log.created_at)
         rows.append(
             {
                 "field": FIELD_LABELS.get(log.field, log.field),
-                "from": _display(log.field, log.old_value, viewer),
+                "from": _display(
+                    log.field, mask_task_refs(log.field, log.old_value, hidden), viewer
+                ),
                 "to": to,
                 "time": f"{at.month}월 {at.day}일 {at:%H:%M}",
                 # actor가 비면 GitHub 로그인(external_actor)이 대신 남아 있다 — 모델 주석 참고.

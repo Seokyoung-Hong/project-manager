@@ -179,7 +179,7 @@ def test_suggest_on_github_merge_actor_none(project, member):
     top = _t(project, member, "상위")
     sub = _sub(top, member)
     sub.refresh_from_db()
-    ts.transition(sub, "done", actor=None, source="github", expected_version=sub.version)
+    ts.transition(sub, "done", actor=None, source="gh", expected_version=sub.version)
     assert Notice.objects.filter(user=member).count() == 1
 
 

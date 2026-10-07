@@ -28,6 +28,7 @@ from tasks import work_requests as wr
 from tasks.brief import task_brief
 from tasks.models import Task
 from tasks.services import (
+    attach_group_visible,
     by_due,
     create_task,
     extend_due,
@@ -108,6 +109,7 @@ def today(request, payload: DiscordActorIn):
     """식별자를 쿼리 문자열에 싣지 않으려고 GET이 아니라 POST다."""
     actor = _actor(payload.discord_user_id)
     view = today_view(actor)
+    attach_group_visible(view["items"], actor)
     return {
         "display_name": actor.display_name,
         "date": view["date"].isoformat(),
@@ -232,9 +234,9 @@ def org_deadlines(request, org_id: int, date: date):
     org = Organization.objects.filter(pk=org_id).first()
     if org is None:
         raise HttpError(404, "조직을 찾을 수 없습니다.")
-    return [
-        {**task_brief(t), "alert_kind": kind} for t, kind in org_discord.deadline_alerts(org, date)
-    ]
+    alerts = org_discord.deadline_alerts(org, date)
+    attach_group_visible([t for t, _ in alerts])  # 봇: 상위가 공개 범위일 때만 ↳(R5)
+    return [{**task_brief(t), "alert_kind": kind} for t, kind in alerts]
 
 
 @router.get("/projects/{int:project_id}/owners", response=list[dict])
@@ -311,7 +313,7 @@ def mytasks(request, payload: DiscordActorIn):
     qs = visible_tasks(actor).filter(
         assignee=actor, status__in=Task.OPEN, project__is_archived=False
     )
-    return [task_brief(t) for t in sorted(qs, key=by_due)]
+    return [task_brief(t) for t in attach_group_visible(sorted(qs, key=by_due), actor)]
 
 
 @router.post("/tasks", response=dict)
