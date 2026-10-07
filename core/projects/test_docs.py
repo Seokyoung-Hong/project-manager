@@ -342,12 +342,12 @@ def test_api_ai_cannot_delete(client, org, member):
 
 
 @pytest.mark.django_db(transaction=True)
-def test_migration_0012_keeps_project_docs():
+def test_migration_0012_keeps_project_docs(pg_flushable):
     from django.db import connection
     from django.db.migrations.executor import MigrationExecutor
 
     before = [("projects", "0011_milestone_gh_number")]
-    after = [("projects", "0012_doc")]
+    after = [("projects", "0015_doc_seed")]
     ex = MigrationExecutor(connection)
     ex.migrate(before)
     old = ex.loader.project_state(before).apps

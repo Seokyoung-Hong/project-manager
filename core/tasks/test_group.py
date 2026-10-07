@@ -338,7 +338,7 @@ def test_stats_query_count_does_not_grow(org, project, member):
 
 
 def test_runpython_converts_old_split(project, member):
-    mig = importlib.import_module("tasks.migrations.0012_task_group")
+    mig = importlib.import_module("tasks.migrations.0013_task_group_data")
     top = _t(project, member, "원본")
     olds = [_t(project, member, f"사람{i}") for i in range(2)]
     Task.objects.filter(pk__in=[o.pk for o in olds]).update(parent=top)

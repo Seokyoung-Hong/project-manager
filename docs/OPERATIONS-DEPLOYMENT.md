@@ -68,6 +68,26 @@ Discord 슬래시 명령 `/프로젝트채널`도 `기존채널` 옵션으로 �
 - **소유 검증 이전에 저장된 GitHub 설치**: 설치 소유 검증(`643b35c`) 전에는 남의 설치 번호를 조직에 붙일 수 있었다. 그 배포 시각 이전 행을 뽑아 각 조직 관리자에게 GitHub 쪽 설치 주인이 맞는지 확인받고, 아니면 웹에서 연결을 해제한다.
   `from github.models import GitHubInstallation as G; print(list(G.objects.filter(installed_at__lt="<소유 검증 배포 시각, 예: 2026-10-05T00:00+09:00>").values_list("org__name", "account_login", "account_type", "installed_by__username")))`
 - **프로젝트 밖 문서 연결**: 태스크를 다른 프로젝트로 옮기면 예전 프로젝트의 문서 연결이 남았을 수 있다. 0건이어야 한다. 있으면 해당 연결을 웹에서 해제한다.
-  `from django.db.models import F; from projects.models import ProjectDoc; print(list(ProjectDoc.tasks.through.objects.exclude(task__project_id=F("projectdoc__project_id")).values_list("projectdoc_id", "task_id")))`
+  `from django.db.models import F; from projects.models import Doc; print(list(Doc.tasks.through.objects.filter(doc__kind="doc", doc__project__isnull=False).exclude(task__project_id=F("doc__project_id")).values_list("doc_id", "task_id")))`
+  (라운드 11에서 `ProjectDoc`은 `Doc`이 됐다. 조직·팀 문서와 회의록은 다른 프로젝트 태스크에도 걸 수 있으므로 프로젝트 문서만 본다.)
 
 - **Django 관리 화면 스위치**: `DJANGO_ADMIN_ENABLED`(기본 `1`)를 `0`으로 두면 `/admin/`이 404가 된다. 켜 두면 최고 운영자만 들어가고 접근은 감사 기록에 남는다.
+
+## 라운드 11·12 배포 (문서·회의록 통합, 다중 프로젝트, 하위 태스크)
+
+이 라운드의 마이그레이션은 기존 데이터를 옮긴다(`ProjectDoc` → `Doc`, 회의록 → `Doc(kind="meeting")`, S1 나누기 → 하위 태스크).
+데이터 이전(RunPython)은 스키마 변경과 **다른 마이그레이션**에 둔다 — Postgres에서 같은 트랜잭션의 INSERT·UPDATE 뒤에
+DDL을 하면 지연 FK 트리거 때문에 `pending trigger events`로 실패한다(SQLite 테스트는 못 잡는다).
+
+- **배포 전 리허설**: `scripts/pg-migrate-rehearsal.sh`(Docker 필요). 임시 Postgres에 라운드 시작 상태(조직·프로젝트·
+  `ProjectDoc`·`MeetingNote`·녹음·태스크 연결·첨부·S1 나누기 이력)를 만들고 HEAD까지 migrate한 뒤 데이터 보존을 확인한다.
+- **사전 점검(읽기)**: `select count(*) from notes_meetingnote where project_id is not null and team_id is not null` — 0이어야 한다.
+  있으면 `notes 0005`가 아무것도 바꾸지 않고 멈춘다(프로젝트 ∩ 팀 제한을 새 모델이 표현하지 못한다). 관리자가 회의록마다
+  프로젝트나 팀 하나를 비운 뒤 다시 배포한다. 대조용으로 `notes_meetingnote`·`projects_projectdoc`·`notes_voicerecording`·
+  `orgs_organization` 행 수를 적어 둔다.
+- **순서**: `scripts/backup.sh` → `scripts/restore-test.sh`가 `OK` → 코드 받기 → `docker compose build web` → `docker compose up -d`
+  (entrypoint가 migrate). migrate가 실패하면 재시도하지 말고 백업에서 복구한다.
+- **직후 확인(읽기)**: `showmigrations` 미적용 0 / `Doc(kind="meeting", is_template=False)` 수 = 적어 둔 회의록 수 /
+  `DocRevision` 수 = 템플릿이 아닌 `Doc` 수 / 조직마다 템플릿 2개 / `VoiceRecording.objects.filter(note__isnull=True)` 0.
+- **역방향 `migrate`는 쓰지 않는다.** `migrate projects 0011` 같은 명령은 거부되기 전에 다른 앱의 이번 라운드 마이그레이션
+  (예: `Task.group`)을 먼저 되돌린다. **되돌리기 = 백업 복구**(`docs/BACKUP.md`).

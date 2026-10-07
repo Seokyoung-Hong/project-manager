@@ -11,12 +11,12 @@ from orgs.models import Organization, Team
 from projects.models import Project
 
 BEFORE = [("notes", "0003_voice_recording")]
-AFTER = [("notes", "0004_merge_into_doc")]
+AFTER = [("notes", "0006_merge_into_doc_cleanup")]
 T0 = datetime(2026, 9, 1, 3, 0, tzinfo=UTC)
 
 
 @pytest.mark.django_db(transaction=True)
-def test_meeting_notes_move_into_docs():
+def test_meeting_notes_move_into_docs(pg_flushable):
     ex = MigrationExecutor(connection)
     ex.migrate(BEFORE)
     old = ex.loader.project_state(BEFORE).apps

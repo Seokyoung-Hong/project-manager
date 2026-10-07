@@ -7,7 +7,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
     dependencies = [
         ("orgs", "0009_team_dev_tools_is_private"),
-        ("projects", "0012_doc"),
+        ("projects", "0015_doc_seed"),
     ]
 
     operations = [

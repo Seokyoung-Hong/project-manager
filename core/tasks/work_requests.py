@@ -262,7 +262,9 @@ def pending_assignee(task):
 
 def _lock_open(req, actor) -> WorkRequest:
     req = (
-        WorkRequest.objects.select_for_update()
+        WorkRequest.objects.select_for_update(
+            of=("self",)
+        )  # 빈 FK(team·task) 외부 조인은 PG가 못 잠근다
         .select_related("org", "team", "to_user", "requested_by", "task")
         .get(pk=req.pk)
     )
@@ -357,7 +359,7 @@ def cancel(req, actor, *, source: str = "web") -> WorkRequest:
 def complete(req, actor, note: str = "", *, source: str = "web") -> WorkRequest:
     """수락한 일반 요청을 끝낸다. 답한 사람(또는 받는 쪽 팀원)이 닫는다."""
     ts._ai_check(req.org, "ai.answer_request", "요청 완료", source, "request")
-    req = WorkRequest.objects.select_for_update().select_related("team").get(pk=req.pk)
+    req = WorkRequest.objects.select_for_update(of=("self",)).select_related("team").get(pk=req.pk)
     if req.kind != "general" or req.status != "accepted":
         raise ServiceError({"request": "수락한 일반 요청만 완료할 수 있습니다."})
     if not can_respond(actor, req):

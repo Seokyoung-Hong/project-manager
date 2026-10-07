@@ -7,7 +7,7 @@ from django.db import migrations, models
 
 class Migration(migrations.Migration):
     dependencies = [
-        ("projects", "0012_doc"),
+        ("projects", "0016_doc_scope_restrict"),
         ("tasks", "0010_taskproject_git_project"),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]

@@ -129,3 +129,16 @@ def api(client, write_token):
             return client.delete(url, headers=self._h(kw.pop("headers", None)), **kw)
 
     return Api()
+
+
+@pytest.fixture
+def pg_flushable():
+    """Postgres에서 transaction=True 테스트가 끝날 때 표를 TRUNCATE하는데, 감사 로그의 append-only 트리거
+    (ops 0001)가 이를 막는다. **테스트 DB에서만** 정리 직전에 끈다. SQLite에서는 아무것도 하지 않는다.
+    테스트 인자로 받으면 DB 정리보다 먼저 내려간다."""
+    from django.db import connection
+
+    yield
+    if connection.vendor == "postgresql":
+        with connection.cursor() as c:
+            c.execute("ALTER TABLE ops_opsauditlog DISABLE TRIGGER ops_audit_no_truncate")

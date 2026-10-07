@@ -5,32 +5,9 @@ from django.conf import settings
 from django.db import migrations, models
 
 
-def split_to_subtasks(apps, schema_editor):
-    """안전망(IMPL-PLAN-12 §2.2, 멱등): S1 '사람별로 나누기'가 계열(parent)로 묶은 태스크를 하위(group)로
-    바꾸고, 원본 체크리스트가 전부 'TASK-n …' 꼴이면(S1이 바꿔 놓은 것) 지운다. 운영은 S1 이전이라 보통 0건."""
-    Task = apps.get_model("tasks", "Task")
-    ChangeLog = apps.get_model("tasks", "ChangeLog")
-    ChecklistItem = apps.get_model("tasks", "ChecklistItem")
-    for log in ChangeLog.objects.filter(target_type="task", field="split"):
-        top = Task.objects.filter(pk=log.target_id, group__isnull=True, is_template=False).first()
-        if top is None:
-            continue
-        ids = [
-            int(n[5:])
-            for n in log.new_value.split(",")
-            if n.startswith("TASK-") and n[5:].isdigit()
-        ]
-        Task.objects.filter(pk__in=ids, project_id=top.project_id, is_template=False).exclude(
-            pk=top.pk
-        ).update(group=top, parent=None)
-        items = ChecklistItem.objects.filter(task=top)
-        if items.exists() and not items.exclude(text__startswith="TASK-").exists():
-            items.delete()
-
-
 class Migration(migrations.Migration):
     dependencies = [
-        ("projects", "0012_doc"),
+        ("projects", "0016_doc_scope_restrict"),
         ("tasks", "0011_attachment_doc"),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
@@ -70,5 +47,4 @@ class Migration(migrations.Migration):
                 name="task_template_no_group",
             ),
         ),
-        migrations.RunPython(split_to_subtasks, migrations.RunPython.noop),
     ]
