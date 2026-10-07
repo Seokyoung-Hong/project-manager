@@ -96,8 +96,8 @@ api.add_router("/", me.router)
 api.add_router("/", settings.router)
 api.add_router("/orgs", orgs.router)
 api.add_router("/projects", projects.router)
-# /api/docs는 Ninja의 Swagger UI가 이미 쓴다. 겹치면 문서 목록이 로그인 화면으로 넘어간다.
-api.add_router("/project-docs", docs.router)
+# /api/docs는 Ninja의 Swagger UI가 이미 쓴다. 문서 라우터는 /project-docs·/orgs/{id}/docs를 직접 적는다.
+api.add_router("/", docs.router)
 api.add_router("/tasks", tasks.router)
 api.add_router("/tasks", decisions.router)
 api.add_router("/tasks", pr_context.router)

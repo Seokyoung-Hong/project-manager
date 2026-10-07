@@ -180,13 +180,14 @@ def _check_parent(org, actor, parent, kind):
 
 
 def _record_revision(doc, actor, source, *, force_new=False):
-    """같은 사람·10분 안이면 마지막 행을 덮어쓴다. 문서마다 50개까지."""
+    """같은 사람·10분 안이면 마지막 행을 덮어쓴다(첫 버전 제외). 문서마다 50개까지."""
     now = timezone.now()
     last = doc.revisions.first()
     fields = dict(version=doc.version, title=doc.title, body_md=doc.body_md, saved_at=now)
     if (
         not force_new
         and last is not None
+        and last.version > 1  # 처음 만든 상태(가져온 본문·템플릿)는 덮어쓰지 않는다
         and last.saved_by_id == actor.pk
         and now - last.saved_at < REVISION_WINDOW
     ):
@@ -440,8 +441,9 @@ def backlinks(doc, viewer) -> dict:
     return {"docs": docs, "tasks": tasks}
 
 
-def search_docs(user, q: str, org=None, kind=None):
-    qs = visible_docs(user, org).filter(is_template=False)
+def search_docs(user, q: str, org=None, kind=None, template=False):
+    """제목·본문 검색. 템플릿은 template=True일 때만(그때는 템플릿만)."""
+    qs = visible_docs(user, org).filter(is_template=template)
     if kind:
         qs = qs.filter(kind=kind)
     q = (q or "").strip()

@@ -99,6 +99,10 @@ def test_needs_table_covers_every_tool():
         "get_doc",
         "create_doc",
         "update_doc",
+        "list_doc_revisions",
+        "revert_doc",
+        "move_doc",
+        "import_docs",
         "search",
         "fetch",
     }
