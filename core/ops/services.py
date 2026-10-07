@@ -45,7 +45,7 @@ def _check_detail(d) -> None:
 
 
 def audit(request, action, *, target=None, target_type="", target_label="", reason="", detail=None):
-    """한 줄로 남긴다. request가 없으면(관리 명령) actor=None·actor_username="system"."""
+    """한 줄로 남긴다. request가 없으면(관리 명령) actor 없음(None)·actor_username="system"."""
     detail = detail or {}
     _check_detail(detail)
     user = getattr(request, "user", None) if request else None
