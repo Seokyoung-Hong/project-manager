@@ -396,7 +396,7 @@ def list_tasks(
 def get_task(task_id: int, include_history: bool = False) -> dict:
     """태스크 상세: 설명, 완료 조건, 다음 행동, 진행 메모, 체크리스트, 연결 문서·GitHub 이슈, version,
     연결 프로젝트(linked_projects: id·name·status active|pending)와 연동 프로젝트(git_project_id).
-    상위 태스크(group: 볼 수 있을 때만, group_id는 항상)와 하위 태스크(subtasks, subtask_done/subtask_total 진행률).
+    상위 태스크(group·group_id: 볼 수 있을 때만, 못 보면 null)와 하위 태스크(subtasks, subtask_done/subtask_total 진행률).
     include_history면 변경 이력 포함."""
     core = _core()
     task = core.get(f"/api/tasks/{task_id}")
