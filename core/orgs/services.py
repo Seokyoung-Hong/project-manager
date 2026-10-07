@@ -331,6 +331,15 @@ def delete_team(team, *, actor, source: str = "web"):
     _check_ai_delete(team.org, source)
     from tasks.models import ChangeLog
 
+    # 팀 문서는 범위가 비면 조직 전체 공개가 된다. 팀 삭제는 되돌릴 수 있는 일로 두고 싶으므로
+    # 문서를 지우지 않고, 먼저 옮기라고 거절한다(Sol R2). Doc.team은 RESTRICT라 DB도 막는다.
+    n = team.docs.count()
+    if n:
+        raise ServiceError(
+            {
+                "team": f"이 팀 범위의 문서·회의록 {n}개가 있습니다. 다른 공개 범위로 옮기거나 지운 뒤에 팀을 삭제해 주세요."
+            }
+        )
     ChangeLog.objects.create(
         target_type="org",
         target_id=team.org_id,

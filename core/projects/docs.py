@@ -396,12 +396,49 @@ def link_task(doc, task, actor, *, as_output=False):
         raise ServiceError({"task": "같은 조직의 태스크여야 합니다."})
     if doc.project_id is not None and task.project_id != doc.project_id:
         raise ServiceError({"task": "같은 프로젝트의 태스크여야 합니다."})
+    if as_output and not _all_task_viewers_see(doc, task):
+        raise ServiceError(
+            {
+                "as_output": "이 태스크의 열람자 중 이 문서를 볼 수 없는 사람이 있어 산출물로 걸 수 없습니다. "
+                "참고 문서로만 연결해 주세요."
+            }
+        )
     doc.tasks.add(task)
     if as_output:
         # 내부 문서를 산출물로: "산출물" 링크 하나로 남겨 파일·외부 링크와 같은 목록에 보인다.
+        # 링크 제목은 태스크 열람자 모두에게 보이므로 위에서 문서 열람 범위가 태스크를 덮는지 먼저 본다.
         from tasks.services import add_link
 
         add_link(actor=actor, task=task, title=doc.title, url=doc_url(doc), kind="out")
+
+
+def _all_task_viewers_see(doc, task) -> bool:
+    """태스크를 볼 수 있는 사람이 모두 이 문서를 보는가(보수적으로).
+
+    조직 전체 확정 문서이거나, 주 프로젝트 문서이면서 연결 프로젝트(승인 대기 포함)가 없을 때만 참이다.
+    """
+    from tasks.models import TaskProject
+
+    if doc.status != "final" or doc.team_id is not None:
+        return False
+    if doc.project_id is None:
+        return True
+    return doc.project_id == task.project_id and not TaskProject.objects.filter(task=task).exists()
+
+
+def task_docs(task, viewer):
+    """태스크에 걸린 문서 중 viewer가 볼 수 있는 것. 태스크 응답·패널은 전부 이것만 쓴다."""
+    return visible_docs(viewer).filter(kind="doc", tasks=task)
+
+
+def task_doc_choices(task, viewer):
+    """태스크에 걸 수 있는 문서 후보(viewer가 볼 수 있는 것만): 주 프로젝트 문서 + 프로젝트 없는 문서."""
+    return (
+        visible_docs(viewer, task.project.org)
+        .filter(kind="doc", is_template=False)
+        .filter(Q(project=task.project_id) | Q(project__isnull=True))
+        .exclude(tasks=task)
+    )
 
 
 def unlink_task(doc, task, actor):
@@ -607,6 +644,70 @@ def _rewrite_links(body: str, here: str, ids: dict[str, int]) -> tuple[str, int]
     return _MD_LINK.sub(sub, body), images
 
 
+def _size(data) -> int:
+    return len(data) if isinstance(data, bytes | bytearray) else data.size
+
+
+def _read_capped(fh, limit: int, name: str) -> bytes:
+    """limit+1바이트까지만 읽는다. 헤더의 크기를 믿지 않는다(ZIP file_size는 위조할 수 있다)."""
+    raw = fh.read(limit + 1)
+    if len(raw) > limit:
+        raise ServiceError({"file": f"{name}: 파일이 너무 큽니다 (256KB 상한)."})
+    return raw
+
+
+def _read_import_files(files) -> list[tuple[str, bytes]]:
+    """가져올 md를 읽는다. 상한은 전부 본문을 읽기 전에 메타데이터로 먼저 본다(Sol R9).
+
+    1) 압축 입력: 요청 전체 업로드 크기 ≤ ZIP_MAX_TOTAL.
+    2) 메타데이터: 요청 전체 md 수 ≤ ZIP_MAX_FILES, 풀린 크기 합 ≤ ZIP_MAX_TOTAL, 하나 ≤ MAX_BODY.
+    3) 읽기: 하나씩 MAX_BODY+1까지만 스트리밍으로 읽고, 실제로 읽은 합도 다시 센다.
+    """
+    if sum(_size(d) for _, d in files) > ZIP_MAX_TOTAL:
+        raise ServiceError({"file": "올린 파일이 너무 큽니다 (한 번에 20MB 상한)."})
+    plan = []  # (이름, 읽기 함수, 헤더 크기)
+    for name, data in files:
+        if name.lower().endswith(".zip"):
+            try:
+                zf = zipfile.ZipFile(
+                    io.BytesIO(data) if isinstance(data, bytes | bytearray) else data
+                )
+            except zipfile.BadZipFile:
+                raise ServiceError({"file": f"{name}: ZIP 파일을 읽지 못했습니다."}) from None
+            for i in zf.infolist():
+                if (
+                    i.is_dir()
+                    or not i.filename.lower().endswith((".md", ".markdown"))
+                    or i.filename.startswith("__MACOSX/")
+                ):
+                    continue
+                plan.append((i.filename, lambda zf=zf, i=i: zf.open(i), i.file_size))
+        else:
+            if isinstance(data, bytes | bytearray):
+                plan.append((name, lambda data=data: io.BytesIO(data), len(data)))
+            else:
+                plan.append((name, lambda data=data: data.open("rb"), data.size))
+    if not plan:
+        raise ServiceError({"file": ".md 파일이 없습니다."})
+    if len(plan) > ZIP_MAX_FILES:
+        raise ServiceError({"file": f"한 번에 {ZIP_MAX_FILES}개까지 가져옵니다."})
+    if sum(size for _, _, size in plan) > ZIP_MAX_TOTAL:
+        raise ServiceError({"file": "가져올 문서가 너무 큽니다 (풀린 크기 합 20MB 상한)."})
+    for name, _, size in plan:
+        if size > MAX_BODY:
+            raise ServiceError({"file": f"{name}: 파일이 너무 큽니다 (256KB 상한)."})
+
+    out, total = [], 0
+    for name, opener, _ in plan:
+        with opener() as fh:
+            raw = _read_capped(fh, MAX_BODY, name)
+        total += len(raw)
+        if total > ZIP_MAX_TOTAL:
+            raise ServiceError({"file": "가져올 문서가 너무 큽니다 (풀린 크기 합 20MB 상한)."})
+        out.append((name, raw))
+    return out
+
+
 @transaction.atomic
 def import_md(*, org, actor, files, project=None, team=None, parent=None, source="web") -> dict:
     """여러 `.md`(또는 그것을 담은 ZIP)를 한 번에 문서로 만든다. Notion 내보내기도 이 길로 온다.
@@ -614,33 +715,11 @@ def import_md(*, org, actor, files, project=None, team=None, parent=None, source
     - 폴더가 트리가 된다: `a.md`와 `a/` 폴더가 있으면 폴더 안이 a의 하위 문서. md 없는 폴더는 빈 문서.
     - 맨 위 문서는 주어진 범위(project·team) 또는 parent 아래. 하위는 부모를 따른다.
     - 같은 것을 다시 올리면 건너뛴다(Notion id, 없으면 경로+본문 해시). 건너뛴 문서 아래로는 이어 붙인다.
-    files: [(파일 이름, bytes)]. 결과: {"created": [Doc], "skipped": [제목], "images": n}
+    files: [(파일 이름, bytes 또는 업로드 파일)]. 결과: {"created": [Doc], "skipped": [제목], "images": n}
     """
     import hashlib
 
-    raw_entries: list[tuple[str, bytes]] = []
-    for name, raw in files:
-        if name.lower().endswith(".zip"):
-            try:
-                zf = zipfile.ZipFile(io.BytesIO(raw))
-            except zipfile.BadZipFile:
-                raise ServiceError({"file": f"{name}: ZIP 파일을 읽지 못했습니다."}) from None
-            infos = [
-                i
-                for i in zf.infolist()
-                if not i.is_dir()
-                and i.filename.lower().endswith((".md", ".markdown"))
-                and not i.filename.startswith("__MACOSX/")
-            ]
-            if sum(i.file_size for i in infos) > ZIP_MAX_TOTAL:
-                raise ServiceError({"file": "ZIP이 너무 큽니다 (풀린 크기 20MB 상한)."})
-            raw_entries += [(i.filename, zf.read(i)) for i in infos]
-        else:
-            raw_entries.append((name, raw))
-    if not raw_entries:
-        raise ServiceError({"file": ".md 파일이 없습니다."})
-    if len(raw_entries) > ZIP_MAX_FILES:
-        raise ServiceError({"file": f"한 번에 {ZIP_MAX_FILES}개까지 가져옵니다."})
+    raw_entries = _read_import_files(files)
 
     # 경로(id·확장자 뗀 것) → (원래 경로, 제목, 본문, 키)
     items: dict[str, tuple[str, str, str, str]] = {}

@@ -58,15 +58,15 @@ def test_meeting_notes_move_into_docs():
             host_id=guest.pk,
             transcript_md="안녕",
         )
-        # 공개 범위가 둘 다인 옛 행: 공개 프로젝트면 프로젝트를, 비공개 프로젝트면 팀을 뗀다.
-        Note.objects.create(
+        # 공개 범위가 둘 다인 옛 행(프로젝트 ∩ 팀). 이전은 이런 행이 있으면 아무것도 바꾸지 않고 멈춘다.
+        n2 = Note.objects.create(
             org_id=org.pk,
             project_id=open_p.pk,
             team_id=team.pk,
             title="둘 다",
             created_by_id=host.pk,
         )
-        Note.objects.create(
+        n3 = Note.objects.create(
             org_id=org.pk,
             project_id=closed_p.pk,
             team_id=team.pk,
@@ -74,6 +74,14 @@ def test_meeting_notes_move_into_docs():
             created_by_id=host.pk,
         )
 
+        with pytest.raises(RuntimeError, match="둘 다 지정된 회의록이 2건"):
+            MigrationExecutor(connection).migrate(AFTER)
+        assert MigrationExecutor(connection).loader.applied_migrations.get(AFTER[0]) is None
+        assert Note.objects.count() == 3  # 아무것도 바뀌지 않았다
+
+        # 관리자 결정: n2는 팀만, n3는 프로젝트만 남긴다. 그 뒤에는 그대로 옮겨진다.
+        Note.objects.filter(pk=n2.pk).update(project=None)
+        Note.objects.filter(pk=n3.pk).update(team=None)
         ex = MigrationExecutor(connection)
         ex.migrate(AFTER)
         from notes.models import MeetingNote, VoiceRecording

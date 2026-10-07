@@ -380,12 +380,19 @@ def delete_project(project, *, actor, source: str = "web"):
     from tasks.attachments import purge_files
     from tasks.models import Attachment
 
+    from .models import Doc
+
     purge_files(
-        Attachment.objects.filter(Q(project=project) | Q(task__project=project))
+        Attachment.objects.filter(
+            Q(project=project) | Q(task__project=project) | Q(doc__project=project)
+        )
     )  # 행은 CASCADE로 지워지고, 파일은 커밋 뒤에 지운다
+    # 문서(회의록 포함)·이전 버전·문서 첨부도 함께 지운다. Doc.project는 RESTRICT라 남겨 두면
+    # 프로젝트 삭제가 막히고, SET_NULL이면 비공개 문서가 조직 전체 공개로 바뀐다(Sol R2).
+    Doc.objects.filter(project=project).delete()
     # Task.project는 PROTECT라 먼저 지운다. 체크리스트·오늘 목록·태스크 링크는 CASCADE.
     Task.objects.filter(project=project).delete()
-    project.delete()  # 마일스톤·문서·API 스펙·의존성·저장소 연결은 CASCADE
+    project.delete()  # 마일스톤·API 스펙·의존성·저장소 연결은 CASCADE
 
 
 def _display_or_default(key: str, value, org=None) -> str:

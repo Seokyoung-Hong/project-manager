@@ -18,7 +18,9 @@ from ..schemas import ErrorOut
 router = Router(tags=["notes"])
 
 
-def note_out(n, *, body: bool = True, transcript: bool = False) -> dict:
+def note_out(n, *, viewer, body: bool = True, transcript: bool = False) -> dict:
+    from .docs import visible_task_ids
+
     rec = getattr(n, "recording", None)
     out = {
         "id": n.pk,
@@ -34,7 +36,7 @@ def note_out(n, *, body: bool = True, transcript: bool = False) -> dict:
         "tags": n.tags,
         "version": n.version,
         "updated_at": n.updated_at,
-        "task_ids": [t.pk for t in n.tasks.all()],
+        "task_ids": visible_task_ids(n, viewer),
         "attendees": [{"id": u.pk, "display_name": u.display_name} for u in n.attendees.all()],
         "recording": None
         if rec is None
@@ -80,13 +82,13 @@ def list_notes(request, org_id: int, status: str | None = None, project: int | N
         qs = qs.filter(status=status)
     if project is not None:
         qs = qs.filter(project_id=project)
-    return {"items": [note_out(n, body=False) for n in qs[:200]]}
+    return {"items": [note_out(n, body=False, viewer=request.auth) for n in qs[:200]]}
 
 
 @router.get("/notes/{note_id}", response=dict)
 def get_note(request, note_id: int, transcript: bool = False):
     """본문까지. transcript=1이면 전사문·통계·참여자를 함께 준다."""
-    return note_out(_note_or_404(request, note_id), transcript=transcript)
+    return note_out(_note_or_404(request, note_id), viewer=request.auth, transcript=transcript)
 
 
 class NotePatchIn(Schema):
@@ -116,7 +118,7 @@ def patch_note(request, note_id: int, payload: NotePatchIn):
         if task is None:
             raise HttpError(404, "태스크를 찾을 수 없습니다.")
         ns.link_task(n, task, c["actor"], source=c["source"])
-    return note_out(_note_or_404(request, note_id))
+    return note_out(_note_or_404(request, note_id), viewer=request.auth)
 
 
 class FinalizeIn(Schema):
@@ -139,4 +141,4 @@ def finalize_note(request, note_id: int, payload: FinalizeIn):
         if team is None:
             raise HttpError(404, "팀을 찾을 수 없습니다.")
     ns.finalize_note(n, actor=c["actor"], source=c["source"], project=project, team=team)
-    return note_out(_note_or_404(request, note_id))
+    return note_out(_note_or_404(request, note_id), viewer=request.auth)
