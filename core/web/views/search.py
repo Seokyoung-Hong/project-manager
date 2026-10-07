@@ -1,6 +1,7 @@
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import render
 
+from projects.docs import search_docs
 from tasks import services as ts
 
 from .common import rows_for
@@ -14,6 +15,12 @@ def search(request):
     results = list(
         ts.search(request.user, q, include_closed=include_closed, include_archived=include_archived)
     )
+    # 문서·회의록은 제목·본문 검색(볼 수 있는 것만). 검색어가 없으면 내지 않는다.
+    found = (
+        list(search_docs(request.user, q).select_related("org", "project")[:60])
+        if q.strip()
+        else []
+    )
     return render(
         request,
         "search.html",
@@ -23,5 +30,7 @@ def search(request):
             "rows": rows_for(request.user, results),
             "include_closed": include_closed,
             "include_archived": include_archived,
+            "docs": [d for d in found if d.kind == "doc"],
+            "meetings": [d for d in found if d.kind == "meeting"],
         },
     )

@@ -8,8 +8,9 @@ from django.urls import reverse
 from django.views.decorators.http import require_POST
 
 from common.dates import KST
-from common.errors import ConflictError, ServiceError
+from common.errors import ConflictError, Forbidden, ServiceError
 from notes import services as ts_notes
+from orgs.services import visible_teams
 from projects.services import visible_projects
 
 from .common import (
@@ -69,10 +70,20 @@ def org_notes(request, org_id):
     for g in groups:
         g["hint"] = f"{len(g['items'])}건"
 
+    extras = {}
+    if note is not None:
+        from .docs import extras_ctx
+
+        extras = extras_ctx(request.user, note)
+        extras["here"] = request.get_full_path()
+        extras["recording"] = getattr(note, "recording", None)
+        extras["can_finalize"] = note.status == "draft" and ts_notes._is_owner(note, request.user)
+        extras["teams"] = visible_teams(request.user, org).order_by("name")
     return render(
         request,
         "notes/list.html",
         {
+            **extras,
             "org": org,
             "tab": "notes",
             "is_admin": can_admin(request.user, org),
@@ -197,3 +208,24 @@ def task_note_unlink(request, task_id, note_id):
     note = _note_or_404(request.user, note_id)
     ts_notes.unlink_task(note, task, request.user)
     return _refs(request, task)
+
+
+@login_required
+@require_POST
+def note_finalize(request, note_id):
+    """초안 확정(IMPL-PLAN-9 M4의 확정 화면). 공개 범위: 조직 공통 | p<id> | t<id>."""
+    note = _note_or_404(request.user, note_id)
+    raw = request.POST.get("scope", "")
+    project = team = None
+    if raw[:1] == "p" and raw[1:].isdecimal():
+        project = project_or_404(request.user, raw[1:])
+    elif raw[:1] == "t" and raw[1:].isdecimal():
+        team = visible_teams(request.user, note.org).filter(pk=int(raw[1:])).first()
+        if team is None:
+            raise Http404
+    try:
+        ts_notes.finalize_note(note, actor=request.user, source="web", project=project, team=team)
+        messages.success(request, "회의록을 확정했습니다. 고른 공개 범위의 사람이 볼 수 있습니다.")
+    except (ServiceError, Forbidden) as e:
+        messages.error(request, "확정하지 못했습니다. " + " ".join(e.errors.values()))
+    return redirect(f"{reverse('org_notes', args=[note.org_id])}?note={note.pk}")

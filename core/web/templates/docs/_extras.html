@@ -1,0 +1,73 @@
+{# 편집기 아래 묶음: 이전 버전 · 연결 · 파일. 문서와 회의록 화면이 같이 쓴다. 필요: doc, here, revisions, backlinks, linked_tasks, attachments #}
+<div class="doc-extras">
+  <details>
+    <summary>이전 버전 <span class="muted">{{ revisions|length }}</span></summary>
+    <p class="t13 muted">같은 사람이 10분 안에 이어서 고친 것은 한 버전으로 묶습니다. 문서마다 최근 50개를 남깁니다.</p>
+    <div class="table-scroll">
+      <table class="grid">
+        <thead><tr><th class="num">버전</th><th>저장한 사람</th><th>시각</th><th>본문</th><th></th></tr></thead>
+        <tbody>
+        {% for r in revisions %}
+        <tr>
+          <td class="num">v{{ r.version }}</td>
+          <td>{% if r.saved_by %}{{ r.saved_by.display_name }}{% else %}<span class="muted">알 수 없음</span>{% endif %}{% if r.source != "web" %} <span class="badge">{{ r.get_source_display }}</span>{% endif %}</td>
+          <td class="t13">{{ r.saved_at|date:"Y-n-j H:i" }}</td>
+          <td><details><summary class="t13">미리보기</summary><pre class="revision-body">{{ r.body_md }}</pre></details></td>
+          <td>{% if r.version != doc.version %}
+            <form method="post" action="{% url 'doc_revert' doc.pk %}" onsubmit="return confirm('v{{ r.version }}의 제목과 본문으로 되돌릴까요? 지금 내용도 이전 버전으로 남습니다.')">{% csrf_token %}
+              <input type="hidden" name="revision" value="{{ r.pk }}"><input type="hidden" name="version" value="{{ doc.version }}"><input type="hidden" name="next" value="{{ here }}">
+              <button class="btn sm">이 버전으로 되돌리기</button>
+            </form>{% else %}<span class="badge ok">지금 버전</span>{% endif %}</td>
+        </tr>
+        {% empty %}<tr><td class="empty-cell" colspan="5">이전 버전이 없습니다.</td></tr>{% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </details>
+
+  <details>
+    <summary>연결 <span class="muted">{{ linked_tasks|length }}</span> · 백링크 <span class="muted">{{ backlink_count }}</span></summary>
+    <div class="stack">
+      <div>
+        <span class="label">연결된 태스크</span>
+        <ul class="plain">
+          {% for t in linked_tasks %}
+          <li class="row"><a href="{% url 'task_detail' t.pk %}">{{ t.number }} {{ t.title }}</a>
+            <form method="post" action="{% url 'doc_task_unlink' doc.pk t.pk %}" onsubmit="return confirm('이 연결을 해제할까요? 태스크와 문서는 삭제되지 않습니다.')">{% csrf_token %}<input type="hidden" name="next" value="{{ here }}"><button class="btn link danger" aria-label="{{ t.number }} 연결 해제">연결 해제</button></form></li>
+          {% empty %}<li class="muted t13">연결된 태스크가 없습니다.</li>{% endfor %}
+        </ul>
+        <form class="row" method="post" action="{% url 'doc_task_link' doc.pk %}">{% csrf_token %}<input type="hidden" name="next" value="{{ here }}">
+          <input class="input auto" name="task" placeholder="TASK-12" aria-label="연결할 태스크 번호">
+          <button class="btn sm">태스크 연결</button>
+        </form>
+      </div>
+      <div>
+        <span class="label">백링크 — 이 문서를 가리키는 글</span>
+        <ul class="plain">
+          {% for d in backlinks.docs %}<li><a href="{% url 'doc_home' d.pk %}">{{ d.title }}</a>{% if d.kind == "meeting" %} <span class="badge">회의록</span>{% endif %}</li>{% endfor %}
+          {% for t in backlinks.tasks %}<li><a href="{% url 'task_detail' t.pk %}">{{ t.number }} {{ t.title }}</a></li>{% endfor %}
+          {% if not backlinks.docs and not backlinks.tasks %}<li class="muted t13">이 문서를 가리키는 글이 없습니다. 다른 글에 <code>/docs/{{ doc.pk }}</code> 링크를 넣으면 여기에 나옵니다.</li>{% endif %}
+        </ul>
+      </div>
+    </div>
+  </details>
+
+  <details>
+    <summary>파일 <span class="muted">{{ attachments|length }}</span></summary>
+    <ul class="plain">
+      {% for a in attachments %}
+      <li class="row">
+        <a href="{% url 'attachment_download' a.pk a.name %}" target="_blank" rel="noopener">{{ a.name }}</a>
+        <span class="muted t13">{{ a.size|filesizeformat }} · {{ a.created_by.display_name }}</span>
+        {% if a.content_type|slice:":6" == "image/" %}<button type="button" class="btn sm" data-insert-md="![{{ a.name }}]({% url 'attachment_download' a.pk a.name %})">본문에 넣기</button>{% endif %}
+        <form method="post" action="{% url 'attachment_delete' a.pk %}" onsubmit="return confirm('첨부 파일을 삭제할까요? 되돌릴 수 없습니다.')">{% csrf_token %}<button class="btn link danger">삭제</button></form>
+      </li>
+      {% empty %}<li class="muted t13">첨부한 파일이 없습니다.</li>{% endfor %}
+    </ul>
+    <form class="row" method="post" action="{% url 'doc_attachment_add' doc.pk %}" enctype="multipart/form-data">{% csrf_token %}<input type="hidden" name="next" value="{{ here }}">
+      <input class="input auto" type="file" name="file" aria-label="올릴 파일" required>
+      <button class="btn sm">파일 올리기</button>
+    </form>
+    <p class="t13 muted">이미지는 [본문에 넣기]로 본문 끝에 붙습니다. 파일 하나 25MB까지 올릴 수 있습니다.</p>
+  </details>
+</div>

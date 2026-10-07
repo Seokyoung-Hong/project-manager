@@ -3,7 +3,7 @@
 <div class="card">
   <h1 class="t24">검색</h1>
   <form method="get" class="stack">
-    <input class="input lg" name="q" value="{{ q }}" placeholder="예: TASK-121, 메뉴, 챗봇" aria-label="태스크 번호·제목·프로젝트 이름 검색" autofocus>
+    <input class="input lg" name="q" value="{{ q }}" placeholder="예: TASK-121, 메뉴, 설계 문서" aria-label="태스크·문서·회의록 검색" autofocus>
     <div class="row">
       <label class="check muted t13"><input type="checkbox" name="include_closed" value="1"{% if include_closed %} checked{% endif %}> 완료·취소 포함</label>
       <label class="check muted t13"><input type="checkbox" name="include_archived" value="1"{% if include_archived %} checked{% endif %}> 보관 포함</label>
@@ -11,8 +11,20 @@
     </div>
   </form>
 </div>
-<section class="card">
-  <h2>결과 <span class="muted">{{ count }}</span></h2>
-  <ul class="tasks">{% for r in rows %}{% task_row r %}{% empty %}<li class="empty">{% if q %}검색 결과가 없습니다. 위의 “완료·취소 포함”과 “보관 포함”을 켜고 다시 찾아보세요.{% else %}태스크 번호·제목·프로젝트 이름으로 검색하세요.{% endif %}</li>{% endfor %}</ul>
+<section class="card group-stack">
+  <div class="group">
+    <h2>태스크 <span class="muted">{{ count }}</span></h2>
+    <ul class="tasks">{% for r in rows %}{% task_row r %}{% empty %}<li class="empty">{% if q %}검색 결과가 없습니다. 위의 “완료·취소 포함”과 “보관 포함”을 켜고 다시 찾아보세요.{% else %}태스크 번호·제목·프로젝트 이름으로 검색하세요.{% endif %}</li>{% endfor %}</ul>
+  </div>
+  {% if q %}
+  <div class="group">
+    <h2>문서 <span class="muted">{{ docs|length }}</span></h2>
+    <ul class="plain-list">{% for d in docs %}<li><a href="{% url 'doc_home' d.pk %}">{{ d.title }}</a> <span class="muted t13">{% if d.project %}{{ d.project.name }}{% else %}{{ d.org.name }}{% endif %} · {{ d.updated_at|date:"n/j" }}</span></li>{% empty %}<li class="empty compact">제목·본문에 “{{ q }}”가 든 문서가 없습니다.</li>{% endfor %}</ul>
+  </div>
+  <div class="group">
+    <h2>회의록 <span class="muted">{{ meetings|length }}</span></h2>
+    <ul class="plain-list">{% for d in meetings %}<li><a href="{% url 'doc_home' d.pk %}">{{ d.title }}</a> <span class="muted t13">{{ d.created_on|date:"Y-n-j" }}{% if d.status == "draft" %} · 초안{% endif %}</span></li>{% empty %}<li class="empty compact">제목·본문에 “{{ q }}”가 든 회의록이 없습니다.</li>{% endfor %}</ul>
+  </div>
+  {% endif %}
 </section>
 {% endblock %}

@@ -850,6 +850,20 @@ details > summary { cursor: pointer; font-weight: 600; }
   transition: transform var(--dur-fast) var(--ease), box-shadow var(--dur-fast) var(--ease);
 }
 .note-item:hover { transform: translateY(-2px); box-shadow: var(--sh-2); }
+/* 문서 트리(IMPL-PLAN-11 D2). 하위 문서는 들여쓰고 접고 편다 */
+.doc-tree { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.doc-tree .doc-tree { padding-left: var(--sp-4); border-left: 1px solid var(--c-line); margin-left: var(--sp-2); }
+.doc-tree summary { display: flex; align-items: center; gap: var(--sp-2); font-weight: 400; }
+.doc-node { display: inline-flex; min-height: 32px; align-items: center; padding: 2px var(--sp-2); border-radius: var(--r-sm); color: var(--c-ink); text-decoration: none; }
+.doc-node.leaf { margin-left: var(--sp-4); }
+.doc-node:hover { background: var(--c-soft); }
+.doc-node.sel { background: var(--c-accent-soft); color: var(--c-accent); font-weight: 600; }
+.doc-path a { color: var(--c-muted); }
+.doc-extras { margin-top: var(--sp-4); display: flex; flex-direction: column; }
+.doc-extras > details { padding: var(--sp-3) 0; border-top: 1px solid var(--c-line); }
+.doc-extras > details > summary { min-height: 32px; display: flex; align-items: center; gap: var(--sp-2); }
+.plain-list, .doc-extras ul.plain { list-style: none; margin: var(--sp-2) 0; padding: 0; display: flex; flex-direction: column; gap: var(--sp-2); }
+.revision-body { white-space: pre-wrap; overflow-wrap: anywhere; max-height: 320px; overflow: auto; padding: var(--sp-3); background: var(--c-soft); border-radius: var(--r-sm); font-family: var(--f-mono); font-size: var(--fs-sm); }
 .note-item.sel { border-color: var(--c-accent); box-shadow: inset 4px 0 0 var(--c-accent); }
 .note-editor-card .doc, #doc-editor .doc { margin-top: var(--sp-2); padding-top: var(--sp-5); border-top: 1px solid var(--c-line); }
 .doc { display: flex; flex-direction: column; min-height: 360px; padding: var(--sp-2) 0; cursor: text; }

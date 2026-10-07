@@ -16,7 +16,7 @@ from .common import _pk_or_404, project_or_404, task_or_404
 def attachment_or_404(user, att_id) -> Attachment:
     """볼 수 없는 첨부는 있는지도 알리지 않는다(404)."""
     att = (
-        Attachment.objects.select_related("task__project__org", "project__org")
+        Attachment.objects.select_related("task__project__org", "project__org", "doc__org")
         .filter(pk=_pk_or_404(att_id))
         .first()
     )
@@ -86,7 +86,7 @@ def project_attachment_add(request, project_id):
 @require_POST
 def attachment_delete(request, att_id):
     att = attachment_or_404(request.user, att_id)
-    task = att.task
+    task, doc = att.task, att.doc
     try:
         at.delete_attachment(att, actor=request.user)
         error = None
@@ -98,6 +98,10 @@ def attachment_delete(request, att_id):
         return _refs(request, task, error=error)
     if error:
         messages.error(request, error)
+    if doc is not None:
+        from .docs import page_url
+
+        return redirect(page_url(doc))
     return redirect("project_docs", project_id=att.project_id)
 
 

@@ -709,6 +709,18 @@
       scope.classList.remove("note-returning");
     }
 
+    // 파일 묶음의 [본문에 넣기]: 첨부 이미지를 본문 끝 줄로 붙이고 저장한다.
+    if (!readonly) scope.addEventListener("click", function (e) {
+      var b = e.target.closest && e.target.closest("[data-insert-md]");
+      if (!b || !scope.contains(b)) return;
+      e.preventDefault();
+      if (lines.length && lines[lines.length - 1].trim() === "") lines[lines.length - 1] = b.dataset.insertMd;
+      else lines.push(b.dataset.insertMd);
+      editing = -1;
+      changed();
+      flash("본문 끝에 이미지를 넣었습니다.", "pending");
+    });
+
     var back = scope.querySelector(".note-back");
     if (back) back.addEventListener("click", function (e) {
       if (returning) { e.preventDefault(); return; }
