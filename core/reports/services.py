@@ -9,7 +9,8 @@ from orgs.models import Team, TeamMembership
 from orgs.services import visible_teams
 from projects.services import visible_projects
 from tasks.brief import task_brief, user_brief
-from tasks.models import ChangeLog, Task
+from tasks.models import ChangeLog, Task, TaskProject
+from tasks.services import tasks_visible_in
 
 
 def _projects(org, viewer):
@@ -20,12 +21,42 @@ def _projects(org, viewer):
 
 
 def _open_qs(org, viewer=None):
-    return Task.objects.filter(
-        project__in=_projects(org, viewer),
+    """조직 합계용 미완료. 태스크당 한 번 센다(연결 프로젝트가 여럿이어도) — tasks_visible_in."""
+    return tasks_visible_in(org, viewer).filter(
         project__is_archived=False,
         status__in=Task.OPEN,
         is_template=False,
     )
+
+
+STATS = {
+    "open": Q(status__in=Task.OPEN),
+    "review": Q(status="review"),
+    "blocked": Q(status="blocked"),
+    "done": Q(status="done"),
+    "total": ~Q(status="cancelled"),
+}
+
+
+def _per_project(pids, base, extra) -> dict:
+    """프로젝트별 집계 = 주 프로젝트 + 확정 연결(연결 태스크는 여러 프로젝트에 센다).
+    조인 곱을 피해 두 번 묶어 더한다. base는 Task 조건, extra는 {이름: Q}(태스크 기준)."""
+    aggs = {k: Count("id", filter=q) for k, q in extra.items()}
+    out = defaultdict(lambda: dict.fromkeys(extra, 0))
+    for key, qs in (
+        ("project_id", Task.objects.filter(base, project__in=pids)),
+        (
+            "project_links__project_id",
+            Task.objects.filter(
+                base, project_links__project__in=pids, project_links__status="active"
+            ),
+        ),
+    ):
+        for r in qs.values(key).order_by().annotate(**aggs):
+            row = out[r.pop(key)]
+            for k, v in r.items():
+                row[k] += v
+    return out
 
 
 def org_status(org, *, viewer=None) -> dict:
@@ -51,26 +82,19 @@ def org_status(org, *, viewer=None) -> dict:
         "overdue": open_qs.filter(is_overdue).count(),
         "due_this_week": open_qs.filter(due_date__gte=monday, due_date__lte=sunday).count(),
         "no_due": open_qs.filter(due_date__isnull=True).count(),
-        "done": Task.objects.filter(
-            project__in=shown_projects, project__is_archived=False, status="done"
-        ).count(),
+        "done": tasks_visible_in(org, viewer)
+        .filter(project__is_archived=False, status="done")
+        .count(),
     }
 
-    projects = (
-        shown_projects.filter(is_archived=False)
-        .prefetch_related("owners", "teams")
-        .annotate(
-            open_count=Count("tasks", filter=Q(tasks__status__in=Task.OPEN)),
-            overdue_count=Count(
-                "tasks",
-                filter=Q(tasks__status__in=Task.OPEN)
-                & overdue_q(live, due="tasks__due_date", project_id="pk"),
-            ),
-            review_count=Count("tasks", filter=Q(tasks__status="review")),
-            blocked_count=Count("tasks", filter=Q(tasks__status="blocked")),
-            done_count=Count("tasks", filter=Q(tasks__status="done")),
-            total_count=Count("tasks", filter=~Q(tasks__status="cancelled")),
-        )
+    # 프로젝트별 수치는 연결 포함(각주 "연결 태스크는 여러 프로젝트에 셉니다"). 초과는 태스크의
+    # 주 프로젝트 유예를 따르므로 조직의 모든 진행 프로젝트로 판정한다.
+    projects = list(shown_projects.filter(is_archived=False).prefetch_related("owners", "teams"))
+    org_live = list(org.projects.filter(is_archived=False).select_related("org"))
+    stats = _per_project(
+        [p.pk for p in projects],
+        Q(),
+        {**STATS, "overdue": Q(status__in=Task.OPEN) & overdue_q(org_live)},
     )
     by_project = [
         {
@@ -79,12 +103,9 @@ def org_status(org, *, viewer=None) -> dict:
             "status": p.status,
             "owners": [user_brief(u) for u in p.owners.all()],
             "teams": [{"id": t.pk, "name": t.name} for t in p.teams.all()],
-            "open": p.open_count,
-            "overdue": p.overdue_count,
-            "review": p.review_count,
-            "blocked": p.blocked_count,
-            "done": p.done_count,
-            "total": p.total_count,
+            **{
+                k: stats[p.pk][k] for k in ("open", "overdue", "review", "blocked", "done", "total")
+            },
         }
         for p in projects
     ]
@@ -167,7 +188,7 @@ def weekly(org, week_start: date, *, viewer=None) -> dict:
     this_monday, this_sunday = week_bounds(period_end)
 
     shown_projects = _projects(org, viewer)
-    org_task_ids = Task.objects.filter(project__in=shown_projects).values("id")
+    org_task_ids = tasks_visible_in(org, viewer).values("id")
     logs = ChangeLog.objects.filter(
         target_type="task",
         field="status",
@@ -202,27 +223,32 @@ def weekly(org, week_start: date, *, viewer=None) -> dict:
     overdue = [task_brief(t) for t in open_qs.filter(is_overdue).order_by("due_date", "id")]
     blocked = [task_brief(t) for t in open_qs.filter(status="blocked").order_by("id")]
 
-    # 프로젝트 수와 무관하게 쿼리 두 번: 바뀐 태스크의 프로젝트, 미완료 집계.
-    project_of = dict(
-        Task.objects.filter(pk__in=completed_ids | reopened_ids).values_list("id", "project_id")
+    # 프로젝트 수와 무관하게 쿼리 몇 번: 바뀐 태스크의 프로젝트(주 + 연결), 미완료 집계.
+    # 프로젝트별 수치는 연결 포함, 위 counts는 태스크당 한 번.
+    changed = completed_ids | reopened_ids
+    projects_of = defaultdict(set)
+    for tid, pid in Task.objects.filter(pk__in=changed).values_list("id", "project_id"):
+        projects_of[tid].add(pid)
+    for tid, pid in TaskProject.objects.filter(task_id__in=changed, status="active").values_list(
+        "task_id", "project_id"
+    ):
+        projects_of[tid].add(pid)
+    org_live = list(org.projects.filter(is_archived=False).select_related("org"))
+    open_by = _per_project(
+        [p.pk for p in shown],
+        Q(status__in=Task.OPEN, is_template=False, project__is_archived=False),
+        {
+            "open": Q(),
+            "overdue": overdue_q(org_live),
+            "blocked": Q(status="blocked"),
+        },
     )
-    open_by = {
-        r["project_id"]: r
-        for r in open_qs.order_by()
-        .values("project_id")
-        .annotate(
-            open=Count("id"),
-            overdue=Count("id", filter=is_overdue),
-            blocked=Count("id", filter=Q(status="blocked")),
-        )
-    }
-    empty = {"open": 0, "overdue": 0, "blocked": 0}
     by_project = [
         {
             "project": {"id": p.pk, "name": p.name, "status": p.status},
-            "completed": sum(1 for i in completed_ids if project_of.get(i) == p.pk),
-            "reopened": sum(1 for i in reopened_ids if project_of.get(i) == p.pk),
-            **{k: open_by.get(p.pk, empty)[k] for k in empty},
+            "completed": sum(1 for i in completed_ids if p.pk in projects_of[i]),
+            "reopened": sum(1 for i in reopened_ids if p.pk in projects_of[i]),
+            **open_by[p.pk],
         }
         for p in shown
     ]

@@ -133,10 +133,12 @@ def test_download_headers_and_visibility(client, task, member, outsider):
     assert client.get(f"/attachments/{png.pk}/x").status_code == 302  # 로그인으로
 
 
-def test_access_check_is_can_view_project(task, member, monkeypatch):
-    """다운로드는 projects.services.can_view_project 한 곳을 따른다(공개 범위 단계가 여기만 좁힌다)."""
+def test_access_check_is_can_view_task(task, member, monkeypatch):
+    """태스크 첨부는 tasks.services.can_view_task 한 곳을 따른다(열람 = 주 ∪ 연결, IMPL-PLAN-11 §3.4)."""
+    from tasks import services as ts
+
     att = _add(task, member)
-    monkeypatch.setattr(at, "can_view_project", lambda user, project: False)
+    monkeypatch.setattr(ts, "can_view_task", lambda user, task: False)
     assert at.can_download(member, att) is False
     with pytest.raises(ServiceError):
         _add(task, member)

@@ -8,8 +8,8 @@ from django.core.exceptions import ValidationError
 from django.db.models import Q
 
 from orgs.models import OrgMembership
-from projects.services import visible_projects
 from tasks.models import TaskDecisionRecord
+from tasks.services import visible_tasks
 
 MAX_PAGE_SIZE = 100
 DEFAULT_PAGE_SIZE = 50
@@ -34,7 +34,7 @@ def _allowed_source_records(user):
         TaskDecisionRecord.objects.filter(
             task__project__org_id__in=member_org_ids,
             # 비공개 프로젝트(IMPL-PLAN-7 F)는 볼 수 있는 사람에게만.
-            task__project__in=visible_projects(user),
+            task__in=visible_tasks(user),
         )
         .filter(own_user_inputs | ai_context)
         .select_related("task", "task__project", "task__git__connection")

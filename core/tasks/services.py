@@ -1,19 +1,21 @@
 from datetime import date, timedelta
 
 from django.db import IntegrityError, transaction
-from django.db.models import Max, Q
+from django.db.models import Exists, F, Max, OuterRef, Q
 from django.db.models.functions import Coalesce
 from django.utils import timezone
 
 from accounts.models import IdempotencyKey, User
 from common.dates import kst_day_range, overdue_before, today_kst, week_bounds
-from common.errors import ConflictError, ServiceError
+from common.errors import ConflictError, Forbidden, ServiceError
+from orgs.models import OrgMembership
 from orgs.services import ai_denied, is_admin, is_member, require_admin
 from orgs.settings import effective
+from projects.models import Project
 from projects.services import can_view_project, is_owner, project_stats_bulk, visible_projects
 
 from . import work_requests as wr
-from .models import ChangeLog, ChecklistItem, Link, Task, TodayItem
+from .models import ChangeLog, ChecklistItem, Link, Task, TaskProject, TodayItem
 
 # 자동 저장되는 부속 텍스트. version·ChangeLog 없음.
 TEXT_FIELDS = ("title", "description", "done_when", "next_action", "notes")
@@ -147,6 +149,7 @@ def _validate(
     reviewer=None,
     check_reviewer=False,
     is_template=False,
+    task=None,
 ):
     """check_assignee=False면 담당자가 조직의 활성 멤버인지 보지 않는다.
 
@@ -195,7 +198,9 @@ def _validate(
     if reviewer is not None:
         if check_reviewer and (not reviewer.is_active or not is_member(reviewer, project.org)):
             errors["reviewer"] = "검토자는 이 조직의 활성 멤버여야 합니다."
-        elif check_reviewer and not can_see(reviewer, project):
+        elif check_reviewer and not (
+            can_see(reviewer, project) if task is None else _sees_task(reviewer, task, project)
+        ):
             errors["reviewer"] = REVIEWER_CANT_SEE
         elif reviewer == assignee and not effective(
             "task.self_review", org=project.org, project=project
@@ -217,14 +222,62 @@ def _apply(task, expected_version: int, fields: dict):
 
 
 def visible_tasks(user):
-    """user가 볼 수 있는 태스크 queryset (볼 수 있는 프로젝트 범위)."""
-    return Task.objects.filter(project__in=visible_projects(user)).select_related(
+    """user가 볼 수 있는 태스크 queryset. 열람 범위 = 주 프로젝트 ∪ 확정(active) 연결 프로젝트.
+
+    distinct가 아니라 Exists라 count()·annotate가 그대로 맞는다(visible_projects와 같은 선택).
+    # ponytail: visible_projects 서브쿼리를 두 번 품는다. 느려지면 요청당 id 목록으로 물질화한다.
+    """
+    vp = visible_projects(user)
+    linked = TaskProject.objects.filter(task_id=OuterRef("pk"), status="active", project__in=vp)
+    return Task.objects.filter(Q(project__in=vp) | Exists(linked)).select_related(
         "project", "project__org", "assignee", "reviewer"
     )
 
 
 def get_visible_task(user, task_id: int) -> Task | None:
     return visible_tasks(user).filter(pk=task_id).first()
+
+
+def can_view_task(user, task) -> bool:
+    """태스크 단위 접근 검사는 이 한 곳이다(주 ∪ 확정 연결)."""
+    return visible_tasks(user).filter(pk=task.pk).exists()
+
+
+def tasks_of(project):
+    """프로젝트 기준 목록: 주 프로젝트가 이것이거나 이것에 확정 연결된 태스크.
+    project를 볼 수 있는 사람은 정의상 이 태스크들을 모두 볼 수 있다."""
+    linked = TaskProject.objects.filter(task_id=OuterRef("pk"), project=project, status="active")
+    return Task.objects.filter(Q(project=project) | Exists(linked))
+
+
+def tasks_visible_in(org, viewer=None):
+    """조직 집계용 태스크(태스크당 한 행). viewer가 None(봇·조직 채널 게시)이면 공개 프로젝트에
+    주로 있거나 확정 연결된 것만."""
+    if viewer is not None:
+        return visible_tasks(viewer).filter(project__org=org)
+    public = TaskProject.objects.filter(
+        task_id=OuterRef("pk"), status="active", project__visibility="org"
+    )
+    return Task.objects.filter(project__org=org).filter(
+        Q(project__visibility="org") | Exists(public)
+    )
+
+
+def _require_task(actor, task):
+    """태스크에 쓰는 함수의 입구. _require_member의 태스크판 — 연결 프로젝트로 보는 사람도 통과한다."""
+    if actor is None:
+        return
+    if not is_member(actor, task.project.org):
+        raise ServiceError({"project": "이 조직의 멤버가 아닙니다."})
+    if task.project.visibility != "org" and not can_view_task(actor, task):
+        raise ServiceError({"project": "볼 수 없는 프로젝트입니다."})
+
+
+def _sees_task(user, task, project) -> bool:
+    """project가 주 프로젝트 그대로면 태스크 열람(주 ∪ 연결)으로, 옮기는 중이면 새 프로젝트로 본다."""
+    if project.pk != task.project_id:
+        return can_see(user, project)
+    return project.visibility == "org" or can_view_task(user, task)
 
 
 def by_due(t):
@@ -266,8 +319,13 @@ def create_task(
     no_due_reason="",
     idempotency_key=None,
     notify_assignee=True,
+    linked_project_ids=(),
+    confirm_widening=False,
 ) -> Task:
-    """notify_assignee=False: 호출부가 담당자에게 따로 알린다(GitHub 재개는 담당 요청 한 통)."""
+    """notify_assignee=False: 호출부가 담당자에게 따로 알린다(GitHub 재개는 담당 요청 한 통).
+
+    linked_project_ids: 만들자마자 연결할 프로젝트. 열람 확대가 있으면 confirm_widening 없이는
+    WideningRequired로 생성 전체가 롤백되고, 있으면 그 연결은 승인 대기로 남는다(link_project)."""
     _require_member(actor, project)
     _ai_check(project.org, "ai.create_task", "태스크 만들기", source, "title")
     if idempotency_key:
@@ -334,6 +392,13 @@ def create_task(
             hit = IdempotencyKey.objects.get(user=actor, key=idempotency_key, target_type="task")
             transaction.set_rollback(True)
             return _idem_replay(actor, Task.objects.get(pk=hit.target_id), project)
+    for pid in dict.fromkeys(linked_project_ids or ()):
+        target = Project.objects.filter(pk=pid, org_id=project.org_id).first()
+        if target is None:
+            raise ServiceError({"linked_project_ids": f"프로젝트 {pid}을(를) 찾을 수 없습니다."})
+        link_project(
+            task, target, actor=actor, source=source, token=token, confirm_widening=confirm_widening
+        )
     return task
 
 
@@ -341,7 +406,7 @@ def update_text(task, field: str, value: str, *, actor, source: str = "web") -> 
     """제목·설명·완료 조건·다음 행동·진행 메모 자동 저장. version·ChangeLog를 건드리지 않는다.
     # ponytail: 부속 텍스트는 last-write-wins. 동시 편집 보호가 필요해지면 필드별 갱신 시각 비교로.
     """
-    _require_member(actor, task.project)
+    _require_task(actor, task)
     if field not in TEXT_FIELDS:
         raise ServiceError({field: "수정할 수 없는 항목입니다."})
     _ai_check(task.project.org, "ai.edit_text", "본문 고치기", source, field)
@@ -373,7 +438,7 @@ def update_task(
 
     reason: 담당자·기한 변경 사유. 조직 설정이 요구할 때만 필수이고, 있으면 이력 note에 남는다.
     """
-    _require_member(actor, task.project)
+    _require_task(actor, task)
     unknown = set(changes) - EDITABLE
     if unknown:
         raise ServiceError({k: "수정할 수 없는 항목입니다." for k in sorted(unknown)})
@@ -399,7 +464,9 @@ def update_task(
     ask = None
     if changes.get("assignee") is not None and changes["assignee"] != task.assignee:
         # 담당 요청으로 돌기 전에 막는다 — 못 보는 사람에게 요청 알림이 가면 안 된다.
-        _require_viewer(changes["assignee"], changes.get("project", task.project))
+        # 주 프로젝트를 그대로 두면 연결 프로젝트로 보는 사람도 담당할 수 있다(can_view_task).
+        if not _sees_task(changes["assignee"], task, changes.get("project", task.project)):
+            raise ServiceError({"assignee": ASSIGNEE_CANT_SEE})
     if (
         "assignee" in changes
         and changes["assignee"] != task.assignee
@@ -435,6 +502,7 @@ def update_task(
         reviewer=new["reviewer"],
         check_reviewer="reviewer" in changes,
         is_template=task.is_template,
+        task=task,
     )
     old = {f: getattr(task, f) for f in LOCKED_FIELDS}
     fields = {f: v for f, v in new.items() if v != old[f]}
@@ -445,6 +513,9 @@ def update_task(
         # 문서는 같은 프로젝트의 태스크에만 걸린다(projects.docs.link_task). 옮기면 옛 프로젝트 문서
         # 연결을 끊는다 — 남겨 두면 공개 프로젝트에서 비공개 문서 제목이 보인다.
         task.docs.remove(*task.docs.exclude(project_id=task.project_id))
+        # 새 주 프로젝트가 연결에 있었으면 그 연결은 지운다(주 ≠ 연결). 옛 주는 연결로 남기지 않는다.
+        TaskProject.objects.filter(task=task, project=task.project).delete()
+        _drop_stale_git_project(task)
     if "assignee" in fields:
         wr.drop_assign_requests(task, keep_user=ask)
         if task.assignee != actor:
@@ -504,7 +575,7 @@ def transition(
     - 재개 사유(reason)는 선택. 있으면 이력 note에 남는다.
     - 재개·취소 사유 필수, 동시 진행 한도, 검토 대기 필수는 조직 설정이 켜야 걸린다(§4.1).
     """
-    _require_member(actor, task.project)
+    _require_task(actor, task)
     if task.is_template:
         raise ServiceError({"status": "템플릿은 상태를 바꾸지 않습니다. 회차를 만들어 진행하세요."})
     labels = dict(Task.STATUSES)
@@ -701,6 +772,11 @@ def duplicate_task(
         for lk in task.links.all()
     )
     new.docs.set(task.docs.all())
+    # 확정 연결만 복사한다 — 같은 열람자 집합이라 확대 재검사가 필요 없다. 승인 대기는 복사하지 않는다.
+    TaskProject.objects.bulk_create(
+        TaskProject(task=new, project_id=lk.project_id, created_by=actor)
+        for lk in task.project_links.filter(status="active")
+    )
     new.refresh_from_db()
     _log(new, "parent", "", root.number, actor, source, token, note=f"{task.number}에서 복제")
     return new
@@ -708,7 +784,7 @@ def duplicate_task(
 
 def set_template(task, on: bool, *, actor, source="web", token=None) -> Task:
     """템플릿으로 두거나 해제한다. 템플릿은 상태를 바꾸지 않고 기한이 없으며 집계에서 빠진다."""
-    _require_member(actor, task.project)
+    _require_task(actor, task)
     _ai_check(task.project.org, "ai.create_task", "템플릿 바꾸기", source, "is_template")
     on = bool(on)
     if on == task.is_template:
@@ -737,7 +813,7 @@ def extend_due(
 ) -> Task:
     """목표일 연장. 기한이 없던 태스크는 목표일 정하기. 새 날짜는 현 기한보다 뒤, 사유 필수.
     이력에 'due_date' 행 하나, note='연장: 사유'. 진행 메모는 건드리지 않는다."""
-    _require_member(actor, task.project)
+    _require_task(actor, task)
     _ai_check(task.project.org, "ai.change_due", "기한 바꾸기", source, "due_date")
     if not task.is_open:
         raise ServiceError({"due_date": "완료·취소된 태스크의 기한은 바꿀 수 없습니다."})
@@ -798,8 +874,10 @@ def delete_task(task, *, actor, source: str = "web") -> None:
 def add_link(*, actor, title, url, kind="doc", task=None, project=None) -> Link:
     if (task is None) == (project is None):
         raise ServiceError({"target": "태스크 또는 프로젝트 중 하나에만 연결합니다."})
-    target_project = project if project is not None else task.project
-    _require_member(actor, target_project)
+    if task is not None:
+        _require_task(actor, task)
+    else:
+        _require_member(actor, project)
     title, url = (title or "").strip(), (url or "").strip()
     if not title or not url:
         raise ServiceError({"url": "제목과 URL을 입력하세요."})
@@ -813,8 +891,10 @@ def add_link(*, actor, title, url, kind="doc", task=None, project=None) -> Link:
 
 
 def delete_link(link, *, actor):
-    target_project = link.project or link.task.project
-    _require_member(actor, target_project)
+    if link.task_id:
+        _require_task(actor, link.task)
+    else:
+        _require_member(actor, link.project)
     link.delete()
 
 
@@ -826,7 +906,7 @@ def replace_checklist(
     task, items: list[dict], *, actor, source: str = "web"
 ) -> list[ChecklistItem]:
     """items: [{'text': str, 'is_done': bool}, ...]. 전체 교체."""
-    _require_member(actor, task.project)
+    _require_task(actor, task)
     _ai_check(task.project.org, "ai.edit_text", "본문 고치기", source, "checklist")
     cleaned = []
     for i, item in enumerate(items):
@@ -842,7 +922,7 @@ def replace_checklist(
 
 
 def checklist_add(task, text: str, *, actor) -> ChecklistItem:
-    _require_member(actor, task.project)
+    _require_task(actor, task)
     text = (text or "").strip()
     if not text:
         raise ServiceError({"text": "내용을 입력하세요."})
@@ -851,20 +931,20 @@ def checklist_add(task, text: str, *, actor) -> ChecklistItem:
 
 
 def checklist_toggle(item, *, actor) -> ChecklistItem:
-    _require_member(actor, item.task.project)
+    _require_task(actor, item.task)
     item.is_done = not item.is_done
     item.save(update_fields=["is_done"])
     return item
 
 
 def checklist_delete(item, *, actor):
-    _require_member(actor, item.task.project)
+    _require_task(actor, item.task)
     item.delete()
 
 
 def checklist_move(item, direction: str, *, actor):
     """direction: 'up' | 'down'. 이웃과 position을 맞바꾼다."""
-    _require_member(actor, item.task.project)
+    _require_task(actor, item.task)
     siblings = list(item.task.checklist.all())
     idx = siblings.index(item)
     j = idx - 1 if direction == "up" else idx + 1
@@ -922,7 +1002,7 @@ def today_flag(task, m: dict) -> str:
 
 
 def today_add(user, task, day: date | None = None) -> TodayItem:
-    _require_member(user, task.project)
+    _require_task(user, task)
     day = day or today_kst()
     pos = (TodayItem.objects.filter(user=user, date=day).aggregate(m=Max("position"))["m"] or 0) + 1
     item, created = TodayItem.objects.get_or_create(
@@ -1244,3 +1324,216 @@ def closed_tasks(user, project, status: str, *, period: str = "all", q: str = ""
             cond |= Q(pk=int(num))
         qs = qs.filter(cond)
     return qs.order_by("-closed_at", "-id")
+
+
+# ---------- 연결 프로젝트(IMPL-PLAN-11 §3, 결정 2-1: 열람 확대 = 관리자 승인) ----------
+
+
+class WideningRequired(ServiceError):
+    """열람자가 늘어나는 연결인데 호출자가 그것을 알고 요청한다는 표시(confirm_widening)가 없다.
+    API는 400 `visibility_widening`, MCP는 거부 + 사용자 허락 안내로 바꾼다."""
+
+    def __init__(self, project, users):
+        self.project, self.users = project, users
+        super().__init__({"confirm": widening_message(project, users)})
+
+
+def widening_message(project, users) -> str:
+    names = ", ".join(u.display_name for u in users[:3])
+    more = " 외" if len(users) > 3 else ""
+    return (
+        f"주의: '{project.name}' 프로젝트의 열람자 중 지금 이 태스크를 볼 수 없는 {len(users)}명"
+        f"({names}{more})도 연결 뒤 이 태스크를 보게 됩니다. 이 연결은 관리자 승인 뒤에 확정됩니다."
+    )
+
+
+def viewer_ids(project) -> set[int]:
+    """project를 볼 수 있는 활성 사용자 id. visible_projects의 조건을 사람 쪽에서 센 것."""
+    ms = OrgMembership.objects.filter(org_id=project.org_id, user__is_active=True)
+    if project.visibility != "org":
+        ms = ms.filter(
+            Q(role="admin")
+            | Q(user__in=project.owners.all())
+            | Q(user__team_memberships__team__projects=project)
+        )
+    return set(ms.values_list("user_id", flat=True))
+
+
+def widening(task, project) -> list[User]:
+    """project를 연결하면 새로 이 태스크를 보게 될 사람(주 ∪ 확정 연결의 열람자 밖).
+    쿼리 몇 번, 연결할 때만 돈다."""
+    current = [
+        task.project,
+        *Project.objects.filter(task_links__task=task, task_links__status="active"),
+    ]
+    if any(p.visibility == "org" for p in current):
+        return []  # 이미 조직 전원이 본다
+    seen = set().union(*(viewer_ids(p) for p in current))
+    new = viewer_ids(project) - seen
+    return list(User.objects.filter(pk__in=new).order_by("display_name", "pk"))
+
+
+def can_approve_widening(user, task) -> bool:
+    """열람 확대 승인자. 주 프로젝트가 비공개면 그 프로젝트 관리자·조직 관리자, 아니면 조직 관리자.
+    판정은 이 함수 하나다(결정 2-1)."""
+    if is_admin(user, task.project.org):
+        return True
+    return task.project.visibility != "org" and is_owner(user, task.project)
+
+
+def _approvers(task):
+    q = Q(org_memberships__org_id=task.project.org_id, org_memberships__role="admin")
+    if task.project.visibility != "org":
+        q |= Q(pk__in=task.project.owners.values("pk"))
+    return User.objects.filter(q, is_active=True).distinct()
+
+
+def _touch(task):
+    """연결이 바뀌면 version·updated_at을 올린다 — SSE가 새 열람자 화면에 바로 알린다."""
+    Task.objects.filter(pk=task.pk).update(version=F("version") + 1, updated_at=timezone.now())
+    task.refresh_from_db()
+
+
+def _drop_stale_git_project(task):
+    """연동 프로젝트가 더는 {주} ∪ 연결에 없으면 끈다(§3.3)."""
+    gp = task.git_project_id
+    if gp and gp != task.project_id and not task.project_links.filter(project_id=gp).exists():
+        Task.objects.filter(pk=task.pk).update(git_project=None)
+        task.git_project_id = None
+
+
+def _check_link_target(actor, task, project):
+    _require_task(actor, task)
+    if project.pk == task.project_id:
+        raise ServiceError({"project": "주 프로젝트는 연결할 수 없습니다."})
+    if project.org_id != task.project.org_id:
+        raise ServiceError({"project": "다른 조직의 프로젝트는 연결할 수 없습니다."})
+    if not can_view_project(actor, project):
+        raise ServiceError({"project": "볼 수 없는 프로젝트입니다."})
+
+
+@transaction.atomic
+def link_project(task, project, *, actor, source="web", token=None, confirm_widening=False):
+    """태스크를 project에 연결한다. 이미 있으면(승인 대기 포함) 그것을 돌려준다.
+
+    열람자가 늘어나면: confirm_widening이 없으면 WideningRequired, 있으면 승인 대기(pending)로 남기고
+    승인자에게 알린다. 승인 전에는 열람 범위에 들어가지 않는다. 요청자가 승인자여도 자동 승인하지
+    않는다 — 승인은 approve_link 한 곳(사람만)이다.
+    """
+    _check_link_target(actor, task, project)
+    if project.is_archived:
+        raise ServiceError({"project": "보관된 프로젝트에는 연결할 수 없습니다."})
+    existing = TaskProject.objects.filter(task=task, project=project).first()
+    if existing is not None:
+        return existing
+    users = widening(task, project)
+    if users and not confirm_widening:
+        raise WideningRequired(project, users)
+    link = TaskProject.objects.create(
+        task=task,
+        project=project,
+        created_by=actor,
+        widened=bool(users),
+        status="pending" if users else "active",
+    )
+    if not users:
+        _log(task, "projects", "", project.pk, actor, source, token, note="연결")
+        _touch(task)
+        return link
+    _log(
+        task,
+        "projects",
+        "",
+        project.pk,
+        actor,
+        source,
+        token,
+        note=f"연결 승인 요청: 열람자 {len(users)}명 늘어남",
+    )
+    text = (
+        f"🔐 {actor.display_name}님이 {task.number} {task.title}을(를) "
+        f"'{project.name}' 프로젝트에 연결하려 합니다. 열람자 {len(users)}명이 늘어납니다.\n"
+        f"승인·거절: {wr._link(f'/tasks/{task.pk}')}"
+    )
+    for u in _approvers(task):
+        wr.notify(task.project.org, text, user=u)
+    return link
+
+
+@transaction.atomic
+def unlink_project(task, project, *, actor, source="web", token=None) -> Task:
+    """연결 해제(승인 대기 취소 포함). 연결할 수 있는 사람이 한다. 좁히는 것이라 확인 없음."""
+    _check_link_target(actor, task, project)
+    link = TaskProject.objects.filter(task=task, project=project).first()
+    if link is None:
+        raise ServiceError({"project": "연결된 프로젝트가 아닙니다."})
+    link.delete()
+    note = "승인 요청 취소" if link.status == "pending" else "연결 해제"
+    _log(task, "projects", project.pk, "", actor, source, token, note=note)
+    _drop_stale_git_project(task)
+    _touch(task)
+    return task
+
+
+def _decide(link, actor, source):
+    if source == "mcp":
+        raise Forbidden({"approve": "열람 확대 승인·거절은 사람이 웹에서 합니다."})
+    if not can_approve_widening(actor, link.task):
+        msg = (
+            "주 프로젝트가 비공개라 그 프로젝트 관리자나 조직 관리자만 승인할 수 있습니다."
+            if link.task.project.visibility != "org"
+            else "조직 관리자만 승인할 수 있습니다."
+        )
+        raise Forbidden({"approve": msg})
+    if link.status != "pending":
+        raise ServiceError({"approve": "승인 대기 중인 연결이 아닙니다."})
+
+
+@transaction.atomic
+def approve_link(link, *, actor, source="web", token=None) -> TaskProject:
+    """승인 대기 연결을 확정한다. 이때부터 연결 프로젝트의 열람자가 태스크를 본다."""
+    _decide(link, actor, source)
+    task = link.task
+    link.status, link.decided_by, link.decided_at = "active", actor, timezone.now()
+    link.save(update_fields=["status", "decided_by", "decided_at"])
+    _log(task, "projects", "", link.project_id, actor, source, token, note="열람 확대 승인")
+    _touch(task)
+    wr.notify(
+        task.project.org,
+        f"✅ {actor.display_name}님이 {task.number}의 '{link.project.name}' 연결을 승인했습니다.\n"
+        f"{wr._link(f'/tasks/{task.pk}')}",
+        user=link.created_by,
+    )
+    return link
+
+
+@transaction.atomic
+def reject_link(link, *, actor, source="web", token=None, reason="") -> None:
+    """승인 대기 연결을 거절한다(행을 지우고 이력·알림을 남긴다)."""
+    _decide(link, actor, source)
+    task = link.task
+    link.delete()
+    reason = (reason or "").strip()[:150]
+    note = f"열람 확대 거절: {reason}" if reason else "열람 확대 거절"
+    _log(task, "projects", link.project_id, "", actor, source, token, note=note)
+    why = f"\n> {reason}" if reason else ""
+    wr.notify(
+        task.project.org,
+        f"↩️ {actor.display_name}님이 {task.number}의 '{link.project.name}' 연결 요청을 "
+        f"거절했습니다.{why}\n{wr._link(f'/tasks/{task.pk}')}",
+        user=link.created_by,
+    )
+
+
+def linked_projects(task, viewer) -> list[dict]:
+    """viewer가 볼 수 있는 연결 프로젝트만(못 보는 연결은 개수도 숨긴다 — 비공개 이름 노출 방지)."""
+    links = list(task.project_links.select_related("project").order_by("id"))
+    if not links:
+        return []
+    ids = [lk.project_id for lk in links]
+    shown = set(visible_projects(viewer).filter(pk__in=ids).values_list("pk", flat=True))
+    return [
+        {"id": lk.project_id, "name": lk.project.name, "status": lk.status}
+        for lk in links
+        if lk.project_id in shown
+    ]

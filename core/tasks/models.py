@@ -79,6 +79,20 @@ class Task(models.Model):
         related_name="reviewing_tasks",
         verbose_name="검토자",
     )
+    # 연결 프로젝트(IMPL-PLAN-11 §3). 주 프로젝트(project)가 번호·규칙·알림의 소유자이고,
+    # 열람 범위는 주 ∪ 연결이다. 주 ≠ 연결은 services.link_project가 지킨다.
+    extra_projects = models.ManyToManyField(
+        "projects.Project", through="TaskProject", related_name="linked_tasks", blank=True
+    )
+    # 연동 프로젝트(GitHub). 연결 프로젝트가 있을 때만 뜻이 있다. None이면 자동 연동 끔(§3.3, P1b).
+    git_project = models.ForeignKey(
+        "projects.Project",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="+",
+        verbose_name="연동 프로젝트",
+    )
 
     class Meta:
         ordering = ["-id"]
@@ -148,6 +162,33 @@ class Task(models.Model):
     @property
     def status_hint(self) -> str:
         return self.STATUS_HINT[self.status]
+
+
+class TaskProject(models.Model):
+    """연결 프로젝트. 주 프로젝트(Task.project)는 여기 들어가지 않는다."""
+
+    task = models.ForeignKey(Task, on_delete=models.CASCADE, related_name="project_links")
+    project = models.ForeignKey(
+        "projects.Project", on_delete=models.CASCADE, related_name="task_links"
+    )
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="+"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    # 열람자가 늘어나는 연결이었는가(IMPL-PLAN-11 결정 2-1). 그런 연결은 관리자 승인 전까지 pending이고,
+    # pending 연결은 열람 범위에 들어가지 않는다(services.visible_tasks는 active만 본다).
+    widened = models.BooleanField(default=False)
+    STATUSES = [("pending", "승인 대기"), ("active", "연결됨")]
+    status = models.CharField(max_length=7, choices=STATUSES, default="active")
+    decided_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
+    )
+    decided_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["task", "project"], name="taskproject_task_project")
+        ]
 
 
 class TaskDecisionRecord(models.Model):

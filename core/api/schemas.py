@@ -94,6 +94,9 @@ class TaskOut(TaskBriefOut):
     # 지정 검토자. 있으면 검토 대기 → 완료는 이 사람이나 프로젝트·조직 관리자만 한다.
     reviewer: UserBrief | None = None
     children_count: int = 0  # 이 태스크를 뿌리로 하는 회차·변형 수
+    # 연결 프로젝트(보는 사람이 볼 수 있는 것만). status: active(연결됨)|pending(승인 대기)
+    linked_projects: list["LinkedProjectOut"] = []
+    git_project_id: int | None = None  # 연동 프로젝트(GitHub). 연결이 있을 때만 뜻이 있다
     attachments: list[
         "AttachmentOut"
     ] = []  # 최신 버전만. 이전 버전은 /tasks/{id}/attachments?all=true
@@ -110,6 +113,26 @@ class TaskCreateIn(Schema):
     due_date: date | None = None
     no_due_reason: str = ""
     checklist: list[ChecklistItemIn] | None = None
+    # 만들자마자 연결할 프로젝트. 열람자가 늘어나면 confirm_visibility_widening 없이는 400,
+    # 있으면 그 연결은 관리자 승인 대기로 남는다.
+    linked_project_ids: list[int] = []
+    confirm_visibility_widening: bool = False
+
+
+class LinkedProjectOut(Schema):
+    id: int
+    name: str
+    status: str  # active | pending
+
+
+class TaskProjectIn(Schema):
+    project_id: int
+    # 열람자가 늘어나는 연결임을 알고 승인 요청을 보낸다는 표시. 사용자 확인 없이 true로 두지 않는다.
+    confirm_visibility_widening: bool = False
+
+
+class LinkRejectIn(Schema):
+    reason: str = ""
 
 
 class TaskPatchIn(Schema):

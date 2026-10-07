@@ -76,7 +76,11 @@ def _check_room(target, org, incoming: int, replaces) -> None:
 
 
 def can_download(user, att) -> bool:
-    """접근 검사는 projects.services.can_view_project 한 곳에 둔다(공개 범위 포함)."""
+    """태스크 첨부는 태스크 열람(주 ∪ 연결, can_view_task), 프로젝트 첨부는 can_view_project."""
+    if att.task_id:
+        from .services import can_view_task
+
+        return can_view_task(user, att.task)
     return can_view_project(user, att.target_project)
 
 
@@ -85,7 +89,13 @@ def add_attachment(
     *, actor, upload, kind="file", note="", task=None, project=None, replaces=None, source="web"
 ) -> Attachment:
     target_project = _project_of(task, project)
-    if not is_member(actor, target_project.org) or not can_view_project(actor, target_project):
+    if task is not None:
+        from .services import can_view_task
+
+        sees = can_view_task(actor, task)
+    else:
+        sees = can_view_project(actor, target_project)
+    if not is_member(actor, target_project.org) or not sees:
         raise ServiceError({"project": "이 프로젝트에 파일을 올릴 수 없습니다."})
     if target_project.is_archived:
         raise ServiceError({"project": "보관된 프로젝트에는 파일을 올릴 수 없습니다."})
