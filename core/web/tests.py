@@ -300,7 +300,7 @@ def test_signup_lands_on_org_list_with_create_button(client):
 
 def test_ops_requires_staff(client, member):
     client.login(username="member1", password="pw12345678")
-    assert client.get("/ops").status_code in (302, 403)
+    assert client.get("/ops").status_code == 404  # 서비스 운영자가 아니면 존재를 숨긴다
     User.objects.filter(pk=member.pk).update(is_staff=True, is_superuser=True)
     assert client.get("/ops").status_code == 200
 
@@ -314,7 +314,7 @@ def test_export_json_has_no_secrets(client, member, admin, org, task):
     code = issue_link_code(admin)
     User.objects.filter(pk=member.pk).update(is_staff=True, is_superuser=True)
     client.login(username="member1", password="pw12345678")
-    r = client.get("/ops/export.json")
+    r = client.post("/ops/export.json", {"reason": "정기 점검 내보내기", "confirm": "export"})
     assert r.status_code == 200
     body = r.content.decode()
     assert "password" not in body
@@ -1854,11 +1854,15 @@ def test_ops_lists_and_releases_locks(client, member, admin):
         _login(client, username="admin1", password="wrong")
     User.objects.filter(pk=member.pk).update(is_staff=True, is_superuser=True)
     client.force_login(member)
-    body = client.get("/ops").content.decode()
+    body = client.get("/ops/system").content.decode()
     assert "로그인 잠금" in body and "admin1" in body
-    assert client.get("/ops/unlock").status_code == 405
-    assert client.post("/ops/unlock", {"key": "admin1"}).status_code == 302
-    assert "admin1" not in client.get("/ops").content.decode()
+    # GET은 확인 대화상자만 그리고 아무것도 바꾸지 않는다. 해제에는 사유가 필요하다.
+    assert "사유" in client.get("/ops/unlock?key=admin1").content.decode()
+    client.post("/ops/unlock", {"key": "admin1"})
+    assert "admin1" in client.get("/ops/system").content.decode()
+    r = client.post("/ops/unlock", {"key": "admin1", "reason": "본인 확인 후 해제"})
+    assert r.status_code == 302
+    assert "admin1" not in client.get("/ops/system").content.decode()
     client.post("/logout")
     assert _login(client, username="admin1").status_code == 302
 

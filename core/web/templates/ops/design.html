@@ -1,6 +1,5 @@
-{% extends "base.html" %}{% load rows %}{% block title %}디자인 시스템{% endblock %}
-{% block main %}
-{% include "settings/_tabs.html" %}
+{% extends "ops/base.html" %}{% load rows %}{% block title %}디자인 시스템 · 운영 콘솔{% endblock %}
+{% block ops %}
 {# 살아 있는 스타일 가이드. 토큰 표는 app.css를 읽어 그리고, 컴포넌트는 실제 클래스로 그린다. 규칙과 이유는 DESIGN.md. #}
 <section class="card">
   <div class="card-head"><h2>디자인 시스템 · 모여서, 한 걸음</h2><span class="badge primary">장식 강</span></div>

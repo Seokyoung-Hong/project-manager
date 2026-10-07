@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{# 운영 콘솔 셸. 조직 셸의 주 메뉴·빠른 추가 대신 운영 콘솔 메뉴를 그린다(IMPL-PLAN-10 §2.2). 메뉴 항목은 화면이 생기는 단계에서 늘린다. #}
+{% block header_nav %}
+<nav class="nav" aria-label="운영 콘솔 메뉴">
+  <a href="{% url 'ops' %}"{% if ops_nav == "home" %} aria-current="page"{% endif %}>개요</a>
+  <a href="{% url 'ops_system' %}"{% if ops_nav == "system" %} aria-current="page"{% endif %}>시스템</a>
+  <a href="{% url 'ops_design' %}"{% if ops_nav == "design" %} aria-current="page"{% endif %}>디자인 시스템</a>
+</nav>
+{% endblock %}
+{% block header_actions %}<a class="btn sm" href="{% url 'today' %}">앱으로 돌아가기</a>{% endblock %}
+{% block main %}
+<div class="page-head"><h1 class="t24">운영 콘솔 <span class="badge">서비스 운영자</span></h1></div>
+{% block ops %}{% endblock %}
+{% endblock %}

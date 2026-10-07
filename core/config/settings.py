@@ -39,6 +39,7 @@ INSTALLED_APPS = [
     "github",
     "reports",
     "api",
+    "ops",
     "web",
 ]
 
@@ -106,6 +107,11 @@ STORAGES = {
 MEDIA_ROOT = Path(os.environ.get("MEDIA_ROOT", BASE_DIR / "media"))
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+# Django 관리 화면. 테스트 계정 만들기 등에 쓰므로 기본은 켠다. 끄면 /admin 경로 자체가 404다.
+# 켜져 있어도 최고 운영자(superuser)만 들어가고, 접근은 감사 기록(OpsAuditLog)에 남는다.
+DJANGO_ADMIN_ENABLED = os.environ.get("DJANGO_ADMIN_ENABLED", "1") == "1"
+PASSWORD_RESET_TIMEOUT = 24 * 3600  # 운영자가 발급한 비밀번호 재설정 링크의 유효 시간
 
 LOGIN_URL = "/login"
 LOGIN_REDIRECT_URL = "/today"
