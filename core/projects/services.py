@@ -310,7 +310,10 @@ def archive_project(project, *, actor, source="web", token=None, cancel_open=Fal
     require_ai_enabled(project.org, source, "프로젝트 보관")
     # 템플릿은 진행하지 않으므로 보관을 막지 않고 그대로 남는다.
     open_tasks = list(
-        Task.objects.filter(project=project, status__in=Task.OPEN, is_template=False).order_by("id")
+        # 하위 먼저 — 열린 하위가 있는 상위는 취소할 수 없다(IMPL-PLAN-12 §3.2).
+        Task.objects.filter(project=project, status__in=Task.OPEN, is_template=False).order_by(
+            F("group").asc(nulls_last=True), "id"
+        )
     )
     if open_tasks and not cancel_open:
         raise ServiceError({"tasks": ", ".join(t.number for t in open_tasks)})
@@ -481,6 +484,7 @@ def project_stats_bulk(projects) -> dict:
     주 프로젝트 유예를 따르므로 연결 쪽은 같은 조직의 모든 프로젝트로 판정한다.
     """
     from tasks.models import Task
+    from tasks.services import leaf_only
 
     projects = list(projects)
     keys = ("total", "open", "overdue", "review", "blocked", "done")
@@ -499,16 +503,16 @@ def project_stats_bulk(projects) -> dict:
             "done": Count("id", filter=Q(status="done")),
         }
 
+    # 잎만 센다(IMPL-PLAN-12 §4.2) — 하위가 있는 상위는 하위가 대표한다.
+    leaves = leaf_only(Task.objects.filter(is_template=False))
     primary = (
-        Task.objects.filter(project__in=ids, is_template=False)
+        leaves.filter(project__in=ids)
         .values("project_id")
         .order_by()
         .annotate(**aggs(overdue_q(projects)))
     )
     linked = list(
-        Task.objects.filter(
-            project_links__project__in=ids, project_links__status="active", is_template=False
-        )
+        leaves.filter(project_links__project__in=ids, project_links__status="active")
         .values("project_links__project_id")
         .order_by()
         .annotate(**aggs(Q()))  # 초과는 아래에서 따로(주 프로젝트 유예)
@@ -519,11 +523,10 @@ def project_stats_bulk(projects) -> dict:
         org_ids = {p.org_id for p in projects}
         live = list(Project.objects.filter(org_id__in=org_ids).select_related("org"))
         over = dict(
-            Task.objects.filter(
+            leaves.filter(
                 Q(status__in=Task.OPEN) & overdue_q(live),
                 project_links__project__in=ids,
                 project_links__status="active",
-                is_template=False,
             )
             .values("project_links__project_id")
             .order_by()

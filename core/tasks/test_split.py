@@ -77,16 +77,17 @@ def test_split_three(project, member, people, admin):
     assert [n.title for n in out][0] == "로그인 개선 — 김철수 (백엔드)"
     assert [n.title for n in out][1] == "로그인 개선 — 이영희"
     for n in out:
-        assert n.parent_id == t.pk
+        assert n.group_id == t.pk and n.parent_id is None  # 계열이 아니라 하위 태스크
         assert n.due_date == t.due_date
         assert n.description == "본문" and n.done_when == "끝"
         assert [c.text for c in n.checklist.all()] == ["스펙 확인"]
         assert not n.checklist.filter(is_done=True).exists()
     t.refresh_from_db()
-    # 원본은 지우거나 취소하지 않고, 체크리스트가 만든 태스크 목록으로 바뀐다.
-    assert t.status == "todo" and t.parent_id is None
-    assert [c.text for c in t.checklist.all()] == [f"{n.number} {n.title}" for n in out]
-    assert "사람별로 나눴습니다" in t.notes and out[0].number in t.notes
+    # 원본은 상위가 된다. 체크리스트·진행 메모는 그대로이고 진행률이 나눈 결과를 보여 준다.
+    assert t.status == "todo" and t.parent_id is None and t.group_id is None
+    assert [c.text for c in t.checklist.all()] == ["스펙 확인"]
+    assert t.notes == ""
+    assert ts.subtask_progress(t) == (0, 3)
     log = ChangeLog.objects.get(target_id=t.pk, field="split")
     assert log.new_value == ",".join(n.number for n in out)
 
@@ -101,7 +102,7 @@ def test_split_counts(project, member, people):
     many = people + [_user(org, f"사람{i}") for i in range(8)]  # 11명
     with pytest.raises(ServiceError):
         split_by_assignees(t, many, actor=member, source="web")
-    assert Task.objects.filter(parent=t).count() == 0
+    assert Task.objects.filter(group=t).count() == 0
 
 
 def test_split_rejects_bad_pattern_and_outsider(project, member, people, outsider):
@@ -112,7 +113,7 @@ def test_split_rejects_bad_pattern_and_outsider(project, member, people, outside
         split_by_assignees(t, people, actor=member, source="web", title_pattern="{x} {name}")
     with pytest.raises(ServiceError):
         split_by_assignees(t, [people[0], outsider], actor=member, source="web")
-    assert Task.objects.filter(parent=t).count() == 0
+    assert Task.objects.filter(group=t).count() == 0
 
 
 def test_split_without_due_date_follows_reason(project, member, people):
@@ -158,7 +159,7 @@ def test_split_copies_active_links_only(org, admin, member):
     # 비공개 프로젝트에서 못 보는 사람은 담당이 될 수 없다(거절, 아무것도 안 만든다).
     with pytest.raises(ServiceError):
         split_by_assignees(t, [admin, outside], actor=member, source="web")
-    assert Task.objects.filter(parent=t).count() == 2
+    assert Task.objects.filter(group=t).count() == 2
 
 
 def test_split_template_refused(project, member, people):
@@ -167,6 +168,21 @@ def test_split_template_refused(project, member, people):
     t.refresh_from_db()
     with pytest.raises(ServiceError):
         split_by_assignees(t, people, actor=member, source="web")
+
+
+def test_split_subtask_or_closed_refused(project, member, people):
+    """하위는 더 나눌 수 없다(한 겹). 닫힌 태스크도 나누지 않는다."""
+    t = _task(project, member)
+    sub = split_by_assignees(t, people[:2], actor=member, source="web")[0]
+    with pytest.raises(ServiceError) as e:
+        split_by_assignees(sub, people[:2], actor=member, source="web")
+    assert e.value.errors["task"] == ts.ONE_LEVEL
+    done = _task(project, member)
+    ts.transition(done, "cancelled", actor=member, source="web", expected_version=done.version)
+    done.refresh_from_db()
+    with pytest.raises(ServiceError):
+        split_by_assignees(done, people[:2], actor=member, source="web")
+    assert not Task.objects.filter(group__in=[sub, done]).exists()
 
 
 # ---------- API ----------
@@ -191,12 +207,12 @@ def test_api_split(api, project, member, people):
     r1 = api.post(f"/api/tasks/{t.pk}/split", body, headers=h)
     assert r1.status_code == 201
     got = r1.json()["tasks"]
-    assert len(got) == 3 and all(x["parent_id"] == t.pk for x in got)
+    assert len(got) == 3 and all(x["group_id"] == t.pk and x["parent_id"] is None for x in got)
     assert got[0]["title"].endswith("김철수 (디자인)")
     r2 = api.post(f"/api/tasks/{t.pk}/split", body, headers=h)  # 재시도는 중복을 만들지 않는다
     assert r2.status_code == 201
     assert [x["id"] for x in r2.json()["tasks"]] == [x["id"] for x in got]
-    assert Task.objects.filter(parent=t).count() == 3
+    assert Task.objects.filter(group=t).count() == 3
 
 
 def test_api_split_errors(api, project, member, people):
@@ -234,7 +250,7 @@ def test_web_panel_hint_and_split_dialog(client, project, member, people, org):
         headers={"HX-Request": "true"},
     )
     assert r.status_code == 204 and r["HX-Redirect"] == f"/tasks/{t.pk}"
-    assert sorted(Task.objects.filter(parent=t).values_list("title", flat=True)) == [
+    assert sorted(Task.objects.filter(group=t).values_list("title", flat=True)) == [
         "로그인 개선/김철수 (서버)",
         "로그인 개선/이영희",
     ]
