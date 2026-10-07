@@ -29,7 +29,8 @@ def panel_ctx(user, task) -> dict:
     view["due_warn"] = ts.due_after_group(task) and view["group"] is not None
     if view["can_add"]:
         view["candidates"] = (
-            Task.objects.filter(
+            ts.visible_tasks(user)  # 연결 열람자에게 주 프로젝트의 못 보는 태스크를 내지 않는다(S1)
+            .filter(
                 project_id=task.project_id,
                 status__in=Task.OPEN,
                 is_template=False,

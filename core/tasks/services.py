@@ -357,6 +357,40 @@ def hidden_task_refs(logs, viewer) -> set[str]:
     }
 
 
+PROJECT_REF_FIELDS = ("project", "projects", "git_project")
+HIDDEN_PROJECT = "볼 수 없는 프로젝트"
+
+
+def history_masker(logs, viewer):
+    """태스크 이력 값 가리기 한 곳(웹·API 공용, R5·R7·S2). 돌려주는 mask(field, value)는
+    viewer가 못 보는 태스크 번호(group·split)를 '볼 수 없는 태스크'로, 프로젝트 id(project 옮기기·
+    projects 연결·git_project 연동)를 '볼 수 없는 프로젝트'로 바꾼다. 로그 수와 무관하게 쿼리 두 번까지."""
+    logs = list(logs)
+    hidden_tasks = hidden_task_refs(logs, viewer)
+    pids = {
+        int(v)
+        for log in logs
+        if log.field in PROJECT_REF_FIELDS
+        for v in (log.old_value, log.new_value)
+        if v.isdecimal()
+    }
+    seen = (
+        {
+            str(pk)
+            for pk in visible_projects(viewer).filter(pk__in=pids).values_list("pk", flat=True)
+        }
+        if pids
+        else set()
+    )
+
+    def mask(field, value):
+        if field in PROJECT_REF_FIELDS:
+            return HIDDEN_PROJECT if value.isdecimal() and value not in seen else value
+        return mask_task_refs(field, value, hidden_tasks)
+
+    return mask
+
+
 def mask_task_refs(field, value: str, hidden) -> str:
     """hidden_task_refs가 고른 번호를 '볼 수 없는 태스크'로 바꾼다. 다른 필드는 그대로."""
     if field not in TASK_REF_FIELDS or not value:
@@ -503,8 +537,8 @@ def _suggest_group_done(group):
     """마지막 하위가 닫히면 상위 담당자에게 완료 제안 DM 한 통(§3.3). 자동 완료하지 않는다.
     # ponytail: 제안은 DM 한 통. 자동 완료가 필요하면 조직 설정 task.auto_close_group을 그때 추가."""
     group.refresh_from_db()
-    if not group_done_suggested(group):
-        return
+    if not group_done_suggested(group) or not can_view_task(group.assignee, group):
+        return  # 공개 범위가 바뀌어 담당자가 상위를 못 보면 보내지 않는다(S3)
     wr.notify(
         group.project.org,
         f"{group.number} «{group.title}»의 하위 태스크가 모두 끝났습니다. "
@@ -926,9 +960,10 @@ def transition(
                 }
             )
     if reopening and group is not None and group.is_closed:
+        shown = actor is None or can_view_task(actor, group)  # 못 보는 상위 번호는 내지 않는다(S6)
         raise ServiceError(
             {
-                "status": f"상위 {group.number}이 완료·취소 상태입니다. "
+                "status": f"상위 {group.number if shown else '태스크'}이 완료·취소 상태입니다. "
                 "상위를 먼저 다시 열거나 떼어내세요."
             }
         )

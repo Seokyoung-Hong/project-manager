@@ -19,10 +19,10 @@ from projects.models import Project
 from projects.services import can_view_project
 from tasks.models import Task
 from tasks.services import (
+    PROJECT_REF_FIELDS,
     attach_linked,
     get_visible_task,
-    hidden_task_refs,
-    mask_task_refs,
+    history_masker,
     today_flag,
     today_membership,
     visible_tasks,
@@ -230,15 +230,10 @@ def _display(field, raw: str, viewer=None) -> str:
     if field in ("assignee", "reviewer"):
         u = User.objects.filter(pk=raw).first()
         return u.display_name if u else raw
-    if field == "project":
-        p = Project.objects.filter(pk=raw).first()
+    if field in PROJECT_REF_FIELDS:
+        # 못 보는 프로젝트는 history_rows의 history_masker가 이미 '볼 수 없는 프로젝트'로 바꿨다.
+        p = Project.objects.filter(pk=raw).first() if raw.isdecimal() else None
         return p.name if p else raw
-    if field in ("projects", "git_project"):
-        # 연결은 비공개 프로젝트일 수 있다 — 보는 사람이 못 보는 프로젝트는 이름을 숨긴다(§3.4).
-        p = Project.objects.filter(pk=raw).first()
-        if p is None:
-            return raw
-        return p.name if viewer is None or can_view_project(viewer, p) else "볼 수 없는 프로젝트"
     if field in ("group", "split"):  # 못 보는 번호는 history_rows가 이미 가렸다(R5)
         return raw.replace(",", ", ")
     if field == "owners":
@@ -250,19 +245,17 @@ def _display(field, raw: str, viewer=None) -> str:
 def history_rows(logs, viewer=None) -> list[dict]:
     """ChangeLog → 패널 표시용. 최신이 먼저. viewer가 있으면 못 보는 연결 프로젝트 이름을 숨긴다."""
     logs = list(logs)
-    hidden = hidden_task_refs(logs, viewer) if viewer is not None else set()
+    mask = history_masker(logs, viewer) if viewer is not None else (lambda field, value: value)
     rows = []
     for log in logs:
-        to = _display(log.field, mask_task_refs(log.field, log.new_value, hidden), viewer)
+        to = _display(log.field, mask(log.field, log.new_value), viewer)
         if log.note:
             to += f" ({log.note})"
         at = timezone.localtime(log.created_at)
         rows.append(
             {
                 "field": FIELD_LABELS.get(log.field, log.field),
-                "from": _display(
-                    log.field, mask_task_refs(log.field, log.old_value, hidden), viewer
-                ),
+                "from": _display(log.field, mask(log.field, log.old_value), viewer),
                 "to": to,
                 "time": f"{at.month}월 {at.day}일 {at:%H:%M}",
                 # actor가 비면 GitHub 로그인(external_actor)이 대신 남아 있다 — 모델 주석 참고.
