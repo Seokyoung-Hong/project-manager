@@ -59,7 +59,8 @@ def task_out(t, viewer=None) -> dict:
             # 참고 문서는 제목과 id만. 본문은 /projects/{id}/docs/{doc_id}에서 읽는다.
             # 문서는 같은 프로젝트의 것만 걸린다(projects.docs.link_task). 옮긴 뒤 남은 연결이 있어도 내보내지 않는다.
             "docs": [
-                {"id": d.pk, "title": d.title} for d in t.docs.filter(project_id=t.project_id)
+                {"id": d.pk, "title": d.title}
+                for d in t.docs.filter(kind="doc", project_id=t.project_id)
             ],
             # 담당 요청을 받은 사람이 아직 수락하지 않았다. 수락 전까지 assignee는 그대로다.
             "pending_assignee": user_brief(pending) if (pending := pending_assignee(t)) else None,

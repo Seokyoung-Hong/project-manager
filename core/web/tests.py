@@ -1181,17 +1181,17 @@ def test_task_note_link_unlink(logged, org, task, member, project, admin):
     note = create_note(org=org, actor=member)
     r = logged.post(f"/tasks/{task.pk}/notes", {"note": note.pk})
     assert r.status_code == 200
-    assert note in task.meeting_notes.all()
+    assert note in task.docs.filter(kind="meeting")
 
     r = logged.post(f"/tasks/{task.pk}/notes/{note.pk}/unlink")
     assert r.status_code == 200
-    assert note not in task.meeting_notes.all()
+    assert note not in task.docs.filter(kind="meeting")
 
     other_org = create_org("다른 조직", "", admin)
     OrgMembership.objects.create(org=other_org, user=member, role="member")
     other_note = create_note(org=other_org, actor=member)
     r = logged.post(f"/tasks/{task.pk}/notes", {"note": other_note.pk})
-    assert other_note not in task.meeting_notes.all()
+    assert other_note not in task.docs.filter(kind="meeting")
 
 
 def test_link_form_hides_pr_repo(logged, task):

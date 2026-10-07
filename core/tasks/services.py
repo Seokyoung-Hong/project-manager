@@ -512,7 +512,9 @@ def update_task(
     if "project" in fields:
         # 문서는 같은 프로젝트의 태스크에만 걸린다(projects.docs.link_task). 옮기면 옛 프로젝트 문서
         # 연결을 끊는다 — 남겨 두면 공개 프로젝트에서 비공개 문서 제목이 보인다.
-        task.docs.remove(*task.docs.exclude(project_id=task.project_id))
+        task.docs.remove(
+            *task.docs.filter(kind="doc", project__isnull=False).exclude(project_id=task.project_id)
+        )
         # 새 주 프로젝트가 연결에 있었으면 그 연결은 지운다(주 ≠ 연결). 옛 주는 연결로 남기지 않는다.
         TaskProject.objects.filter(task=task, project=task.project).delete()
         _drop_stale_git_project(task)

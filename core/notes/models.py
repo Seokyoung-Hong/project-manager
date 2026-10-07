@@ -1,46 +1,32 @@
 from django.conf import settings
 from django.db import models
 
+from projects.models import Doc
 
-class MeetingNote(models.Model):
-    org = models.ForeignKey("orgs.Organization", on_delete=models.CASCADE, related_name="notes")
-    # 프로젝트가 없으면 "팀 공통" 회의록이다.
-    project = models.ForeignKey(
-        "projects.Project", on_delete=models.SET_NULL, null=True, blank=True, related_name="notes"
-    )
-    # 팀 회의록. 확정 뒤에도 그 팀을 볼 수 있는 사람(visible_teams)에게만 보인다.
-    team = models.ForeignKey(
-        "orgs.Team", on_delete=models.SET_NULL, null=True, blank=True, related_name="notes"
-    )
-    # 음성 회의 초안(draft)은 진행자·조직 관리자만 본다. 웹에서 만든 회의록은 처음부터 final이다.
-    status = models.CharField(
-        max_length=10, choices=[("draft", "초안"), ("final", "확정")], default="final"
-    )
-    source = models.CharField(
-        max_length=10, choices=[("web", "웹"), ("voice", "음성 회의")], default="web"
-    )
-    title = models.CharField("제목", max_length=200, default="제목 없는 회의록")
-    body_md = models.TextField("본문", blank=True)
-    # 회의 날짜+시각. 사용자가 고치고 비워 둘 수도 있다. created_at(기록 시각)과 다르다.
-    created_on = models.DateTimeField("회의 일시", null=True, blank=True)
-    # 자유 태그. OrgMembership.tags(스킬 태그)와 같은 방식 — 새 표 없이 문자열 목록 하나.
-    tags = models.JSONField(default=list, blank=True)
-    version = models.PositiveIntegerField(default=1)
-    # related_name="notes"는 Task.notes(진행 메모 텍스트 필드)와 이름이 부딪힌다.
-    tasks = models.ManyToManyField("tasks.Task", blank=True, related_name="meeting_notes")
-    # 참여자(PM 계정). 음성 채널에 있던 사람 중 Discord 계정을 연결한 조직 구성원이 들어간다.
-    attendees = models.ManyToManyField(settings.AUTH_USER_MODEL, blank=True, related_name="+")
-    created_by = models.ForeignKey(
-        settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="+"
-    )
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
+
+class MeetingNoteManager(models.Manager):
+    def get_queryset(self):
+        return super().get_queryset().filter(kind="meeting", is_template=False)
+
+
+class MeetingNote(Doc):
+    """회의록 = kind="meeting"인 문서(IMPL-PLAN-11 §4.3). 표는 projects.Doc 하나다.
+
+    옛 이름과 정렬(회의 일시 역순)을 유지하는 프록시. 편집·이전 버전·백링크는 projects.docs가 맡고
+    회의 고유 규칙(음성 회의·진행자·초안/확정·참여자)은 notes.services에 남는다.
+    """
+
+    objects = MeetingNoteManager()
 
     class Meta:
+        proxy = True
         ordering = ["-created_on", "-id"]
 
-    def __str__(self):
-        return self.title
+    def save(self, *args, **kwargs):
+        self.kind = "meeting"
+        if self._state.adding and self.title == "제목 없는 문서":
+            self.title = "제목 없는 회의록"
+        super().save(*args, **kwargs)
 
 
 class VoiceRecording(models.Model):
@@ -62,7 +48,8 @@ class VoiceRecording(models.Model):
         ("failed", "실패"),
     ]
 
-    note = models.OneToOneField(MeetingNote, on_delete=models.CASCADE, related_name="recording")
+    # 회의록 문서(kind="meeting"). 문서 쪽에서는 doc.recording.
+    note = models.OneToOneField("projects.Doc", on_delete=models.CASCADE, related_name="recording")
     guild_id = models.CharField(max_length=32)
     voice_channel_id = models.CharField(max_length=32)
     started_by = models.ForeignKey(

@@ -67,12 +67,21 @@ def test_outsider_sees_nothing(org, member, outsider):
         svc.create_doc(org=org, actor=outsider)
 
 
-def test_draft_meeting_only_author_and_admin(org, admin, member, other):
+def test_draft_meeting_only_host_and_admin(org, admin, member, other):
+    from notes.models import VoiceRecording
+
     d = svc.create_doc(org=org, actor=member, kind="meeting")
-    Doc.objects.filter(pk=d.pk).update(status="draft")
     assert d.created_on is not None and d.title == "제목 없는 회의록"
-    assert svc.can_view_doc(member, d) and svc.can_view_doc(admin, d)
-    assert not svc.can_view_doc(other, d)
+    Doc.objects.filter(pk=d.pk).update(status="draft")
+    rec = VoiceRecording.objects.create(
+        note=d, guild_id="g", voice_channel_id="v", started_by=member, host=other
+    )
+    # 초안은 지금 진행자와 조직 관리자만. 작성자라도 진행자를 넘겼으면 못 본다.
+    assert svc.can_view_doc(other, d) and svc.can_view_doc(admin, d)
+    assert not svc.can_view_doc(member, d)
+    rec.host = member
+    rec.save()
+    assert svc.can_view_doc(member, d) and not svc.can_view_doc(other, d)
 
 
 def test_scope_is_project_or_team_not_both(org, member, project, team):
