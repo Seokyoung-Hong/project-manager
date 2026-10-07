@@ -4,6 +4,7 @@ from urllib.parse import urlparse
 
 from common.errors import ServiceError
 from orgs.services import is_member
+from projects.services import can_view_project
 from tasks.decision_services import effective_records
 from tasks.models import Link, TaskDecisionRecord
 
@@ -113,6 +114,9 @@ def build_pr_context(task, *, actor):
         )
     if not can_view_repo(actor, issue_repo_name):
         raise ServiceError({"repository": "이 저장소를 볼 수 있는 GitHub 권한이 없습니다."})
+    if repo is not None and not can_view_project(actor, repo.project):
+        # 연동 프로젝트가 못 보는 연결 프로젝트면 저장소 메타를 내주지 않는다(Sol 검토 R7).
+        raise ServiceError({"repository": "이 태스크의 연동 프로젝트를 볼 수 없습니다."})
 
     # TaskGitLink normally belongs to the project's repository. Reject inconsistent
     # references rather than mixing an issue from one repository with another repo's

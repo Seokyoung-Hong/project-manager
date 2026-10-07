@@ -35,6 +35,7 @@ def task_out(t, viewer=None) -> dict:
         if viewer is not None
         else t.children.filter(project_id=t.project_id)
     )
+    linked = linked_projects(t, viewer) if viewer is not None else []
     items = list(t.checklist.all())
     if viewer is not None:
         sv = subtask_view(viewer, t)
@@ -90,8 +91,11 @@ def task_out(t, viewer=None) -> dict:
             "subtask_done": sv["done"],
             "subtask_total": sv["total"],
             "subtask_hidden": sv["hidden"],
-            "linked_projects": linked_projects(t, viewer) if viewer is not None else [],
-            "git_project_id": t.git_project_id,
+            "linked_projects": linked,
+            # 못 보는 연결 프로젝트가 연동 프로젝트면 id를 내주지 않는다(Sol 검토 R7).
+            "git_project_id": t.git_project_id
+            if t.git_project_id in {t.project_id, *(lp["id"] for lp in linked)}
+            else None,
             "attachments": [attachment_out(a) for a in attachments_of(t)],  # 최신 버전만
         }
     )

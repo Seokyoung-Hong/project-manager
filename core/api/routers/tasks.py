@@ -15,7 +15,7 @@ from github.models import RepoIssue, TaskGitLink
 from github.services import can_view_repo, continuation, task_repo, task_repo_state, user_token
 from orgs.services import ai_denied
 from orgs.settings import effective
-from projects.services import visible_projects
+from projects.services import can_view_project, visible_projects
 from tasks.brief import task_brief
 from tasks.models import ChangeLog, Task, TaskProject
 from tasks.services import (
@@ -156,6 +156,8 @@ def get_task_github(request, task_id: int):
     conn = link.connection
     if not can_view_repo(request.auth, conn.full_name):
         raise HttpError(403, "이 GitHub 저장소를 볼 권한이 없습니다.")
+    if conn.project_id != task.project_id and not can_view_project(request.auth, conn.project):
+        raise HttpError(403, "이 태스크의 연동 프로젝트를 볼 수 없습니다.")  # Sol 검토 R7
     issue = None
     if link.issue_number:
         issue = RepoIssue.objects.filter(connection=conn, number=link.issue_number).first()
@@ -249,6 +251,7 @@ def create_task_issue(request, task_id: int):
                 "github": {
                     "none": "프로젝트에 연결된 저장소가 없습니다.",
                     "unselected": "연동 프로젝트를 먼저 선택하세요.",
+                    "hidden": "이 태스크의 연동 프로젝트를 볼 수 없습니다.",
                     "unlinked": "GitHub 계정을 먼저 연결해야 합니다.",
                     "denied": "이 저장소에 접근할 권한이 없습니다.",
                 }[state]
@@ -272,7 +275,27 @@ def create_task_issue(request, task_id: int):
 def history(request, task_id: int):
     task = task_or_404(request, task_id)
     logs = ChangeLog.objects.filter(target_type="task", target_id=task.pk).select_related("actor")
-    return [changelog_out(log) for log in logs]
+    out = [changelog_out(log) for log in logs]
+    # 연결·연동 프로젝트 이력의 값은 프로젝트 id다. 못 보는 프로젝트 id는 지운다(Sol 검토 R7).
+    pfields = ("projects", "git_project")
+    ids = {
+        int(v)
+        for r in out
+        if r["field"] in pfields
+        for v in (r["old_value"], r["new_value"])
+        if v.isdecimal()
+    }
+    if ids:
+        seen = {
+            str(pk)
+            for pk in visible_projects(request.auth).filter(pk__in=ids).values_list("pk", flat=True)
+        }
+        for r in out:
+            if r["field"] in pfields:
+                for k in ("old_value", "new_value"):
+                    if r[k].isdecimal() and r[k] not in seen:
+                        r[k] = ""
+    return out
 
 
 def _widening_400(e: WideningRequired):
