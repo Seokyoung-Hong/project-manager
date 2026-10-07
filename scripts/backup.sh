@@ -11,7 +11,7 @@ PM_PROJECT=${PM_PROJECT:-$(basename "$PM_DIR")}
 STAMP=$(date +%Y%m%d-%H%M%S)
 
 # 결과를 core(운영 콘솔)에 알린다. 보고가 실패해도 백업 결과는 바꾸지 않는다.
-report() { docker compose -f "$PM_DIR/compose.yml" exec -T web python manage.py record_backup --job backup "$@" >/dev/null 2>&1 || true; }
+report() { docker compose -f "$PM_DIR/compose.yml" exec -T web python manage.py record_backup --job backup "$@" >/dev/null || true; }
 trap 'report --fail --detail "stamp=$STAMP"' ERR
 
 mkdir -p "$BACKUP_DIR"

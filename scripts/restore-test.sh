@@ -6,7 +6,7 @@ BACKUP_DIR=${BACKUP_DIR:-/srv/pm-backups}
 PM_DIR=${PM_DIR:-/opt/project-manager}
 
 # 결과를 core(운영 콘솔)에 알린다. 보고가 실패해도 시험 결과는 바꾸지 않는다.
-report() { docker compose -f "$PM_DIR/compose.yml" exec -T web python manage.py record_backup --job restore-test "$@" >/dev/null 2>&1 || true; }
+report() { docker compose -f "$PM_DIR/compose.yml" exec -T web python manage.py record_backup --job restore-test "$@" >/dev/null || true; }
 trap 'report --fail' ERR
 DUMP=$(ls -1t "$BACKUP_DIR"/db-*.dump 2>/dev/null | head -n1 || true)
 [ -n "$DUMP" ] || { echo "백업 없음: $BACKUP_DIR" >&2; exit 1; }

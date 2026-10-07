@@ -10,7 +10,8 @@ _PATTERNS = [
     re.compile(r"(?i)DISCORD_BOT_TOKEN=\S+"),
     re.compile(r"/u/[A-Za-z0-9_\-]{20,}/"),
     # 운영자가 발급한 비밀번호 재설정 링크(/reset/<uid>/<token>). 토큰은 24시간 자격증명이다.
-    re.compile(r"/reset/[A-Za-z0-9_\-]+/[0-9a-z]+-[0-9a-f]{20,}"),
+    # 토큰 꼴과 상관없이 /reset/<uid>/ 뒤를 통째로 가린다(토큰 없는 폼 주소 set-password만 남긴다).
+    re.compile(r"/reset/[^/\s\"']+/(?!set-password\b)[^\s\"'?#]+"),
     # Discord 웹훅 URL은 경로에 토큰을 품는다(GitHub 알림 웹훅, github/hooks.py).
     re.compile(r"/webhooks/\d+/[A-Za-z0-9_\-]{20,}"),
     # GitHub 토큰. 설치(ghs_)·사용자(ghu_)·refresh(ghr_)는 접두어로 구분된다.
