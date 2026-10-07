@@ -1,4 +1,4 @@
-<div class="panel" hx-get="{% url 'task_panel' task.pk %}" hx-trigger="task-updated[event.detail.id=={{ task.pk }}] from:body" hx-target="#panel" hx-swap="innerHTML">
+{% load split %}<div class="panel" hx-get="{% url 'task_panel' task.pk %}" hx-trigger="task-updated[event.detail.id=={{ task.pk }}] from:body" hx-target="#panel" hx-swap="innerHTML">
   <div class="panel-bar">
     {% if full_page %}<a class="btn sm" href="{% url 'project_detail' task.project_id %}">← {{ task.project.name }}</a>{% endif %}
     <span class="panel-mobile-context" aria-hidden="true">
@@ -50,6 +50,7 @@
             </select>
           </form>
           {% if pending_assignee %}<span class="badge">{{ pending_assignee.display_name }}님 수락 대기</span>{% endif %}
+          {% if task.is_open and not task.is_template %}<button type="button" class="btn sm" hx-get="{% url 'task_split' task.pk %}" hx-target="#dialog" hx-swap="innerHTML">사람별로 나누기</button>{% endif %}
           <form>
             <input type="hidden" name="version" value="{{ task.version }}">
             <select name="reviewer" class="select" aria-label="검토자"
@@ -70,6 +71,7 @@
           </form>
         </div>
         <p class="muted t13">{{ task.status_hint }}</p>
+        {% if not task.is_template %}{% split_hint task %}{% endif %}
       </div>
       {% if task.is_stopped or block_pending or reject_pending %}{% include "tasks/_stop.html" %}{% endif %}
       {% if series %}{% include "tasks/_series.html" %}{% endif %}

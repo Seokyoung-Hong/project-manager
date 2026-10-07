@@ -138,3 +138,18 @@ def test_server_error_is_generic():
     fake = _fake()
     fake.bot_status = 500
     assert handle(make_core(fake), DID, "완료 12").startswith("지금은 처리할 수 없습니다")
+
+
+def test_create_reply_adds_split_hint_only_when_core_flags_it():
+    from discord_service.commands import SPLIT_HINT, create_reply
+
+    class Core:
+        def __init__(self, flag):
+            self.flag = flag
+
+        def create_task(self, did, fields):
+            return {"task": task(3, "2026-09-12"), "multi_assignee": self.flag}
+
+    assert create_reply(Core(True), DID, {}).endswith("\n" + SPLIT_HINT)
+    assert SPLIT_HINT not in create_reply(Core(False), DID, {})
+    assert "[사람별로 나누기]" in SPLIT_HINT

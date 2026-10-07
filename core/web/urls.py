@@ -25,6 +25,7 @@ from .views import (
     roadmap,
     search,
     settings,
+    split,
     tasks,
     teams,
     today,
@@ -322,4 +323,6 @@ urlpatterns = [
         "tasks/<int:task_id>/git/branch/create", github.git_branch_create, name="git_branch_create"
     ),
     path("tasks/<int:task_id>/git/issue/close", github.git_issue_close, name="git_issue_close"),
+    # ---- IMPL-PLAN-11 S1: 사람별로 나누기 ----
+    path("tasks/<int:task_id>/split", split.task_split, name="task_split"),
 ]

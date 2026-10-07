@@ -78,6 +78,8 @@ description: 유달리(조직 업무 관리)를 MCP로 다룬다. 태스크를 �
 - Discord 채널 관리는 조직 관리자 전용이다. list_discord_channels와 plan_project_channel_assignments로 채널명·ID·카테고리를 확인한다. 현재 연결은 유지하고, 후보를 사용자에게 제시한 뒤 assign_project_channel을 호출한다. 후보가 없으면 기존 카테고리를 우선 제안하고, 적합한 카테고리가 없을 때만 새 이름을 제안한다. create_project_channel 실행 전에 채널명과 카테고리를 확인받는다.
 - 연결만 해제할 때는 unlink_project_channel을 쓴다. Discord 채널 삭제 도구와 혼동하지 않는다.
 - 집계 숫자는 서버가 준 값만 말한다. 진척을 추정해 단정하지 않는다.
+- **담당자는 한 명**: 여러 사람이 할 일이면 `create_task` 1건을 만든 뒤 `split_task(task_id, assignee_ids)`로
+  사람별 태스크로 나눈다(계열로 묶인다). `assignee_ids`를 create/update에 넣는 방법은 없다.
 - **열람 확대**: 한 작업이 여러 프로젝트에 "관련"되면 연결, 프로젝트마다 "따로 하는" 작업이면 나누기.
   연결로 지금 태스크를 못 보던 사람이 보게 되면 `link_task_project`·`create_task(linked_project_ids)`는
   `{"refused": "visibility_widening", "message", "next"}`로 거부한다. `message`를 사용자에게 그대로

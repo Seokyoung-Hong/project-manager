@@ -42,6 +42,7 @@ TOOL_NAMES = {
     "list_attachments",
     "create_task",
     "duplicate_task",
+    "split_task",
     "update_task",
     "link_task_project",
     "unlink_task_project",
@@ -275,7 +276,7 @@ async def test_tool_names_registered(fake_core):
     finally:
         current_token.reset(tok)
     assert {t.name for t in tools} == TOOL_NAMES
-    assert len(TOOL_NAMES) == 79
+    assert len(TOOL_NAMES) == 80
 
 
 def test_governance_tool(fake_core, with_token):
@@ -346,6 +347,16 @@ def test_task_series_tools_shape(fake_core, with_token):
     fn("list_tasks")(include_templates=True, parent_id=7)
     assert "include_templates=true" in fake_core.calls[-1][1]
     assert "parent=7" in fake_core.calls[-1][1]
+
+
+def test_split_task_request_shape(fake_core, with_token):
+    with pytest.raises(CoreError):
+        fn("split_task")(1, [3, 4], roles={3: "백엔드"}, request_id="s1")
+    method, path, headers, _ = fake_core.calls[-1]
+    assert (method, path) == ("POST", "/api/tasks/1/split")
+    assert headers["idempotency-key"] == "s1"
+    assert last_body(fake_core)["assignee_ids"] == [3, 4]
+    assert last_body(fake_core)["roles"] == {"3": "백엔드"}
 
 
 def test_create_request_passes_due_date(fake_core, with_token):
