@@ -6,6 +6,9 @@ services가 이 파일을 늦게 import한다(`services._handlers`). 여기서 s
 
 from django.utils import timezone
 
+from tasks.models import Task
+from tasks.services import git_project_q
+
 from . import notify
 from .models import TaskGitLink
 from .services import record_event, record_ignored
@@ -16,7 +19,12 @@ _OPEN = ("todo", "doing", "paused", "blocked", "review")
 
 def _links_for(conn, sha: str, branches: list[str]) -> list[TaskGitLink]:
     """head_sha가 같은 링크 → 없으면 branch가 같은 링크. 열린 태스크 우선."""
-    qs = TaskGitLink.objects.filter(connection=conn).select_related("task", "task__project")
+    # 연동 프로젝트가 이 저장소인 태스크만(§3.3 git_project_q) — 고르기 전 연결 태스크는 움직이지 않는다.
+    qs = (
+        TaskGitLink.objects.filter(connection=conn)
+        .filter(task__in=Task.objects.filter(git_project_q(conn.project)))
+        .select_related("task", "task__project")
+    )
     found = list(qs.filter(head_sha=sha)) if sha else []
     if not found and branches:
         found = list(qs.filter(branch__in=branches))

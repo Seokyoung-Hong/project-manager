@@ -71,7 +71,9 @@ def build_pr_context(task, *, actor):
         raise ServiceError({"org": "이 조직의 멤버가 아닙니다."})
 
     git_link = getattr(task, "git", None)
-    project_repo = getattr(task.project, "repo", None)
+    from .services import task_repo
+
+    project_repo = task_repo(task)  # 연동 프로젝트 저장소. 고르기 전이면 None(저장소 메타 없음)
     repo = git_link.connection if git_link is not None else project_repo
 
     # Resolve the issue reference before exposing any repository metadata.

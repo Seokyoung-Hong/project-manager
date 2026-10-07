@@ -16,7 +16,7 @@ from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_POST
 
 from accounts.auth import login_user
-from common.errors import ServiceError
+from common.errors import ConflictError, ServiceError
 from github import client
 from github import hooks as gh_hooks
 from github import services as gh_services
@@ -24,9 +24,19 @@ from github import writes as gh_writes
 from github.client import GitHubError
 from github.crypto import decrypt, encrypt
 from github.models import GitHubIdentity, RepoConnection, RepoIssue, TaskGitLink
+from projects.services import visible_projects
+from tasks import services as ts
 from tasks.models import Task
 
-from .common import can_admin, not_admin, org_or_404, project_or_404, task_or_404
+from .common import (
+    CONFLICT_MSG,
+    can_admin,
+    not_admin,
+    org_or_404,
+    project_or_404,
+    task_or_404,
+    version_of,
+)
 from .integrations import clear_problem, record_problem
 from .projects import _can_edit_project_settings
 from .tasks import _panel
@@ -711,9 +721,9 @@ def project_issue_import(request, project_id, issue_id):
 def git_issue(request, task_id):
     _gh_enabled_or_404()
     task = task_or_404(request.user, task_id)
-    if gh_services.repo_state(request.user, task.project)["state"] != "ok":
+    if gh_services.task_repo_state(request.user, task)["state"] != "ok":
         raise Http404
-    conn = task.project.repo
+    conn = gh_services.task_repo(task)
     number = request.POST.get("number", "")
     issue = conn.issues.filter(number=number).first() if number.isdecimal() else None
     if issue is not None:
@@ -729,9 +739,9 @@ def git_issue(request, task_id):
 def git_branch(request, task_id):
     _gh_enabled_or_404()
     task = task_or_404(request.user, task_id)
-    if gh_services.repo_state(request.user, task.project)["state"] != "ok":
+    if gh_services.task_repo_state(request.user, task)["state"] != "ok":
         raise Http404
-    conn = task.project.repo
+    conn = gh_services.task_repo(task)
     branch = request.POST.get("branch", "").strip()[:200]
     if branch:
         link, _ = TaskGitLink.objects.get_or_create(task=task, defaults={"connection": conn})
@@ -746,7 +756,7 @@ def git_branch(request, task_id):
 def git_unlink(request, task_id):
     _gh_enabled_or_404()
     task = task_or_404(request.user, task_id)
-    if gh_services.repo_state(request.user, task.project)["state"] != "ok":
+    if gh_services.task_repo_state(request.user, task)["state"] != "ok":
         raise Http404
     gh_services.unlink(task, request.POST.get("what") or "all")
     return _panel(request, task)
@@ -761,7 +771,7 @@ def _gh_write_error(e) -> str:
 def git_issue_create(request, task_id):
     _gh_enabled_or_404()
     task = task_or_404(request.user, task_id)
-    if gh_services.repo_state(request.user, task.project)["state"] != "ok":
+    if gh_services.task_repo_state(request.user, task)["state"] != "ok":
         raise Http404
     try:
         gh_writes.create_issue(task, actor=request.user)
@@ -775,7 +785,7 @@ def git_issue_create(request, task_id):
 def git_branch_create(request, task_id):
     _gh_enabled_or_404()
     task = task_or_404(request.user, task_id)
-    if gh_services.repo_state(request.user, task.project)["state"] != "ok":
+    if gh_services.task_repo_state(request.user, task)["state"] != "ok":
         raise Http404
     name = request.POST.get("name", "").strip() or gh_writes.default_branch_name(task)
     try:
@@ -790,7 +800,7 @@ def git_branch_create(request, task_id):
 def git_issue_close(request, task_id):
     _gh_enabled_or_404()
     task = task_or_404(request.user, task_id)
-    if gh_services.repo_state(request.user, task.project)["state"] != "ok":
+    if gh_services.task_repo_state(request.user, task)["state"] != "ok":
         raise Http404
     # 버튼은 완료·열린 이슈일 때만 그려지지만, 패널이 열린 채 다른 곳에서 상태가 바뀌면
     # 여기로 올 수 있다. 404로 패널을 깨지 말고 왜 못 닫는지 알려준다.
@@ -805,4 +815,31 @@ def git_issue_close(request, task_id):
         gh_writes.close_issue(task, actor=request.user)
     except (ServiceError, GitHubError) as e:
         return _panel(request, task, error=_gh_write_error(e))
+    return _panel(request, task)
+
+
+@login_required
+@require_POST
+def git_project(request, task_id):
+    """연동 프로젝트 고르기(§3.3). 연결 프로젝트가 있는 태스크만 뜻이 있다. 빈 값이면 연동 끔."""
+    _gh_enabled_or_404()
+    task = task_or_404(request.user, task_id)
+    pid = request.POST.get("project", "")
+    project = None
+    if pid:
+        project = visible_projects(request.user, task.project.org).filter(pk=pid).first()
+        if project is None:
+            raise Http404
+    try:
+        task = ts.update_task(
+            task,
+            {"git_project": project},
+            actor=request.user,
+            source="web",
+            expected_version=version_of(request),
+        )
+    except ServiceError as e:
+        return _panel(request, task, error=" ".join(e.errors.values()))
+    except ConflictError as e:
+        return _panel(request, e.latest, error=CONFLICT_MSG)
     return _panel(request, task)

@@ -150,6 +150,8 @@ class TaskPatchIn(Schema):
     stop_reason: str | None = None
     checklist: list[ChecklistItemIn] | None = None
     reviewer_id: int | None = None  # null이면 검토자 해제
+    # 연동 프로젝트(GitHub). 연결 프로젝트가 있을 때만, {주} ∪ 확정 연결 중 저장소가 있는 것. null이면 연동 끔
+    git_project_id: int | None = None
     is_template: bool | None = None
 
 

@@ -413,3 +413,10 @@ def test_create_task_sends_links(fake_core, with_token):
 def test_no_approve_tool_for_ai():
     """열람 확대 승인·거절은 사람만 한다 — MCP에는 도구가 없다."""
     assert not any("approve" in n or "reject" in n for n in TOOL_NAMES)
+
+
+def test_update_task_git_project(fake_core, with_token):
+    fn("update_task")(1, version=1, git_project_id=5)
+    assert last_body(fake_core) == {"version": 1, "git_project_id": 5}
+    fn("update_task")(1, version=2, clear_git_project=True)
+    assert last_body(fake_core) == {"version": 2, "git_project_id": None}

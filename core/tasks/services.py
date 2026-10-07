@@ -29,9 +29,10 @@ LOCKED_FIELDS = {
     "project",
     "stop_reason",
     "reviewer",
+    "git_project",
 }
 EDITABLE = LOCKED_FIELDS | set(TEXT_FIELDS)
-TRACKED = ("assignee", "due_date", "project", "priority", "stop_reason", "reviewer")
+TRACKED = ("assignee", "due_date", "project", "priority", "stop_reason", "reviewer", "git_project")
 
 NO_DUE_FOR_DOING = "목표 기한이 없어 진행 중으로 바꿀 수 없습니다. 기한을 먼저 정해 주세요."
 
@@ -475,6 +476,8 @@ def update_task(
         ask = changes.pop("assignee")
         wr.request_assign(task, ask, actor, source, note=reason)
     new = {f: changes.get(f, getattr(task, f)) for f in LOCKED_FIELDS}
+    if changes.get("git_project") is not None:
+        _check_git_project(task, changes["git_project"])
     if "project" in changes:
         _require_member(actor, new["project"])
         if new["project"].org_id != task.project.org_id:
@@ -510,12 +513,13 @@ def update_task(
         return task
     _apply(task, expected_version, fields)
     if "project" in fields:
-        # 문서는 같은 프로젝트의 태스크에만 걸린다(projects.docs.link_task). 옮기면 옛 프로젝트 문서
-        # 연결을 끊는다 — 남겨 두면 공개 프로젝트에서 비공개 문서 제목이 보인다.
-        task.docs.remove(*task.docs.exclude(project_id=task.project_id))
         # 새 주 프로젝트가 연결에 있었으면 그 연결은 지운다(주 ≠ 연결). 옛 주는 연결로 남기지 않는다.
         TaskProject.objects.filter(task=task, project=task.project).delete()
-        _drop_stale_git_project(task)
+        _drop_stale_git_project(task, actor, source, token)
+        # 프로젝트 문서는 그 프로젝트가 더는 열람 범위(주 ∪ 확정 연결)에 없으면 연결을 끊는다 — 남겨 두면
+        # 공개 프로젝트에서 비공개 문서 제목이 보인다. 조직·팀 문서(project 없음)는 그대로 둔다.
+        keep = {task.project_id, *_active_link_ids(task)}
+        task.docs.remove(*task.docs.filter(project__isnull=False).exclude(project_id__in=keep))
     if "assignee" in fields:
         wr.drop_assign_requests(task, keep_user=ask)
         if task.assignee != actor:
@@ -1394,12 +1398,13 @@ def _touch(task):
     task.refresh_from_db()
 
 
-def _drop_stale_git_project(task):
-    """연동 프로젝트가 더는 {주} ∪ 연결에 없으면 끈다(§3.3)."""
+def _drop_stale_git_project(task, actor, source="web", token=None):
+    """연동 프로젝트가 더는 {주} ∪ 확정 연결에 없으면 끈다(§3.3). 이력에 남는다."""
     gp = task.git_project_id
-    if gp and gp != task.project_id and not task.project_links.filter(project_id=gp).exists():
+    if gp and gp != task.project_id and gp not in _active_link_ids(task):
         Task.objects.filter(pk=task.pk).update(git_project=None)
-        task.git_project_id = None
+        task.git_project = None
+        _log(task, "git_project", gp, "", actor, source, token, note="연결 해제로 연동 끔")
 
 
 def _check_link_target(actor, task, project):
@@ -1438,6 +1443,7 @@ def link_project(task, project, *, actor, source="web", token=None, confirm_wide
     )
     if not users:
         _log(task, "projects", "", project.pk, actor, source, token, note="연결")
+        _auto_git_project(task, actor, source, token)
         _touch(task)
         return link
     _log(
@@ -1470,7 +1476,7 @@ def unlink_project(task, project, *, actor, source="web", token=None) -> Task:
     link.delete()
     note = "승인 요청 취소" if link.status == "pending" else "연결 해제"
     _log(task, "projects", project.pk, "", actor, source, token, note=note)
-    _drop_stale_git_project(task)
+    _drop_stale_git_project(task, actor, source, token)
     _touch(task)
     return task
 
@@ -1497,6 +1503,7 @@ def approve_link(link, *, actor, source="web", token=None) -> TaskProject:
     link.status, link.decided_by, link.decided_at = "active", actor, timezone.now()
     link.save(update_fields=["status", "decided_by", "decided_at"])
     _log(task, "projects", "", link.project_id, actor, source, token, note="열람 확대 승인")
+    _auto_git_project(task, actor, source, token)
     _touch(task)
     wr.notify(
         task.project.org,
@@ -1537,3 +1544,74 @@ def linked_projects(task, viewer) -> list[dict]:
         for lk in links
         if lk.project_id in shown
     ]
+
+
+# ---------- 연동 프로젝트(GitHub, IMPL-PLAN-11 §3.3·결정 1-2) ----------
+
+
+def _active_link_ids(task) -> list[int]:
+    return list(task.project_links.filter(status="active").values_list("project_id", flat=True))
+
+
+def effective_git_project(task):
+    """GitHub 자동 규칙이 따르는 프로젝트. 확정 연결이 없으면 주 프로젝트(지금 동작).
+    있으면 사용자가 고른 git_project가 {주} ∪ 확정 연결 안에 있을 때만 그것, 아니면 None(자동 연동 끔)."""
+    links = _active_link_ids(task)
+    if not links:
+        return task.project
+    gp = task.git_project_id
+    if gp is not None and (gp == task.project_id or gp in links):
+        return task.git_project
+    return None
+
+
+def git_project_q(project):
+    """project(저장소가 연결된 프로젝트)의 GitHub 이벤트가 움직일 수 있는 태스크. 웹훅 TASK-n 매칭·
+    PR·리뷰·머지가 모두 이 한 조건을 지난다. 확정 연결이 있는 태스크는 git_project로 고른 것만."""
+    linked = Exists(TaskProject.objects.filter(task_id=OuterRef("pk"), status="active"))
+    return (Q(project=project) & ~linked) | (Q(git_project=project) & linked)
+
+
+def _check_git_project(task, project):
+    links = _active_link_ids(task)
+    if not links:
+        raise ServiceError(
+            {
+                "git_project": "연결 프로젝트가 있을 때만 연동 프로젝트를 고릅니다. 지금은 주 프로젝트를 따릅니다."
+            }
+        )
+    if project.pk != task.project_id and project.pk not in links:
+        raise ServiceError({"git_project": "주 프로젝트나 연결된 프로젝트 중에서 고르세요."})
+    if getattr(project, "repo", None) is None:
+        raise ServiceError({"git_project": "저장소가 연결된 프로젝트만 고를 수 있습니다."})
+
+
+def git_project_choices(task) -> list:
+    """연동 프로젝트로 고를 수 있는 것: {주} ∪ 확정 연결 중 저장소가 있는 것."""
+    ids = [task.project_id, *_active_link_ids(task)]
+    return list(
+        Project.objects.filter(pk__in=ids, repo__isnull=False)
+        .select_related("repo")
+        .order_by("name")
+    )
+
+
+def _auto_git_project(task, actor, source, token=None):
+    """확정 연결이 0 → 1이 되는 순간, 이미 GitHub 작업(이슈·브랜치)이 있으면 주 프로젝트를 연동
+    프로젝트로 정한다 — 진행 중인 작업을 끊지 않는다. 없으면 None으로 두고 사용자가 고른다."""
+    if task.git_project_id is not None or len(_active_link_ids(task)) != 1:
+        return
+    if getattr(task, "git", None) is None:
+        return
+    Task.objects.filter(pk=task.pk).update(git_project=task.project)
+    task.git_project = task.project
+    _log(
+        task,
+        "git_project",
+        "",
+        task.project_id,
+        actor,
+        source,
+        token,
+        note="진행 중인 GitHub 작업 유지",
+    )

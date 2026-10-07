@@ -11,7 +11,12 @@ from django.views.decorators.http import require_POST
 
 from common.dates import today_kst
 from common.errors import ConflictError, ServiceError
-from github.services import continuation, pr_compare_url, repo_state, sync_issues_if_stale
+from github.services import (
+    continuation,
+    pr_compare_url,
+    sync_issues_if_stale,
+    task_repo_state,
+)
 from github.writes import default_branch_name
 from notes.services import visible_notes
 from projects.services import visible_projects
@@ -41,7 +46,8 @@ from .common import (
 
 def _git_ctx(request, task) -> dict:
     """패널 GitHub 블록의 context. repo_state()가 상태를, pr_compare_url()이 PR 열기 링크를 준다."""
-    rs = repo_state(request.user, task.project)
+    rs = task_repo_state(request.user, task)
+    has_links = task.project_links.filter(status="active").exists()
     link = getattr(task, "git", None)
     issues = []
     if rs["state"] == "ok" and not (link and link.issue_number):
@@ -58,6 +64,9 @@ def _git_ctx(request, task) -> dict:
             "issues": issues,
             "pr_url": pr_compare_url(link) if link and link.branch else None,
             "default_branch_name": default_branch_name(task) if rs["state"] == "ok" else "",
+            # 연결 프로젝트가 있으면 연동 프로젝트를 사용자가 고른다(§3.3). 고를 수 있는 것과 현재 값.
+            "has_links": has_links,
+            "choices": ts.git_project_choices(task) if has_links else [],
         },
         # 접힌 GitHub 블록의 한 줄 요약. 펼치지 않아도 연결 상태를 알 수 있어야 한다.
         "gh_summary": _git_summary(rs, link),
@@ -65,6 +74,8 @@ def _git_ctx(request, task) -> dict:
 
 
 def _git_summary(rs, link) -> str:
+    if rs["state"] == "unselected":
+        return "연동 프로젝트 미선택"
     if rs["state"] == "none":
         return "저장소 미연결"
     if rs["state"] == "unlinked":

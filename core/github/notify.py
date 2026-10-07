@@ -31,10 +31,10 @@ def channel(conn, kind: str, head: str, task=None, extra: str = "") -> None:
 def dm(task, user, head: str, extra: str = "") -> None:
     """`notify.github_dm`(조직·프로젝트)과 `user.notify_dm`(개인)이 둘 다 켜져 있고,
     그 사람이 아직 조직 멤버이며 프로젝트를 볼 수 있을 때만."""
-    from tasks.services import can_see
+    from tasks.services import _sees_task
 
     project = task.project
-    if user is None or not is_member(user, project.org) or not can_see(user, project):
+    if user is None or not is_member(user, project.org) or not _sees_task(user, task, project):
         return
     if not effective("notify.github_dm", org=project.org, project=project):
         return

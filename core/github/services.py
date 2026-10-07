@@ -27,7 +27,14 @@ from projects.services import _log, require_level
 from tasks import work_requests as wr
 from tasks.models import ChangeLog, Task
 from tasks.services import _log as _task_log
-from tasks.services import create_task, duplicate_task, transition, update_task
+from tasks.services import (
+    create_task,
+    duplicate_task,
+    effective_git_project,
+    git_project_q,
+    transition,
+    update_task,
+)
 
 from . import client
 from . import notify as gh_notify
@@ -72,6 +79,21 @@ def repo_state(user, project) -> dict:
     if not can_view_repo(user, conn.full_name):
         return {"conn": conn, "state": "denied"}  # 접근 권한 없음
     return {"conn": conn, "state": "ok"}
+
+
+def task_repo(task):
+    """태스크의 연동 프로젝트 저장소(§3.3). 연동 프로젝트를 고르기 전이거나 저장소가 없으면 None."""
+    project = effective_git_project(task)
+    return getattr(project, "repo", None) if project is not None else None
+
+
+def task_repo_state(user, task) -> dict:
+    """패널·API가 태스크 기준으로 쓰는 repo_state. 연결 프로젝트가 있는데 연동 프로젝트를 안 골랐으면
+    state="unselected"(자동 연동 끔)."""
+    project = effective_git_project(task)
+    if project is None:
+        return {"conn": None, "state": "unselected"}
+    return repo_state(user, project)
 
 
 # ---------- 조직 설치 ----------
@@ -516,8 +538,9 @@ def link_event(event, task, *, actor, source: str = "web") -> None:
     """미매칭 이벤트(예: 번호 없는 커밋)를 손으로 태스크에 잇는다. 저장소 설정과 같은 등급이다."""
     project = event.connection.project
     require_level(actor, project, effective("project.settings_by", org=project.org), "task_id")
-    if task.project_id != project.pk:
-        raise ServiceError({"task_id": "이 프로젝트의 태스크만 연결할 수 있습니다."})
+    git_project = effective_git_project(task)
+    if git_project is None or git_project.pk != project.pk:
+        raise ServiceError({"task_id": "이 태스크의 연동 프로젝트가 아닙니다."})
     event.task = task
     event.save(update_fields=["task"])
 
@@ -542,6 +565,8 @@ def disconnect_repo(*, project, actor, source: str = "web") -> bool:
         # ponytail: 봇이 지울 Discord 쪽 웹훅은 연결 행과 함께 사라져 채널에 남는다(GitHub 훅이 없어 조용하다).
         # 남는 게 문제가 되면 정리 작업을 연결 밖(프로젝트)에 두는 표를 만든다.
         hooks.remove(project, actor=actor, source=source)
+    # 이 저장소를 연동 프로젝트로 고른 태스크는 연동을 끈다(한 쿼리, §3.3).
+    Task.objects.filter(git_project=project).update(git_project=None)
     conn.delete()
     return True
 
@@ -796,10 +821,13 @@ COMMIT_KEEP = 100
 
 
 def _find_task(conn, *texts):
-    """연결된 프로젝트 안에서만 찾는다. 다른 프로젝트 번호를 적어도 움직이지 않는다."""
+    """이 저장소를 연동 프로젝트로 둔 태스크 안에서만 찾는다(git_project_q). 다른 프로젝트 번호나
+    연동 프로젝트를 고르지 않은 연결 태스크 번호를 적어도 움직이지 않는다."""
     for text in texts:
         for m in TASK_RE.finditer(text or ""):
-            task = Task.objects.filter(pk=int(m.group(1)), project=conn.project).first()
+            task = (
+                Task.objects.filter(pk=int(m.group(1))).filter(git_project_q(conn.project)).first()
+            )
             if task:
                 return task, (int(m.group(2)) if m.group(2) else None)
     return None, None
@@ -953,6 +981,8 @@ def _pr_link(conn, number):
     """같은 PR에 링크가 여럿(재개로 생긴 새 태스크)이면 열린 태스크 우선, 없으면 최신."""
     links = list(
         TaskGitLink.objects.filter(connection=conn, pr_number=number)
+        # 이어진 PR도 연동 프로젝트가 바뀌었거나 꺼졌으면 움직이지 않는다(§3.3).
+        .filter(task__in=Task.objects.filter(git_project_q(conn.project)))
         .select_related("task", "task__project", "task__assignee")
         .order_by("-task_id")
     )
@@ -1243,6 +1273,9 @@ def reopen_as_new(conn, delivery, payload, *, old, kind: str) -> Task | None:
         notify_assignee=False,  # 담당 요청(또는 재개 DM) 한 통으로 알린다
     )
     src = TaskGitLink.objects.filter(task=old).first()
+    if new.project_links.filter(status="active").exists():
+        # 복제는 연동 프로젝트를 복사하지 않는다. 재개된 작업은 이 저장소를 이어 따른다.
+        Task.objects.filter(pk=new.pk).update(git_project=conn.project)
     link = _link_for(conn, new)
     if src is not None:
         link.issue_number = src.issue_number
