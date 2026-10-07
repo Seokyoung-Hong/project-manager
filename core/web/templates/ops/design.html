@@ -6,7 +6,7 @@
   <p class="muted t13">규칙과 이유는 저장소 루트 <code>DESIGN.md</code>, 값은 <code>core/web/static/app.css</code>가 기준입니다. 이 화면의 토큰 표는 app.css를 직접 읽어 그리므로 코드와 어긋나지 않습니다. 운영체제의 라이트·다크 설정을 바꾸면 견본도 바뀝니다.</p>
   <nav class="chips" aria-label="이 화면 안 이동">
     <a class="chip" href="#sg-color">색</a><a class="chip" href="#sg-type">글자</a><a class="chip" href="#sg-scale">간격·모서리·그림자</a>
-    <a class="chip" href="#sg-components">컴포넌트</a><a class="chip" href="#sg-work">업무 부품</a><a class="chip" href="#sg-art">그림</a><a class="chip" href="#sg-integrations">연동</a>
+    <a class="chip" href="#sg-components">컴포넌트</a><a class="chip" href="#sg-work">업무 부품</a><a class="chip" href="#sg-art">그림</a><a class="chip" href="#sg-integrations">연동</a><a class="chip" href="#sg-ops">운영 콘솔</a>
   </nav>
 </section>
 
@@ -130,6 +130,23 @@
   </div>
 </section>
 
+<section class="card" id="sg-ops">
+  <h2>운영 콘솔 부품</h2>
+  <h3 class="t15">감사 기록 행 <span class="muted t12">table.grid + .muted.t13 (사유·상세·IP) · 읽기 전용, 행에 버튼 없음</span></h3>
+  <div class="table-scroll" tabindex="0"><table class="grid">
+    <thead><tr><th>시각</th><th>운영자</th><th>작업 종류</th><th>대상</th><th>사유</th><th>상세</th><th>IP</th></tr></thead>
+    <tbody><tr><td class="t13">2026-10-07 09:12</td><td>staff1</td><td>사용자 정지</td><td>member1</td><td class="muted t13">반복된 스팸 가입</td><td class="muted t13"><div>before: 활성</div><div>after: 정지</div></td><td class="muted t13">10.0.0.1</td></tr></tbody>
+  </table></div>
+  <h3 class="t15">사유·재입력 확인 대화상자 <span class="muted t12">ops/_confirm.html · textarea 사유 + 확인값 입력 + .btn.danger</span></h3>
+  <button type="button" class="btn danger" onclick="document.getElementById('sg-ops-dialog').showModal()">위험 작업 열기</button>
+  <dialog id="sg-ops-dialog"><form method="dialog" class="stack">
+    <h2 class="t20">운영 데이터 JSON 내보내기</h2>
+    <p class="t13">태스크·변경 이력의 내용까지 담긴 파일을 내려받습니다. 실행은 감사 기록에 남습니다.</p>
+    <label class="field">사유 <textarea class="textarea" required minlength="5" maxlength="300"></textarea></label>
+    <label class="field">확인을 위해 <code>export</code>를 그대로 입력해 주세요 <input class="input" autocomplete="off"></label>
+    <div class="row"><button class="btn danger">내보내기</button><button class="btn link">취소</button></div>
+  </form></dialog>
+</section>
 <section class="card" id="sg-integrations">
   <h2>연동 화면 부품</h2>
   <h3 class="t15">연결 상태 <span class="muted t12">.conn .conn-state (+ on · off · warn · bad)</span></h3>
