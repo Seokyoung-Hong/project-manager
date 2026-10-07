@@ -32,6 +32,7 @@ from tasks.services import (
     create_task,
     extend_due,
     get_visible_task,
+    linked_projects,
     today_view,
     transition,
     update_task,
@@ -110,7 +111,11 @@ def today(request, payload: DiscordActorIn):
     return {
         "display_name": actor.display_name,
         "date": view["date"].isoformat(),
-        "items": [task_brief(t) for t in view["items"]],
+        # 봇은 15건까지만 그린다(messages.today_message). 연결 프로젝트("↔ A, B")도 그만큼만 읽는다.
+        "items": [
+            {**task_brief(t), "linked_projects": linked_projects(t, actor) if i < 15 else []}
+            for i, t in enumerate(view["items"])
+        ],
         "counts": view["counts"],
     }
 

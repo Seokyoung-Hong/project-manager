@@ -360,12 +360,15 @@ def list_tasks(
     include_archived: bool = False,
     include_templates: bool = False,
     parent_id: int | None = None,
+    group_id: int | None = None,
+    leaf_only: bool = False,
     limit: int = 50,
     offset: int = 0,
 ) -> dict:
     """태스크 검색. status는 'todo,doing,review' 처럼 쉼표로 여러 개. 날짜는 YYYY-MM-DD.
     updated_since는 ISO 8601 시각 이후 변경된 항목만 반환한다. include_archived로 보관 프로젝트도 포함한다.
     템플릿(is_template)은 기본으로 빠진다. include_templates로 포함하고, parent_id로 한 계열의 회차·변형만 본다.
+    group_id는 그 상위 태스크의 하위 태스크만(하위 목록). leaf_only=True는 하위가 있는 상위를 뺀다(집계용, 하위가 대표한다).
     project_id는 그 프로젝트에 연결된 태스크도 포함한다.
     결과: {items, total, limit, offset}. 미완료만 보려면 status='todo,doing,paused,blocked,review'.
     막힌 것만 보려면 status='blocked'."""
@@ -382,6 +385,8 @@ def list_tasks(
         include_archived=include_archived,
         include_templates=include_templates,
         parent=parent_id,
+        group=group_id,
+        leaf_only=leaf_only or None,
         limit=limit,
         offset=offset,
     )
@@ -391,6 +396,7 @@ def list_tasks(
 def get_task(task_id: int, include_history: bool = False) -> dict:
     """태스크 상세: 설명, 완료 조건, 다음 행동, 진행 메모, 체크리스트, 연결 문서·GitHub 이슈, version,
     연결 프로젝트(linked_projects: id·name·status active|pending)와 연동 프로젝트(git_project_id).
+    상위 태스크(group: 볼 수 있을 때만, group_id는 항상)와 하위 태스크(subtasks, subtask_done/subtask_total 진행률).
     include_history면 변경 이력 포함."""
     core = _core()
     task = core.get(f"/api/tasks/{task_id}")
@@ -554,12 +560,15 @@ def create_task(
     request_id: str | None = None,
     linked_project_ids: list[int] | None = None,
     confirm_visibility_widening: bool = False,
+    group_id: int | None = None,
 ) -> dict:
     """태스크 생성. 담당자는 한 명 — assignee_id를 비우면 토큰 주인이 담당자. 여러 사람이 할 일이면
     1건 만든 뒤 split_task로 사람별로 나눈다. due_date는 YYYY-MM-DD, 없으면 no_due_reason 필수.
     priority는 1~10. request_id를 주면 같은 값으로 재시도해도 중복 생성되지 않는다.
     linked_project_ids: 함께 연결할 프로젝트(주 프로젝트는 project_id). 열람자가 늘어나는 연결이면
-    confirm_visibility_widening 없이는 거부된다 — link_task_project와 같은 규칙."""
+    confirm_visibility_widening 없이는 거부된다 — link_task_project와 같은 규칙.
+    group_id: 상위 태스크 — 그 하위 태스크로 만든다(상위와 같은 프로젝트, 한 겹. 하위 아래에는 못 만든다).
+    큰 일은 상위 1건을 만든 뒤 group_id로 하위를 만든다."""
     body = {
         "project_id": project_id,
         "title": title,
@@ -573,6 +582,7 @@ def create_task(
         "checklist": [{"text": t} for t in checklist] if checklist else None,
         "linked_project_ids": linked_project_ids or [],
         "confirm_visibility_widening": confirm_visibility_widening,
+        "group_id": group_id,
     }
     headers = {"Idempotency-Key": request_id} if request_id else None
     try:
@@ -652,6 +662,8 @@ def update_task(
     is_template: bool | None = None,
     git_project_id: int | None = None,
     clear_git_project: bool = False,
+    group_id: int | None = None,
+    clear_group: bool = False,
 ) -> dict:
     """태스크 수정. version은 get_task로 읽은 최신 값. 바꿀 항목만 준다. due_date는 YYYY-MM-DD.
     reviewer_id는 지정 검토자(검토 대기 → 완료를 이 사람이나 관리자만 한다). 비우려면 clear_reviewer=True.
@@ -659,6 +671,7 @@ def update_task(
     회차는 duplicate_task로 만든다.
     git_project_id: 연동 프로젝트(GitHub). 연결 프로젝트가 있는 태스크는 이걸 고르기 전엔 GitHub 자동 연동이
     꺼져 있다. 주 프로젝트나 확정 연결 중 저장소가 있는 것만. 끄려면 clear_git_project=True.
+    group_id: 상위 태스크에 넣기(하위로 만들기, 같은 프로젝트·한 겹). 떼어내려면 clear_group=True.
     담당자를 비우려면 clear_assignee=True, 기한을 비우려면 clear_due_date=True 와 no_due_reason.
     checklist는 [{text, is_done}] 전체 교체.
     stop_reason은 일시정지·막힘 상태에서만 바꿀 수 있다. notes는 통째로 교체되므로 덧붙이려면 append_note."""
@@ -680,6 +693,7 @@ def update_task(
         "reviewer_id": reviewer_id,
         "is_template": is_template,
         "git_project_id": git_project_id,
+        "group_id": group_id,
     }.items():
         if v is not None:
             body[k] = v
@@ -693,6 +707,8 @@ def update_task(
         body["reviewer_id"] = None
     if clear_git_project:
         body["git_project_id"] = None
+    if clear_group:
+        body["group_id"] = None
     return _core().patch(f"/api/tasks/{task_id}", body)
 
 
@@ -714,7 +730,7 @@ def duplicate_task(
     request_id: str | None = None,
 ) -> dict:
     """태스크 복제·회차 만들기. 설명·완료 조건·다음 행동·체크리스트(미완료로)·링크·문서 연결을 복사하고
-    같은 계열(parent_id)로 묶는다. 반복하는 일은 템플릿에서 이 도구로 회차를 만든다(자동 생성 없음).
+    같은 계열(parent_id)로 묶는다(하위 태스크는 복사하지 않는다). 반복하는 일은 템플릿에서 이 도구로 회차를 만든다(자동 생성 없음).
     title을 비우면 원본 제목. due_date(YYYY-MM-DD)가 없으면 no_due_reason 필수.
     request_id를 주면 같은 값으로 재시도해도 중복 생성되지 않는다."""
     body = {
@@ -735,9 +751,9 @@ def split_task(
     title_pattern: str = "{title} — {name}",
     request_id: str | None = None,
 ) -> dict:
-    """사람별로 나누기. 담당자는 한 명이므로 여러 사람이 맡는 일은 사람(2~10명)마다 태스크를 만들어 같은
-    계열(parent_id)로 묶는다. 설명·완료 조건·기한·체크리스트(미완료로)·링크·문서·연결 프로젝트를 복사하고,
-    원본은 그대로 두되 체크리스트가 만든 태스크 목록으로 바뀐다. roles={user_id: 역할 이름}은 제목에
+    """사람별로 나누기. 담당자는 한 명이므로 여러 사람이 맡는 일은 원래 태스크를 상위로 두고 사람(2~10명)마다
+    하위 태스크를 만든다(group_id). 설명·완료 조건·기한·체크리스트(미완료로)·링크·문서·연결 프로젝트를 복사하고,
+    원본은 그대로 두되 상위 태스크가 되어 진행률(하위 n/m)을 보여 준다. 하위 태스크는 더 나눌 수 없다(한 겹). roles={user_id: 역할 이름}은 제목에
     "이름 (역할)"로 붙는다. title_pattern은 {title}·{name}만 쓴다. request_id로 재시도해도 중복되지 않는다."""
     body = {"assignee_ids": assignee_ids, "roles": roles or {}, "title_pattern": title_pattern}
     headers = {"Idempotency-Key": request_id} if request_id else None

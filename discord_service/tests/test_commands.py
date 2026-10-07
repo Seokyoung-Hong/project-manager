@@ -153,3 +153,17 @@ def test_create_reply_adds_split_hint_only_when_core_flags_it():
     assert create_reply(Core(True), DID, {}).endswith("\n" + SPLIT_HINT)
     assert SPLIT_HINT not in create_reply(Core(False), DID, {})
     assert "[사람별로 나누기]" in SPLIT_HINT
+
+
+def test_task_line_shows_group_and_linked_projects():
+    from discord_service.messages import task_line, team_task_line
+
+    t = task(5, "2026-09-12") | {
+        "group_id": 3,
+        "linked_projects": [{"name": "홍보"}, {"name": "행사"}],
+    }
+    line = task_line(t)
+    assert "할 일 5 ↳ TASK-3" in line and "\n  ↔ 홍보, 행사\n  http://pm/tasks/5" in line
+    assert "↳ TASK-3" in team_task_line(t)
+    plain = task_line(task(5, "2026-09-12"))
+    assert "↳" not in plain and "↔" not in plain

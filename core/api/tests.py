@@ -832,3 +832,39 @@ def test_duplicate_template_reviewer_api(api, task, admin, org):
     assert r.json()["reviewer"] is None
     r = api.post(f"/api/tasks/{task.pk}/transition", {"status": "doing", "version": 2})
     assert r.status_code == 400 and "템플릿" in r.json()["detail"]["status"]
+
+
+def test_group_api(api, task, project, member, admin):
+    """상위·하위 태스크: 만들기·넣기·떼어내기·조회·한 겹."""
+    due = (today_kst() + timedelta(days=3)).isoformat()
+    r = api.post(
+        "/api/tasks",
+        {"project_id": project.pk, "title": "하위", "due_date": due, "group_id": task.pk},
+    )
+    assert r.status_code == 201
+    sub = r.json()
+    assert sub["group_id"] == task.pk and sub["group"]["number"] == task.number
+    up = api.get(f"/api/tasks/{task.pk}").json()
+    assert [s["id"] for s in up["subtasks"]] == [sub["id"]]
+    assert (up["subtask_done"], up["subtask_total"], up["subtask_hidden"]) == (0, 1, 0)
+    assert [t["id"] for t in api.get(f"/api/tasks?group={task.pk}").json()["items"]] == [sub["id"]]
+    # 상위는 집계용 leaf_only에서 빠진다
+    ids = [t["id"] for t in api.get("/api/tasks?leaf_only=true").json()["items"]]
+    assert task.pk not in ids and sub["id"] in ids
+    # 한 겹: 하위 아래에 만들기 거절
+    r = api.post(
+        "/api/tasks",
+        {"project_id": project.pk, "title": "손자", "due_date": due, "group_id": sub["id"]},
+    )
+    assert r.status_code == 400 and "한 겹" in str(r.json())
+    # 떼어내기 → 넣기(PATCH, set_group을 거친다)
+    r = api.patch(f"/api/tasks/{sub['id']}", {"version": sub["version"], "group_id": None})
+    assert r.status_code == 200 and r.json()["group_id"] is None and r.json()["group"] is None
+    r = api.patch(f"/api/tasks/{sub['id']}", {"version": r.json()["version"], "group_id": task.pk})
+    assert r.status_code == 200 and r.json()["group"]["id"] == task.pk
+    assert ChangeLog.objects.filter(target_id=sub["id"], field="group").count() == 3
+    # 자기 자신·없는 상위
+    r = api.patch(f"/api/tasks/{task.pk}", {"version": up["version"], "group_id": task.pk})
+    assert r.status_code == 400 and "group" in r.json()["detail"]
+    r = api.patch(f"/api/tasks/{task.pk}", {"version": up["version"], "group_id": 99999})
+    assert r.status_code == 404

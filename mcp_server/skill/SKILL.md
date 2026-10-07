@@ -80,7 +80,11 @@ description: 유달리(조직 업무 관리)를 MCP로 다룬다. 태스크를 �
 - 연결만 해제할 때는 unlink_project_channel을 쓴다. Discord 채널 삭제 도구와 혼동하지 않는다.
 - 집계 숫자는 서버가 준 값만 말한다. 진척을 추정해 단정하지 않는다.
 - **담당자는 한 명**: 여러 사람이 할 일이면 `create_task` 1건을 만든 뒤 `split_task(task_id, assignee_ids)`로
-  사람별 태스크로 나눈다(계열로 묶인다). `assignee_ids`를 create/update에 넣는 방법은 없다.
+  하위 태스크로 나눈다(원래 태스크가 상위가 되어 진행률을 보여 준다). `assignee_ids`를 create/update에 넣는 방법은 없다.
+- **상위·하위 태스크는 한 겹**: 큰 일은 상위 1건 → `create_task(group_id=상위)`로 하위. 기존 태스크는
+  `update_task(group_id)`로 넣고 `clear_group=True`로 떼어낸다. 하위 목록은 `list_tasks(group_id)`.
+  설명 첫 줄에 `상위: TASK-N`을 적지 않는다. 하위의 하위는 거절된다. 하위가 모두 끝나면 상위 담당자에게
+  완료 제안이 가지만 상위 완료는 사람이 한다. 집계는 하위가 있는 상위를 세지 않는다(하위가 대표한다).
 - **열람 확대**: 한 작업이 여러 프로젝트에 "관련"되면 연결, 프로젝트마다 "따로 하는" 작업이면 나누기.
   연결로 지금 태스크를 못 보던 사람이 보게 되면 `link_task_project`·`create_task(linked_project_ids)`는
   `{"refused": "visibility_widening", "message", "next"}`로 거부한다. `message`를 사용자에게 그대로

@@ -32,6 +32,17 @@ def mention(assignee: dict) -> str:
     return f"<@{did}>" if did else assignee.get("display_name", "?")
 
 
+def group_tag(t: dict) -> str:
+    """하위 태스크면 " ↳ TASK-N"(상위). 번호는 brief의 group_id에서 만든다."""
+    return f" ↳ TASK-{t['group_id']}" if t.get("group_id") else ""
+
+
+def linked_line(t: dict) -> str:
+    """연결 프로젝트가 있으면 줄 하나("  ↔ A, B"). core가 보는 사람이 볼 수 있는 것만 준다."""
+    names = [p["name"] for p in t.get("linked_projects") or []]
+    return f"\n  ↔ {', '.join(names)}" if names else ""
+
+
 def task_line(t: dict, org_names: dict | None = None) -> str:
     """개인 DM용 한 줄. 담당자는 받는 사람 본인이라 넣지 않는다.
 
@@ -44,8 +55,8 @@ def task_line(t: dict, org_names: dict | None = None) -> str:
         if name:
             org_tag = f" · {name}"
     return (
-        f"• **{t['number']}** {t['title']} — {t['project']['name']}{org_tag}"
-        f" — {STATUS.get(t['status'], t['status'])}{reason}\n  {t['url']}"
+        f"• **{t['number']}** {t['title']}{group_tag(t)} — {t['project']['name']}{org_tag}"
+        f" — {STATUS.get(t['status'], t['status'])}{reason}{linked_line(t)}\n  {t['url']}"
     )
 
 
@@ -53,7 +64,7 @@ def team_task_line(t: dict) -> str:
     """팀 채널용 한 줄. 누구 일인지 보여야 한다."""
     reason = f" ({t['stop_reason']})" if t.get("stop_reason") else ""
     return (
-        f"• **{t['number']}** {t['title']} — {t['project']['name']} — {mention(t['assignee'])}"
+        f"• **{t['number']}** {t['title']}{group_tag(t)} — {t['project']['name']} — {mention(t['assignee'])}"
         f" — {STATUS.get(t['status'], t['status'])}{reason}\n  {t['url']}"
     )
 

@@ -349,6 +349,24 @@ def test_task_series_tools_shape(fake_core, with_token):
     assert "parent=7" in fake_core.calls[-1][1]
 
 
+def test_group_tools_shape(fake_core, with_token):
+    def call(name, *a, **kw):
+        try:  # 가짜 core에 없는 끝점은 CoreError — 보낸 요청 모양만 본다
+            fn(name)(*a, **kw)
+        except CoreError:
+            pass
+
+    call("create_task", 1, "하위", due_date="2030-01-02", group_id=9)
+    assert last_body(fake_core)["group_id"] == 9
+    call("update_task", 1, version=2, group_id=9)
+    assert last_body(fake_core) == {"version": 2, "group_id": 9}
+    call("update_task", 1, version=2, clear_group=True)
+    assert last_body(fake_core) == {"version": 2, "group_id": None}
+    call("list_tasks", group_id=9, leaf_only=True)
+    assert "group=9" in fake_core.calls[-1][1] and "leaf_only=true" in fake_core.calls[-1][1]
+    assert "한 겹" in fn("get_guide")()
+
+
 def test_split_task_request_shape(fake_core, with_token):
     with pytest.raises(CoreError):
         fn("split_task")(1, [3, 4], roles={3: "백엔드"}, request_id="s1")

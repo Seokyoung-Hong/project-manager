@@ -10,7 +10,7 @@ from datetime import date
 import httpx
 
 from .core_client import CoreClient
-from .messages import HELP, STATUS, today_message
+from .messages import HELP, STATUS, group_tag, linked_line, today_message
 
 log = logging.getLogger(__name__)
 
@@ -94,7 +94,7 @@ def _dispatch(core: CoreClient, author_id: str, cmd: str, args: list[str]) -> st
 
 
 def _head(t: dict) -> str:
-    return f"**{t['number']}** {t['title']}"
+    return f"**{t['number']}** {t['title']}{group_tag(t)}"
 
 
 def link_reply(core: CoreClient, did: str, code: str) -> str:
@@ -142,7 +142,7 @@ def create_reply(core: CoreClient, did: str, fields: dict) -> str:
     t = r["task"]
     due = t["due_date"] or "기한 미정"
     hint = f"\n{SPLIT_HINT}" if r.get("multi_assignee") else ""
-    return f"{_head(t)} 을(를) 만들었습니다 — {t['project']['name']} · {due}\n{t['url']}{_pending(t)}{hint}"
+    return f"{_head(t)} 을(를) 만들었습니다 — {t['project']['name']} · {due}{linked_line(t)}\n{t['url']}{_pending(t)}{hint}"
 
 
 def update_reply(core: CoreClient, did: str, num: int, changes: dict) -> str:
