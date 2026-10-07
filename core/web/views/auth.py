@@ -1,6 +1,8 @@
 from django.contrib import messages
+from django.contrib.auth.forms import SetPasswordForm
+from django.contrib.auth.tokens import default_token_generator
 from django.shortcuts import redirect, render
-from django.utils.http import url_has_allowed_host_and_scheme
+from django.utils.http import url_has_allowed_host_and_scheme, urlsafe_base64_decode
 from django.views.decorators.http import require_POST
 
 from accounts.auth import (
@@ -11,7 +13,9 @@ from accounts.auth import (
     login_user,
     logout_user,
     record_failure,
+    record_success,
 )
+from accounts.models import User
 from common.errors import ServiceError
 from orgs.services import invite_org, join_by_token
 
@@ -93,3 +97,35 @@ def join(request, token):
         messages.success(request, f"{org.name} 조직에 참여했습니다.")
         return redirect("today")
     return render(request, "auth/join.html", {"token": token})
+
+
+RESET_TOKEN_SESSION_KEY = "_password_reset_token"
+RESET_INTERNAL_TOKEN = "set-password"
+
+
+def password_reset_confirm(request, uidb64, token):
+    """운영자가 발급한 비밀번호 재설정 링크(24시간·1회용). 성공해도 자동 로그인하지 않는다.
+
+    Django 기본 뷰처럼 링크의 토큰을 세션으로 옮기고 토큰 없는 주소로 다시 보낸다 — 폼 화면의
+    주소·Referer·이후 요청 로그에 토큰이 남지 않게 한다.
+    """
+    if request.user.is_authenticated:
+        return render(request, "auth/reset.html", {"logged_in": True})
+    if token != RESET_INTERNAL_TOKEN:
+        request.session[RESET_TOKEN_SESSION_KEY] = token
+        return redirect("password_reset_confirm", uidb64, RESET_INTERNAL_TOKEN)
+    try:
+        user = User.objects.get(pk=urlsafe_base64_decode(uidb64).decode(), is_active=True)
+    except (ValueError, TypeError, OverflowError, User.DoesNotExist):
+        user = None
+    token = request.session.get(RESET_TOKEN_SESSION_KEY, "")
+    if user is None or not default_token_generator.check_token(user, token):
+        return render(request, "auth/reset.html", {"invalid": True})
+    form = SetPasswordForm(user, request.POST or None)
+    if request.method == "POST" and form.is_valid():
+        form.save()  # 비밀번호 해시가 바뀌므로 같은 링크는 다시 쓸 수 없다
+        request.session.pop(RESET_TOKEN_SESSION_KEY, None)
+        record_success("user", user.username.lower())  # 로그인 잠금도 푼다
+        messages.success(request, "비밀번호를 바꿨습니다. 새 비밀번호로 로그인해 주세요.")
+        return redirect("login")
+    return render(request, "auth/reset.html", {"form": form})

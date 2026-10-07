@@ -1,0 +1,2 @@
+{% if u.is_active %}<span class="badge ok">활성</span>{% else %}<span class="badge danger">정지</span>{% endif %}
+{% if u.is_superuser %}<span class="badge primary">최고 운영자</span>{% elif u.is_staff %}<span class="badge primary">운영자</span>{% endif %}

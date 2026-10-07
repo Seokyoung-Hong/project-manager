@@ -3,6 +3,8 @@
 {% block header_nav %}
 <nav class="nav" aria-label="운영 콘솔 메뉴">
   <a href="{% url 'ops' %}"{% if ops_nav == "home" %} aria-current="page"{% endif %}>개요</a>
+  <a href="{% url 'ops_users' %}"{% if ops_nav == "users" %} aria-current="page"{% endif %}>사용자</a>
+  <a href="{% url 'ops_access' %}"{% if ops_nav == "access" %} aria-current="page"{% endif %}>접근</a>
   <a href="{% url 'ops_system' %}"{% if ops_nav == "system" %} aria-current="page"{% endif %}>시스템</a>
   <a href="{% url 'ops_design' %}"{% if ops_nav == "design" %} aria-current="page"{% endif %}>디자인 시스템</a>
 </nav>

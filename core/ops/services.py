@@ -3,7 +3,11 @@
 모든 변경은 사유 5~300자, 위험 작업은 대상 재입력이 필요하고, 변경과 감사 기록은 한 트랜잭션이다.
 """
 
+from django.contrib.auth.tokens import default_token_generator
 from django.db import transaction
+from django.urls import reverse
+from django.utils.encoding import force_bytes
+from django.utils.http import urlsafe_base64_encode
 
 from accounts.auth import client_ip, unlock
 from accounts.models import User
@@ -131,6 +135,28 @@ def revoke_staff(request, user, reason, confirm) -> None:
             {"permission": "최고 운영자의 권한은 Django 관리 화면이나 셸에서만 바꿀 수 있습니다."}
         )
     _set_user(request, user, "user.revoke_staff", "is_staff", False, reason, user.is_staff)
+
+
+def issue_reset_link(request, user, reason, confirm) -> str:
+    """비밀번호 재설정 링크(24시간·1회용)를 만들어 돌려준다. 링크는 감사 기록에 넣지 않는다.
+
+    이메일 발송 기능이 없으므로 운영자가 본인 확인된 경로로 직접 전달한다.
+    """
+    reason = _reason(reason)
+    _confirm(confirm, user.username)
+    if not user.is_active:
+        raise ServiceError({"permission": "정지된 사용자에게는 재설정 링크를 발급할 수 없습니다."})
+    if _is_operator(user):
+        _require_superuser(request)
+    path = reverse(
+        "password_reset_confirm",
+        args=[
+            urlsafe_base64_encode(force_bytes(user.pk)),
+            default_token_generator.make_token(user),
+        ],
+    )
+    audit(request, "user.reset_link", target=user, target_label=user.username, reason=reason)
+    return request.build_absolute_uri(path)
 
 
 def unlock_login(request, key, reason) -> int:

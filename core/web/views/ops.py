@@ -13,7 +13,6 @@ from django.http import HttpResponse, JsonResponse
 from django.shortcuts import redirect, render
 from django.urls import reverse
 
-from accounts.auth import active_locks
 from accounts.models import User
 from api.models import IntegrationStatus
 from common.errors import ServiceError
@@ -64,7 +63,6 @@ def system(request):
         {
             "ops_nav": "system",
             "statuses": IntegrationStatus.objects.order_by("name"),
-            "locks": active_locks(),
         },
     )
 
@@ -89,9 +87,9 @@ def unlock_login(request):
     try:
         n = ops_services.unlock_login(request, key, request.POST.get("reason"))
     except ServiceError as e:
-        return _fail(request, e, "ops_system")
+        return _fail(request, e, "ops_access")
     messages.success(request, f"잠금을 풀었습니다({n}건).")
-    return redirect("ops_system")
+    return redirect("ops_access")
 
 
 def _orgs_json() -> str:

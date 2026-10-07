@@ -14,6 +14,8 @@ from .views import (
     notes,
     oauth,
     ops,
+    ops_access,
+    ops_users,
     orgs,
     portfolio,
     projects,
@@ -201,6 +203,16 @@ urlpatterns = [
     path("ops/unlock", ops.unlock_login, name="ops_unlock"),
     path("ops/export.json", ops.export_json, name="export_json"),
     path("ops/design", ops.design, name="ops_design"),
+    path("ops/users", ops_users.users, name="ops_users"),
+    path("ops/users/<int:user_id>", ops_users.user_detail, name="ops_user"),
+    path("ops/users/<int:user_id>/<slug:action>", ops_users.user_action, name="ops_user_action"),
+    path("ops/access", ops_access.access, name="ops_access"),
+    path(
+        "ops/access/tokens/<int:token_id>/revoke", ops_access.token_revoke, name="ops_token_revoke"
+    ),
+    path(
+        "reset/<str:uidb64>/<str:token>", auth.password_reset_confirm, name="password_reset_confirm"
+    ),
     # ---- V2-04: 부하 현황 · 로드맵 (아래는 이 단계에서 추가) ----
     path("orgs/<int:org_id>/capacity", roadmap.capacity, name="org_capacity"),
     path("orgs/<int:org_id>/roadmap", roadmap.roadmap, name="org_roadmap"),

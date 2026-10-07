@@ -13,20 +13,6 @@
   </table>
   </div>
 </section>
-<section class="card">
-  <div class="card-head"><h2>로그인 잠금</h2></div>
-  <p class="muted t13">아이디 5회/15분 실패 → 15분, IP 30회/15분 → 1시간, 가입 IP 10회/시간 → 1시간 잠깁니다. 해제에는 사유가 필요하고 감사 기록에 남습니다. 셸에서는 <code>manage.py unlock_login &lt;아이디|IP&gt;</code>.</p>
-  <div class="table-scroll" tabindex="0">
-  <table class="grid">
-    <thead><tr><th>종류</th><th>대상</th><th>풀리는 시각</th><th></th></tr></thead>
-    <tbody>
-    {% for l in locks %}
-    <tr><td>{{ l.kind }}</td><td>{{ l.key }}</td><td>{{ l.locked_until|date:"Y-m-d H:i" }}</td><td><button type="button" class="btn sm" hx-get="{% url 'ops_unlock' %}?key={{ l.key|urlencode }}" hx-target="#dialog" hx-swap="innerHTML">해제</button></td></tr>
-    {% empty %}<tr><td colspan="4" class="empty-cell">잠긴 계정·IP가 없습니다.</td></tr>{% endfor %}
-    </tbody>
-  </table>
-  </div>
-</section>
 {% if user.is_superuser %}
 <section class="card">
   <div class="card-head"><h2>운영 데이터 내보내기</h2><button type="button" class="btn sm danger" hx-get="{% url 'export_json' %}" hx-target="#dialog" hx-swap="innerHTML">JSON 내보내기</button></div>
