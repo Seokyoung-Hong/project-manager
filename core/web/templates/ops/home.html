@@ -1,6 +1,9 @@
 {% extends "ops/base.html" %}{% block title %}운영 콘솔{% endblock %}
 {% block ops %}
 {% if superusers_without_staff %}<div class="notice warn" role="status">최고 운영자 {{ superusers_without_staff }}명은 운영 콘솔 권한이 없습니다. 운영 콘솔을 쓰려면 Django 관리 화면에서 운영자 권한(is_staff)을 함께 켜 주세요.</div>{% endif %}
+<div class="tiles" aria-label="주의 타일">
+  {% for t in tiles %}<div class="tile"><b{% if t.danger %} class="danger"{% endif %}>{{ t.value }}</b><span>{{ t.label }}</span></div>{% endfor %}
+</div>
 <section class="card">
   <div class="card-head"><h2>최근 감사 기록</h2></div>
   <div class="table-scroll" tabindex="0">

@@ -1,0 +1,25 @@
+{% extends "ops/base.html" %}{% block title %}조직 · 운영 콘솔{% endblock %}
+{% block ops %}
+<section class="card">
+  <div class="card-head"><h2>조직</h2></div>
+  <p class="muted t13">건수·용량·시각만 보입니다. 프로젝트·태스크·문서의 내용은 운영 콘솔에서 열 수 없습니다. 최근 활동이 90일 전이거나 없으면 이름 옆에 배지를 붙입니다.</p>
+  <div class="table-scroll" tabindex="0">
+  <table class="grid">
+    <thead><tr><th>조직</th><th>조직 관리자</th><th>인원</th><th>프로젝트</th><th>미완료</th><th>완료</th><th>첨부 용량</th><th>최근 활동</th><th>Discord</th><th>GitHub</th></tr></thead>
+    <tbody>
+    {% for o in orgs %}
+    <tr>
+      <td>{{ o.name }}{% if o.inactive %} <span class="badge">비활성</span>{% endif %}<div class="muted t13">생성 {{ o.created_at|date:"Y-m-d" }}</div></td>
+      <td>{{ o.admins|default:"-" }}</td>
+      <td>{{ o.member_n }}</td><td>{{ o.projects_n }}</td><td>{{ o.open_n }}</td><td>{{ o.done_n }}</td>
+      <td>{{ o.bytes|filesizeformat }}</td>
+      <td>{{ o.active_at|date:"Y-m-d"|default:"없음" }}</td>
+      <td>{% if o.discord == "on" %}<span class="conn-state on">감시 중</span>{% elif o.discord == "warn" %}<span class="conn-state warn">감시 꺼짐</span>{% elif o.discord == "bad" %}<span class="conn-state bad">인텐트 거부</span>{% else %}<span class="conn-state off">연결 안 됨</span>{% endif %}</td>
+      <td>{% if o.github %}<span class="conn-state on">설치됨</span>{% else %}<span class="conn-state off">없음</span>{% endif %}</td>
+    </tr>
+    {% empty %}<tr><td colspan="10" class="empty-cell">조직이 없습니다.</td></tr>{% endfor %}
+    </tbody>
+  </table>
+  </div>
+</section>
+{% endblock %}

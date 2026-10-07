@@ -12,6 +12,50 @@
     </tbody>
   </table>
   </div>
+  {% if mcp_missing %}<p class="muted t13">mcp: 보고 없음(보고 기능 없음)</p>{% endif %}
+</section>
+<section class="card">
+  <div class="card-head"><h2>백업</h2></div>
+  {% if backup.stale %}<div class="notice warn" role="status">{% if backup.last_ok %}백업이 26시간 넘게 성공하지 않았습니다.{% else %}마지막 백업 성공 시각이 기록되지 않았습니다.{% endif %} 서버의 <code>/var/log/pm-backup.log</code>를 확인해 주세요.</div>{% endif %}
+  <div class="table-scroll" tabindex="0"><table class="grid"><tbody>
+    <tr><th scope="row">마지막 백업 성공 시각</th><td>{{ backup.last_ok|date:"Y-m-d H:i"|default:"기록 없음" }}</td></tr>
+    <tr><th scope="row">마지막 실행</th><td>{% if backup.row %}{{ backup.row.last_run_at|date:"Y-m-d H:i" }} · {% if backup.row.ok %}성공{% else %}실패{% endif %}{% else %}기록 없음{% endif %}</td></tr>
+    {% if backup.row %}{% for k, v in backup.row.detail.items %}{% if k != "last_ok_at" %}<tr><th scope="row">{{ k }}</th><td>{{ v }}</td></tr>{% endif %}{% endfor %}{% endif %}
+    <tr><th scope="row">복구 시험</th><td>{% if backup.restore %}{{ backup.restore.last_run_at|date:"Y-m-d H:i" }} · {% if backup.restore.ok %}성공{% else %}실패{% endif %}{% else %}기록 없음{% endif %}</td></tr>
+  </tbody></table></div>
+</section>
+<section class="card">
+  <div class="card-head"><h2>저장소</h2></div>
+  <div class="table-scroll" tabindex="0"><table class="grid"><tbody>
+    {% if disk %}<tr><th scope="row">디스크</th><td>전체 {{ disk.total|filesizeformat }} · 사용 {{ disk.used|filesizeformat }} · 남음 {{ disk.free|filesizeformat }}</td></tr>{% else %}<tr><th scope="row">디스크</th><td>확인 불가</td></tr>{% endif %}
+    <tr><th scope="row">첨부</th><td>{{ att_count }}개 · {{ att_size|filesizeformat }}</td></tr>
+    {% for n, size in top_orgs %}<tr><th scope="row">용량 상위 {{ forloop.counter }}</th><td>{{ n }} · {{ size|filesizeformat }}</td></tr>{% endfor %}
+  </tbody></table></div>
+</section>
+<section class="card">
+  <div class="card-head"><h2>데이터베이스·마이그레이션</h2>{% if pending_migrations %}<span class="conn-state bad">미적용 {{ pending_migrations }}개</span>{% else %}<span class="conn-state on">모두 적용됨</span>{% endif %}</div>
+  <p class="muted t13">엔진: {{ db_vendor }}</p>
+  <div class="table-scroll" tabindex="0">
+  <table class="grid">
+    <thead><tr><th>앱</th><th>최신 적용</th></tr></thead>
+    <tbody>{% for app, m in applied %}<tr><td>{{ app }}</td><td><code>{{ m }}</code></td></tr>{% endfor %}</tbody>
+  </table>
+  </div>
+</section>
+<section class="card">
+  <div class="card-head"><h2>회의 녹음</h2></div>
+  <div class="table-scroll" tabindex="0"><table class="grid"><tbody>
+    {% for label, n in rec_statuses %}<tr><th scope="row">{{ label }}</th><td>{{ n }}건</td></tr>{% endfor %}
+    <tr><th scope="row">6시간 넘게 멈춘 녹음</th><td>{{ rec_stuck }}건</td></tr>
+    <tr><th scope="row">최근 7일 실패</th><td>{{ rec_failed_7d }}건</td></tr>
+  </tbody></table></div>
+</section>
+<section class="card">
+  <div class="card-head"><h2>Django 관리 화면</h2>{% if admin_enabled %}<span class="conn-state on">켜짐</span>{% else %}<span class="conn-state off">꺼짐</span>{% endif %}</div>
+  <p class="muted t13">{% if admin_enabled %}최고 운영자만 접근하고, 접근은 감사 기록에 남습니다. 끄려면 서버 환경 변수 <code>DJANGO_ADMIN_ENABLED=0</code>으로 바꿔 다시 시작해 주세요.{% else %}꺼져 있어 <code>/admin</code> 경로가 열리지 않습니다.{% endif %}</p>
+  {% if admin_enabled %}
+  <ul class="t13">{% for a in admin_access %}<li>{{ a.created_at|date:"Y-m-d H:i" }} · {{ a.actor_username }}</li>{% empty %}<li class="muted">접근 기록이 없습니다.</li>{% endfor %}</ul>
+  {% endif %}
 </section>
 <section class="card">
   <div class="card-head"><h2>로그인 잠금</h2></div>
