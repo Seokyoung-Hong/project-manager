@@ -554,12 +554,11 @@ class Notice(models.Model):
 
 def attachment_path(instance, filename):
     """att/<org_id>/<uuid4 hex><ext>. 원래 이름은 Attachment.name에만 둔다(경로 조작·충돌 차단)."""
-    project = instance.project or instance.task.project
-    return f"att/{project.org_id}/{uuid.uuid4().hex}{PurePath(filename).suffix.lower()}"
+    return f"att/{instance.target_org_id}/{uuid.uuid4().hex}{PurePath(filename).suffix.lower()}"
 
 
 class Attachment(models.Model):
-    """태스크·프로젝트에 붙는 파일. 산출물(시안·게시 증빙)이면 kind로 구분하고 버전은 replaces로 잇는다."""
+    """태스크·프로젝트·문서에 붙는 파일. 산출물(시안·게시 증빙)이면 kind로 구분하고 버전은 replaces로 잇는다."""
 
     KINDS = [("file", "파일"), ("out", "산출물"), ("proof", "증빙")]
 
@@ -572,6 +571,10 @@ class Attachment(models.Model):
     )
     task = models.ForeignKey(
         Task, on_delete=models.CASCADE, null=True, blank=True, related_name="attachments"
+    )
+    # 문서(회의록 포함) 첨부. 문서 본문에 이미지로 넣을 수 있다(IMPL-PLAN-11 §4.5).
+    doc = models.ForeignKey(
+        "projects.Doc", on_delete=models.CASCADE, null=True, blank=True, related_name="attachments"
     )
     file = models.FileField(upload_to=attachment_path, max_length=200)
     name = models.CharField("파일 이름", max_length=200)  # 원래 이름(표시·다운로드용)
@@ -594,8 +597,9 @@ class Attachment(models.Model):
         ordering = ["-id"]
         constraints = [
             models.CheckConstraint(
-                condition=(Q(project__isnull=False) & Q(task__isnull=True))
-                | (Q(project__isnull=True) & Q(task__isnull=False)),
+                condition=(Q(project__isnull=False) & Q(task__isnull=True) & Q(doc__isnull=True))
+                | (Q(project__isnull=True) & Q(task__isnull=False) & Q(doc__isnull=True))
+                | (Q(project__isnull=True) & Q(task__isnull=True) & Q(doc__isnull=False)),
                 name="attachment_exactly_one_target",
             ),
             # 버전 체인은 갈라지지 않는다 — 한 파일을 대체하는 새 버전은 하나뿐이다.
@@ -611,4 +615,13 @@ class Attachment(models.Model):
 
     @property
     def target_project(self):
+        """붙은 곳의 프로젝트. 조직·팀 문서 첨부면 None."""
+        if self.doc_id:
+            return self.doc.project
         return self.project or self.task.project
+
+    @property
+    def target_org_id(self) -> int:
+        if self.doc_id:
+            return self.doc.org_id
+        return self.target_project.org_id

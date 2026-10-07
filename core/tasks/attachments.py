@@ -47,17 +47,18 @@ ALLOWED = {  # 확장자 → 저장 content_type. 여기 없는 확장자는 거
 INLINE = {"image/png", "image/jpeg", "image/gif", "image/webp", "application/pdf"}
 
 
-def _project_of(task, project):
-    if (task is None) == (project is None):
-        raise ServiceError({"target": "태스크나 프로젝트 중 하나에만 붙일 수 있습니다."})
-    return project if project is not None else task.project
+def _target(task, project, doc) -> dict:
+    given = {k: v for k, v in (("task", task), ("project", project), ("doc", doc)) if v is not None}
+    if len(given) != 1:
+        raise ServiceError({"target": "태스크·프로젝트·문서 중 하나에만 붙일 수 있습니다."})
+    return given
 
 
 def org_usage_bytes(org) -> int:
     return (
-        Attachment.objects.filter(Q(task__project__org=org) | Q(project__org=org)).aggregate(
-            s=Sum("size")
-        )["s"]
+        Attachment.objects.filter(
+            Q(task__project__org=org) | Q(project__org=org) | Q(doc__org=org)
+        ).aggregate(s=Sum("size"))["s"]
         or 0
     )
 
@@ -76,7 +77,12 @@ def _check_room(target, org, incoming: int, replaces) -> None:
 
 
 def can_download(user, att) -> bool:
-    """태스크 첨부는 태스크 열람(주 ∪ 연결, can_view_task), 프로젝트 첨부는 can_view_project."""
+    """태스크 첨부는 태스크 열람(주 ∪ 연결, can_view_task), 문서 첨부는 can_view_doc,
+    프로젝트 첨부는 can_view_project."""
+    if att.doc_id:
+        from projects.docs import can_view_doc
+
+        return can_view_doc(user, att.doc)
     if att.task_id:
         from .services import can_view_task
 
@@ -86,18 +92,33 @@ def can_download(user, att) -> bool:
 
 @transaction.atomic
 def add_attachment(
-    *, actor, upload, kind="file", note="", task=None, project=None, replaces=None, source="web"
+    *,
+    actor,
+    upload,
+    kind="file",
+    note="",
+    task=None,
+    project=None,
+    doc=None,
+    replaces=None,
+    source="web",
 ) -> Attachment:
-    target_project = _project_of(task, project)
-    if task is not None:
+    target = _target(task, project, doc)
+    if doc is not None:
+        from projects.docs import can_view_doc
+
+        target_project, org, sees = doc.project, doc.org, can_view_doc(actor, doc)
+    elif task is not None:
         from .services import can_view_task
 
-        sees = can_view_task(actor, task)
+        target_project = task.project
+        org, sees = target_project.org, can_view_task(actor, task)
     else:
-        sees = can_view_project(actor, target_project)
-    if not is_member(actor, target_project.org) or not sees:
+        target_project, org = project, project.org
+        sees = can_view_project(actor, project)
+    if not is_member(actor, org) or not sees:
         raise ServiceError({"project": "이 프로젝트에 파일을 올릴 수 없습니다."})
-    if target_project.is_archived:
+    if target_project is not None and target_project.is_archived:
         raise ServiceError({"project": "보관된 프로젝트에는 파일을 올릴 수 없습니다."})
     # 크기는 읽기 전에 본다. 업로드 핸들러가 이미 임시 파일로 받았더라도 해시·저장은 하지 않는다.
     if upload.size > MAX_BYTES:
@@ -108,20 +129,21 @@ def add_attachment(
         raise ServiceError({"file": f"올릴 수 없는 형식입니다({ext or '확장자 없음'})."})
     if kind not in dict(Attachment.KINDS):
         raise ServiceError({"kind": "알 수 없는 종류입니다."})
-    target = {"task": task} if task is not None else {"project": project}
-    if replaces is not None and (replaces.task_id, replaces.project_id) != (
+    if replaces is not None and (replaces.task_id, replaces.project_id, replaces.doc_id) != (
         getattr(task, "pk", None),
         getattr(project, "pk", None),
+        getattr(doc, "pk", None),
     ):
         raise ServiceError({"replaces": "같은 곳에 붙은 파일의 새 버전만 올릴 수 있습니다."})
     # 같은 조직의 업로드를 조직 행 잠금으로 줄 세운다(할당량·개수·버전 검사와 저장이 한 덩어리).
     # 대상(태스크·프로젝트)과 원본 첨부 행도 잠근다. SQLite에서는 잠금이 없으므로 아래에서
     # 저장 뒤 다시 센다 — 끼어든 요청이 있어도 넘친 쪽이 롤백된다.
-    Organization.objects.select_for_update().filter(pk=target_project.org_id).first()
-    type(task or project).objects.select_for_update().filter(pk=(task or project).pk).first()
+    Organization.objects.select_for_update().filter(pk=org.pk).first()
+    obj = next(iter(target.values()))
+    type(obj).objects.select_for_update().filter(pk=obj.pk).first()
     if replaces is not None:
         replaces = Attachment.objects.select_for_update().get(pk=replaces.pk)
-    _check_room(target, target_project.org, upload.size, replaces)
+    _check_room(target, org, upload.size, replaces)
     digest = hashlib.sha256()
     for chunk in upload.chunks():
         digest.update(chunk)
@@ -148,7 +170,7 @@ def add_attachment(
             raise ServiceError(
                 {"replaces": "다른 사람이 먼저 새 버전을 올렸습니다. 최신 버전에서 다시 올리세요."}
             ) from None
-        _check_room(target, target_project.org, 0, None)  # 저장 뒤 재확인(자기 행 포함)
+        _check_room(target, org, 0, None)  # 저장 뒤 재확인(자기 행 포함)
     except Exception:
         att.file.delete(save=False)
         raise
@@ -160,7 +182,7 @@ def add_attachment(
 
 def delete_attachment(att, *, actor) -> None:
     """올린 사람 또는 조직 관리자(문서와 같은 규칙). 파일도 지운다."""
-    org = att.target_project.org
+    org = Organization.objects.get(pk=att.target_org_id)
     if att.created_by_id != actor.pk and not is_admin(actor, org):
         raise ServiceError({"attachment": "올린 사람이나 조직 관리자만 지울 수 있습니다."})
     purge_files([att])

@@ -71,6 +71,11 @@
   </ul>
 </section>
 <section class="card">
+  <h2>팀 문서</h2>
+  <p class="muted t13">공개 범위가 이 팀인 문서는 팀원{% if team.is_private %}과 조직 관리자{% else %}을 포함해 팀을 볼 수 있는 사람{% endif %}이 봅니다.</p>
+  <div class="row"><a class="btn sm" href="{% url 'org_docs' team.org_id %}?scope=t{{ team.pk }}">팀 문서 보기</a></div>
+</section>
+<section class="card">
   <h2>이 팀이 볼 수 있는 비공개 프로젝트</h2>
   <p class="muted t13">공개 범위가 "담당 팀만"인 프로젝트는 조직 관리자·프로젝트 관리자·담당 팀 멤버만 봅니다. 체크하면 이 팀이 담당 팀이 됩니다.</p>
   {% if private_projects %}

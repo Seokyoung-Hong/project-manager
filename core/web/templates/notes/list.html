@@ -91,7 +91,23 @@
         <input class="input auto" data-note-field="tags" value="{{ note.tags|join:', ' }}" placeholder="예: 스프린트, 결정사항" aria-label="태그">
       </label>
     </div>
-    <div id="note-conflict" class="error" hidden>다른 사람이 먼저 수정해 저장하지 못했습니다. 작성 중인 내용을 복사한 뒤 새로고침하고 변경 내용을 확인하세요.</div>
+    <div id="note-conflict" class="notice bad" hidden>⚠ 다른 사람이 먼저 수정해 저장하지 못했습니다. 작성 중인 내용을 복사한 뒤 새로고침하고, 아래 이전 버전에서 변경 내용을 확인하세요.</div>
+    {% if note.status == "draft" %}
+    <div class="notice">초안 — 진행자와 조직 관리자만 봅니다.{% if recording and recording.status != "draft" and recording.status != "done" %} 녹음·전사가 끝나면 확정할 수 있습니다.{% endif %}</div>
+    {% if can_finalize %}
+    <form class="row" method="post" action="{% url 'note_finalize' note.pk %}" onsubmit="return confirm('확정하면 고른 공개 범위의 사람이 이 회의록을 봅니다. 확정할까요?')">{% csrf_token %}
+      <label class="field">
+        <span class="label">확정 뒤 공개 범위</span>
+        <select class="select" name="scope">
+          <option value="">조직 공통</option>
+          {% for p in projects %}<option value="p{{ p.pk }}"{% if p.pk == note.project_id %} selected{% endif %}>프로젝트 · {{ p.name }}</option>{% endfor %}
+          {% for t in teams %}<option value="t{{ t.pk }}"{% if t.pk == note.team_id %} selected{% endif %}>팀 · {{ t.name }}</option>{% endfor %}
+        </select>
+      </label>
+      <button class="btn tint">확정</button>
+    </form>
+    {% endif %}
+    {% endif %}
 
     <form id="doc-form" method="post" action="{% url 'note_save' note.pk %}">{% csrf_token %}
       <input type="hidden" name="field" value="body_md">
@@ -106,6 +122,14 @@
       </div>
       <button id="doc-submit" class="btn sm primary">회의록 저장</button>
     </form>
+
+    {% if recording and recording.transcript_md %}
+    <details>
+      <summary>전사문</summary>
+      <pre class="revision-body">{{ recording.transcript_md }}</pre>
+    </details>
+    {% endif %}
+    {% include "docs/_extras.html" with doc=note %}
 
     <div class="row t13 muted divider-top">
       {# 한 줄에 12개를 욱여넣으면 아무도 읽지 않는다. 필요할 때 펼치게 둔다. #}

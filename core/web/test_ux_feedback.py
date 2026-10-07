@@ -60,7 +60,10 @@ def test_document_failures_survive_redirect(signed, project, member, monkeypatch
     def reject(*args, **kwargs):
         raise ServiceError({"body": "검증용 구체적인 실패 이유"})
 
-    monkeypatch.setattr(service, f"{'create' if action == 'new' else action}_{kind}", reject)
+    name = f"{'create' if action == 'new' else action}_{kind}"
+    if name == "upload_doc":
+        name = "import_md"  # 문서 올리기는 여러 md 가져오기 하나로 합쳤다(IMPL-PLAN-11 D2)
+    monkeypatch.setattr(service, name, reject)
     response = signed.post(url, {"file": SimpleUploadedFile("test.md", b"hello")}, follow=True)
     assert "검증용 구체적인 실패 이유" in response.content.decode()
     assert (

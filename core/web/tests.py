@@ -1317,8 +1317,12 @@ def test_docs_tab_is_always_there(logged, project, settings):
 
 
 def test_file_upload_controls_are_keyboard_focusable(logged, org, project):
+    # 문서 올리기는 대화상자 안의 보이는 파일 입력(여러 개 선택)이라 여기서 뺀다 — 아래에서 따로 본다.
+    doc_body = logged.get(f"/projects/{project.pk}/docs").content.decode()
+    doc_input = re.search(r'<input[^>]*id="doc-upload-file"[^>]*>', doc_body)
+    assert doc_input is not None and " hidden" not in doc_input.group()
+    assert "multiple" in doc_input.group()
     pages = (
-        (f"/projects/{project.pk}/docs", "doc-upload-file"),
         (f"/projects/{project.pk}/api", "api-upload-file"),
         (f"/orgs/{org.pk}/notes?scope=all", "note-upload-file"),
     )

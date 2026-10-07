@@ -1,0 +1,14 @@
+<ul class="doc-tree"{% if not nested %} aria-label="문서 트리"{% endif %}>
+  {% for n in nodes %}
+  <li>
+    {% if n.children %}
+    <details open>
+      <summary><a class="doc-node{% if doc.pk == n.doc.pk %} sel{% endif %}" href="?{% if scope %}scope={{ scope }}&amp;{% endif %}doc={{ n.doc.pk }}"{% if doc.pk == n.doc.pk %} aria-current="page"{% endif %}>{{ n.doc.title }}</a> <span class="muted t13">{{ n.children|length }}</span></summary>
+      {% include "docs/_tree.html" with nodes=n.children nested=True %}
+    </details>
+    {% else %}
+    <a class="doc-node leaf{% if doc.pk == n.doc.pk %} sel{% endif %}" href="?{% if scope %}scope={{ scope }}&amp;{% endif %}doc={{ n.doc.pk }}"{% if doc.pk == n.doc.pk %} aria-current="page"{% endif %}>{{ n.doc.title }}</a>
+    {% endif %}
+  </li>
+  {% endfor %}
+</ul>

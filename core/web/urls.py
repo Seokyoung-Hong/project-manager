@@ -327,4 +327,21 @@ urlpatterns = [
     path("tasks/<int:task_id>/git/project", github.git_project, name="git_project"),
     # ---- IMPL-PLAN-11 S1: 사람별로 나누기 ----
     path("tasks/<int:task_id>/split", split.task_split, name="task_split"),
+    # ---- IMPL-PLAN-11 D2: 문서 화면 ----
+    path("orgs/<int:org_id>/docs", docs.org_docs, name="org_docs"),
+    path("orgs/<int:org_id>/docs/new", docs.org_doc_new, name="org_doc_new"),
+    path("orgs/<int:org_id>/docs/import", docs.org_doc_import, name="org_doc_import"),
+    path("orgs/<int:org_id>/docs/export.zip", docs.org_doc_export, name="org_doc_export"),
+    path("docs/<int:doc_id>", docs.doc_home, name="doc_home"),
+    path("docs/<int:doc_id>/revert", docs.doc_revert, name="doc_revert"),
+    path("docs/<int:doc_id>/move", docs.doc_move, name="doc_move"),
+    path("docs/<int:doc_id>/export.md", docs.doc_export_md, name="doc_export_md"),
+    path("docs/<int:doc_id>/attachments", docs.doc_attachment_add, name="doc_attachment_add"),
+    path("docs/<int:doc_id>/tasks/link", docs.doc_task_link, name="doc_task_link"),
+    path(
+        "docs/<int:doc_id>/tasks/<int:task_id>/unlink",
+        docs.doc_task_unlink,
+        name="doc_task_unlink",
+    ),
+    path("notes/<int:note_id>/finalize", notes.note_finalize, name="note_finalize"),
 ]
