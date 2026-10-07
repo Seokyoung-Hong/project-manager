@@ -23,7 +23,7 @@ from django.utils.dateparse import parse_datetime
 
 from accounts.auth import active_locks
 from accounts.models import User
-from api.models import IntegrationStatus
+from api.models import IntegrationStatus, clean_detail
 from common.errors import ServiceError
 from notes.models import VoiceRecording
 from ops import services as ops_services
@@ -62,6 +62,7 @@ def _backup() -> dict:
     age = timezone.now() - last_ok if last_ok else None
     return {
         "row": row,
+        "detail": clean_detail("backup", row.detail) if row else {},
         "restore": restore,
         "last_ok": last_ok,
         "age_hours": int(age.total_seconds() // 3600) if age else None,
@@ -143,7 +144,10 @@ def system(request):
     applied: dict[str, str] = {}
     for app, name in sorted(MigrationRecorder(connection).applied_migrations()):
         applied[app] = name
+    # detail은 허용 키의 집계만 그린다(저장 때도 거르지만, 이전에 저장된 행도 있다).
     statuses = list(IntegrationStatus.objects.order_by("name"))
+    for s in statuses:
+        s.shown = clean_detail(s.name, s.detail)
     return render(
         request,
         "ops/system.html",

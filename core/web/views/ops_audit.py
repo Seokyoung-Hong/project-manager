@@ -82,9 +82,13 @@ class _Echo:
 
 
 def _cell(value) -> str:
-    """스프레드시트가 수식으로 읽지 않게 =+-@로 시작하는 글자 앞에 작은따옴표를 붙인다."""
+    """스프레드시트가 수식으로 읽지 않게 작은따옴표를 붙인다.
+
+    =+-@로 시작하거나, 선행 공백·TAB·CR·LF 뒤에 그 글자가 오거나, TAB·CR로 시작하면 텍스트로 만든다.
+    """
     s = "" if value is None else str(value)
-    return "'" + s if s[:1] in ("=", "+", "-", "@") else s
+    risky = s[:1] in ("\t", "\r") or s.lstrip(" \t\r\n")[:1] in ("=", "+", "-", "@")
+    return "'" + s if risky else s
 
 
 @ops_required

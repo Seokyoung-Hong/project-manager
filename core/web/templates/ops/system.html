@@ -7,7 +7,7 @@
     <thead><tr><th>이름</th><th>마지막 실행</th><th>결과</th><th>상세</th></tr></thead>
     <tbody>
     {% for s in statuses %}
-    <tr><td>{{ s.name }}</td><td>{{ s.last_run_at|date:"Y-m-d H:i" }}</td><td>{% if s.ok %}<span class="badge ok">✓ ok</span>{% else %}<span class="badge danger">✕ fail</span>{% endif %}</td><td class="muted t13">{% if s.detail.items %}{% for k, v in s.detail.items %}<div>{{ k }}: {{ v }}</div>{% endfor %}{% else %}{{ s.detail|default_if_none:"" }}{% endif %}</td></tr>
+    <tr><td>{{ s.name }}</td><td>{{ s.last_run_at|date:"Y-m-d H:i" }}</td><td>{% if s.ok %}<span class="badge ok">✓ ok</span>{% else %}<span class="badge danger">✕ fail</span>{% endif %}</td><td class="muted t13">{% for k, v in s.shown.items %}<div>{{ k }}: {{ v }}</div>{% endfor %}</td></tr>
     {% empty %}<tr><td colspan="4" class="empty-cell">보고된 통합 상태가 없습니다.</td></tr>{% endfor %}
     </tbody>
   </table>
@@ -20,7 +20,7 @@
   <div class="table-scroll" tabindex="0"><table class="grid"><tbody>
     <tr><th scope="row">마지막 백업 성공 시각</th><td>{{ backup.last_ok|date:"Y-m-d H:i"|default:"기록 없음" }}</td></tr>
     <tr><th scope="row">마지막 실행</th><td>{% if backup.row %}{{ backup.row.last_run_at|date:"Y-m-d H:i" }} · {% if backup.row.ok %}성공{% else %}실패{% endif %}{% else %}기록 없음{% endif %}</td></tr>
-    {% if backup.row %}{% for k, v in backup.row.detail.items %}{% if k != "last_ok_at" %}<tr><th scope="row">{{ k }}</th><td>{{ v }}</td></tr>{% endif %}{% endfor %}{% endif %}
+    {% if backup.row %}{% for k, v in backup.detail.items %}{% if k != "last_ok_at" %}<tr><th scope="row">{{ k }}</th><td>{{ v }}</td></tr>{% endif %}{% endfor %}{% endif %}
     <tr><th scope="row">복구 시험</th><td>{% if backup.restore %}{{ backup.restore.last_run_at|date:"Y-m-d H:i" }} · {% if backup.restore.ok %}성공{% else %}실패{% endif %}{% else %}기록 없음{% endif %}</td></tr>
   </tbody></table></div>
 </section>

@@ -5,13 +5,20 @@ from django.conf import settings
 from django.db import migrations, models
 
 # 감사 기록은 append-only다. QuerySet.update()·delete()와 raw SQL까지 DB가 막는다(IMPL-PLAN-10 §4.2).
+# 덮어쓰기 우회도 막는다: SQLite `INSERT OR REPLACE`의 암묵적 삭제는 recursive_triggers가 꺼져
+# 있으면 DELETE 트리거를 지나지 않으므로 같은 PK 삽입을 BEFORE INSERT에서 거부한다.
+# Postgres의 TRUNCATE는 행 트리거를 부르지 않으므로 문장 트리거를 따로 둔다.
+# (`INSERT … ON CONFLICT DO UPDATE`는 UPDATE 행 트리거에 걸린다.)
 POSTGRES_UP = [
     """CREATE OR REPLACE FUNCTION ops_audit_block() RETURNS trigger AS $$
     BEGIN RAISE EXCEPTION 'ops_opsauditlog is append-only'; END $$ LANGUAGE plpgsql""",
     """CREATE TRIGGER ops_audit_no_update BEFORE UPDATE OR DELETE ON ops_opsauditlog
     FOR EACH ROW EXECUTE FUNCTION ops_audit_block()""",
+    """CREATE TRIGGER ops_audit_no_truncate BEFORE TRUNCATE ON ops_opsauditlog
+    FOR EACH STATEMENT EXECUTE FUNCTION ops_audit_block()""",
 ]
 POSTGRES_DOWN = [
+    "DROP TRIGGER IF EXISTS ops_audit_no_truncate ON ops_opsauditlog",
     "DROP TRIGGER IF EXISTS ops_audit_no_update ON ops_opsauditlog",
     "DROP FUNCTION IF EXISTS ops_audit_block()",
 ]
@@ -20,10 +27,14 @@ SQLITE_UP = [
     BEGIN SELECT RAISE(ABORT, 'ops_opsauditlog is append-only'); END""",
     """CREATE TRIGGER ops_audit_no_delete BEFORE DELETE ON ops_opsauditlog
     BEGIN SELECT RAISE(ABORT, 'ops_opsauditlog is append-only'); END""",
+    """CREATE TRIGGER ops_audit_no_replace BEFORE INSERT ON ops_opsauditlog
+    WHEN NEW.id IS NOT NULL AND EXISTS (SELECT 1 FROM ops_opsauditlog WHERE id = NEW.id)
+    BEGIN SELECT RAISE(ABORT, 'ops_opsauditlog is append-only'); END""",
 ]
 SQLITE_DOWN = [
     "DROP TRIGGER IF EXISTS ops_audit_no_update",
     "DROP TRIGGER IF EXISTS ops_audit_no_delete",
+    "DROP TRIGGER IF EXISTS ops_audit_no_replace",
 ]
 SQL = {"postgresql": (POSTGRES_UP, POSTGRES_DOWN), "sqlite": (SQLITE_UP, SQLITE_DOWN)}
 
