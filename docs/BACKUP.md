@@ -8,6 +8,9 @@
 ```
 `chmod +x scripts/*.sh` 후 root cron에 등록합니다. 실패하면 비0으로 끝나므로 로그·cron 메일로 드러납니다.
 
+## 결과 보고
+`backup.sh`·`restore-test.sh`는 끝에서 `docker compose exec -T web python manage.py record_backup --job backup|restore-test --ok|--fail [--detail "k=v ..."]`로 core에 결과를 알립니다(`IntegrationStatus`, 운영 콘솔 시스템 카드에 표시). 성공이면 `detail.last_ok_at`, 실패면 `last_fail_at`을 갱신하며 실패해도 이전 `last_ok_at`은 남습니다. 보고가 실패(core 중단 등)해도 백업·시험 결과는 바뀌지 않습니다. 기록은 감사 기록 `backup.record`(actor `system`)로도 남습니다.
+
 ## 환경변수(모두 선택)
 | 이름 | 기본값 | 뜻 |
 |---|---|---|
@@ -37,6 +40,7 @@
 ## SPEC 11.2 대응
 | 항목(docs/SPEC.md 11.2) | 어떻게 충족 | 운영에서 할 일 |
 |---|---|---|
+| 마지막 백업 성공 시각 | `record_backup` → 운영 콘솔 시스템 카드 | 26시간 넘으면 로그 확인 |
 | 매일 자동 백업 | `backup.sh` + cron | cron 등록, 로그 확인 |
 | 보존 30일 | `KEEP_DAYS=30` 삭제 | 기본값 유지 |
 | 운영 DB와 분리 보관 | `BACKUP_DIR`·`OFFSITE_DIR` | 다른 장비·스토리지 지정 |

@@ -69,3 +69,5 @@ Discord 슬래시 명령 `/프로젝트채널`도 `기존채널` 옵션으로 �
   `from github.models import GitHubInstallation as G; print(list(G.objects.filter(installed_at__lt="<소유 검증 배포 시각, 예: 2026-10-05T00:00+09:00>").values_list("org__name", "account_login", "account_type", "installed_by__username")))`
 - **프로젝트 밖 문서 연결**: 태스크를 다른 프로젝트로 옮기면 예전 프로젝트의 문서 연결이 남았을 수 있다. 0건이어야 한다. 있으면 해당 연결을 웹에서 해제한다.
   `from django.db.models import F; from projects.models import ProjectDoc; print(list(ProjectDoc.tasks.through.objects.exclude(task__project_id=F("projectdoc__project_id")).values_list("projectdoc_id", "task_id")))`
+
+- **Django 관리 화면 스위치**: `DJANGO_ADMIN_ENABLED`(기본 `1`)를 `0`으로 두면 `/admin/`이 404가 된다. 켜 두면 최고 운영자만 들어가고 접근은 감사 기록에 남는다.
