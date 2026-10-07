@@ -1,0 +1,55 @@
+{% extends "ops/base.html" %}{% block title %}연동 · 운영 콘솔{% endblock %}
+{% block ops %}
+<section class="card">
+  <div class="card-head"><h2>GitHub 설치</h2></div>
+  {% if not github_enabled %}
+  <div class="notice">GitHub 앱이 설정되지 않았습니다.</div>
+  {% else %}
+  <div class="table-scroll" tabindex="0">
+  <table class="grid">
+    <thead><tr><th>조직</th><th>GitHub 계정</th><th>종류·저장소 범위</th><th>설치일</th><th>상태</th><th>권한 점검</th></tr></thead>
+    <tbody>
+    {% for r in installs %}
+    <tr><td>{{ r.org_name }}</td><td><code>{{ r.i.account_login }}</code></td><td>{{ r.i.account_type|default:"-" }} · {{ r.i.repo_selection|default:"-" }}</td><td>{{ r.i.installed_at|date:"Y-m-d" }}</td>
+      <td>{% if r.i.suspended_at %}<span class="conn-state bad">중지됨</span>{% else %}<span class="conn-state on">사용 중</span>{% endif %}</td>
+      <td><span class="conn-state {{ r.state }}">{{ r.label }}</span></td></tr>
+    {% empty %}<tr><td colspan="6" class="empty-cell">설치된 조직이 없습니다.</td></tr>{% endfor %}
+    </tbody>
+  </table>
+  </div>
+  <p class="muted t13">웹훅 수신: 최근 24시간 {{ events.n24 }}건, 마지막 수신 {{ events.last|date:"Y-m-d H:i"|default:"없음" }}. 재시도 대기열은 로그인 세션에만 있어 여기서 볼 수 없습니다.</p>
+  {% endif %}
+</section>
+<section class="card">
+  <div class="card-head"><h2>Discord</h2>
+    {% if beat is None %}<span class="conn-state warn">보고 없음</span>
+    {% elif beat_stale %}<span class="conn-state warn">보고 없음 · 마지막 {{ beat.last_run_at|date:"m-d H:i" }}</span>
+    {% elif beat.ok %}<span class="conn-state on">봇 정상 · {{ beat.last_run_at|date:"H:i" }}</span>
+    {% else %}<span class="conn-state bad">봇 오류 · {{ beat.last_run_at|date:"H:i" }}</span>{% endif %}
+  </div>
+  <div class="table-scroll" tabindex="0">
+  <table class="grid">
+    <thead><tr><th>조직</th><th>서버</th><th>알림 채널</th><th>감시</th><th>인텐트</th><th>봇 권한 보고</th></tr></thead>
+    <tbody>
+    {% for g in guilds %}
+    <tr><td>{{ g.name }}</td><td><code>{{ g.discord_guild_id }}</code></td>
+      <td>{% if g.discord_channel_id %}지정됨{% else %}미지정{% endif %}</td>
+      <td>{% if g.watching %}<span class="conn-state on">{{ g.discord_watch_at|date:"H:i" }}</span>{% else %}<span class="conn-state warn">감시 꺼짐</span>{% endif %}</td>
+      <td>{% if g.discord_intent_denied %}<span class="conn-state bad">거부됨</span>{% else %}<span class="conn-state on">정상</span>{% endif %}</td>
+      <td>{% if g.discord_bot_permissions is None %}없음{% else %}있음{% endif %}</td></tr>
+    {% empty %}<tr><td colspan="6" class="empty-cell">Discord 서버가 연결된 조직이 없습니다.</td></tr>{% endfor %}
+    </tbody>
+  </table>
+  </div>
+</section>
+<section class="card">
+  <div class="card-head"><h2>알림 발송 대기열</h2></div>
+  <div class="tiles five">
+    <div class="tile"><b>{{ notices.waiting }}</b><span>대기</span></div>
+    <div class="tile"><b>{{ notices.oldest|date:"m-d H:i"|default:"-" }}</b><span>가장 오래된 대기</span></div>
+    <div class="tile"><b>{{ notices.sent_24h }}</b><span>24시간 발송</span></div>
+    <div class="tile"><b>{{ notices.sent_7d }}</b><span>7일 발송</span></div>
+  </div>
+  <p class="muted t13">알림 문구와 받는 사람은 보이지 않습니다.</p>
+</section>
+{% endblock %}

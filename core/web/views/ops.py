@@ -4,26 +4,35 @@
 """
 
 import re
+import shutil
+from datetime import timedelta
 from pathlib import Path
 
+from django.conf import settings
 from django.contrib import messages
 from django.core import serializers
 from django.db import connection
+from django.db.migrations.executor import MigrationExecutor
+from django.db.migrations.recorder import MigrationRecorder
+from django.db.models import Count, Min, Sum
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import redirect, render
 from django.urls import reverse
+from django.utils import timezone
+from django.utils.dateparse import parse_datetime
 
 from accounts.auth import active_locks
 from accounts.models import User
 from api.models import IntegrationStatus
 from common.errors import ServiceError
+from notes.models import VoiceRecording
 from ops import services as ops_services
 from ops.access import ops_required, superuser_required
 from ops.models import OpsAuditLog
 from orgs.models import Invite, Organization, OrgMembership, Team, TeamMembership
 from orgs.settings import SPECS, display
 from projects.models import Project
-from tasks.models import ChangeLog, ChecklistItem, Link, Task, TodayItem
+from tasks.models import Attachment, ChangeLog, ChecklistItem, Link, Notice, Task, TodayItem
 
 from .common import dialog
 
@@ -40,14 +49,70 @@ def _fail(request, exc: ServiceError, to: str):
     return redirect(to)
 
 
+BACKUP_STALE = timedelta(hours=26)
+STUCK_REC = timedelta(hours=6)
+HEARTBEAT_STALE = timedelta(minutes=10)
+
+
+def _backup() -> dict:
+    """백업·복구 시험 상태. `backup` 행은 O4의 record_backup이 쓰고, 여기서는 읽기만 한다."""
+    row = IntegrationStatus.objects.filter(name="backup").first()
+    restore = IntegrationStatus.objects.filter(name="restore-test").first()
+    last_ok = parse_datetime(((row and row.detail) or {}).get("last_ok_at") or "")
+    age = timezone.now() - last_ok if last_ok else None
+    return {
+        "row": row,
+        "restore": restore,
+        "last_ok": last_ok,
+        "age_hours": int(age.total_seconds() // 3600) if age else None,
+        "stale": age is None or age > BACKUP_STALE,
+        "failed": bool(row and not row.ok),
+    }
+
+
+def _pending_migrations() -> int:
+    ex = MigrationExecutor(connection)
+    return len(ex.migration_plan(ex.loader.graph.leaf_nodes()))
+
+
+def _stuck_recordings() -> int:
+    return VoiceRecording.objects.filter(
+        status__in=("recording", "transcribing"), started_at__lt=timezone.now() - STUCK_REC
+    ).count()
+
+
 @ops_required
 def ops(request):
-    """개요. 주의 타일은 O2에서 더한다."""
+    """개요: 주의 타일 6개 + 최근 감사 기록."""
+    now = timezone.now()
+    backup = _backup()
+    waiting = Notice.objects.filter(sent_at__isnull=True)
+    oldest = waiting.aggregate(m=Min("created_at"))["m"]
+    pending = _pending_migrations()
+    failed = IntegrationStatus.objects.filter(ok=False).count()
+    stuck = _stuck_recordings()
+    tiles = [
+        ("실패한 통합", failed, failed > 0),
+        (
+            "마지막 백업 성공 후 경과",
+            "기록 없음" if backup["age_hours"] is None else f"{backup['age_hours']}시간",
+            backup["stale"],
+        ),
+        ("잠긴 아이디·IP", len(active_locks()), False),
+        (
+            "대기 알림",
+            waiting.count(),
+            bool(oldest and now - oldest > timedelta(hours=1)),
+        ),
+        ("멈춘 녹음", stuck, stuck > 0),
+        ("미적용 마이그레이션", pending, pending > 0),
+    ]
     return render(
         request,
         "ops/home.html",
         {
             "ops_nav": "home",
+            "tiles": [{"label": a, "value": b, "danger": c} for a, b, c in tiles],
             "audits": OpsAuditLog.objects.all()[:10],
             "superusers_without_staff": User.objects.filter(
                 is_superuser=True, is_staff=False, is_active=True
@@ -58,13 +123,50 @@ def ops(request):
 
 @ops_required
 def system(request):
+    """시스템 카드: 서비스 상태·백업·저장소·DB·녹음·Django 관리 화면. 모두 집계."""
+    now = timezone.now()
+    att = Attachment.objects.all()
+    disk = None
+    try:
+        du = shutil.disk_usage(settings.MEDIA_ROOT)
+        disk = {"total": du.total, "used": du.used, "free": du.free}
+    except OSError:
+        pass
+    by_org: dict[int, int] = {}
+    for pk, tk, size in att.values_list("project__org_id", "task__project__org_id", "size"):
+        by_org[pk or tk] = by_org.get(pk or tk, 0) + size
+    names = dict(Organization.objects.filter(pk__in=by_org).values_list("pk", "name"))
+    top_orgs = [(names.get(k, "?"), v) for k, v in sorted(by_org.items(), key=lambda x: -x[1])[:5]]
+    rec_counts = dict(
+        VoiceRecording.objects.values_list("status").annotate(n=Count("id")).order_by()
+    )
+    applied: dict[str, str] = {}
+    for app, name in sorted(MigrationRecorder(connection).applied_migrations()):
+        applied[app] = name
+    statuses = list(IntegrationStatus.objects.order_by("name"))
     return render(
         request,
         "ops/system.html",
         {
             "ops_nav": "system",
-            "statuses": IntegrationStatus.objects.order_by("name"),
+            "statuses": statuses,
+            "mcp_missing": not any(s.name == "mcp" for s in statuses),
             "locks": active_locks(),
+            "backup": _backup(),
+            "disk": disk,
+            "att_count": att.count(),
+            "att_size": att.aggregate(s=Sum("size"))["s"] or 0,
+            "top_orgs": top_orgs,
+            "db_vendor": connection.vendor,
+            "pending_migrations": _pending_migrations(),
+            "applied": sorted(applied.items()),
+            "rec_statuses": [(label, rec_counts.get(k, 0)) for k, label in VoiceRecording.STATUSES],
+            "rec_stuck": _stuck_recordings(),
+            "rec_failed_7d": VoiceRecording.objects.filter(
+                status="failed", started_at__gte=now - timedelta(days=7)
+            ).count(),
+            "admin_enabled": settings.DJANGO_ADMIN_ENABLED,
+            "admin_access": OpsAuditLog.objects.filter(action="admin.access")[:5],
         },
     )
 
