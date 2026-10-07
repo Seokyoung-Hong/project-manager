@@ -30,6 +30,7 @@ NAV_BY_URL = {
     "org_roadmap": "org",
     "org_governance": "org",
     "org_notes": "org",
+    "org_docs": "org",
     "org_settings": "org",
     "org_discord": "org",
     "org_issues": "org",

@@ -7,7 +7,7 @@
       <h2>문서 <span class="muted">{{ docs|length }}</span></h2>
       <button type="button" class="btn sm primary" onclick="document.getElementById('doc-new-dlg').showModal()">새 문서</button>
     </div>
-    <form class="row" method="get" role="search">
+    <form class="stack" method="get" role="search">
       {% if not project %}
       <label class="field">
         <span class="label">공개 범위</span>
@@ -18,11 +18,10 @@
         </select>
       </label>
       {% endif %}
-      <label class="field grow">
-        <span class="label">검색</span>
-        <input class="input" name="q" value="{{ q }}" placeholder="제목·본문" aria-label="문서 검색">
-      </label>
-      <button class="btn sm">찾기</button>
+      <div class="row">
+        <input class="input grow" name="q" value="{{ q }}" placeholder="제목·본문 검색" aria-label="문서 검색">
+        <button class="btn sm">찾기</button>
+      </div>
     </form>
     <div class="row">
       <button type="button" class="btn sm" onclick="document.getElementById('doc-import-dlg').showModal()">Markdown 올리기</button>
