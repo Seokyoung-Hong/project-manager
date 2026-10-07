@@ -103,7 +103,8 @@ PM apidoc 12 put openapi.json                         # 프로젝트 API 문서 
 | 상태 바꾸기 | `POST /api/tasks/{id}/transition` `{"status", "version", "reason"}` |
 | 기한 미루기 | `POST /api/tasks/{id}/extend` `{"due_date", "reason", "version"}` |
 | 복제·회차 만들기 | `POST /api/tasks/{id}/duplicate --key …` `{"title"?, "due_date"?, "no_due_reason"?, "assignee_id"?}` — 체크리스트(미완료로)·링크·문서를 복사하고 `parent_id`로 묶는다. 반복 업무는 템플릿에서 사람이 회차를 만든다(자동 생성 없음) |
-| 사람별로 나누기 | `POST /api/tasks/{id}/split --key …` `{"assignee_ids": [..], "title_pattern"?, "roles"?}` — 담당자는 한 명이다. 여러 사람이 맡는 일은 태스크 하나로 만든 뒤 이 호출로 사람마다 태스크를 만들어 같은 계열로 묶는다(2~10명, 기한·체크리스트·링크 복사, 원본 체크리스트는 만든 태스크 목록으로 바뀐다). `assignee_ids`를 `POST/PATCH /api/tasks`에 보내면 400 |
+| 사람별로 나누기 | `POST /api/tasks/{id}/split --key …` `{"assignee_ids": [..], "title_pattern"?, "roles"?}` — 담당자는 한 명이다. 여러 사람이 맡는 일은 태스크 하나로 만든 뒤 이 호출로 사람마다 **하위 태스크**를 만든다(2~10명, 기한·체크리스트·링크 복사). 원본은 상위 태스크가 되어 진행률(`subtask_done/subtask_total`)을 보여 준다. 하위 태스크는 더 나눌 수 없다(한 겹). `assignee_ids`를 `POST/PATCH /api/tasks`에 보내면 400 |
+| 하위 태스크 만들기·넣기·떼어내기 | 만들기 `POST /api/tasks` `{…, "group_id": 상위 id}`(상위와 같은 프로젝트). 넣기 `PATCH /api/tasks/{id}` `{"version", "group_id": 상위 id}`, 떼어내기 `{"group_id": null}`. 하위 목록 `GET /api/tasks?group=<상위 id>`, 상위 응답의 `subtasks`·`subtask_done`·`subtask_total`. 집계(미완료·완료 수)는 `GET /api/tasks?leaf_only=true`처럼 하위가 있는 상위를 뺀다 |
 | 템플릿으로 두기·해제 | `PATCH /api/tasks/{id}` `{"version", "is_template": true}` — 시작 전에서만. 템플릿은 상태를 바꾸지 않고 목록·집계에서 빠진다(`GET /api/tasks?include_templates=true`) |
 | 첨부 파일 올리기 | `POST /api/tasks/{id}/attachments` (또는 `/api/projects/{id}/attachments`) multipart `file` `kind`(file·out 산출물·proof 증빙) `note` `replaces`(새 버전일 때 이전 첨부 id) — 25MB, 허용 확장자만. 목록 `GET …/attachments?all=true`, 받기 `GET /api/attachments/{id}/download`, ✋ 지우기 `DELETE /api/attachments/{id}`. 비밀번호·API 키가 든 파일은 올리지 않는다 |
 | 검토자 지정 | `PATCH /api/tasks/{id}` `{"version", "reviewer_id"}` (`null`이면 해제) — 검토 대기 → 완료는 검토자나 관리자만. 반려(검토 대기 → 시작 전·진행 중)는 조직이 요구하면 `reason` 필수 |
@@ -168,7 +169,7 @@ PM apidoc 12 put openapi.json                         # 프로젝트 API 문서 
    비슷한 태스크를 찾는다. 있으면 먼저 보여 준다. 핵심어를 두세 개 바꿔 본다.
 2. **초안을 채운다.** `project_id` `title` `done_when`(확인 가능한 완료 조건) `next_action`(바로 할 첫 행동)
    `checklist` `due_date`(YYYY-MM-DD) 또는 `no_due_reason` `priority`(1~10, 비우면 조직 기본값) `assignee_id`(비우면 나, **한 명만**).
-   여러 사람이 맡는 일이면 태스크 하나로 만들고 이어서 `POST /api/tasks/{id}/split`으로 사람별로 나눈다.
+   여러 사람이 맡는 일이면 태스크 하나로 만들고 이어서 `POST /api/tasks/{id}/split`으로 사람별 하위 태스크로 나눈다.
    대화에 없는 기한·담당자·중요도를 지어내지 않는다. 모르면 비워 두고 확인받는다.
 3. **거버넌스를 지킨다.** 필수값 규칙, AI 중요도 상한(`ai.priority_cap`), `ai.create_task`가 막혀 있는지.
 4. **이슈를 같이 만들지 묻는다.** `GET /api/projects/{id}/repo`가 `connected: true`일 때만 묻는다.
@@ -195,8 +196,9 @@ PM apidoc 12 put openapi.json                         # 프로젝트 API 문서 
   않는다. 승인·거절은 관리자(주 프로젝트가 비공개면 그 프로젝트 관리자·조직 관리자, 아니면 조직 관리자)가
   웹에서 한다. AI는 승인하지 않는다.
 
-core에는 상위·하위 태스크 관계가 없다. 나눈 태스크는 `description` 첫 줄에 `상위: TASK-N` 또는
-`관련: TASK-N`을 적어 잇는다.
+상위·하위 태스크는 한 겹이다(하위의 하위는 400 "태스크 중첩은 한 겹까지입니다."). `group_id`로 잇고,
+`description` 첫 줄에 상위 번호를 적지 않는다. 하위가 모두 끝나면 상위 담당자에게 완료 제안이 가지만
+상위 완료는 사람이 한다(열린 하위가 있으면 상위 완료는 거절된다). 집계는 하위가 있는 상위를 세지 않는다(하위가 대표한다).
 
 ## 이슈 기반 AI 개발과 의사결정 기록
 

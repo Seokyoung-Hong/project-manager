@@ -46,6 +46,8 @@ class TaskBriefOut(Schema):
     next_action: str
     is_template: bool = False
     parent_id: int | None = None
+    # 상위 태스크(한 겹). 번호는 비밀이 아니라 id는 항상 오고, 제목은 볼 수 있을 때만 TaskOut.group에 온다.
+    group_id: int | None = None
     url: str
 
 
@@ -73,6 +75,22 @@ class DocBrief(Schema):
     title: str
 
 
+class GroupBrief(Schema):
+    id: int
+    number: str
+    title: str
+
+
+class SubtaskOut(Schema):
+    id: int
+    number: str
+    title: str
+    status: Status
+    assignee: UserBrief
+    due_date: date | None
+    due_after_group: bool
+
+
 class TaskOut(TaskBriefOut):
     description: str
     done_when: str
@@ -94,6 +112,13 @@ class TaskOut(TaskBriefOut):
     # 지정 검토자. 있으면 검토 대기 → 완료는 이 사람이나 프로젝트·조직 관리자만 한다.
     reviewer: UserBrief | None = None
     children_count: int = 0  # 이 태스크를 뿌리로 하는 회차·변형 수
+    # 상위 태스크(보는 사람이 볼 수 있을 때만, 아니면 null)와 하위 태스크(보이는 것만).
+    # subtask_total은 취소를 뺀 전체 수라 못 보는 하위도 센다(subtask_hidden이 그 수).
+    group: GroupBrief | None = None
+    subtasks: list[SubtaskOut] = []
+    subtask_done: int = 0
+    subtask_total: int = 0
+    subtask_hidden: int = 0
     # 연결 프로젝트(보는 사람이 볼 수 있는 것만). status: active(연결됨)|pending(승인 대기)
     linked_projects: list["LinkedProjectOut"] = []
     git_project_id: int | None = None  # 연동 프로젝트(GitHub). 연결이 있을 때만 뜻이 있다
@@ -118,6 +143,7 @@ class TaskCreateIn(Schema):
     # 있으면 그 연결은 관리자 승인 대기로 남는다.
     linked_project_ids: list[int] = []
     confirm_visibility_widening: bool = False
+    group_id: int | None = None  # 상위 태스크 — 그 하위로 만든다(같은 프로젝트)
 
 
 class LinkedProjectOut(Schema):
@@ -155,6 +181,7 @@ class TaskPatchIn(Schema):
     # 연동 프로젝트(GitHub). 연결 프로젝트가 있을 때만, {주} ∪ 확정 연결 중 저장소가 있는 것. null이면 연동 끔
     git_project_id: int | None = None
     is_template: bool | None = None
+    group_id: int | None = None  # 상위에 넣기. null이면 떼어내기(set_group을 거친다)
 
 
 class TaskSplitIn(Schema):

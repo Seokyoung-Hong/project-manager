@@ -3,7 +3,7 @@ from datetime import date
 from django.conf import settings
 from django.db.models import Exists, F, OuterRef, Q
 from django.utils.dateparse import parse_datetime
-from ninja import Router
+from ninja import Query, Router
 from ninja.errors import HttpError
 
 from accounts.models import User
@@ -25,9 +25,11 @@ from tasks.services import (
     delete_task,
     duplicate_task,
     extend_due,
+    leaf_only,
     link_project,
     reject_link,
     replace_checklist,
+    set_group,
     set_template,
     transition,
     unlink_project,
@@ -72,16 +74,23 @@ def list_tasks(
     include_archived: bool = False,
     include_templates: bool = False,
     parent: int | None = None,
+    group: int | None = None,
+    leaf_only_: bool = Query(False, alias="leaf_only"),
     primary_only: bool = False,
     limit: int = 50,
     offset: int = 0,
 ):
-    """project는 그 프로젝트에 연결된 태스크도 포함한다(primary_only=true면 주 프로젝트만)."""
+    """project는 그 프로젝트에 연결된 태스크도 포함한다(primary_only=true면 주 프로젝트만).
+    group=상위 id면 그 상위의 하위만, leaf_only=true면 하위가 있는 상위를 뺀다."""
     qs = visible_tasks(request.auth)
     if not include_templates:
         qs = qs.filter(is_template=False)
     if parent is not None:
         qs = qs.filter(parent_id=parent)
+    if group is not None:
+        qs = qs.filter(group_id=group)
+    if leaf_only_:  # 집계용: 하위가 있는 상위는 뺀다(하위가 대표한다)
+        qs = leaf_only(qs)
     if org is not None:
         qs = qs.filter(project__org_id=org)
     if project is not None:
@@ -289,10 +298,16 @@ def create_task_ep(request, payload: TaskCreateIn):
         assignee = User.objects.filter(pk=payload.assignee_id).first()
         if assignee is None:
             raise HttpError(400, "담당자를 찾을 수 없습니다.")
+    group = None
+    if payload.group_id is not None:
+        group = visible_tasks(request.auth).filter(pk=payload.group_id).first()
+        if group is None:
+            raise HttpError(404, "상위 태스크를 찾을 수 없습니다.")
     c = ctx(request)
     try:
         task = create_task(
             project=project,
+            group=group,
             title=payload.title,
             assignee=assignee,
             description=payload.description,
@@ -334,6 +349,13 @@ def patch_task(request, task_id: int, payload: TaskPatchIn):
     version = data.pop("version")
     checklist = data.pop("checklist", None)
     template = data.pop("is_template", None)
+    group_given = "group_id" in data
+    gid = data.pop("group_id", None)
+    group = None
+    if gid is not None:
+        group = visible_tasks(request.auth).filter(pk=gid).first()
+        if group is None:
+            raise HttpError(404, "상위 태스크를 찾을 수 없습니다.")
     if "assignee_id" in data:
         aid = data.pop("assignee_id")
         data["assignee"] = User.objects.filter(pk=aid).first() if aid else None
@@ -354,13 +376,17 @@ def patch_task(request, task_id: int, payload: TaskPatchIn):
             raise HttpError(404, "프로젝트를 찾을 수 없습니다.")
     if data:
         task = update_task(task, data, expected_version=version, **c)
+    if group_given:
+        # 상위·하위는 한 겹·같은 프로젝트 검사가 set_group에 있다 — update_task로 우회하지 않는다.
+        task = set_group(task, group, expected_version=task.version if data else version, **c)
+    changed = bool(data) or group_given
     if checklist is not None:
         # 체크리스트만 바꿀 때도 version은 본다. 안 그러면 오래된 화면이 남의 수정을 통째로 덮는다.
-        if not data and task.version != version:
+        if not changed and task.version != version:
             raise ConflictError(task)
         replace_checklist(task, checklist, actor=c["actor"], source=c["source"])
     if template is not None:
-        if not data and checklist is None and task.version != version:
+        if not changed and checklist is None and task.version != version:
             raise ConflictError(task)
         task = set_template(task, template, **c)
     return task_out(task, request.auth)
@@ -368,7 +394,7 @@ def patch_task(request, task_id: int, payload: TaskPatchIn):
 
 @router.post("/{task_id}/duplicate", response={201: TaskOut, 400: ErrorOut})
 def duplicate_ep(request, task_id: int, payload: TaskDuplicateIn):
-    """복제·회차 만들기. 체크리스트(미완료)·링크·문서 연결을 복사하고 계열(parent_id)로 묶는다."""
+    """복제·회차 만들기. 체크리스트(미완료)·링크·문서 연결을 복사하고 계열(parent_id)로 묶는다. 하위 태스크는 복사하지 않는다."""
     task = task_or_404(request, task_id)
     assignee = None
     if payload.assignee_id:
@@ -480,8 +506,9 @@ def reject_link_ep(request, task_id: int, project_id: int, payload: LinkRejectIn
 
 @router.post("/{task_id}/split", response={201: dict, 400: ErrorOut})
 def split_ep(request, task_id: int, payload: TaskSplitIn):
-    """담당자는 한 명이다. 여러 사람이 맡는 일은 사람마다 태스크를 만들어 같은 계열로 묶는다(2~10명).
-    원본은 그대로 두고 체크리스트를 만든 태스크 목록으로 바꾼다. 기한·설명·체크리스트·링크는 복사한다."""
+    """담당자는 한 명이다. 여러 사람이 맡는 일은 사람마다 하위 태스크를 만든다(2~10명).
+    원본은 상위 태스크가 되어(만든 태스크의 group_id = 원본 id) 진행률을 보여 준다.
+    기한·설명·체크리스트·링크는 복사한다. 하위 태스크는 더 나눌 수 없다(한 겹)."""
     task = task_or_404(request, task_id)
     users = list(User.objects.filter(pk__in=payload.assignee_ids))
     if len(users) != len(set(payload.assignee_ids)):

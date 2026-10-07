@@ -6,7 +6,7 @@ from orgs.services import visible_teams
 from projects.services import project_stats, project_stats_bulk
 from tasks.attachments import attachments_of
 from tasks.brief import task_brief, user_brief
-from tasks.services import linked_projects, visible_tasks
+from tasks.services import linked_projects, subtask_progress, subtask_view, visible_tasks
 from tasks.work_requests import pending_assignee
 
 
@@ -36,6 +36,11 @@ def task_out(t, viewer=None) -> dict:
         else t.children.filter(project_id=t.project_id)
     )
     items = list(t.checklist.all())
+    if viewer is not None:
+        sv = subtask_view(viewer, t)
+    else:
+        done, total = subtask_progress(t)
+        sv = {"group": None, "subtasks": [], "done": done, "total": total, "hidden": total}
     d = task_brief(t)
     d.update(
         {
@@ -65,6 +70,26 @@ def task_out(t, viewer=None) -> dict:
             # 담당 요청을 받은 사람이 아직 수락하지 않았다. 수락 전까지 assignee는 그대로다.
             "pending_assignee": user_brief(pending) if (pending := pending_assignee(t)) else None,
             "children_count": children.count(),
+            "group": (
+                {"id": sv["group"].pk, "number": sv["group"].number, "title": sv["group"].title}
+                if sv["group"]
+                else None
+            ),
+            "subtasks": [
+                {
+                    "id": s.pk,
+                    "number": s.number,
+                    "title": s.title,
+                    "status": s.status,
+                    "assignee": user_brief(s.assignee),
+                    "due_date": s.due_date,
+                    "due_after_group": s.due_after_group,
+                }
+                for s in sv["subtasks"]
+            ],
+            "subtask_done": sv["done"],
+            "subtask_total": sv["total"],
+            "subtask_hidden": sv["hidden"],
             "linked_projects": linked_projects(t, viewer) if viewer is not None else [],
             "git_project_id": t.git_project_id,
             "attachments": [attachment_out(a) for a in attachments_of(t)],  # 최신 버전만

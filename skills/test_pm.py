@@ -156,5 +156,11 @@ with tempfile.TemporaryDirectory() as tmp:
     pm.logout()
     assert not pm.TOKEN_FILE.exists()
 
+# 상위·하위 태스크: 낡은 안내(core에 관계가 없다, 설명 첫 줄 상위: TASK-N)가 남지 않았다.
+for name in ("pm", "pm-split"):
+    doc = (Path(__file__).parent / name / "SKILL.md").read_text(encoding="utf-8")
+    assert "core에는 상위·하위 태스크 관계가 없다" not in doc and "첫 줄에 `상위: TASK-N`(" not in doc
+assert "group_id" in (Path(__file__).parent / "pm" / "SKILL.md").read_text(encoding="utf-8")
+
 server.shutdown()
 print("ok")
