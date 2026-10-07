@@ -1830,14 +1830,20 @@ def _check_git_project(task, project):
         raise ServiceError({"git_project": "저장소가 연결된 프로젝트만 고를 수 있습니다."})
 
 
-def git_project_choices(task) -> list:
-    """연동 프로젝트로 고를 수 있는 것: {주} ∪ 확정 연결 중 저장소가 있는 것."""
+def git_project_choices(task, viewer) -> list:
+    """viewer가 연동 프로젝트로 고를 수 있는 것: {주} ∪ 확정 연결 중 저장소가 있고, viewer가 그 프로젝트를
+    볼 수 있으며(visible_projects) GitHub에서 그 저장소를 볼 수 있는 것(can_view_repo). 못 보는 프로젝트·
+    저장소의 이름을 선택지로 드러내지 않는다(Sol 검토 R7)."""
+    from github.services import can_view_repo
+
     ids = [task.project_id, *_active_link_ids(task)]
-    return list(
-        Project.objects.filter(pk__in=ids, repo__isnull=False)
+    rows = (
+        visible_projects(viewer)
+        .filter(pk__in=ids, repo__isnull=False)
         .select_related("repo")
         .order_by("name")
     )
+    return [p for p in rows if can_view_repo(viewer, p.repo.full_name)]
 
 
 def _auto_git_project(task, actor, source, token=None):

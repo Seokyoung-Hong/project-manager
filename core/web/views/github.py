@@ -825,6 +825,8 @@ def git_project(request, task_id):
     _gh_enabled_or_404()
     task = task_or_404(request.user, task_id)
     pid = request.POST.get("project", "")
+    if pid == "keep":  # 못 보는 현재 연동 프로젝트를 그대로 둔다
+        return _panel(request, task)
     project = None
     if pid:
         project = visible_projects(request.user, task.project.org).filter(pk=pid).first()

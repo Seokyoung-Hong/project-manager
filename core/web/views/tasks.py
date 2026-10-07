@@ -67,7 +67,7 @@ def _git_ctx(request, task) -> dict:
             "default_branch_name": default_branch_name(task) if rs["state"] == "ok" else "",
             # 연결 프로젝트가 있으면 연동 프로젝트를 사용자가 고른다(§3.3). 고를 수 있는 것과 현재 값.
             "has_links": has_links,
-            "choices": ts.git_project_choices(task) if has_links else [],
+            "choices": ts.git_project_choices(task, request.user) if has_links else [],
         },
         # 접힌 GitHub 블록의 한 줄 요약. 펼치지 않아도 연결 상태를 알 수 있어야 한다.
         "gh_summary": _git_summary(rs, link),
@@ -77,6 +77,8 @@ def _git_ctx(request, task) -> dict:
 def _git_summary(rs, link) -> str:
     if rs["state"] == "unselected":
         return "연동 프로젝트 미선택"
+    if rs["state"] == "hidden":
+        return "볼 수 없는 연동 프로젝트"
     if rs["state"] == "none":
         return "저장소 미연결"
     if rs["state"] == "unlinked":

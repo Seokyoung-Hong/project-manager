@@ -23,7 +23,7 @@ from common.errors import ConflictError, ServiceError
 from orgs.models import TeamMembership
 from orgs.services import ai_denied, is_member, orgs_of
 from orgs.settings import effective
-from projects.services import _log, require_level
+from projects.services import _log, can_view_project, require_level
 from tasks import work_requests as wr
 from tasks.models import ChangeLog, Task
 from tasks.services import _log as _task_log
@@ -93,6 +93,9 @@ def task_repo_state(user, task) -> dict:
     project = effective_git_project(task)
     if project is None:
         return {"conn": None, "state": "unselected"}
+    if project.pk != task.project_id and not can_view_project(user, project):
+        # 연동 프로젝트가 보는 사람이 못 보는 연결 프로젝트다. 저장소 정보를 내주지 않는다(R7).
+        return {"conn": None, "state": "hidden"}
     return repo_state(user, project)
 
 
