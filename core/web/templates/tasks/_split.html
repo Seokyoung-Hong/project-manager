@@ -1,6 +1,6 @@
 <form class="stack" hx-post="{% url 'task_split' task.pk %}" hx-target="#dialog" hx-swap="innerHTML">
   <h2 class="t20">사람별로 나누기</h2>
-  <p class="muted t13">담당자는 한 명입니다. 고른 사람마다 {{ task.number }}의 설명·완료 조건·체크리스트(미완료로)·링크·문서 연결·기한을 복사한 태스크를 만들어 같은 계열로 묶습니다. 역할을 적으면 제목에 붙습니다. {{ task.number }}의 체크리스트는 만든 태스크 목록으로 바뀝니다.</p>
+  <p class="muted t13">담당자는 한 명입니다. 고른 사람마다 {{ task.number }}의 설명·완료 조건·체크리스트(미완료로)·링크·문서 연결·기한을 복사한 하위 태스크를 만듭니다. {{ task.number }}는 상위 태스크가 되어 진행률을 보여 줍니다. 역할을 적으면 제목에 붙습니다.</p>
   <input type="hidden" name="idem" value="{{ idem }}">
   <fieldset class="stack">
     <legend class="t13">맡을 사람 (2~10명)</legend>

@@ -1,20 +1,22 @@
 {% load rows %}<li id="task-{{ task.pk }}"
-    class="task-row{% if in_today_page %} today-task-row{% endif %}{% if task.is_closed %} closed{% endif %}{% if selected %} selected{% endif %}"
+    class="task-row{% if in_today_page %} today-task-row{% endif %}{% if task.is_closed %} closed{% endif %}{% if selected %} selected{% endif %}{% if nested %} sub{% endif %}"{% if nested %} data-group="{{ task.group_id }}"{% endif %}
     role="button" tabindex="0" aria-label="{{ task.title }} 상세 보기"
     data-id="{{ task.pk }}" data-panel="{% url 'task_panel' task.pk %}"
     {% if in_board %}draggable="{% if task.is_closed %}false{% else %}true{% endif %}" data-version="{{ task.version }}" data-status="{{ task.status }}"{% endif %}
     {% if not in_today_page and not in_board %}hx-get="{% url 'task_row' task.pk %}?{{ row_query }}" hx-trigger="task-changed[event.detail.id=={{ task.pk }}] from:body" hx-swap="outerHTML"{% endif %}>
   <div class="main{% if show_next %} has-next{% endif %}">
     {% if show_next %}<div class="next">{{ task.next_action }}</div>{% endif %}
-    <div class="proj">{{ task.project.name }}{% if linked %} <span class="linked-mark" title="연결 프로젝트: {{ linked_names }}">↔ {{ linked|length }}</span>{% endif %}</div>
+    <div class="proj">{{ task.project.name }}{% if linked %} <span class="linked-mark" title="연결 프로젝트: {{ linked_names }}">↔ {{ linked|length }}</span>{% endif %}{% if task.group_id and group_shown %} <span class="sub-of" title="상위 태스크">↳ TASK-{{ task.group_id }}</span>{% endif %}</div>
     <div class="title">{{ task.title }}</div>
     <div class="meta">
       {% if not hide_assignee %}<span>{{ task.assignee.display_name }}</span>{% endif %}
       {% if task.priority != 5 %}<span class="badge{% if task.priority >= 8 %} high{% endif %}">중요도 {{ task.priority }}/10</span>{% endif %}
       {% if task.is_stopped %}<span{% if task.is_blocked %} class="danger"{% endif %}>{{ task.stop_reason|default:"사유 없음" }}</span>{% endif %}
       {% if checklist_total %}<span>체크리스트 {{ checklist_done }}/{{ checklist_total }}</span>{% endif %}
+      {% if sub_total %}{% if foldable %}<button type="button" class="sub-count" data-action="toggle-subtasks" data-group="{{ task.pk }}" aria-expanded="true" aria-label="하위 태스크 {{ sub_done }}/{{ sub_total }} 접기·펼치기">하위 {{ sub_done }}/{{ sub_total }}</button>{% else %}<span class="sub-count">하위 {{ sub_done }}/{{ sub_total }}</span>{% endif %}{% endif %}
       {% if auto_pulled %}<span class="auto-mark" title="목표일이 가까워 오늘 목록에 자동으로 추가되었습니다">자동 추가</span>{% endif %}
     </div>
+    {% if in_board and sub_total %}<div class="bar" role="img" aria-label="하위 {{ sub_pct }}% 완료"><i style="width: {{ sub_pct }}%"></i></div>{% endif %}
     {% if error %}<div class="error">{{ error }}</div>{% endif %}
   </div>
   <div class="actions">

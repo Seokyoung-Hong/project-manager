@@ -45,6 +45,7 @@ from .common import (
     current_org,
     dialog,
     hx_redirect,
+    nest_rows,
     new_idem,
     org_or_404,
     project_or_404,
@@ -359,10 +360,14 @@ def project_detail(request, project_id, *, link_form=None):
     elif view == "calendar":
         ctx.update(calendar_context(request, project))
     else:
-        qs = ts.tasks_of(project).filter(is_template=False).select_related("project", "assignee")
+        qs = (
+            ts.tasks_of(project)
+            .filter(is_template=False)
+            .select_related("project", "project__org", "assignee")
+        )
         if not include_closed:
             qs = qs.filter(status__in=Task.OPEN)
-        ctx["rows"] = rows_for(request.user, sorted(qs, key=ts.by_due))
+        ctx["rows"] = nest_rows(rows_for(request.user, sorted(qs, key=ts.by_due)))
     return render(request, "projects/detail.html", ctx)
 
 

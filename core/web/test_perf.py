@@ -54,8 +54,12 @@ def _seed(org, admin, member, k):
         create_milestone(
             project=p, name=f"M{i}", target_date=today + timedelta(days=5), actor=admin
         )
+        first = (
+            None  # 묶음의 첫 태스크가 상위, 기한 없는 것이 그 하위(IMPL-PLAN-12 — 행의 하위 n/m·↳)
+        )
         for due in (today - timedelta(days=3), today, today + timedelta(days=2), None):
             t = create_task(
+                group=first if due is None else None,
                 project=p,
                 title=f"할 일 {i}",
                 actor=admin,
@@ -64,6 +68,7 @@ def _seed(org, admin, member, k):
                 due_date=due,
                 no_due_reason="" if due else "미정",
             )
+            first = first or t
             checklist_add(t, "확인", actor=admin)
             if prev is not None:
                 link = link_project(t, prev, actor=admin, confirm_widening=True)

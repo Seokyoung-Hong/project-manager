@@ -1,6 +1,6 @@
 <form class="stack" hx-post="{% url 'task_duplicate' task.pk %}" hx-target="#dialog" hx-swap="innerHTML">
   <h2 class="t20">{% if task.is_template %}회차 만들기{% elif task.status == "done" and task.parent_id %}다음 회차 만들기{% else %}복제{% endif %}</h2>
-  <p class="muted t13">{{ task.number }}의 설명·완료 조건·다음 행동·체크리스트(미완료로)·링크·문서 연결을 복사하고 같은 계열로 묶습니다. 기한은 새로 정하세요.</p>
+  <p class="muted t13">{{ task.number }}의 설명·완료 조건·다음 행동·체크리스트(미완료로)·링크·문서 연결을 복사하고 같은 계열로 묶습니다. 기한은 새로 정하세요.{% if task.subtasks.exists %} 하위 태스크는 복사하지 않습니다.{% endif %}</p>
   <input type="hidden" name="idem" value="{{ idem }}">
   <label class="field">제목<input class="input" name="title" value="{{ title }}" required autofocus></label>
   <div class="row">

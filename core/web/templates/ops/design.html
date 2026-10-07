@@ -105,6 +105,11 @@
     {% for code, label in statuses %}{% if code != "done" and code != "cancelled" %}<div class="col" data-status="{{ code }}"><h3><i class="col-dot" aria-hidden="true"></i>{{ label }} <span class="muted">1</span></h3>
       <ul class="tasks"><li class="task-row"><div class="main"><div class="proj">학식 API</div><div class="title">예시 카드</div><div class="meta"><span>김관리</span><span class="badge">중요도 6/10</span></div></div><div class="actions"><span class="due">10월 12일</span><span class="pill static {{ code }}">{{ label }}</span></div></li></ul></div>{% endif %}{% endfor %}
   </div></div>
+  <h3 class="t15">상위·하위 태스크 <span class="muted t12">.sub-count · .sub-of · .task-row.sub</span></h3>
+  <ul class="tasks">
+    <li class="task-row"><div class="main"><div class="proj">학식 API</div><div class="title">행사 준비</div><div class="meta"><span>김관리</span><button type="button" class="sub-count" aria-expanded="true">하위 2/3</button></div></div><div class="actions"><span class="due">10월 12일</span><span class="pill static todo">○ 시작 전</span></div></li>
+    <li class="task-row sub"><div class="main"><div class="proj">학식 API <span class="sub-of">↳ TASK-12</span></div><div class="title">행사 준비 — 이영희</div><div class="meta"><span>이영희</span></div></div><div class="actions"><span class="due">10월 10일</span><span class="pill static doing">▶ 진행 중</span></div></li>
+  </ul>
   <h3 class="t15">결과 선반 <span class="muted t12">.shelf · .shelf-head · .shelf-tabs · .shelf-list · .shelf-more</span></h3>
   <section class="shelf" aria-label="결과 선반 예시">
     <div class="shelf-head">{% include "art/_shelf.html" %}<div class="grow"><h3 class="display t24">결과 선반</h3><p class="muted t13">끝낸 일과 멈춘 일을 차곡차곡 모아 둡니다.</p></div></div>
