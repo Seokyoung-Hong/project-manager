@@ -105,8 +105,8 @@ def test_s6_reopen_refusal_hides_group_number(world, member, admin):
     assert top.number in e.value.errors["status"]
 
 
-def test_0012_runpython_skips_closed_origin(project, member):
-    mig = importlib.import_module("tasks.migrations.0012_task_group")
+def test_0013_runpython_skips_closed_origin(project, member):
+    mig = importlib.import_module("tasks.migrations.0013_task_group_data")
     top = _t(project, member, "닫힌 원본")
     old = _t(project, member, "사람")
     Task.objects.filter(pk=old.pk).update(parent=top)
