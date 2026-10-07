@@ -124,21 +124,47 @@ class ApiSpec(models.Model):
         return f"{self.project.name} API"
 
 
-class ProjectDoc(models.Model):
-    """프로젝트 전용 문서. GitHub의 README·Wiki 자리를 앱 안에서 대신한다.
+class Doc(models.Model):
+    """문서. 조직·프로젝트·팀 범위의 마크다운 글이고, 하위 문서로 트리를 이룬다(IMPL-PLAN-11 §4).
 
-    회의록(notes.MeetingNote)과 나란한 구조지만 조직이 아니라 프로젝트에 매인다.
+    회의록도 문서의 한 종류(kind="meeting")다 — 편집기·이전 버전·백링크·첨부를 한 벌로 쓴다.
+    공개 범위(project·team)는 뿌리 문서에만 뜻이 있고, 하위 문서는 뿌리 값을 복사해 둔다
+    (조회를 평평하게. docs.move_doc이 하위를 다시 쓴다).
     같은 블록 편집기(web/static/notes.js)를 쓰므로 저장 규약(X-Note-Version)도 같다.
     """
 
+    KINDS = [("doc", "문서"), ("meeting", "회의록")]
+    ORIGINS = [("web", "웹"), ("voice", "음성 회의"), ("import", "가져오기")]
     # tasks.ChangeLog.SOURCES와 같은 코드를 쓴다. "discord"는 4자를 넘으므로 "dc"다.
     SOURCES = [("web", "웹"), ("api", "API"), ("mcp", "AI"), ("dc", "Discord")]
 
-    project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name="docs")
+    org = models.ForeignKey("orgs.Organization", on_delete=models.CASCADE, related_name="docs")
+    kind = models.CharField(max_length=7, choices=KINDS, default="doc")
+    project = models.ForeignKey(
+        Project, on_delete=models.SET_NULL, null=True, blank=True, related_name="docs"
+    )
+    team = models.ForeignKey(
+        "orgs.Team", on_delete=models.SET_NULL, null=True, blank=True, related_name="docs"
+    )
+    parent = models.ForeignKey(
+        "self", on_delete=models.CASCADE, null=True, blank=True, related_name="children"
+    )
+    position = models.PositiveIntegerField(default=0)
+    is_template = models.BooleanField(default=False)
+    # 회의록 열(kind="meeting"에서만 뜻이 있다). 음성 회의 초안은 진행자·조직 관리자만 본다.
+    status = models.CharField(
+        max_length=5, choices=[("draft", "초안"), ("final", "확정")], default="final"
+    )
+    origin = models.CharField(max_length=6, choices=ORIGINS, default="web")
+    created_on = models.DateTimeField("회의 일시", null=True, blank=True)
+    tags = models.JSONField(default=list, blank=True)
+    # md 가져오기의 중복 방지 키(Notion 페이지 id 또는 이름+본문 해시). 사람이 만든 문서는 빈 값.
+    import_key = models.CharField(max_length=64, blank=True, db_index=True)
+    attendees = models.ManyToManyField(settings.AUTH_USER_MODEL, blank=True, related_name="+")
     title = models.CharField("제목", max_length=200, default="제목 없는 문서")
     body_md = models.TextField("본문", blank=True)
     version = models.PositiveIntegerField(default=1)
-    # 이 문서가 다루는 태스크. 같은 프로젝트의 태스크만 건다(docs.link_task가 검사한다).
+    # 이 문서가 다루는 태스크(docs.link_task가 범위를 검사한다).
     tasks = models.ManyToManyField("tasks.Task", blank=True, related_name="docs")
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="+"
@@ -153,10 +179,54 @@ class ProjectDoc(models.Model):
 
     class Meta:
         # 만든 순서로 고정한다. 수정할 때마다 목록이 뒤집히면 문서를 다시 찾기 어렵다.
-        ordering = ["created_at", "id"]
+        ordering = ["position", "created_at", "id"]
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(project__isnull=True) | models.Q(team__isnull=True),
+                name="doc_scope_one",
+            ),
+            models.CheckConstraint(
+                condition=~models.Q(kind="meeting") | models.Q(parent__isnull=True),
+                name="doc_meeting_no_parent",
+            ),
+        ]
+        indexes = [
+            models.Index(fields=["org", "kind", "parent"]),
+            models.Index(fields=["org", "kind", "created_on"]),
+        ]
 
     def __str__(self):
         return self.title
+
+    def save(self, *args, **kwargs):
+        # 프로젝트 문서를 org 없이 만들던 호출(옛 ProjectDoc)이 그대로 돌게 한다.
+        if self.org_id is None and self.project_id is not None:
+            self.org_id = self.project.org_id
+        super().save(*args, **kwargs)
+
+
+# 옛 이름. 호출부·테스트가 그대로 쓴다.
+ProjectDoc = Doc
+
+
+class DocRevision(models.Model):
+    """저장 이력. 자동 저장(0.8초)마다 쌓이지 않게 같은 사람·10분 안은 마지막 행을 덮어쓴다."""
+
+    doc = models.ForeignKey(Doc, on_delete=models.CASCADE, related_name="revisions")
+    version = models.PositiveIntegerField()
+    title = models.CharField(max_length=200)
+    body_md = models.TextField(blank=True)
+    saved_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name="+"
+    )
+    source = models.CharField(max_length=4, choices=Doc.SOURCES, default="web")
+    saved_at = models.DateTimeField()
+
+    class Meta:
+        ordering = ["-version"]
+        constraints = [
+            models.UniqueConstraint(fields=["doc", "version"], name="docrevision_doc_version")
+        ]
 
 
 class ProjectDependency(models.Model):

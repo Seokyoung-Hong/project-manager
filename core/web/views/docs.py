@@ -25,7 +25,7 @@ def _doc_or_404(user, doc_id):
 @login_required
 def project_docs(request, project_id):
     project = project_or_404(request.user, project_id)
-    items = list(ts_docs.visible_docs(project).select_related("updated_by"))
+    items = list(ts_docs.project_docs(project).select_related("updated_by"))
     picked = request.GET.get("doc")
     doc = next((d for d in items if str(d.pk) == picked), None)
     # 고른 것이 없으면 첫 문서를 편다 — 빈 편집기를 먼저 보여 줄 이유가 없다.

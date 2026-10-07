@@ -144,6 +144,10 @@ def create_org(name: str, purpose: str, actor) -> Organization:
         name=name[:100], purpose=purpose.strip()[:200], created_by=actor
     )
     OrgMembership.objects.create(org=org, user=actor, role="admin")
+    from projects.doc_templates import seed
+    from projects.models import Doc
+
+    seed(Doc, org.pk, actor.pk)  # 문서 템플릿 2개(회의록·설계 문서)
     return org
 
 
