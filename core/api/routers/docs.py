@@ -17,6 +17,7 @@ from orgs.services import orgs_of
 from projects import docs as svc
 from projects.models import Doc
 from projects.services import visible_projects
+from tasks.services import visible_tasks
 
 from ..context import clamp_page, ctx
 from ..schemas import ErrorOut
@@ -24,7 +25,13 @@ from ..schemas import ErrorOut
 router = Router(tags=["docs"])
 
 
-def doc_out(d, *, body: bool) -> dict:
+def visible_task_ids(doc, viewer) -> list[int]:
+    """문서·회의록에 걸린 태스크 중 viewer가 볼 수 있는 것의 id."""
+    return list(visible_tasks(viewer).filter(docs=doc).order_by("pk").values_list("pk", flat=True))
+
+
+def doc_out(d, *, body: bool, viewer) -> dict:
+    """viewer가 볼 수 있는 태스크만 task_ids에 싣는다(숨은 태스크의 존재를 알리지 않는다)."""
     out = {
         "id": d.pk,
         "org_id": d.org_id,
@@ -39,7 +46,7 @@ def doc_out(d, *, body: bool) -> dict:
         "title": d.title,
         "version": d.version,
         "updated_at": d.updated_at,
-        "task_ids": [t.pk for t in d.tasks.all()],
+        "task_ids": visible_task_ids(d, viewer),
         # 누가 마지막으로 고쳤는지. source가 "mcp"면 AI가 고친 것이다.
         "updated_by": d.updated_by.display_name if d.updated_by_id else "",
         "updated_source": d.updated_source,
@@ -79,11 +86,11 @@ def _scope(request, project_id, team_id, parent_id):
     return project, team, parent
 
 
-def _page(qs, limit, offset):
+def _page(qs, limit, offset, viewer):
     total = qs.count()
     limit, offset = clamp_page(limit, offset)
     return {
-        "items": [doc_out(d, body=False) for d in qs[offset : offset + limit]],
+        "items": [doc_out(d, body=False, viewer=viewer) for d in qs[offset : offset + limit]],
         "total": total,
         "limit": limit,
         "offset": offset,
@@ -119,9 +126,7 @@ def list_docs(
         qs = qs.filter(team_id=team)
     if parent is not None:
         qs = qs.filter(parent_id=parent or None)
-    return _page(
-        qs.select_related("project", "updated_by").prefetch_related("tasks"), limit, offset
-    )
+    return _page(qs.select_related("project", "updated_by"), limit, offset, request.auth)
 
 
 @router.get("/orgs/{org_id}/docs", response=dict)
@@ -151,7 +156,7 @@ def org_docs(
 @router.get("/project-docs/{doc_id}", response=dict)
 def get_doc(request, doc_id: int):
     """문서 하나의 본문(마크다운)까지."""
-    return doc_out(_doc_or_404(request, doc_id), body=True)
+    return doc_out(_doc_or_404(request, doc_id), body=True, viewer=request.auth)
 
 
 @router.get("/project-docs/{doc_id}/revisions", response=list[dict])
@@ -263,7 +268,7 @@ def create_doc_ep(request, payload: DocCreateIn):
         template=template,
         source=ctx(request)["source"],
     )
-    return 201, doc_out(d, body=True)
+    return 201, doc_out(d, body=True, viewer=request.auth)
 
 
 @router.patch(
@@ -285,7 +290,7 @@ def patch_doc(request, doc_id: int, payload: DocPatchIn):
             d, field, value, actor=request.auth, expected_version=version, source=source
         )
         version = d.version
-    return doc_out(d, body=True)
+    return doc_out(d, body=True, viewer=request.auth)
 
 
 @router.post(
@@ -300,7 +305,7 @@ def revert_doc(request, doc_id: int, payload: DocRevertIn):
     d = svc.revert_doc(
         d, rev, actor=request.auth, expected_version=payload.version, source=ctx(request)["source"]
     )
-    return doc_out(d, body=True)
+    return doc_out(d, body=True, viewer=request.auth)
 
 
 @router.post("/project-docs/{doc_id}/move", response={200: dict, 400: ErrorOut})
@@ -317,7 +322,7 @@ def move_doc(request, doc_id: int, payload: DocMoveIn):
     if "team_id" in sent:
         kw["team"] = team
     d = svc.move_doc(d, actor=request.auth, position=payload.position, **kw)
-    return doc_out(d, body=False)
+    return doc_out(d, body=False, viewer=request.auth)
 
 
 @router.delete("/project-docs/{doc_id}", response={200: dict, 400: ErrorOut, 403: ErrorOut})
@@ -338,7 +343,7 @@ def import_docs(request, org_id: int):
     org = _org_or_404(request, org_id)
     if request.content_type.startswith("multipart/"):
         data = request.POST
-        files = [(f.name, f.read()) for f in request.FILES.getlist("file")]
+        files = [(f.name, f) for f in request.FILES.getlist("file")]  # 서비스가 상한 뒤에 읽는다
     else:
         try:
             data = json.loads(request.body or b"{}")
@@ -364,7 +369,7 @@ def import_docs(request, org_id: int):
         source=ctx(request)["source"],
     )
     return 201, {
-        "created": [doc_out(d, body=False) for d in out["created"]],
+        "created": [doc_out(d, body=False, viewer=request.auth) for d in out["created"]],
         "skipped": out["skipped"],
         "images": out["images"],
     }

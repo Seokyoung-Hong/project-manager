@@ -19,6 +19,7 @@ from github.services import (
 )
 from github.writes import default_branch_name
 from notes.services import visible_notes
+from projects.docs import task_doc_choices, task_docs
 from projects.services import visible_projects
 from tasks import services as ts
 from tasks.attachments import attachments_of
@@ -108,8 +109,8 @@ def _panel_ctx(request, task, **extra):
         "org_notes": visible_notes(request.user).filter(org=task.project.org),
         # _refs.html은 패널 최초 렌더(_panel_ctx)와 조각 갱신(_refs) 양쪽에서 쓰인다.
         # 한쪽에만 넣으면 새로고침 전에는 문서가 보이지 않는다.
-        "docs": task.docs.filter(kind="doc", project_id=task.project_id),
-        "project_docs": task.project.docs.filter(kind="doc", is_template=False).exclude(tasks=task),
+        "docs": task_docs(task, request.user),
+        "project_docs": task_doc_choices(task, request.user),
         "attachments": attachments_of(task),
         # 패널이 프로젝트·담당자까지 맡으므로 고를 대상을 함께 싣는다
         "org_projects": visible_projects(request.user, task.project.org)
@@ -498,11 +499,9 @@ def _refs(request, task, error=None, link_form=None):
             else LinkForm(dev_tools=task.project.dev_tools),
             "notes": visible_notes(request.user).filter(tasks=task),
             "org_notes": visible_notes(request.user).filter(org=task.project.org),
-            "docs": task.docs.filter(kind="doc", project_id=task.project_id),
-            # 이미 걸린 문서는 후보에서 뺀다 — 같은 것을 두 번 걸 이유가 없다
-            "project_docs": task.project.docs.filter(kind="doc", is_template=False).exclude(
-                tasks=task
-            ),
+            "docs": task_docs(task, request.user),
+            # 볼 수 있는 후보만, 이미 걸린 문서는 뺀다(projects.docs.task_doc_choices)
+            "project_docs": task_doc_choices(task, request.user),
             "attachments": attachments_of(task),
             "is_admin": can_admin(request.user, task.project.org),
             "error": error,

@@ -3,9 +3,9 @@
 회의록마다 문서 하나를 만들고(id는 새로 받는다) 태스크 연결·참여자·작성자·시각·녹음을 옮긴다.
 회의록이 있으면 되돌리지 않는다 — 되돌리려면 백업에서 복구한다.
 
-공개 범위는 프로젝트나 팀 중 하나만 둘 수 있다(projects doc_scope_one). 옛 회의록에 둘 다 있으면
-  - 프로젝트가 조직 전체 공개면 프로젝트를 뗀다(열람자가 그대로다: 팀 조건만 남는다).
-  - 아니면 팀을 뗀다(그 프로젝트의 열람자 중 팀 밖 사람도 보게 된다 — 남는 유일한 확대).
+공개 범위는 프로젝트나 팀 중 하나만 둘 수 있다(projects doc_scope_one). 옛 회의록은 둘 다 있으면
+"프로젝트 ∩ 팀"으로 보였다. 하나를 임의로 떼면 열람자가 넓어지거나 연결이 사라지므로(Sol R3),
+그런 행이 하나라도 있으면 아무것도 바꾸기 전에 중단하고 관리자가 회의록마다 범위를 정하게 한다.
 """
 
 import django.db.models.deletion
@@ -18,13 +18,21 @@ def forward(apps, schema_editor):
     Doc = apps.get_model("projects", "Doc")
     DocRevision = apps.get_model("projects", "DocRevision")
 
-    for n in Note.objects.select_related("project").order_by("pk"):
+    both = list(
+        Note.objects.filter(project__isnull=False, team__isnull=False)
+        .order_by("pk")
+        .values_list("pk", "org_id", "title")
+    )
+    if both:
+        rows = ", ".join(f"#{pk}(조직 {org}) {title}" for pk, org, title in both[:20])
+        raise RuntimeError(
+            f"프로젝트와 팀이 둘 다 지정된 회의록이 {len(both)}건 있어 이전을 멈춥니다: {rows}. "
+            "이전 전에 회의록마다 프로젝트나 팀 중 하나를 비우고(관리자 결정) 다시 migrate 하세요. "
+            "둘 다 남기면 '프로젝트 ∩ 팀' 제한을 새 모델이 표현하지 못해 열람자가 바뀝니다."
+        )
+
+    for n in Note.objects.order_by("pk"):
         project_id, team_id = n.project_id, n.team_id
-        if project_id and team_id:
-            if n.project.visibility == "org":
-                project_id = None
-            else:
-                team_id = None
         d = Doc.objects.create(
             org_id=n.org_id,
             kind="meeting",

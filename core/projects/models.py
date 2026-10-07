@@ -140,11 +140,14 @@ class Doc(models.Model):
 
     org = models.ForeignKey("orgs.Organization", on_delete=models.CASCADE, related_name="docs")
     kind = models.CharField(max_length=7, choices=KINDS, default="doc")
+    # 범위가 비면 "조직 전체"로 읽힌다. 그래서 범위 삭제가 문서를 조용히 넓히지 않게 RESTRICT로 막고
+    # 서비스가 명시적으로 처리한다(프로젝트 삭제는 문서도 지우고, 팀 삭제는 문서가 있으면 거절).
+    # 조직 삭제는 org CASCADE로 문서도 함께 지워지므로 RESTRICT에 걸리지 않는다.
     project = models.ForeignKey(
-        Project, on_delete=models.SET_NULL, null=True, blank=True, related_name="docs"
+        Project, on_delete=models.RESTRICT, null=True, blank=True, related_name="docs"
     )
     team = models.ForeignKey(
-        "orgs.Team", on_delete=models.SET_NULL, null=True, blank=True, related_name="docs"
+        "orgs.Team", on_delete=models.RESTRICT, null=True, blank=True, related_name="docs"
     )
     parent = models.ForeignKey(
         "self", on_delete=models.CASCADE, null=True, blank=True, related_name="children"

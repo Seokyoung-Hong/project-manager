@@ -3,6 +3,7 @@ from django.db.models import Count, Prefetch
 
 from orgs.models import Team
 from orgs.services import visible_teams
+from projects.docs import task_docs
 from projects.services import project_stats, project_stats_bulk
 from tasks.attachments import attachments_of
 from tasks.brief import task_brief, user_brief
@@ -61,12 +62,9 @@ def task_out(t, viewer=None) -> dict:
             "checklist_done": sum(1 for i in items if i.is_done),
             "checklist_total": len(items),
             "links": [link_out(link) for link in t.links.all()],
-            # 참고 문서는 제목과 id만. 본문은 /projects/{id}/docs/{doc_id}에서 읽는다.
-            # 문서는 같은 프로젝트의 것만 걸린다(projects.docs.link_task). 옮긴 뒤 남은 연결이 있어도 내보내지 않는다.
-            "docs": [
-                {"id": d.pk, "title": d.title}
-                for d in t.docs.filter(kind="doc", project_id=t.project_id)
-            ],
+            # 참고 문서는 제목과 id만, 그리고 viewer가 볼 수 있는 것만(문서 가시성 관문 하나).
+            # 태스크를 연결 프로젝트로 볼 수 있어도 주 프로젝트 문서까지 보게 되지는 않는다.
+            "docs": [{"id": d.pk, "title": d.title} for d in task_docs(t, viewer)],
             # 담당 요청을 받은 사람이 아직 수락하지 않았다. 수락 전까지 assignee는 그대로다.
             "pending_assignee": user_brief(pending) if (pending := pending_assignee(t)) else None,
             "children_count": children.count(),
