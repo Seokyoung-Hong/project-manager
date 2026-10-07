@@ -198,6 +198,11 @@ class Doc(models.Model):
     def __str__(self):
         return self.title
 
+    # 옛 회의록(MeetingNote.source) 이름. 웹·API 응답이 그대로 쓴다.
+    @property
+    def source(self) -> str:
+        return self.origin
+
     def save(self, *args, **kwargs):
         # 프로젝트 문서를 org 없이 만들던 호출(옛 ProjectDoc)이 그대로 돌게 한다.
         if self.org_id is None and self.project_id is not None:

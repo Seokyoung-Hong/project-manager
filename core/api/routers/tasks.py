@@ -34,6 +34,7 @@ from tasks.services import (
     update_task,
     visible_tasks,
 )
+from tasks.split import ONE_ASSIGNEE, split_by_assignees
 
 from ..context import clamp_page, ctx, idem_key, task_or_404
 from ..schemas import (
@@ -49,6 +50,7 @@ from ..schemas import (
     TaskOut,
     TaskPatchIn,
     TaskProjectIn,
+    TaskSplitIn,
     TransitionIn,
 )
 from ..serialize import changelog_out, task_out
@@ -277,6 +279,8 @@ def _widening_400(e: WideningRequired):
 
 @router.post("", response={201: TaskOut, 400: dict})
 def create_task_ep(request, payload: TaskCreateIn):
+    if payload.assignee_ids is not None:
+        raise ServiceError({"assignee_ids": ONE_ASSIGNEE})
     project = visible_projects(request.auth).filter(pk=payload.project_id).first()
     if project is None:
         raise HttpError(404, "프로젝트를 찾을 수 없습니다.")
@@ -323,6 +327,8 @@ def delete_task_ep(request, task_id: int):
 @router.patch("/{task_id}", response={200: TaskOut, 400: ErrorOut, 409: ConflictOut})
 def patch_task(request, task_id: int, payload: TaskPatchIn):
     task = task_or_404(request, task_id)
+    if payload.assignee_ids is not None:
+        raise ServiceError({"assignee_ids": ONE_ASSIGNEE})
     c = ctx(request)
     data = payload.dict(exclude_unset=True)
     version = data.pop("version")
@@ -467,3 +473,26 @@ def reject_link_ep(request, task_id: int, project_id: int, payload: LinkRejectIn
     link = _link_or_404(task_or_404(request, task_id), project_id)
     reject_link(link, reason=payload.reason, **ctx(request))
     return 204, None
+
+
+# ---------- 사람별로 나누기(IMPL-PLAN-11 §2) ----------
+
+
+@router.post("/{task_id}/split", response={201: dict, 400: ErrorOut})
+def split_ep(request, task_id: int, payload: TaskSplitIn):
+    """담당자는 한 명이다. 여러 사람이 맡는 일은 사람마다 태스크를 만들어 같은 계열로 묶는다(2~10명).
+    원본은 그대로 두고 체크리스트를 만든 태스크 목록으로 바꾼다. 기한·설명·체크리스트·링크는 복사한다."""
+    task = task_or_404(request, task_id)
+    users = list(User.objects.filter(pk__in=payload.assignee_ids))
+    if len(users) != len(set(payload.assignee_ids)):
+        raise HttpError(400, "담당자를 찾을 수 없습니다.")
+    by_id = {u.pk: u for u in users}
+    made = split_by_assignees(
+        task,
+        [by_id[i] for i in dict.fromkeys(payload.assignee_ids)],
+        roles=payload.roles,
+        title_pattern=payload.title_pattern,
+        idempotency_key=idem_key(request),
+        **ctx(request),
+    )
+    return 201, {"tasks": [task_out(t, request.auth) for t in made]}

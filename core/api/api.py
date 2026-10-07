@@ -3,7 +3,6 @@ from ninja import NinjaAPI
 from ninja.throttling import AuthRateThrottle
 
 from common.errors import ConflictError, Forbidden, ServiceError
-from notes.models import MeetingNote
 from portfolio.api import router as portfolio_router
 
 from .auth import BrowserSessionAuth, TokenAuth
@@ -82,7 +81,7 @@ def _conflict(request, exc):
     viewer = getattr(request, "auth", None)
     if hasattr(latest, "assignee"):
         data = task_out(latest, viewer)
-    elif isinstance(latest, MeetingNote):
+    elif getattr(latest, "kind", None) == "meeting":
         data = notes.note_out(latest)
     elif hasattr(latest, "body_md"):
         # 프로젝트 문서. project_out을 태우면 없는 필드를 찾다 500이 난다.

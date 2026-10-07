@@ -1,0 +1,1 @@
+{% if people %}<div class="notice"><span class="grow">이 일은 여러 사람이 맡는 것처럼 보입니다({% for u in people %}{{ u.display_name }}{% if not forloop.last %}, {% endif %}{% endfor %}). 담당자는 한 명이므로, 사람별로 나누면 담당·기한·완료가 또렷해집니다.</span><button type="button" class="btn sm" hx-get="{% url 'task_split' task.pk %}" hx-target="#dialog" hx-swap="innerHTML">사람별로 나누기</button></div>{% endif %}

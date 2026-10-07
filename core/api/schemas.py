@@ -106,6 +106,7 @@ class TaskCreateIn(Schema):
     project_id: int
     title: str
     assignee_id: int | None = None
+    assignee_ids: list[int] | None = None  # 받되 400 — 담당자는 한 명(POST /tasks/{id}/split)
     description: str = ""
     done_when: str = ""
     next_action: str = ""
@@ -143,6 +144,7 @@ class TaskPatchIn(Schema):
     next_action: str | None = None
     notes: str | None = None
     assignee_id: int | None = None
+    assignee_ids: list[int] | None = None  # 받되 400 — 담당자는 한 명(POST /tasks/{id}/split)
     project_id: int | None = None
     priority: Priority | None = None
     due_date: date | None = None
@@ -153,6 +155,14 @@ class TaskPatchIn(Schema):
     # 연동 프로젝트(GitHub). 연결 프로젝트가 있을 때만, {주} ∪ 확정 연결 중 저장소가 있는 것. null이면 연동 끔
     git_project_id: int | None = None
     is_template: bool | None = None
+
+
+class TaskSplitIn(Schema):
+    """사람별로 나누기. roles는 {"<user id>": "역할 이름"}(선택)."""
+
+    assignee_ids: list[int]
+    title_pattern: str = "{title} — {name}"
+    roles: dict[int, str] = {}
 
 
 class TaskDuplicateIn(Schema):

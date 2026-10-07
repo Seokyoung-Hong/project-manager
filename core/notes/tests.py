@@ -76,4 +76,27 @@ def test_note_delete_author_or_admin(org, admin, member, outsider):
     with pytest.raises(ServiceError):
         delete_note(note, outsider)
     delete_note(note, admin)
-    assert not org.notes.filter(pk=note.pk).exists()
+    assert not org.docs.filter(pk=note.pk).exists()
+
+
+def test_note_is_a_meeting_doc_with_revisions_and_backlinks(org, member, team, project):
+    """회의록은 문서(kind=meeting)라 이전 버전·되돌리기·백링크가 같이 된다. 템플릿은 목록에서 빠진다."""
+    from notes.services import visible_notes
+    from projects import docs
+    from projects.models import Doc
+
+    note = create_note(org=org, actor=member, title="주간 회의", body_md="처음")
+    assert note.kind == "meeting" and note.source == "web"
+    assert list(visible_notes(member)) == [note]  # 조직 템플릿 "회의록"은 빠진다
+    note = update_note(note, "body_md", "고침", actor=member, expected_version=note.version)
+    first = note.revisions.get(version=1)
+    note = docs.revert_doc(note, first, actor=member, expected_version=note.version)
+    assert note.body_md == "처음"
+    ref = docs.create_doc(org=org, actor=member, body_md=f"[회의](/docs/{note.pk})")
+    assert docs.backlinks(note, member)["docs"] == [ref]
+
+    # 팀 회의록에 프로젝트를 고르면 팀은 비워진다(공개 범위는 하나만).
+    Doc.objects.filter(pk=note.pk).update(team=team)
+    note.refresh_from_db()
+    note = update_note(note, "project", project, actor=member, expected_version=note.version)
+    assert (note.project, note.team) == (project, None)

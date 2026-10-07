@@ -513,13 +513,14 @@ def update_task(
         return task
     _apply(task, expected_version, fields)
     if "project" in fields:
+        # 문서는 같은 프로젝트의 태스크에만 걸린다(projects.docs.link_task). 옮기면 옛 프로젝트 문서
+        # 연결을 끊는다 — 남겨 두면 공개 프로젝트에서 비공개 문서 제목이 보인다.
+        task.docs.remove(
+            *task.docs.filter(kind="doc", project__isnull=False).exclude(project_id=task.project_id)
+        )
         # 새 주 프로젝트가 연결에 있었으면 그 연결은 지운다(주 ≠ 연결). 옛 주는 연결로 남기지 않는다.
         TaskProject.objects.filter(task=task, project=task.project).delete()
         _drop_stale_git_project(task, actor, source, token)
-        # 프로젝트 문서는 그 프로젝트가 더는 열람 범위(주 ∪ 확정 연결)에 없으면 연결을 끊는다 — 남겨 두면
-        # 공개 프로젝트에서 비공개 문서 제목이 보인다. 조직·팀 문서(project 없음)는 그대로 둔다.
-        keep = {task.project_id, *_active_link_ids(task)}
-        task.docs.remove(*task.docs.filter(project__isnull=False).exclude(project_id__in=keep))
     if "assignee" in fields:
         wr.drop_assign_requests(task, keep_user=ask)
         if task.assignee != actor:

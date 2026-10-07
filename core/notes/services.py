@@ -3,49 +3,29 @@ from collections import Counter
 from datetime import timedelta
 
 from django.db import transaction
-from django.db.models import Exists, OuterRef, Q
 from django.utils import timezone
 
 from accounts.identity import resolve
 from common.dates import now_kst
-from common.errors import ConflictError, Forbidden, ServiceError
+from common.errors import Forbidden, ServiceError
 from orgs import settings as org_settings
 from orgs.models import OrgMembership
-from orgs.services import ai_denied, is_admin, is_member, orgs_of, visible_teams
+from orgs.services import ai_denied, is_admin, is_member, visible_teams
+from projects import docs
 from projects.services import can_view_project, visible_projects
 
 from .models import MeetingNote, VoiceRecording
 
-EDITABLE = {"title", "project", "created_on", "body_md", "tags"}
 MAX_BODY = 256 * 1024  # 256KB. 회의록 한 편이 이보다 클 이유가 없다.
 
 
-def _clean_tags(tags) -> list[str]:
-    """공백 제거·중복 제거·20자·최대 10개. OrgMembership.set_tags와 같은 규칙."""
-    cleaned, seen = [], set()
-    for t in tags or []:
-        t = (t or "").strip()[:20]
-        if t and t not in seen:
-            seen.add(t)
-            cleaned.append(t)
-    return cleaned[:10]
-
-
 def visible_notes(user):
-    """회의록 가시성 관문. 회의록을 내보내는 모든 경로(웹·API·태스크 연결)가 이것을 지난다.
+    """회의록 가시성 관문 = 문서 관문(projects.docs.visible_docs)을 회의록만으로 거른 것.
 
     확정(final): 프로젝트 회의록은 그 프로젝트를, 팀 회의록은 그 팀을 볼 수 있을 때만(IMPL-PLAN-7 F).
     초안(draft, 음성 회의): 지금 진행자(recording.host)와 조직 관리자만(IMPL-PLAN-9 결정 2-5).
-    진행자를 넘기면 이전 진행자는 더 이상 보지 못한다.
     """
-    admin = OrgMembership.objects.filter(user=user, role="admin", org_id=OuterRef("org_id"))
-    final = (
-        Q(status="final")
-        & (Q(project__isnull=True) | Q(project__in=visible_projects(user)))
-        & (Q(team__isnull=True) | Q(team__in=visible_teams(user)))
-    )
-    draft = Q(status="draft") & (Q(recording__host=user) | Exists(admin))
-    return MeetingNote.objects.filter(org__in=orgs_of(user)).filter(final | draft)
+    return docs.visible_docs(user, model=MeetingNote)
 
 
 def get_visible_note(user, note_id: int):
@@ -67,18 +47,18 @@ def _check_project(org, project, actor):
 def create_note(
     *, org, actor, title="제목 없는 회의록", project=None, body_md="", created_on=None, tags=None
 ):
+    """웹·API에서 만든 회의록은 처음부터 확정(final)이다. 만들기는 문서 서비스가 한다."""
     if not is_member(actor, org):
         raise ServiceError({"org": "이 조직의 멤버가 아닙니다."})
-    _check_project(org, project, actor)
-    return MeetingNote.objects.create(
+    return docs.create_doc(
         org=org,
+        actor=actor,
+        kind="meeting",
+        title=title,
         project=project,
-        title=(title or "").strip()[:200] or "제목 없는 회의록",
-        body_md=(body_md or "").replace("\r\n", "\n"),
-        # 안 주면 지금 시각. 회의 일시는 나중에 편집으로 비울 수 있다(작성 시각과 별개).
-        created_on=created_on or now_kst(),
-        tags=_clean_tags(tags),
-        created_by=actor,
+        body_md=body_md,
+        created_on=created_on,
+        tags=tags,
     )
 
 
@@ -102,49 +82,21 @@ def _check_edit(note, actor, source: str):
         raise Forbidden({"ai": ai_denied("회의록 고치기")})
 
 
-@transaction.atomic
-def update_note(
-    note, field: str, value, *, actor, expected_version: int, source: str = "web"
-) -> MeetingNote:
-    """한 번에 한 항목. 버전이 다르면 ConflictError(최신 객체)."""
+def update_note(note, field: str, value, *, actor, expected_version: int, source: str = "web"):
+    """한 번에 한 항목. 버전이 다르면 ConflictError(최신 객체). 초안 규칙을 먼저 보고 문서 서비스로 넘긴다."""
     _check_edit(note, actor, source)
-    if field not in EDITABLE:
-        raise ServiceError({field: "수정할 수 없는 항목입니다."})
-    if field == "title":
-        value = (value or "").strip()[:200] or "제목 없는 회의록"
-    elif field == "body_md":
-        value = (value or "").replace("\r\n", "\n")
-        if len(value.encode()) > MAX_BODY:
-            raise ServiceError({"body_md": "본문이 너무 깁니다 (256KB 상한)."})
-    elif field == "project":
-        _check_project(note.org, value, actor)
-    elif field == "tags":
-        value = _clean_tags(value)
-    # created_on(회의 일시)은 비워 둘 수 있다 — 작성 시각(created_at)과 별개다.
-
-    # auto_now는 update()를 타지 않으므로 직접 넣는다.
-    updated = MeetingNote.objects.filter(pk=note.pk, version=expected_version).update(
-        version=expected_version + 1, updated_at=timezone.now(), **{field: value}
+    return docs.update_doc(
+        note, field, value, actor=actor, expected_version=expected_version, source=source
     )
-    if updated != 1:
-        note.refresh_from_db()
-        raise ConflictError(note)
-    note.refresh_from_db()
-    return note
 
 
-def upload_note(*, org, actor, filename: str, raw: bytes, project=None) -> MeetingNote:
+def upload_note(*, org, actor, filename: str, raw: bytes, project=None):
     """.md 본문 텍스트만 읽어 새 회의록을 만든다. 파일은 저장하지 않는다."""
-    if not filename.lower().endswith((".md", ".markdown")):
-        raise ServiceError({"file": ".md 또는 .markdown 파일만 올릴 수 있습니다."})
-    if len(raw) > MAX_BODY:
-        raise ServiceError({"file": "파일이 너무 큽니다 (256KB 상한)."})
-    try:
-        body = raw.decode("utf-8")
-    except UnicodeDecodeError:
-        raise ServiceError({"file": "UTF-8로 저장된 파일만 읽을 수 있습니다."}) from None
-    title = re.sub(r"\.(md|markdown)$", "", filename, flags=re.I)
-    return create_note(org=org, actor=actor, title=title, project=project, body_md=body)
+    if not is_member(actor, org):
+        raise ServiceError({"org": "이 조직의 멤버가 아닙니다."})
+    return docs.upload_doc(
+        org=org, actor=actor, filename=filename, raw=raw, kind="meeting", project=project
+    )
 
 
 def delete_note(note, actor):
@@ -225,6 +177,8 @@ def meeting_scope(*, org, actor, project=None, team=None) -> dict:
     """녹음을 시작해도 되는가. 되면 봇이 쓸 실효 설정을 돌려준다(아니면 ServiceError/Forbidden)."""
     if not is_member(actor, org):
         raise Forbidden({"org": "이 조직의 멤버가 아닙니다."})
+    if project is not None and team is not None:
+        raise ServiceError({"scope": "프로젝트와 팀 중 하나만 고를 수 있습니다."})
     _check_project(org, project, actor)
     _check_team(org, team, actor)
     if not org_settings.effective("meeting.recording_enabled", org=org, project=project):
@@ -252,8 +206,9 @@ def start_recording(
         title=(title or "").strip()[:200] or f"{now:%m월 %d일} 음성 회의",
         created_on=now,
         created_by=actor,
+        updated_by=actor,
         status="draft",
-        source="voice",
+        origin="voice",
     )
     return VoiceRecording.objects.create(
         note=note,
@@ -364,7 +319,7 @@ def meeting_glossary(rec) -> str:
     참여자 이름이 먼저, 그다음 프로젝트·마일스톤 이름(가중 2)과 문서·회의록·태스크 제목에 자주 나오는
     용어 순. 한 번만 나온 일반 용어는 뺀다.
     """
-    from projects.models import Milestone, ProjectDoc
+    from projects.models import Doc, Milestone
     from tasks.models import Task
 
     starter, org = rec.started_by, rec.note.org
@@ -373,7 +328,10 @@ def meeting_glossary(rec) -> str:
     for weight, titles in (
         (2, projects.values_list("name", flat=True)),
         (2, Milestone.objects.filter(project__in=projects).values_list("name", flat=True)),
-        (1, ProjectDoc.objects.filter(project__in=projects).values_list("title", flat=True)),
+        (
+            1,
+            Doc.objects.filter(project__in=projects, kind="doc").values_list("title", flat=True),
+        ),
         (
             1,
             # ponytail: 최근 2천 건만. 태스크가 훨씬 많아지면 집계 표를 따로 둔다

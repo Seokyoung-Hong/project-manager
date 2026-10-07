@@ -37,6 +37,7 @@ NEEDS: dict[str, str] = {
     "list_attachments": "read",
     "create_task": "write",
     "duplicate_task": "write",
+    "split_task": "write",
     "update_task": "write",
     "link_task_project": "write",
     "unlink_task_project": "write",

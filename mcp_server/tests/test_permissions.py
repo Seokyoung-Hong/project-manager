@@ -63,6 +63,7 @@ def test_needs_table_covers_every_tool():
         "list_attachments",
         "create_task",
         "duplicate_task",
+        "split_task",
         "update_task",
         "link_task_project",
         "unlink_task_project",

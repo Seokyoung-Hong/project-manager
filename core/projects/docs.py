@@ -75,15 +75,17 @@ def _clean_tags(tags) -> list[str]:
 # ---------- 가시성 ----------
 
 
-def visible_docs(user, org=None):
+def visible_docs(user, org=None, *, model=None):
     """문서 가시성 관문. 문서를 내보내는 모든 경로(웹·API·MCP·백링크·검색)가 이것을 지난다.
 
     확정(final): 프로젝트 문서는 그 프로젝트를, 팀 문서는 그 팀을 볼 수 있을 때만.
-    초안(draft, 음성 회의 회의록): 작성자와 조직 관리자만. D3에서 녹음 진행자로 바뀐다.
+    초안(draft, 음성 회의 회의록): 지금 진행자(recording.host)와 조직 관리자만(IMPL-PLAN-9 결정 2-5).
+    진행자를 넘기면 이전 진행자는 더 이상 보지 못한다. model은 같은 표의 프록시(notes.MeetingNote)용.
     """
+    model = model or Doc
     if not getattr(user, "is_authenticated", False):
-        return Doc.objects.none()
-    qs = Doc.objects.filter(org__in=orgs_of(user))
+        return model.objects.none()
+    qs = model.objects.filter(org__in=orgs_of(user))
     if org is not None:
         qs = qs.filter(org=org)
     admin = OrgMembership.objects.filter(user=user, role="admin", org_id=OuterRef("org_id"))
@@ -92,7 +94,7 @@ def visible_docs(user, org=None):
         & (Q(project__isnull=True) | Q(project__in=visible_projects(user)))
         & (Q(team__isnull=True) | Q(team__in=visible_teams(user)))
     )
-    draft = Q(status="draft") & (Q(created_by=user) | Exists(admin))
+    draft = Q(status="draft") & (Q(recording__host=user) | Exists(admin))
     return qs.filter(final | draft)
 
 
@@ -278,6 +280,7 @@ def update_doc(doc, field: str, value, *, actor, expected_version: int, source="
         value = _clean_tags(value)
     elif field == "project":
         _check_scope(doc.org, actor, value, None)
+        extra = {"team": None} if value is not None else {}  # 공개 범위는 하나만(doc_scope_one)
     # created_on(회의 일시)은 비워 둘 수 있다 — 작성 시각(created_at)과 별개다.
 
     # auto_now는 update()를 타지 않으므로 직접 넣는다.
@@ -287,6 +290,7 @@ def update_doc(doc, field: str, value, *, actor, expected_version: int, source="
         updated_by=actor,
         updated_source=source,
         **{field: value},
+        **(extra if field == "project" else {}),
     )
     if updated != 1:
         doc.refresh_from_db()

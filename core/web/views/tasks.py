@@ -107,8 +107,8 @@ def _panel_ctx(request, task, **extra):
         "org_notes": visible_notes(request.user).filter(org=task.project.org),
         # _refs.html은 패널 최초 렌더(_panel_ctx)와 조각 갱신(_refs) 양쪽에서 쓰인다.
         # 한쪽에만 넣으면 새로고침 전에는 문서가 보이지 않는다.
-        "docs": task.docs.filter(project_id=task.project_id),
-        "project_docs": task.project.docs.exclude(tasks=task),
+        "docs": task.docs.filter(kind="doc", project_id=task.project_id),
+        "project_docs": task.project.docs.filter(kind="doc", is_template=False).exclude(tasks=task),
         "attachments": attachments_of(task),
         # 패널이 프로젝트·담당자까지 맡으므로 고를 대상을 함께 싣는다
         "org_projects": visible_projects(request.user, task.project.org)
@@ -493,9 +493,11 @@ def _refs(request, task, error=None, link_form=None):
             else LinkForm(dev_tools=task.project.dev_tools),
             "notes": visible_notes(request.user).filter(tasks=task),
             "org_notes": visible_notes(request.user).filter(org=task.project.org),
-            "docs": task.docs.filter(project_id=task.project_id),
+            "docs": task.docs.filter(kind="doc", project_id=task.project_id),
             # 이미 걸린 문서는 후보에서 뺀다 — 같은 것을 두 번 걸 이유가 없다
-            "project_docs": task.project.docs.exclude(tasks=task),
+            "project_docs": task.project.docs.filter(kind="doc", is_template=False).exclude(
+                tasks=task
+            ),
             "attachments": attachments_of(task),
             "is_admin": can_admin(request.user, task.project.org),
             "error": error,
