@@ -106,6 +106,7 @@ PM apidoc 12 put openapi.json                         # 프로젝트 API 문서 
 | 템플릿으로 두기·해제 | `PATCH /api/tasks/{id}` `{"version", "is_template": true}` — 시작 전에서만. 템플릿은 상태를 바꾸지 않고 목록·집계에서 빠진다(`GET /api/tasks?include_templates=true`) |
 | 첨부 파일 올리기 | `POST /api/tasks/{id}/attachments` (또는 `/api/projects/{id}/attachments`) multipart `file` `kind`(file·out 산출물·proof 증빙) `note` `replaces`(새 버전일 때 이전 첨부 id) — 25MB, 허용 확장자만. 목록 `GET …/attachments?all=true`, 받기 `GET /api/attachments/{id}/download`, ✋ 지우기 `DELETE /api/attachments/{id}`. 비밀번호·API 키가 든 파일은 올리지 않는다 |
 | 검토자 지정 | `PATCH /api/tasks/{id}` `{"version", "reviewer_id"}` (`null`이면 해제) — 검토 대기 → 완료는 검토자나 관리자만. 반려(검토 대기 → 시작 전·진행 중)는 조직이 요구하면 `reason` 필수 |
+| ✋ 다른 프로젝트에도 연결 | `POST /api/tasks/{id}/projects` `{"project_id"}` — 주 프로젝트는 그대로, 연결 프로젝트의 열람자도 태스크를 본다. 해제·승인 요청 취소 `DELETE /api/tasks/{id}/projects/{project_id}`. 목록 `GET /api/tasks?project=`는 연결 포함(`primary_only=true`면 주만). 아래 "연결과 열람 확대" |
 | ✋ 태스크 지우기 | `DELETE /api/tasks/{id}` — 되돌릴 수 없다. 보통은 `cancelled`로 바꾸는 게 맞다 |
 | GitHub 이슈 만들고 잇기 | `POST /api/tasks/{id}/github/issue` (본문 없음) |
 | 이슈를 태스크로 | `POST /api/projects/{id}/issues/{number}/import` |
@@ -176,6 +177,18 @@ PM apidoc 12 put openapi.json                         # 프로젝트 API 문서 
    도중에 실패해 다시 돌려도 같은 키면 중복되지 않는다. 이슈를 고른 건은 이어서
    `POST /api/tasks/{id}/github/issue`. 이슈 생성이 실패해도 태스크는 남는다 — 실패만 알린다.
 7. 만든 결과를 `TASK-N`과 이슈 링크로 보고한다. 번호는 응답에서 읽는다. 추측하거나 예시에서 복사하지 않는다.
+
+## 연결과 열람 확대
+
+- 한 작업이 여러 프로젝트에 **"관련"**되면 연결, 프로젝트마다 **"따로 하는"** 작업이면 나누기(`/pm-split`).
+- 연결하면 그 프로젝트의 열람자도 이 태스크를 본다. 지금 이 태스크를 못 보던 사람이 생기면 서버가
+  `400 {"error": "visibility_widening", "message", "widening_count"}`로 **거부한다**. `message`를
+  사용자에게 그대로 보여 주고 **허락을 받은 뒤에만** 같은 요청에 `"confirm_visibility_widening": true`를
+  붙여 다시 보낸다. 허락 없이 붙이지 않는다. 만들 때 함께 연결하려면 `POST /api/tasks`에
+  `"linked_project_ids": [..]`(같은 규칙).
+- 확인하고 보내도 그 연결은 **관리자 승인 대기**(`status: "pending"`)로 남고, 승인 전에는 열람자가 늘지
+  않는다. 승인·거절은 관리자(주 프로젝트가 비공개면 그 프로젝트 관리자·조직 관리자, 아니면 조직 관리자)가
+  웹에서 한다. AI는 승인하지 않는다.
 
 core에는 상위·하위 태스크 관계가 없다. 나눈 태스크는 `description` 첫 줄에 `상위: TASK-N` 또는
 `관련: TASK-N`을 적어 잇는다.

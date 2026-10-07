@@ -215,6 +215,25 @@ class FakeCore:
                     "task_ids": [1],
                 },
             )
+        if p == "/api/tasks/1/projects" and request.method == "POST":
+            body = json.loads(request.content)
+            if not body.get("confirm_visibility_widening"):
+                msg = "주의: '공개' 프로젝트의 열람자 중 지금 이 태스크를 볼 수 없는 2명(가, 나)도 ..."
+                return httpx.Response(
+                    400,
+                    json={
+                        "detail": msg,
+                        "error": "visibility_widening",
+                        "message": msg,
+                        "widening_count": 2,
+                        "widening": [],
+                    },
+                )
+            return httpx.Response(
+                201, json={"id": body["project_id"], "name": "공개", "status": "pending"}
+            )
+        if p == "/api/tasks/1/projects/5" and request.method == "DELETE":
+            return httpx.Response(204)
         if p == "/api/projects/404":
             return httpx.Response(404, text="<h1>Not Found</h1>")
         if request.method == "POST" and p in ("/api/projects", "/api/orgs/1/teams"):

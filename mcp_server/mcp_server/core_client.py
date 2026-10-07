@@ -6,7 +6,9 @@ CORE_URL = os.environ.get("CORE_URL", "http://web:8000").rstrip("/")
 
 
 class CoreError(Exception):
-    pass
+    def __init__(self, message="", body=None):
+        super().__init__(message)
+        self.body = body or {}  # 400 응답 본문(예: error=visibility_widening). 없으면 {}
 
 
 def _detail(r: httpx.Response) -> str:
@@ -54,7 +56,8 @@ class Core:
                 f"{latest.get('version')} 로 다시 시도하세요. 최신 내용: {latest}"
             )
         if r.status_code in (400, 422):
-            raise CoreError(f"입력 오류: {r.json().get('detail')}")
+            body = r.json()
+            raise CoreError(f"입력 오류: {body.get('detail')}", body)
         raise CoreError(f"core 오류 HTTP {r.status_code}")
 
     def get(self, path, **params):
