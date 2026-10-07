@@ -1,7 +1,7 @@
 from datetime import date, timedelta
 
 from django.db import IntegrityError, transaction
-from django.db.models import Exists, F, Max, OuterRef, Q
+from django.db.models import Count, Exists, F, Max, OuterRef, Q
 from django.db.models.functions import Coalesce
 from django.utils import timezone
 
@@ -301,16 +301,21 @@ def pending_links_for(user):
 
 
 def tasks_visible_in(org, viewer=None):
-    """조직 집계용 태스크(태스크당 한 행). viewer가 None(봇·조직 채널 게시)이면 공개 프로젝트에
-    주로 있거나 확정 연결된 것만."""
+    """조직 집계용 태스크(태스크당 한 행, 잎만 — 하위가 있는 상위는 뺀다). viewer가 None(봇·조직 채널
+    게시)이면 공개 프로젝트에 주로 있거나 확정 연결된 것만."""
     if viewer is not None:
-        return visible_tasks(viewer).filter(project__org=org)
+        return leaf_only(visible_tasks(viewer).filter(project__org=org))
     public = TaskProject.objects.filter(
         task_id=OuterRef("pk"), status="active", project__visibility="org"
     )
-    return Task.objects.filter(project__org=org).filter(
-        Q(project__visibility="org") | Exists(public)
+    return leaf_only(
+        Task.objects.filter(project__org=org).filter(Q(project__visibility="org") | Exists(public))
     )
+
+
+def leaf_only(qs):
+    """집계용(IMPL-PLAN-12 §4.2). 하위가 있는 상위는 뺀다 — 하위가 대표한다(두 번 세지 않는다)."""
+    return qs.filter(~Exists(Task.objects.filter(group_id=OuterRef("pk"))))
 
 
 def _require_task(actor, task):
@@ -333,6 +338,115 @@ def _sees_task(user, task, project) -> bool:
 def by_due(t):
     """기한 오름차순, 기한 없음은 뒤로, 같으면 id."""
     return (t.due_date or date.max, t.pk)
+
+
+# ---------- 상위·하위 태스크(한 겹, IMPL-PLAN-12) ----------
+
+ONE_LEVEL = "태스크 중첩은 한 겹까지입니다."
+SUB_SAME_PROJECT = "하위 태스크는 상위와 같은 프로젝트에 있어야 합니다. 먼저 떼어내세요."
+
+
+def subtask_progress(task) -> tuple[int, int]:
+    """(완료 수, 취소를 뺀 하위 수). 하위가 없으면 (0, 0)."""
+    r = task.subtasks.exclude(status="cancelled").aggregate(
+        total=Count("id"), done=Count("id", filter=Q(status="done"))
+    )
+    return r["done"], r["total"]
+
+
+def due_after_group(task) -> bool:
+    """하위의 기한이 상위보다 늦다(막지 않고 경고만)."""
+    g = task.group
+    return bool(g and task.due_date and g.due_date and task.due_date > g.due_date)
+
+
+def group_done_suggested(task) -> bool:
+    """완료 제안을 보일 때인가: 열린 상위이고, 취소를 뺀 하위가 1건 이상이며 모두 완료."""
+    if not task.is_open:
+        return False
+    done, total = subtask_progress(task)
+    return total > 0 and done == total
+
+
+def subtask_view(viewer, task) -> dict:
+    """화면·API가 그리는 상위·하위 정보. 못 보는 상위·하위의 번호·제목은 내지 않는다(§4.1).
+
+    {"group": 볼 수 있는 상위 | None, "subtasks": 보이는 하위(기한순, s.due_after_group 붙음),
+     "done", "total": 취소를 뺀 전체 수(개수는 노출로 보지 않는다), "hidden": 못 보는 하위 수,
+     "suggest_done": 완료 제안}."""
+    group = task.group if task.group_id and can_view_task(viewer, task.group) else None
+    subs = sorted(visible_tasks(viewer).filter(group=task), key=by_due)
+    for s in subs:
+        s.group = task  # due_after_group이 상위를 다시 읽지 않게
+        s.due_after_group = due_after_group(s)
+    done, total = subtask_progress(task)
+    return {
+        "group": group,
+        "subtasks": subs,
+        "done": done,
+        "total": total,
+        "hidden": task.subtasks.count() - len(subs),
+        "suggest_done": task.is_open and total > 0 and done == total,
+    }
+
+
+def _check_group(task, group, project):
+    """task(None이면 새로 만들 태스크)를 group 아래에 둘 수 있는가. 호출부가 행을 잠근 뒤 부른다."""
+    if task is not None and task.pk == group.pk:
+        raise ServiceError({"group": "자기 자신의 하위로 넣을 수 없습니다."})
+    if group.is_template or (task is not None and task.is_template):
+        raise ServiceError({"group": "템플릿은 상위·하위로 묶을 수 없습니다."})
+    if project.pk != group.project_id:
+        raise ServiceError({"group": "하위는 상위와 같은 프로젝트에 있어야 합니다."})
+    if group.group_id is not None or (task is not None and task.subtasks.exists()):
+        raise ServiceError({"group": ONE_LEVEL})
+    if group.is_closed:
+        raise ServiceError({"group": "완료·취소된 태스크 아래에는 넣을 수 없습니다."})
+
+
+def _lock(*tasks):
+    """행 잠금(pk 순 — 교착 방지) 뒤의 최신 행. 한 겹 검사의 경쟁(A→B와 B→C 동시)을 막는다:
+    두 쪽 모두 B를 잠그므로 뒤에 온 쪽은 앞쪽 커밋 뒤의 B를 보고 검사한다."""
+    rows = Task.objects.select_for_update().filter(pk__in=[t.pk for t in tasks]).order_by("pk")
+    got = {t.pk: t for t in rows}
+    return [got[t.pk] for t in tasks]
+
+
+@transaction.atomic
+def set_group(task, group, *, actor, source="web", token=None, expected_version) -> Task:
+    """넣기(group=상위) · 떼어내기(group=None). 한 겹은 이 함수와 create_task·duplicate_task의
+    같은 검사(_check_group)가 지킨다. 실패는 ServiceError {"group": …}."""
+    _require_task(actor, task)
+    _ai_check(task.project.org, "ai.create_task", "상위·하위 묶기", source, "group")
+    old = task.group
+    if group is None:
+        if old is None:
+            return task
+        _apply(task, expected_version, {"group": None})
+        _log(task, "group", old.number, "", actor, source, token)
+        return task
+    _require_task(actor, group)
+    fresh, group = _lock(task, group)
+    if fresh.group_id == group.pk:
+        return task
+    _check_group(fresh, group, task.project)
+    _apply(task, expected_version, {"group": group})
+    _log(task, "group", old.number if old else "", group.number, actor, source, token)
+    return task
+
+
+def _suggest_group_done(group):
+    """마지막 하위가 닫히면 상위 담당자에게 완료 제안 DM 한 통(§3.3). 자동 완료하지 않는다.
+    # ponytail: 제안은 DM 한 통. 자동 완료가 필요하면 조직 설정 task.auto_close_group을 그때 추가."""
+    group.refresh_from_db()
+    if not group_done_suggested(group):
+        return
+    wr.notify(
+        group.project.org,
+        f"{group.number} «{group.title}»의 하위 태스크가 모두 끝났습니다. "
+        f"상위를 완료로 표시해 주세요. {wr._link(f'/tasks/{group.pk}')}",
+        user=group.assignee,
+    )
 
 
 # ---------- 생성·수정 ----------
@@ -371,8 +485,11 @@ def create_task(
     notify_assignee=True,
     linked_project_ids=(),
     confirm_widening=False,
+    group=None,
 ) -> Task:
-    """notify_assignee=False: 호출부가 담당자에게 따로 알린다(GitHub 재개는 담당 요청 한 통).
+    """group: 상위 태스크 — 그 하위로 만든다(같은 주 프로젝트, 한 겹, 상위의 확정 연결 복사).
+
+    notify_assignee=False: 호출부가 담당자에게 따로 알린다(GitHub 재개는 담당 요청 한 통).
 
     linked_project_ids: 만들자마자 연결할 프로젝트. 열람 확대가 있으면 confirm_widening 없이는
     WideningRequired로 생성 전체가 롤백되고, 있으면 그 연결은 승인 대기로 남는다(link_project)."""
@@ -388,6 +505,12 @@ def create_task(
             if existing is not None:
                 return _idem_replay(actor, existing, project)
             hit.delete()  # 대상이 지워진 키는 새로 만든다
+    if group is not None:
+        if project.pk != group.project_id:
+            raise ServiceError({"project_id": "하위는 상위와 같은 프로젝트에 만듭니다."})
+        _require_task(actor, group)
+        (group,) = _lock(group)
+        _check_group(None, group, project)
     assignee = assignee or actor
     _require_viewer(assignee, project)
     # 남에게 맡길 권한이 없으면 일단 만든 사람이 맡고, 받을 사람에게 담당 요청을 보낸다.
@@ -424,8 +547,16 @@ def create_task(
         due_date=due_date,
         no_due_reason=(no_due_reason or "").strip()[:200],
         created_by=actor,
+        group=group,
     )
     _log(task, "created", "", task.number, actor, source, token)
+    if group is not None:
+        _log(task, "group", "", group.number, actor, source, token)
+        # 상위와 같은 열람자 집합이 되게 확정 연결을 복사한다(duplicate_task와 같은 이유).
+        TaskProject.objects.bulk_create(
+            TaskProject(task=task, project_id=lk.project_id, created_by=actor)
+            for lk in group.project_links.filter(status="active")
+        )
     if ask is not None:
         wr.request_assign(task, ask, actor, source)
     elif assignee != actor and notify_assignee:
@@ -470,6 +601,18 @@ def update_text(task, field: str, value: str, *, actor, source: str = "web") -> 
     Task.objects.filter(pk=task.pk).update(**{field: value}, updated_at=timezone.now())
     task.refresh_from_db()
     return task
+
+
+def _moved(task, actor, source, token):
+    """주 프로젝트를 옮긴 뒤 정리(태스크와, 함께 옮긴 하위 각각)."""
+    # 문서는 같은 프로젝트의 태스크에만 걸린다(projects.docs.link_task). 옮기면 옛 프로젝트 문서
+    # 연결을 끊는다 — 남겨 두면 공개 프로젝트에서 비공개 문서 제목이 보인다.
+    task.docs.remove(
+        *task.docs.filter(kind="doc", project__isnull=False).exclude(project_id=task.project_id)
+    )
+    # 새 주 프로젝트가 연결에 있었으면 그 연결은 지운다(주 ≠ 연결). 옛 주는 연결로 남기지 않는다.
+    TaskProject.objects.filter(task=task, project=task.project).delete()
+    _drop_stale_git_project(task, actor, source, token)
 
 
 @transaction.atomic
@@ -527,6 +670,21 @@ def update_task(
     new = {f: changes.get(f, getattr(task, f)) for f in LOCKED_FIELDS}
     if changes.get("git_project") is not None:
         _check_git_project(task, changes["git_project"])
+    subs = []
+    if "project" in changes and new["project"] != task.project:
+        if task.group_id:
+            raise ServiceError({"project": SUB_SAME_PROJECT})
+        # 상위를 옮기면 하위도 함께(§3.4). 하위 하나라도 새 프로젝트를 못 보면 전체 거절.
+        subs = list(task.subtasks.select_related("assignee", "reviewer"))
+        for sub in subs:
+            if not can_see(sub.assignee, new["project"]):
+                raise ServiceError(
+                    {"project": f"하위 {sub.number}의 담당자가 볼 수 없는 프로젝트입니다."}
+                )
+            if sub.reviewer_id and not can_see(sub.reviewer, new["project"]):
+                raise ServiceError(
+                    {"project": f"하위 {sub.number}의 검토자가 볼 수 없는 프로젝트입니다."}
+                )
     if "project" in changes:
         _require_member(actor, new["project"])
         if new["project"].org_id != task.project.org_id:
@@ -562,14 +720,14 @@ def update_task(
         return task
     _apply(task, expected_version, fields)
     if "project" in fields:
-        # 문서는 같은 프로젝트의 태스크에만 걸린다(projects.docs.link_task). 옮기면 옛 프로젝트 문서
-        # 연결을 끊는다 — 남겨 두면 공개 프로젝트에서 비공개 문서 제목이 보인다.
-        task.docs.remove(
-            *task.docs.filter(kind="doc", project__isnull=False).exclude(project_id=task.project_id)
+        _moved(task, actor, source, token)
+    for sub in subs:
+        Task.objects.filter(pk=sub.pk).update(
+            project=task.project, version=F("version") + 1, updated_at=timezone.now()
         )
-        # 새 주 프로젝트가 연결에 있었으면 그 연결은 지운다(주 ≠ 연결). 옛 주는 연결로 남기지 않는다.
-        TaskProject.objects.filter(task=task, project=task.project).delete()
-        _drop_stale_git_project(task, actor, source, token)
+        sub.refresh_from_db()
+        _moved(sub, actor, source, token)
+        _log(sub, "project", old["project"], task.project, actor, source, token, note="상위와 함께")
     if "assignee" in fields:
         wr.drop_assign_requests(task, keep_user=ask)
         if task.assignee != actor:
@@ -689,6 +847,23 @@ def transition(
                         "status": f"동시 진행 한도 {limit}건을 넘었습니다. 다른 태스크를 먼저 정리해 주세요."
                     }
                 )
+    # 불변식: 닫힌 상위 아래에 열린 하위는 없다(IMPL-PLAN-12 §3.2).
+    if closing:
+        n = task.subtasks.filter(status__in=Task.OPEN).count()
+        if n:
+            raise ServiceError(
+                {
+                    "status": f"하위 태스크 {n}건이 아직 열려 있습니다. "
+                    "먼저 끝내거나 취소하거나 떼어내세요."
+                }
+            )
+    if reopening and task.group_id and task.group.is_closed:
+        raise ServiceError(
+            {
+                "status": f"상위 {task.group.number}이 완료·취소 상태입니다. "
+                "상위를 먼저 다시 열거나 떼어내세요."
+            }
+        )
     if new_status == "blocked" and not reason:
         raise ServiceError({"stop_reason": "막힘 사유를 입력하세요."})
     if new_status == "cancelled":
@@ -777,6 +952,8 @@ def transition(
             note="상태 변경으로 해제",
             external_actor=external_actor,
         )
+    if closing and task.group_id:
+        _suggest_group_done(task.group)
     return task
 
 
@@ -793,10 +970,17 @@ def duplicate_task(
     assignee=None,
     idempotency_key=None,
     notify_assignee=True,
+    group=None,
 ) -> Task:
-    """복제·회차·변형 공통. 설명·완료 조건·다음 행동·중요도·체크리스트(전부 미완료)·링크·문서 연결을
+    """group을 주면 계열(parent) 대신 그 상위의 하위로 묶는다(사람별로 나누기). 하위는 복사하지 않는다.
+
+    복제·회차·변형 공통. 설명·완료 조건·다음 행동·중요도·체크리스트(전부 미완료)·링크·문서 연결을
     복사한다. 첨부 파일은 복사하지 않는다(회차는 새 파일을 만든다). 상태는 todo, 템플릿 아님.
     parent = task.parent or task (계열은 평평하다). create_task를 부르므로 ai.create_task·담당 규칙이 그대로 걸린다."""
+    if group is not None:
+        _require_task(actor, group)
+        (group,) = _lock(group)
+        _check_group(None, group, task.project)
     new = create_task(
         project=task.project,
         title=title or task.title,
@@ -813,11 +997,12 @@ def duplicate_task(
         idempotency_key=idempotency_key,
         notify_assignee=notify_assignee,
     )
-    if new.parent_id is not None:
+    if new.parent_id is not None or new.group_id is not None:
         return new  # 같은 Idempotency-Key 재요청 — 이미 복사까지 끝난 회차다
     root = task.parent or task
     reviewer = task.reviewer if task.reviewer_id and task.reviewer != new.assignee else None
-    Task.objects.filter(pk=new.pk).update(parent=root, reviewer=reviewer)
+    tie = {"group": group} if group is not None else {"parent": root}
+    Task.objects.filter(pk=new.pk).update(reviewer=reviewer, **tie)
     ChecklistItem.objects.bulk_create(
         ChecklistItem(task=new, text=i.text, position=i.position) for i in task.checklist.all()
     )
@@ -832,7 +1017,10 @@ def duplicate_task(
         for lk in task.project_links.filter(status="active")
     )
     new.refresh_from_db()
-    _log(new, "parent", "", root.number, actor, source, token, note=f"{task.number}에서 복제")
+    tied = group or root
+    _log(
+        new, next(iter(tie)), "", tied.number, actor, source, token, note=f"{task.number}에서 복제"
+    )
     return new
 
 
@@ -845,6 +1033,10 @@ def set_template(task, on: bool, *, actor, source="web", token=None) -> Task:
         return task
     if on and task.status != "todo":
         raise ServiceError({"is_template": "시작 전 상태에서만 템플릿으로 바꿀 수 있습니다."})
+    if on and (task.group_id or task.subtasks.exists()):
+        raise ServiceError(
+            {"is_template": "상위·하위 관계가 있는 태스크는 템플릿으로 둘 수 없습니다."}
+        )
     fields = {"is_template": on}
     if on:
         fields.update(due_date=None, no_due_reason="템플릿")
@@ -916,6 +1108,8 @@ def delete_task(task, *, actor, source: str = "web") -> None:
         source=source,
     )
     wr.drop_assign_requests(task)
+    for sub in task.subtasks.all():  # FK SET_NULL로 하위는 남고 상위 연결만 풀린다
+        _log(sub, "group", task.number, "", actor, source, note="상위 삭제")
     from .attachments import purge_files
 
     purge_files(task.attachments.all())  # 첨부 행은 CASCADE, 파일은 커밋 뒤에 지운다

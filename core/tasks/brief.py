@@ -49,5 +49,7 @@ def task_brief(t) -> dict:
         # 템플릿은 진행하지 않는다. 회차·변형은 parent_id(계열의 뿌리)로 묶인다.
         "is_template": t.is_template,
         "parent_id": t.parent_id,
+        # 상위 태스크(한 겹). 번호는 비밀이 아니라 id만 낸다 — 제목은 볼 수 있는 사람에게만(task_out).
+        "group_id": t.group_id,
         "url": f"{settings.SITE_URL}/tasks/{t.pk}",
     }

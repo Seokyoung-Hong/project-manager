@@ -3,7 +3,7 @@ from pathlib import PurePath
 
 from django.conf import settings
 from django.db import models
-from django.db.models import Q
+from django.db.models import F, Q
 
 from common.dates import today_kst
 
@@ -69,6 +69,16 @@ class Task(models.Model):
         related_name="children",
         verbose_name="원본",
     )
+    # 상위 태스크(한 겹, IMPL-PLAN-12). 하위는 상위와 같은 주 프로젝트에 있고 하위의 하위는 없다
+    # (services.set_group이 지킨다). parent(계열 — 회차·복제의 원본)와는 다른 관계다.
+    group = models.ForeignKey(
+        "self",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="subtasks",
+        verbose_name="상위 태스크",
+    )
     # 템플릿은 진행하지 않는다. 회차는 duplicate_task로 만든다(자동 생성 없음).
     is_template = models.BooleanField("템플릿", default=False)
     reviewer = models.ForeignKey(
@@ -116,6 +126,13 @@ class Task(models.Model):
             models.CheckConstraint(
                 condition=~Q(is_template=True) | Q(status="todo"),
                 name="task_template_is_todo",
+            ),
+            models.CheckConstraint(
+                condition=Q(group__isnull=True) | ~Q(group=F("id")), name="task_group_not_self"
+            ),
+            models.CheckConstraint(
+                condition=~Q(is_template=True) | Q(group__isnull=True),
+                name="task_template_no_group",
             ),
         ]
         indexes = [
