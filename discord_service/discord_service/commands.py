@@ -134,12 +134,15 @@ def _pending(t: dict) -> str:
     return f"\n{p['display_name']}님 수락 대기" if p else ""
 
 
+SPLIT_HINT = "담당자는 한 명입니다. 사람별로 나누려면 웹에서 [사람별로 나누기]를 누르세요."
+
+
 def create_reply(core: CoreClient, did: str, fields: dict) -> str:
-    t = core.create_task(did, fields)["task"]
+    r = core.create_task(did, fields)
+    t = r["task"]
     due = t["due_date"] or "기한 미정"
-    return (
-        f"{_head(t)} 을(를) 만들었습니다 — {t['project']['name']} · {due}\n{t['url']}{_pending(t)}"
-    )
+    hint = f"\n{SPLIT_HINT}" if r.get("multi_assignee") else ""
+    return f"{_head(t)} 을(를) 만들었습니다 — {t['project']['name']} · {due}\n{t['url']}{_pending(t)}{hint}"
 
 
 def update_reply(core: CoreClient, did: str, num: int, changes: dict) -> str:

@@ -118,6 +118,17 @@ def test_create_task_passes_core_validation_through(post, project, member):
     assert (log.actor_id, log.source) == (member.pk, "dc")
 
 
+def test_create_task_flags_multi_assignee_title(post, project, member, admin):
+    """제목에 멤버 이름이 둘 이상이면 응답에 multi_assignee — 봇이 [사람별로 나누기] 안내를 붙인다."""
+    r = post("/tasks", {"project_id": project.pk, "title": "새 일", "no_due_reason": "미정"})
+    assert r.json()["multi_assignee"] is False
+    r = post(
+        "/tasks",
+        {"project_id": project.pk, "title": "팀원과 관리자 로그인", "no_due_reason": "미정"},
+    )
+    assert r.json()["multi_assignee"] is True
+
+
 def test_create_task_in_foreign_project_is_404(post, member, outsider):
     from orgs.services import create_org
     from projects.services import create_project

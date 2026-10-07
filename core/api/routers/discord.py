@@ -38,6 +38,7 @@ from tasks.services import (
     update_text,
     visible_tasks,
 )
+from tasks.split import task_split_candidates
 
 from ..auth import BotTokenAuth
 from ..schemas import (
@@ -320,7 +321,12 @@ def create(request, payload: DiscordTaskCreateIn):
         no_due_reason=payload.no_due_reason,
         **_ctx(request, actor),
     )
-    return {"task": task_out(task, actor)}
+    return {
+        "task": task_out(task, actor),
+        "multi_assignee": bool(
+            task_split_candidates(task)
+        ),  # 담당자는 한 명 — 응답 끝 안내(IMPL-PLAN-11 §2)
+    }
 
 
 @router.post("/tasks/{task_id}/update", response=dict)

@@ -555,7 +555,8 @@ def create_task(
     linked_project_ids: list[int] | None = None,
     confirm_visibility_widening: bool = False,
 ) -> dict:
-    """태스크 생성. assignee_id를 비우면 토큰 주인이 담당자. due_date는 YYYY-MM-DD, 없으면 no_due_reason 필수.
+    """태스크 생성. 담당자는 한 명 — assignee_id를 비우면 토큰 주인이 담당자. 여러 사람이 할 일이면
+    1건 만든 뒤 split_task로 사람별로 나눈다. due_date는 YYYY-MM-DD, 없으면 no_due_reason 필수.
     priority는 1~10. request_id를 주면 같은 값으로 재시도해도 중복 생성되지 않는다.
     linked_project_ids: 함께 연결할 프로젝트(주 프로젝트는 project_id). 열람자가 늘어나는 연결이면
     confirm_visibility_widening 없이는 거부된다 — link_task_project와 같은 규칙."""
@@ -717,6 +718,23 @@ def duplicate_task(
     }
     headers = {"Idempotency-Key": request_id} if request_id else None
     return _core().post(f"/api/tasks/{task_id}/duplicate", body, headers=headers)
+
+
+@mcp.tool()
+def split_task(
+    task_id: int,
+    assignee_ids: list[int],
+    roles: dict[int, str] | None = None,
+    title_pattern: str = "{title} — {name}",
+    request_id: str | None = None,
+) -> dict:
+    """사람별로 나누기. 담당자는 한 명이므로 여러 사람이 맡는 일은 사람(2~10명)마다 태스크를 만들어 같은
+    계열(parent_id)로 묶는다. 설명·완료 조건·기한·체크리스트(미완료로)·링크·문서·연결 프로젝트를 복사하고,
+    원본은 그대로 두되 체크리스트가 만든 태스크 목록으로 바뀐다. roles={user_id: 역할 이름}은 제목에
+    "이름 (역할)"로 붙는다. title_pattern은 {title}·{name}만 쓴다. request_id로 재시도해도 중복되지 않는다."""
+    body = {"assignee_ids": assignee_ids, "roles": roles or {}, "title_pattern": title_pattern}
+    headers = {"Idempotency-Key": request_id} if request_id else None
+    return _core().post(f"/api/tasks/{task_id}/split", body, headers=headers)
 
 
 @mcp.tool()

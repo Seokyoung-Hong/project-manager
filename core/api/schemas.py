@@ -106,6 +106,7 @@ class TaskCreateIn(Schema):
     project_id: int
     title: str
     assignee_id: int | None = None
+    assignee_ids: list[int] | None = None  # 받되 400 — 담당자는 한 명(POST /tasks/{id}/split)
     description: str = ""
     done_when: str = ""
     next_action: str = ""
@@ -143,6 +144,7 @@ class TaskPatchIn(Schema):
     next_action: str | None = None
     notes: str | None = None
     assignee_id: int | None = None
+    assignee_ids: list[int] | None = None  # 받되 400 — 담당자는 한 명(POST /tasks/{id}/split)
     project_id: int | None = None
     priority: Priority | None = None
     due_date: date | None = None
@@ -151,6 +153,14 @@ class TaskPatchIn(Schema):
     checklist: list[ChecklistItemIn] | None = None
     reviewer_id: int | None = None  # null이면 검토자 해제
     is_template: bool | None = None
+
+
+class TaskSplitIn(Schema):
+    """사람별로 나누기. roles는 {"<user id>": "역할 이름"}(선택)."""
+
+    assignee_ids: list[int]
+    title_pattern: str = "{title} — {name}"
+    roles: dict[int, str] = {}
 
 
 class TaskDuplicateIn(Schema):
