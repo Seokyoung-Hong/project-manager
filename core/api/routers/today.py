@@ -2,6 +2,7 @@ from ninja import Router
 
 from tasks.brief import task_brief
 from tasks.services import (
+    attach_group_visible,
     today_add,
     today_exclude,
     today_reorder,
@@ -18,6 +19,7 @@ router = Router(tags=["today"])
 
 def _out(user) -> dict:
     v = today_view(user)
+    attach_group_visible([*v["items"], v["focus"], *v["done_today"]], user)
     return {
         "date": v["date"],
         "items": [{**task_brief(t), "auto_pulled": t.auto_pulled} for t in v["items"]],

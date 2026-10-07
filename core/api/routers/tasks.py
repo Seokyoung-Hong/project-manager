@@ -21,10 +21,12 @@ from tasks.models import ChangeLog, Task, TaskProject
 from tasks.services import (
     WideningRequired,
     approve_link,
+    attach_group_visible,
     create_task,
     delete_task,
     duplicate_task,
     extend_due,
+    hidden_task_refs,
     leaf_only,
     link_project,
     reject_link,
@@ -134,7 +136,10 @@ def list_tasks(
     qs = qs.order_by(F("due_date").asc(nulls_last=True), "id")
     total = qs.count()
     return {
-        "items": [task_brief(t) for t in qs[offset : offset + limit]],
+        "items": [
+            task_brief(t)
+            for t in attach_group_visible(list(qs[offset : offset + limit]), request.auth)
+        ],
         "total": total,
         "limit": limit,
         "offset": offset,
@@ -271,8 +276,11 @@ def create_task_issue(request, task_id: int):
 @router.get("/{task_id}/history", response=list[ChangeLogOut])
 def history(request, task_id: int):
     task = task_or_404(request, task_id)
-    logs = ChangeLog.objects.filter(target_type="task", target_id=task.pk).select_related("actor")
-    return [changelog_out(log) for log in logs]
+    logs = list(
+        ChangeLog.objects.filter(target_type="task", target_id=task.pk).select_related("actor")
+    )
+    hidden = hidden_task_refs(logs, request.auth)  # 못 보는 상위·하위 번호는 가린다(R5)
+    return [changelog_out(log, hidden) for log in logs]
 
 
 def _widening_400(e: WideningRequired):

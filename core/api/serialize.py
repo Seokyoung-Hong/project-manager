@@ -6,7 +6,14 @@ from orgs.services import visible_teams
 from projects.services import project_stats, project_stats_bulk
 from tasks.attachments import attachments_of
 from tasks.brief import task_brief, user_brief
-from tasks.services import linked_projects, subtask_progress, subtask_view, visible_tasks
+from tasks.services import (
+    attach_group_visible,
+    linked_projects,
+    mask_task_refs,
+    subtask_progress,
+    subtask_view,
+    visible_tasks,
+)
 from tasks.work_requests import pending_assignee
 
 
@@ -14,12 +21,13 @@ def link_out(link) -> dict:
     return {"id": link.pk, "title": link.title, "url": link.url, "kind": link.kind}
 
 
-def changelog_out(log) -> dict:
+def changelog_out(log, hidden=frozenset()) -> dict:
+    """hidden: 받는 사람이 볼 수 없는 'TASK-n'(tasks.services.hidden_task_refs) — group·split 값에서 가린다."""
     return {
         "id": log.pk,
         "field": log.field,
-        "old_value": log.old_value,
-        "new_value": log.new_value,
+        "old_value": mask_task_refs(log.field, log.old_value, hidden),
+        "new_value": mask_task_refs(log.field, log.new_value, hidden),
         "note": log.note,
         "actor": user_brief(log.actor),
         "source": log.source,
@@ -41,6 +49,7 @@ def task_out(t, viewer=None) -> dict:
     else:
         done, total = subtask_progress(t)
         sv = {"group": None, "subtasks": [], "done": done, "total": total, "hidden": total}
+    attach_group_visible([t], viewer)  # 숨긴 상위는 group_id도 null(R5)
     d = task_brief(t)
     d.update(
         {

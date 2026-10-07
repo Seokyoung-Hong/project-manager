@@ -313,6 +313,57 @@ def tasks_visible_in(org, viewer=None):
     )
 
 
+def attach_group_visible(tasks, viewer=None):
+    """brief의 group_id(상위 번호)를 viewer가 상위를 볼 수 있을 때만 내도록 표시한다(R5). viewer가 None이면
+    봇·채널 게시 — 상위가 공개 범위(공개 프로젝트에 주로 있거나 확정 연결)일 때만. 태스크 수와 무관하게 쿼리 한 번.
+    표시하지 않은 태스크의 brief는 group_id를 null로 낸다(닫힌 쪽이 기본)."""
+    tasks = [t for t in tasks if t is not None and not hasattr(t, "group_visible")]
+    gids = {t.group_id for t in tasks if t.group_id}
+    shown = set()
+    if gids:
+        if viewer is not None:
+            qs = visible_tasks(viewer)
+        else:
+            public = TaskProject.objects.filter(
+                task_id=OuterRef("pk"), status="active", project__visibility="org"
+            )
+            qs = Task.objects.filter(Q(project__visibility="org") | Exists(public))
+        shown = set(qs.filter(pk__in=gids).values_list("pk", flat=True))
+    for t in tasks:
+        t.group_visible = t.group_id in shown
+    return tasks
+
+
+TASK_REF_FIELDS = ("group", "split")
+HIDDEN_TASK = "볼 수 없는 태스크"
+
+
+def hidden_task_refs(logs, viewer) -> set[str]:
+    """이력(group·split)에 적힌 'TASK-n' 중 viewer가 볼 수 없는 번호(R5). 쿼리 한 번."""
+    nums = {
+        n
+        for log in logs
+        if log.field in TASK_REF_FIELDS
+        for v in (log.old_value, log.new_value)
+        for n in v.split(",")
+        if n
+    }
+    ids = {int(n[5:]) for n in nums if n.startswith("TASK-") and n[5:].isdecimal()}
+    seen = (
+        set(visible_tasks(viewer).filter(pk__in=ids).values_list("pk", flat=True)) if ids else set()
+    )
+    return {
+        n for n in nums if not (n.startswith("TASK-") and n[5:].isdecimal() and int(n[5:]) in seen)
+    }
+
+
+def mask_task_refs(field, value: str, hidden) -> str:
+    """hidden_task_refs가 고른 번호를 '볼 수 없는 태스크'로 바꾼다. 다른 필드는 그대로."""
+    if field not in TASK_REF_FIELDS or not value:
+        return value
+    return ",".join(HIDDEN_TASK if n in hidden else n for n in value.split(","))
+
+
 def leaf_only(qs):
     """집계용(IMPL-PLAN-12 §4.2). 하위가 있는 상위는 뺀다 — 하위가 대표한다(두 번 세지 않는다)."""
     return qs.filter(~Exists(Task.objects.filter(group_id=OuterRef("pk"))))
@@ -410,6 +461,19 @@ def _lock(*tasks):
     rows = Task.objects.select_for_update().filter(pk__in=[t.pk for t in tasks]).order_by("pk")
     got = {t.pk: t for t in rows}
     return [got[t.pk] for t in tasks]
+
+
+def _lock_family(task):
+    """상위·하위 잠금 규약(R4): 태스크와 그 상위(지금 DB 값)를 pk 순으로 잠그고 최신 행을 돌려준다.
+
+    상위 닫기·하위 재개(transition), 하위 만들기·넣기(create_task·duplicate_task·set_group),
+    상위 옮기기(update_task)가 모두 **상위 행**을 잠근 뒤 최신 관계·상태로 검사하므로 서로 차례로 지나간다.
+    메모리의 task.group(오래된 캐시)은 믿지 않는다."""
+    gid = Task.objects.filter(pk=task.pk).values_list("group_id", flat=True).first()
+    rows = _lock(task, *([Task(pk=gid)] if gid else []))
+    if rows[0].group_id != gid:  # 잠그는 사이에 넣기·떼어내기가 끼어들었다
+        raise ConflictError(rows[0])
+    return rows[0], (rows[1] if gid else None)
 
 
 @transaction.atomic
@@ -672,10 +736,11 @@ def update_task(
         _check_git_project(task, changes["git_project"])
     subs = []
     if "project" in changes and new["project"] != task.project:
-        if task.group_id:
+        fresh, group = _lock_family(task)  # 상위 행을 잠가 하위 만들기·넣기와 차례로(R4)
+        if group is not None:
             raise ServiceError({"project": SUB_SAME_PROJECT})
         # 상위를 옮기면 하위도 함께(§3.4). 하위 하나라도 새 프로젝트를 못 보면 전체 거절.
-        subs = list(task.subtasks.select_related("assignee", "reviewer"))
+        subs = list(Task.objects.filter(group=fresh).select_related("assignee", "reviewer"))
         for sub in subs:
             if not can_see(sub.assignee, new["project"]):
                 raise ServiceError(
@@ -847,9 +912,12 @@ def transition(
                         "status": f"동시 진행 한도 {limit}건을 넘었습니다. 다른 태스크를 먼저 정리해 주세요."
                     }
                 )
-    # 불변식: 닫힌 상위 아래에 열린 하위는 없다(IMPL-PLAN-12 §3.2).
+    # 불변식: 닫힌 상위 아래에 열린 하위는 없다(IMPL-PLAN-12 §3.2). 잠금 뒤 최신 행으로 본다(R4).
+    group = None
+    if closing or reopening:
+        fresh, group = _lock_family(task)
     if closing:
-        n = task.subtasks.filter(status__in=Task.OPEN).count()
+        n = Task.objects.filter(group=fresh, status__in=Task.OPEN).count()
         if n:
             raise ServiceError(
                 {
@@ -857,10 +925,10 @@ def transition(
                     "먼저 끝내거나 취소하거나 떼어내세요."
                 }
             )
-    if reopening and task.group_id and task.group.is_closed:
+    if reopening and group is not None and group.is_closed:
         raise ServiceError(
             {
-                "status": f"상위 {task.group.number}이 완료·취소 상태입니다. "
+                "status": f"상위 {group.number}이 완료·취소 상태입니다. "
                 "상위를 먼저 다시 열거나 떼어내세요."
             }
         )
@@ -952,8 +1020,8 @@ def transition(
             note="상태 변경으로 해제",
             external_actor=external_actor,
         )
-    if closing and task.group_id:
-        _suggest_group_done(task.group)
+    if closing and group is not None:
+        _suggest_group_done(group)
     return task
 
 

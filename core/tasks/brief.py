@@ -49,7 +49,8 @@ def task_brief(t) -> dict:
         # 템플릿은 진행하지 않는다. 회차·변형은 parent_id(계열의 뿌리)로 묶인다.
         "is_template": t.is_template,
         "parent_id": t.parent_id,
-        # 상위 태스크(한 겹). 번호는 비밀이 아니라 id만 낸다 — 제목은 볼 수 있는 사람에게만(task_out).
-        "group_id": t.group_id,
+        # 상위 태스크(한 겹). 받는 사람이 상위를 볼 수 있다고 확인된 때만(services.attach_group_visible) —
+        # 확인하지 않았으면 null(R5: 숨긴 상위의 번호도 내지 않는다).
+        "group_id": t.group_id if getattr(t, "group_visible", False) else None,
         "url": f"{settings.SITE_URL}/tasks/{t.pk}",
     }

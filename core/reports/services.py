@@ -10,7 +10,7 @@ from orgs.services import visible_teams
 from projects.services import visible_projects
 from tasks.brief import task_brief, user_brief
 from tasks.models import ChangeLog, Task, TaskProject
-from tasks.services import tasks_visible_in
+from tasks.services import attach_group_visible, leaf_only, tasks_visible_in
 
 
 def _projects(org, viewer):
@@ -40,16 +40,16 @@ STATS = {
 
 def _per_project(pids, base, extra) -> dict:
     """프로젝트별 집계 = 주 프로젝트 + 확정 연결(연결 태스크는 여러 프로젝트에 센다).
-    조인 곱을 피해 두 번 묶어 더한다. base는 Task 조건, extra는 {이름: Q}(태스크 기준)."""
+    조인 곱을 피해 두 번 묶어 더한다. base는 Task 조건, extra는 {이름: Q}(태스크 기준).
+    잎만 센다(R8) — 조직 합계(tasks_visible_in)·프로젝트 지표(project_stats_bulk)와 같은 규칙."""
+    leaves = leaf_only(Task.objects.all())
     aggs = {k: Count("id", filter=q) for k, q in extra.items()}
     out = defaultdict(lambda: dict.fromkeys(extra, 0))
     for key, qs in (
-        ("project_id", Task.objects.filter(base, project__in=pids)),
+        ("project_id", leaves.filter(base, project__in=pids)),
         (
             "project_links__project_id",
-            Task.objects.filter(
-                base, project_links__project__in=pids, project_links__status="active"
-            ),
+            leaves.filter(base, project_links__project__in=pids, project_links__status="active"),
         ),
     ):
         for r in qs.values(key).order_by().annotate(**aggs):
@@ -209,19 +209,32 @@ def weekly(org, week_start: date, *, viewer=None) -> dict:
             .select_related("project", "assignee", "reviewer")
             .order_by("project__name", "id")
         )
-        return [task_brief(t) for t in qs]
+        return [task_brief(t) for t in attach_group_visible(list(qs), viewer)]
 
     open_qs = _open_qs(org, viewer).select_related("project", "assignee", "reviewer")
     due_this_week = [
         task_brief(t)
-        for t in open_qs.filter(due_date__gte=this_monday, due_date__lte=this_sunday).order_by(
-            "due_date", "id"
+        for t in attach_group_visible(
+            list(
+                open_qs.filter(due_date__gte=this_monday, due_date__lte=this_sunday).order_by(
+                    "due_date", "id"
+                )
+            ),
+            viewer,
         )
     ]
     shown = list(shown_projects.filter(is_archived=False).select_related("org").order_by("name"))
     is_overdue = overdue_q(shown)  # 화면 배지와 같은 유예 기준(프로젝트별)
-    overdue = [task_brief(t) for t in open_qs.filter(is_overdue).order_by("due_date", "id")]
-    blocked = [task_brief(t) for t in open_qs.filter(status="blocked").order_by("id")]
+    overdue = [
+        task_brief(t)
+        for t in attach_group_visible(
+            list(open_qs.filter(is_overdue).order_by("due_date", "id")), viewer
+        )
+    ]
+    blocked = [
+        task_brief(t)
+        for t in attach_group_visible(list(open_qs.filter(status="blocked").order_by("id")), viewer)
+    ]
 
     # 프로젝트 수와 무관하게 쿼리 몇 번: 바뀐 태스크의 프로젝트(주 + 연결), 미완료 집계.
     # 프로젝트별 수치는 연결 포함, 위 counts는 태스크당 한 번.
