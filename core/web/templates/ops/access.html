@@ -1,0 +1,42 @@
+{% extends "ops/base.html" %}{% block title %}접근 · 운영 콘솔{% endblock %}
+{% block ops %}
+<section class="card">
+  <div class="card-head"><h2>API 토큰</h2></div>
+  <div class="tiles">{% for label, n in tiles %}<div class="tile"><b>{{ n }}</b><span>{{ label }}</span></div>{% endfor %}</div>
+  <div class="table-scroll" tabindex="0">
+  <table class="grid">
+    <thead><tr><th>아이디</th><th>활성</th><th>AI용</th><th>봇</th><th>마지막 사용</th></tr></thead>
+    <tbody>
+    {% for p in people %}
+    <tr><td><details><summary><code>{{ p.username }}</code></summary>{% with tokens=p.tokens %}{% include "ops/_tokens.html" %}{% endwith %}</details></td>
+      <td>{{ p.active }}</td><td>{{ p.ai }}</td><td>{{ p.bot }}</td><td>{{ p.last_used|date:"Y-m-d H:i"|default:"—" }}</td></tr>
+    {% empty %}<tr><td colspan="5" class="empty-cell">활성 토큰이 없습니다.</td></tr>{% endfor %}
+    </tbody>
+  </table>
+  </div>
+</section>
+<section class="card">
+  <div class="card-head"><h2>AI 사용</h2></div>
+  <p class="muted t13">AI(MCP) 토큰으로 바뀐 기록 건수입니다. 7일 {{ ai_7d }}건 · 30일 {{ ai_30d }}건. AI 정책 거부는 기록하지 않아 집계하지 않습니다.</p>
+  <table class="grid">
+    <thead><tr><th>조직(30일 상위 5)</th><th>건수</th></tr></thead>
+    <tbody>{% for name, n in ai_orgs %}<tr><td>{{ name }}</td><td>{{ n }}</td></tr>{% empty %}<tr><td colspan="2" class="empty-cell">최근 30일 AI 변경이 없습니다.</td></tr>{% endfor %}</tbody>
+  </table>
+</section>
+<section class="card">
+  <div class="card-head"><h2>로그인 잠금·실패</h2></div>
+  <p class="muted t13">아이디 5회/15분 실패 → 15분, IP 30회/15분 → 1시간, 가입 IP 10회/시간 → 1시간 잠깁니다. 해제에는 사유가 필요하고 감사 기록에 남습니다. 셸에서는 <code>manage.py unlock_login &lt;아이디|IP&gt;</code>.</p>
+  <div class="table-scroll" tabindex="0">
+  <table class="grid">
+    <thead><tr><th>종류</th><th>대상</th><th>실패</th><th>상태</th><th></th></tr></thead>
+    <tbody>
+    {% for l in locks %}
+    <tr><td>{{ l.kind }}</td><td><code>{{ l.key }}</code></td><td>{{ l.failures }}</td>
+      <td>{% if l.locked %}<span class="badge danger">{{ l.locked_until|date:"Y-m-d H:i" }}까지 잠김</span>{% else %}<span class="badge">실패 누적</span>{% endif %}</td>
+      <td><button type="button" class="btn sm" hx-get="{% url 'ops_unlock' %}?key={{ l.key|urlencode }}" hx-target="#dialog" hx-swap="innerHTML">해제</button></td></tr>
+    {% empty %}<tr><td colspan="5" class="empty-cell">잠긴 계정·IP가 없습니다.</td></tr>{% endfor %}
+    </tbody>
+  </table>
+  </div>
+</section>
+{% endblock %}

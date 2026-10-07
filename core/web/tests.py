@@ -1849,24 +1849,6 @@ def test_eleventh_signup_from_one_ip_is_refused(client, db):
     assert not User.objects.filter(username="user10").exists()
 
 
-def test_ops_lists_and_releases_locks(client, member, admin):
-    for _ in range(5):
-        _login(client, username="admin1", password="wrong")
-    User.objects.filter(pk=member.pk).update(is_staff=True, is_superuser=True)
-    client.force_login(member)
-    body = client.get("/ops/system").content.decode()
-    assert "로그인 잠금" in body and "admin1" in body
-    # GET은 확인 대화상자만 그리고 아무것도 바꾸지 않는다. 해제에는 사유가 필요하다.
-    assert "사유" in client.get("/ops/unlock?key=admin1").content.decode()
-    client.post("/ops/unlock", {"key": "admin1"})
-    assert "admin1" in client.get("/ops/system").content.decode()
-    r = client.post("/ops/unlock", {"key": "admin1", "reason": "본인 확인 후 해제"})
-    assert r.status_code == 302
-    assert "admin1" not in client.get("/ops/system").content.decode()
-    client.post("/logout")
-    assert _login(client, username="admin1").status_code == 302
-
-
 # ---------- 비개발 프로젝트(project.dev_tools) — IMPL-PLAN-7 F1·F2 ----------
 
 

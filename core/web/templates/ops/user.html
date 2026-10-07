@@ -1,0 +1,46 @@
+{% extends "ops/base.html" %}{% block title %}{{ target.username }} · 사용자 · 운영 콘솔{% endblock %}
+{% block ops %}
+{% if reset_link %}
+<div class="notice warn" role="status"><span class="grow">비밀번호 재설정 링크입니다. 지금 한 번만 보입니다. 24시간 동안 한 번 쓸 수 있으니 본인 확인된 경로로만 전달해 주세요.<br><code>{{ reset_link }}</code></span></div>
+{% endif %}
+<section class="card">
+  <div class="card-head"><h2><code>{{ target.username }}</code> {{ target.display_name }}</h2>{% with u=target %}{% include "ops/_user_badges.html" %}{% endwith %}</div>
+  <dl class="t13">
+    <dt>가입</dt><dd>{{ target.date_joined|date:"Y-m-d H:i" }}</dd>
+    <dt>마지막 로그인</dt><dd>{{ target.last_login|date:"Y-m-d H:i"|default:"—" }}</dd>
+    <dt>Discord 연결</dt><dd>{% if target.discord_linked_at %}{{ target.discord_linked_at|date:"Y-m-d H:i" }}{% else %}연결 안 됨{% endif %}</dd>
+    <dt>GitHub 연결</dt><dd>{% if github_login %}<code>{{ github_login }}</code>{% else %}연결 안 됨{% endif %}</dd>
+    <dt>로그인 잠금</dt><dd>{% if lock %}실패 {{ lock.failures }}회{% if lock.locked_until %} · {{ lock.locked_until|date:"Y-m-d H:i" }}까지{% endif %}{% else %}없음{% endif %}</dd>
+  </dl>
+  <div class="row">
+    {% if target.is_active %}<button type="button" class="btn sm danger" hx-get="{% url 'ops_user_action' target.pk 'suspend' %}" hx-target="#dialog" hx-swap="innerHTML">정지</button>
+    <button type="button" class="btn sm" hx-get="{% url 'ops_user_action' target.pk 'reset-link' %}" hx-target="#dialog" hx-swap="innerHTML">재설정 링크 발급</button>
+    {% else %}<button type="button" class="btn sm" hx-get="{% url 'ops_user_action' target.pk 'reactivate' %}" hx-target="#dialog" hx-swap="innerHTML">재활성</button>{% endif %}
+    {% if lock %}<button type="button" class="btn sm" hx-get="{% url 'ops_user_action' target.pk 'unlock' %}" hx-target="#dialog" hx-swap="innerHTML">잠금 해제</button>{% endif %}
+    {% if user.is_superuser and not target.is_superuser %}
+      {% if target.is_staff %}<button type="button" class="btn sm danger" hx-get="{% url 'ops_user_action' target.pk 'revoke-staff' %}" hx-target="#dialog" hx-swap="innerHTML">운영자 권한 회수</button>
+      {% else %}<button type="button" class="btn sm" hx-get="{% url 'ops_user_action' target.pk 'grant-staff' %}" hx-target="#dialog" hx-swap="innerHTML">운영자 권한 부여</button>{% endif %}
+    {% endif %}
+  </div>
+</section>
+<section class="card">
+  <div class="card-head"><h2>조직</h2></div>
+  <ul class="stack">{% for m in orgs %}<li>{{ m.org__name }} <span class="badge">{% if m.role == "admin" %}조직 관리자{% else %}멤버{% endif %}</span></li>{% empty %}<li class="muted t13">속한 조직이 없습니다.</li>{% endfor %}</ul>
+</section>
+<section class="card">
+  <div class="card-head"><h2>API 토큰</h2></div>
+  {% include "ops/_tokens.html" %}
+</section>
+<section class="card">
+  <div class="card-head"><h2>이 사용자 대상 감사 기록</h2></div>
+  <div class="table-scroll" tabindex="0">
+  <table class="grid">
+    <thead><tr><th>시각</th><th>행위자</th><th>동작</th><th>사유</th></tr></thead>
+    <tbody>
+    {% for a in audits %}<tr><td>{{ a.created_at|date:"Y-m-d H:i" }}</td><td>{{ a.actor_username }}</td><td>{{ a.get_action_display }}</td><td class="muted t13">{{ a.reason }}</td></tr>
+    {% empty %}<tr><td colspan="4" class="empty-cell">감사 기록이 없습니다.</td></tr>{% endfor %}
+    </tbody>
+  </table>
+  </div>
+</section>
+{% endblock %}

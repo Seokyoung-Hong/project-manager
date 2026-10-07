@@ -1,0 +1,34 @@
+{% extends "ops/base.html" %}{% block title %}사용자 · 운영 콘솔{% endblock %}
+{% block ops %}
+<section class="card">
+  <div class="card-head"><h2>사용자</h2></div>
+  <form method="get" class="row" role="search">
+    <input class="input" type="search" name="q" value="{{ q }}" placeholder="아이디 또는 표시 이름" aria-label="사용자 검색">
+    <select class="select" name="state" aria-label="상태">
+      <option value="active"{% if state == "active" %} selected{% endif %}>활성</option>
+      <option value="suspended"{% if state == "suspended" %} selected{% endif %}>정지</option>
+      <option value="staff"{% if state == "staff" %} selected{% endif %}>운영자</option>
+    </select>
+    <button class="btn">찾기</button>
+  </form>
+  <div class="table-scroll" tabindex="0">
+  <table class="grid">
+    <thead><tr><th>아이디</th><th>표시 이름</th><th>상태</th><th>조직 수</th><th>활성 토큰</th><th>가입</th><th>마지막 로그인</th></tr></thead>
+    <tbody>
+    {% for u in page %}
+    <tr><td><a href="{% url 'ops_user' u.pk %}"><code>{{ u.username }}</code></a></td><td>{{ u.display_name }}</td>
+      <td>{% include "ops/_user_badges.html" %}</td>
+      <td>{{ u.org_count }}</td><td>{{ u.token_count }}</td><td>{{ u.date_joined|date:"Y-m-d" }}</td><td>{{ u.last_login|date:"Y-m-d H:i"|default:"—" }}</td></tr>
+    {% empty %}<tr><td colspan="7" class="empty-cell">조건에 맞는 사용자가 없습니다.</td></tr>{% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% if page.has_other_pages %}
+  <nav class="row" aria-label="페이지">
+    {% if page.has_previous %}<a class="btn sm" href="?q={{ q|urlencode }}&state={{ state }}&page={{ page.previous_page_number }}">이전</a>{% endif %}
+    <span class="muted t13">{{ page.number }} / {{ page.paginator.num_pages }}</span>
+    {% if page.has_next %}<a class="btn sm" href="?q={{ q|urlencode }}&state={{ state }}&page={{ page.next_page_number }}">다음</a>{% endif %}
+  </nav>
+  {% endif %}
+</section>
+{% endblock %}

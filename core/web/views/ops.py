@@ -151,7 +151,6 @@ def system(request):
             "ops_nav": "system",
             "statuses": statuses,
             "mcp_missing": not any(s.name == "mcp" for s in statuses),
-            "locks": active_locks(),
             "backup": _backup(),
             "disk": disk,
             "att_count": att.count(),
@@ -191,9 +190,9 @@ def unlock_login(request):
     try:
         n = ops_services.unlock_login(request, key, request.POST.get("reason"))
     except ServiceError as e:
-        return _fail(request, e, "ops_system")
+        return _fail(request, e, "ops_access")
     messages.success(request, f"잠금을 풀었습니다({n}건).")
-    return redirect("ops_system")
+    return redirect("ops_access")
 
 
 def _orgs_json() -> str:

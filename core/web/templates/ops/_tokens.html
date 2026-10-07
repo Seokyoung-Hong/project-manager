@@ -1,0 +1,15 @@
+{# 토큰 표. 사용자가 적은 이름·해시는 보이지 않는다(IMPL-PLAN-10 §5.3). #}
+<div class="table-scroll" tabindex="0">
+<table class="grid">
+  <thead><tr><th>앞자리</th><th>범위</th><th>용도</th><th>발급</th><th>만료</th><th>마지막 사용</th><th></th></tr></thead>
+  <tbody>
+  {% for t in tokens %}
+  <tr><td><code>{{ t.prefix|slice:"3:" }}…</code></td><td>{{ t.get_scope_display }}</td><td>{% if t.scope == "bot" %}봇{% elif t.for_ai %}AI용{% else %}사람용{% endif %}</td>
+    <td>{{ t.created_at|date:"Y-m-d" }}</td><td>{{ t.expires_at|date:"Y-m-d"|default:"없음" }}</td><td>{{ t.last_used_at|date:"Y-m-d H:i"|default:"—" }}</td>
+    <td>{% if t.revoked_at %}<span class="badge">폐기됨 {{ t.revoked_at|date:"Y-m-d" }}</span>
+      {% elif t.scope == "bot" %}<span class="muted t13">셸에서 폐기</span>
+      {% else %}<button type="button" class="btn sm danger" hx-get="{% url 'ops_token_revoke' t.pk %}" hx-target="#dialog" hx-swap="innerHTML">폐기</button>{% endif %}</td></tr>
+  {% empty %}<tr><td colspan="7" class="empty-cell">토큰이 없습니다.</td></tr>{% endfor %}
+  </tbody>
+</table>
+</div>
