@@ -34,4 +34,14 @@ class ApiTokenAdmin(admin.ModelAdmin):
         "expires_at",
         "revoked_at",
     )
-    readonly_fields = ("prefix", "key_hash", "for_ai", "created_at", "last_used_at")
+    # 소유자·범위·만료를 관리 화면에서 바꾸면 권한 상승 경로가 된다. 바꾸려면 새로 발급한다.
+    readonly_fields = (
+        "prefix",
+        "key_hash",
+        "user",
+        "scope",
+        "for_ai",
+        "created_at",
+        "expires_at",
+        "last_used_at",
+    )
