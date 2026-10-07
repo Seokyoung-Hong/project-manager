@@ -26,6 +26,7 @@ from tasks.models import ChangeLog, ChecklistItem, Link
 from tasks.work_requests import pending_assignee
 
 from ..forms import LinkForm
+from . import task_projects
 from .common import (
     CONFLICT_MSG,
     can_admin,
@@ -116,7 +117,7 @@ def _panel_ctx(request, task, **extra):
         .order_by("name"),
         "org_members": task.project.org.members.filter(is_active=True).order_by("display_name"),
         "pending_assignee": pending_assignee(task),
-        "history": history_rows(logs),
+        "history": history_rows(logs, request.user),
         "priorities": range(10, 0, -1),
         "due_label": due_label(task),
         "due_class": due_class(task),  # 초과 유예(task.overdue_grace_days)를 본 판정이다
@@ -140,6 +141,7 @@ def _panel_ctx(request, task, **extra):
         "extend_error": None,
         "extend_open": False,
     }
+    ctx.update(task_projects.panel_ctx(request.user, task))  # 연결 프로젝트 칸(§3.6)
     if task.project.dev_tools:  # 비개발 프로젝트는 GitHub 조회(repo_state)를 하지 않는다
         ctx.update(_git_ctx(request, task))
     ctx.update(extra)

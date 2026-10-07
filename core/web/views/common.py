@@ -18,7 +18,7 @@ from orgs.services import is_admin, is_member, orgs_of
 from projects.models import Project
 from projects.services import can_view_project
 from tasks.models import Task
-from tasks.services import get_visible_task, today_flag, today_membership
+from tasks.services import attach_linked, get_visible_task, today_flag, today_membership
 
 CONFLICT_MSG = "다른 사람이 먼저 수정했습니다. 최신 내용을 다시 확인하세요."
 
@@ -197,10 +197,12 @@ FIELD_LABELS = {
     "reviewer": "검토자",
     "is_template": "템플릿",
     "parent": "계열",
+    "projects": "연결 프로젝트",
+    "git_project": "연동 프로젝트",
 }
 
 
-def _display(field, raw: str) -> str:
+def _display(field, raw: str, viewer=None) -> str:
     if raw == "":
         return "없음"
     if field == "status":
@@ -221,24 +223,30 @@ def _display(field, raw: str) -> str:
     if field == "project":
         p = Project.objects.filter(pk=raw).first()
         return p.name if p else raw
+    if field in ("projects", "git_project"):
+        # 연결은 비공개 프로젝트일 수 있다 — 보는 사람이 못 보는 프로젝트는 이름을 숨긴다(§3.4).
+        p = Project.objects.filter(pk=raw).first()
+        if p is None:
+            return raw
+        return p.name if viewer is None or can_view_project(viewer, p) else "볼 수 없는 프로젝트"
     if field == "owners":
         names = [u.display_name for u in User.objects.filter(pk__in=raw.split(","))]
         return ", ".join(names) or raw
     return raw
 
 
-def history_rows(logs) -> list[dict]:
-    """ChangeLog → 패널 표시용. 최신이 먼저."""
+def history_rows(logs, viewer=None) -> list[dict]:
+    """ChangeLog → 패널 표시용. 최신이 먼저. viewer가 있으면 못 보는 연결 프로젝트 이름을 숨긴다."""
     rows = []
     for log in logs:
-        to = _display(log.field, log.new_value)
+        to = _display(log.field, log.new_value, viewer)
         if log.note:
             to += f" ({log.note})"
         at = timezone.localtime(log.created_at)
         rows.append(
             {
                 "field": FIELD_LABELS.get(log.field, log.field),
-                "from": _display(log.field, log.old_value),
+                "from": _display(log.field, log.old_value, viewer),
                 "to": to,
                 "time": f"{at.month}월 {at.day}일 {at:%H:%M}",
                 # actor가 비면 GitHub 로그인(external_actor)이 대신 남아 있다 — 모델 주석 참고.
@@ -262,6 +270,7 @@ def row_ctx(user, task, opts: str = "", membership: dict | None = None, selected
     o = {x for x in opts.split(",") if x in ROW_OPTS}
     m = membership or today_membership(user)
     flag = today_flag(task, m)
+    attach_linked([task], user)  # rows_for가 이미 붙였으면 쿼리 없음
     items = list(task.checklist.all())
     opts = ",".join(sorted(o))
     return {
@@ -283,6 +292,9 @@ def row_ctx(user, task, opts: str = "", membership: dict | None = None, selected
         "checklist_total": len(items),
         "due_label": due_label(task),
         "due_class": due_class(task),
+        # 연결 프로젝트(보는 사람이 볼 수 있는 것만). 행에 "↔ n"으로, 이름은 툴팁에.
+        "linked": task.linked_shown,
+        "linked_names": ", ".join(name for _, name in task.linked_shown),
     }
 
 
@@ -290,6 +302,7 @@ def rows_for(user, tasks, opts: str = "", selected_id=None) -> list[dict]:
     tasks = list(tasks)
     # 행마다 체크리스트를 따로 읽지 않게 한 번에 붙인다(이미 붙어 있으면 건너뛴다).
     prefetch_related_objects(tasks, "checklist")
+    attach_linked(tasks, user)
     m = today_membership(user)
     return [row_ctx(user, t, opts, m, selected_id) for t in tasks]
 

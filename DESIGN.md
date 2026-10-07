@@ -200,6 +200,7 @@ animation·transition을 끈다(파일 맨 끝 규칙).
 - **보드 열** `.board-track > .col[data-status]` + `.col-dot` — 미완료 5열만. 막힘·일시정지 열은 점선 테두리 + 투명 바탕(별도 상태임을 드러낸다).
 - **결과 선반** `.shelf` `.shelf-head` `.shelf-tabs` `.shelf-filters` `.shelf-list` `.shelf-more` — 완료·취소 전체 건수, 기간·검색, 10건씩 더 보기.
 - **달력** `.pcal-grid .pcal-cell`(+`.today`, `.is-empty`) `.pcal-task`(+`.closed`: 보조색+취소선, 투명도 금지) `.pcal-ms`(◆ 마일스톤). 오늘 일정 `.cal`.
+- **연결 프로젝트** `.linked-mark`(행의 "↔ n", 이름은 툴팁) `.project-links`(패널 연결 칸: `.tag` 칩 + 연결 해제 `.btn.sm.icon` + "승인 대기" `.badge.warn`). 열람 확대는 `.notice.warn` ⚠ 문구 + 승인 요청 버튼. 프로젝트 화면에는 연결이 있을 때만 각주 "연결 태스크는 여러 프로젝트에 셉니다".
 - **오늘** `.today-grid` → `.hero` `.tally` `.focus-memo.memo` `.today-list-card` `.today-schedule-card`. 모바일: 환영 → 집계(가로 한 줄) → 목록 → 메모 → 일정.
 
 ## 5. 그림 · 장식

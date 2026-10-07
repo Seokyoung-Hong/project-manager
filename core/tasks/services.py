@@ -244,11 +244,60 @@ def can_view_task(user, task) -> bool:
     return visible_tasks(user).filter(pk=task.pk).exists()
 
 
+def project_q(project):
+    """Task 조건: 주 프로젝트가 project이거나 project에 확정 연결됐다. 프로젝트 기준 화면이 모두 쓴다."""
+    linked = TaskProject.objects.filter(task_id=OuterRef("pk"), project=project, status="active")
+    return Q(project=project) | Exists(linked)
+
+
 def tasks_of(project):
     """프로젝트 기준 목록: 주 프로젝트가 이것이거나 이것에 확정 연결된 태스크.
     project를 볼 수 있는 사람은 정의상 이 태스크들을 모두 볼 수 있다."""
-    linked = TaskProject.objects.filter(task_id=OuterRef("pk"), project=project, status="active")
-    return Task.objects.filter(Q(project=project) | Exists(linked))
+    return Task.objects.filter(project_q(project))
+
+
+def attach_linked(tasks, viewer) -> None:
+    """행·카드 표시용: 각 태스크에 `linked_shown`(viewer가 볼 수 있는 확정 연결 프로젝트 [(id, 이름)])을
+    붙인다. 태스크 수와 무관하게 쿼리 두 번(연결 한 번 + 연결이 있으면 가시성 한 번)."""
+    from django.db.models import Prefetch, prefetch_related_objects
+
+    tasks = [t for t in tasks if not hasattr(t, "linked_shown")]
+    if not tasks:
+        return
+    prefetch_related_objects(
+        tasks,
+        Prefetch(
+            "project_links",
+            queryset=TaskProject.objects.filter(status="active").select_related("project"),
+            to_attr="active_links",
+        ),
+    )
+    ids = {lk.project_id for t in tasks for lk in t.active_links}
+    shown = (
+        set(visible_projects(viewer).filter(pk__in=ids).values_list("pk", flat=True))
+        if ids
+        else set()
+    )
+    for t in tasks:
+        t.linked_shown = [
+            (lk.project_id, lk.project.name) for lk in t.active_links if lk.project_id in shown
+        ]
+
+
+def pending_links_for(user):
+    """user가 승인할 수 있는 열람 확대 요청(승인 대기 연결). can_approve_widening과 같은 규칙:
+    조직 관리자는 그 조직 전부, 비공개 주 프로젝트의 관리자는 그 프로젝트 것."""
+    admin_orgs = OrgMembership.objects.filter(user=user, role="admin").values("org_id")
+    owned = Project.owners.through.objects.filter(user_id=user.pk).values("project_id")
+    return (
+        TaskProject.objects.filter(status="pending")
+        .filter(
+            Q(task__project__org_id__in=admin_orgs)
+            | Q(task__project__visibility="teams", task__project_id__in=owned)
+        )
+        .select_related("task", "task__project", "project", "created_by")
+        .order_by("created_at", "id")
+    )
 
 
 def tasks_visible_in(org, viewer=None):
@@ -1315,7 +1364,7 @@ def closed_tasks(user, project, status: str, *, period: str = "all", q: str = ""
         raise ValueError(status)
     qs = (
         visible_tasks(user)
-        .filter(project=project, is_template=False, status=status)
+        .filter(project_q(project), is_template=False, status=status)
         .annotate(closed_at=Coalesce("completed_at", "updated_at"))
     )
     days = {c: d for c, _, d in SHELF_PERIODS}.get(period)

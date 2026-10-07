@@ -68,7 +68,7 @@ def shelf_context(request, project, params=None) -> dict:
         page = 1
     totals = dict(
         ts.visible_tasks(request.user)
-        .filter(project=project, is_template=False, status__in=Task.CLOSED)
+        .filter(ts.project_q(project), is_template=False, status__in=Task.CLOSED)
         .order_by()
         .values_list("status")
         .annotate(n=Count("id"))
@@ -96,15 +96,21 @@ def shelf_context(request, project, params=None) -> dict:
     }
 
 
+def _has_linked(project) -> bool:
+    """이 프로젝트에 확정 연결된 태스크가 있는가 — 있을 때만 각주를 단다."""
+    return project.task_links.filter(status="active").exists()
+
+
 def board_context(request, project) -> dict:
     """보드 부분 렌더 context. 보드는 미완료 열만, 완료·취소는 결과 선반이 맡는다."""
     labels = dict(Task.STATUSES)
     base = ts.visible_tasks(request.user).filter(
-        project=project, is_template=False, status__in=Task.OPEN
+        ts.project_q(project), is_template=False, status__in=Task.OPEN
     )
     rows = rows_for(request.user, sorted(base, key=ts.by_due), "board")
     return {
         "project": project,
+        "has_linked": _has_linked(project),
         "columns": [(c, labels[c], [r for r in rows if r["task"].status == c]) for c in BOARD_OPEN],
         **shelf_context(request, project, {}),
     }
@@ -275,7 +281,7 @@ def calendar_context(request, project) -> dict:
     cells = week_days(month)
     last = cells[-1]
     tasks, miles = {}, {}
-    for t in project.tasks.filter(due_date__range=(month, last)).select_related("assignee"):
+    for t in ts.tasks_of(project).filter(due_date__range=(month, last)).select_related("assignee"):
         tasks.setdefault(t.due_date, []).append(t)
     for m in project.milestones.filter(target_date__range=(month, last)):
         miles.setdefault(m.target_date, []).append(m)
@@ -329,6 +335,7 @@ def project_detail(request, project_id, *, link_form=None):
         "owners": list(project.owners.all()),
         "links": project.links.all(),
         "stats": project_stats(project),
+        "has_linked": _has_linked(project),
         "view": view,
         "include_closed": include_closed,
         "form_open": request.GET.get("new") == "1",
@@ -343,14 +350,16 @@ def project_detail(request, project_id, *, link_form=None):
         ),
     }
     # 템플릿은 목록·보드에서 빼고 "템플릿 N" 접이 목록으로만 보인다.
-    templates = list(project.tasks.filter(is_template=True).select_related("project", "assignee"))
+    templates = list(
+        ts.tasks_of(project).filter(is_template=True).select_related("project", "assignee")
+    )
     ctx["template_rows"] = rows_for(request.user, templates) if templates else []
     if view == "board":
         ctx.update(board_context(request, project))
     elif view == "calendar":
         ctx.update(calendar_context(request, project))
     else:
-        qs = project.tasks.filter(is_template=False).select_related("project", "assignee")
+        qs = ts.tasks_of(project).filter(is_template=False).select_related("project", "assignee")
         if not include_closed:
             qs = qs.filter(status__in=Task.OPEN)
         ctx["rows"] = rows_for(request.user, sorted(qs, key=ts.by_due))

@@ -60,7 +60,16 @@ def shell(request):
         projects = (
             visible_projects(request.user, org)
             .filter(is_archived=False)
-            .annotate(open_count=Count("tasks", filter=Q(tasks__status__in=Task.OPEN)))
+            # 연결 태스크도 센다(프로젝트별 수치는 연결 포함, IMPL-PLAN-11 §3.4). 두 조인을 distinct로
+            # 세어 곱이 생기지 않게 한다.
+            .annotate(
+                open_count=Count("tasks", filter=Q(tasks__status__in=Task.OPEN), distinct=True)
+                + Count(
+                    "task_links",
+                    filter=Q(task_links__status="active", task_links__task__status__in=Task.OPEN),
+                    distinct=True,
+                )
+            )
             .order_by("name")
         )
     return {

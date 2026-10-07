@@ -473,8 +473,13 @@ def project_stats(project) -> dict:
 
 
 def project_stats_bulk(projects) -> dict:
-    """여러 프로젝트의 `project_stats`를 쿼리 한 번으로. {project_id: stats}.
-    projects는 org를 함께 읽어 둔 목록이 좋다(아니면 org를 프로젝트마다 읽는다)."""
+    """여러 프로젝트의 `project_stats`를 프로젝트 수와 무관한 쿼리 몇 번으로. {project_id: stats}.
+    projects는 org를 함께 읽어 둔 목록이 좋다(아니면 org를 프로젝트마다 읽는다).
+
+    연결 태스크(IMPL-PLAN-11 §3.4)도 센다 — 프로젝트별 수치는 연결 포함이라, 한 태스크가 여러
+    프로젝트에 셀 수 있다(화면 각주). 조인 곱을 피해 주·연결을 따로 묶어 더한다. 초과는 태스크의
+    주 프로젝트 유예를 따르므로 연결 쪽은 같은 조직의 모든 프로젝트로 판정한다.
+    """
     from tasks.models import Task
 
     projects = list(projects)
@@ -482,21 +487,54 @@ def project_stats_bulk(projects) -> dict:
     out = {p.pk: dict.fromkeys(keys, 0) for p in projects}
     if not projects:
         return out
-    rows = (
-        Task.objects.filter(project__in=list(out), is_template=False)
+    ids = list(out)
+
+    def aggs(over):
+        return {
+            "total": Count("id", filter=~Q(status="cancelled")),
+            "open": Count("id", filter=Q(status__in=Task.OPEN)),
+            "overdue": Count("id", filter=Q(status__in=Task.OPEN) & over),
+            "review": Count("id", filter=Q(status="review")),
+            "blocked": Count("id", filter=Q(status="blocked")),
+            "done": Count("id", filter=Q(status="done")),
+        }
+
+    primary = (
+        Task.objects.filter(project__in=ids, is_template=False)
         .values("project_id")
         .order_by()
-        .annotate(
-            total=Count("id", filter=~Q(status="cancelled")),
-            open=Count("id", filter=Q(status__in=Task.OPEN)),
-            overdue=Count("id", filter=Q(status__in=Task.OPEN) & overdue_q(projects)),
-            review=Count("id", filter=Q(status="review")),
-            blocked=Count("id", filter=Q(status="blocked")),
-            done=Count("id", filter=Q(status="done")),
-        )
+        .annotate(**aggs(overdue_q(projects)))
     )
-    for r in rows:
+    linked = list(
+        Task.objects.filter(
+            project_links__project__in=ids, project_links__status="active", is_template=False
+        )
+        .values("project_links__project_id")
+        .order_by()
+        .annotate(**aggs(Q()))  # 초과는 아래에서 따로(주 프로젝트 유예)
+    )
+    for r in primary:
         out[r.pop("project_id")] = r
+    if linked:
+        org_ids = {p.org_id for p in projects}
+        live = list(Project.objects.filter(org_id__in=org_ids).select_related("org"))
+        over = dict(
+            Task.objects.filter(
+                Q(status__in=Task.OPEN) & overdue_q(live),
+                project_links__project__in=ids,
+                project_links__status="active",
+                is_template=False,
+            )
+            .values("project_links__project_id")
+            .order_by()
+            .annotate(n=Count("id"))
+            .values_list("project_links__project_id", "n")
+        )
+        for r in linked:
+            pid = r.pop("project_links__project_id")
+            r["overdue"] = over.get(pid, 0)
+            for k in keys:
+                out[pid][k] += r[k]
     return out
 
 
