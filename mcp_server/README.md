@@ -37,7 +37,7 @@ MCP는 core와 **같은 도메인**에 있다. 앞단 게이트웨이가 경로�
 하나고, OAuth의 인가 서버와 자원 서버가 같은 출처가 된다. 서버 코드는 어느 쪽이든 그대로다 —
 공개 주소를 Host 헤더에서 끌어내기 때문이다.
 
-NginxProxyManager의 `project.sio2.kr` 호스트에 Custom location 세 개를 둔다.
+NginxProxyManager의 `udally.sio2.kr` 호스트에 Custom location 세 개를 둔다.
 
 | location | 보낼 곳 |
 |---|---|
@@ -52,8 +52,8 @@ core에는 `/mcp`도 `/u/`도 없으니 부딪히지 않는다. `location /mcp`�
 `.env`는 두 줄이면 된다. `MCP_URL`은 비워 두면 `SITE_URL`을 그대로 쓴다.
 
 ```
-SITE_URL=https://project.sio2.kr
-MCP_ALLOWED_HOSTS=project.sio2.kr
+SITE_URL=https://udally.sio2.kr
+MCP_ALLOWED_HOSTS=udally.sio2.kr
 ```
 
 ## 클라이언트 연결
@@ -61,14 +61,14 @@ MCP_ALLOWED_HOSTS=project.sio2.kr
 셸이 있는 Claude Code는 이 서버 대신 저장소의 [`skills/`](../skills/)를 쓴다(core API를 직접 부른다).
 이 서버는 claude.ai 웹·모바일처럼 셸이 없는 클라이언트를 위한 선택 확장이고, compose에서 `mcp` 프로필로 켠다.
 
-운영 서버의 MCP 주소는 `https://project.sio2.kr/mcp`이다(다른 곳에 올렸다면 그 주소로 바꿔 읽는다). `<TOKEN>`은 core의 `/settings/tokens`에서 발급한 값.
+운영 서버의 MCP 주소는 `https://udally.sio2.kr/mcp`이다(다른 곳에 올렸다면 그 주소로 바꿔 읽는다). `<TOKEN>`은 core의 `/settings/tokens`에서 발급한 값.
 
 | 클라이언트 | 방식 | 설정 |
 |---|---|---|
-| Claude 앱 / claude.ai | OAuth | 설정 → 커넥터 → 커스텀 커넥터 추가 → URL `https://project.sio2.kr/mcp`. '연결'을 누르면 로그인·허용 화면이 뜬다 |
-| Claude Code | 헤더 | `claude mcp add --transport http udally https://project.sio2.kr/mcp --header "Authorization: Bearer <TOKEN>"` |
-| Codex CLI | 헤더 | `~/.codex/config.toml`에 `[mcp_servers.udally]` `url = "https://project.sio2.kr/mcp"` `bearer_token_env_var = "UDALLY_TOKEN"` 추가, 환경 변수 `UDALLY_TOKEN=<TOKEN>` |
-| 그 밖 | 개인 비밀 URL | URL `https://project.sio2.kr/u/<TOKEN>/mcp`, 인증 없음 |
+| Claude 앱 / claude.ai | OAuth | 설정 → 커넥터 → 커스텀 커넥터 추가 → URL `https://udally.sio2.kr/mcp`. '연결'을 누르면 로그인·허용 화면이 뜬다 |
+| Claude Code | 헤더 | `claude mcp add --transport http udally https://udally.sio2.kr/mcp --header "Authorization: Bearer <TOKEN>"` |
+| Codex CLI | 헤더 | `~/.codex/config.toml`에 `[mcp_servers.udally]` `url = "https://udally.sio2.kr/mcp"` `bearer_token_env_var = "UDALLY_TOKEN"` 추가, 환경 변수 `UDALLY_TOKEN=<TOKEN>` |
+| 그 밖 | 개인 비밀 URL | URL `https://udally.sio2.kr/u/<TOKEN>/mcp`, 인증 없음 |
 
 개인 비밀 URL은 비밀번호와 같다. 공유하지 말고, 유출되면 `/settings/tokens`에서 폐기한다.
 

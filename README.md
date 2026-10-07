@@ -172,7 +172,7 @@ docker compose exec -T web python manage.py loaddata --format=json - < devdata.j
 | `ALLOWED_HOSTS` | core | 쉼표로 구분한 호스트 목록 |
 | `CSRF_TRUSTED_ORIGINS` | core | 쉼표로 구분한 오리진(스킴 포함) |
 | `SITE_URL` | core | 링크·초대 URL을 만들 때 쓰는 기준 주소 |
-| `MCP_URL` | core | `/settings/tokens`의 AI 클라이언트 연결 예시에 쓰는 MCP 공개 주소. 기본 `https://project.sio2.kr` |
+| `MCP_URL` | core | `/settings/tokens`의 AI 클라이언트 연결 예시에 쓰는 MCP 공개 주소. 기본 `https://udally.sio2.kr` |
 | `WEBMCP_ORIGIN_TRIAL` | core | WebMCP 오리진 트라이얼 토큰. 비우면 브라우저 도구 등록만 빠진다 |
 | `POSTGRES_PASSWORD` | db·core | Postgres 비밀번호 |
 | `CLOUDFLARE_TUNNEL_TOKEN` | cloudflared | 터널 토큰 |

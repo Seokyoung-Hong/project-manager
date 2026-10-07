@@ -599,14 +599,14 @@ EXPOSE 8080
 CMD ["python", "-m", "mcp_server"]
 ```
 
-`mcp_server/README.md`에 다음 표를 넣고, core의 `/settings/tokens` 화면 안내 문구에도 같은 내용을 쓴다. `<TOKEN>`은 `/settings/tokens`에서 발급한 값. MCP 주소는 `settings.MCP_URL`(환경 변수 `MCP_URL`, 기본 `https://project.sio2.kr`)이 정하고, 화면은 그 값을 박아 그린다.
+`mcp_server/README.md`에 다음 표를 넣고, core의 `/settings/tokens` 화면 안내 문구에도 같은 내용을 쓴다. `<TOKEN>`은 `/settings/tokens`에서 발급한 값. MCP 주소는 `settings.MCP_URL`(환경 변수 `MCP_URL`, 기본 `https://udally.sio2.kr`)이 정하고, 화면은 그 값을 박아 그린다.
 
 | 클라이언트 | 설정 |
 |---|---|
-| Claude Code | `claude mcp add --transport http udally https://project.sio2.kr/mcp --header "Authorization: Bearer <TOKEN>"` |
-| Codex CLI | `~/.codex/config.toml`에 `[mcp_servers.udally]` `url = "https://project.sio2.kr/mcp"` `bearer_token_env_var = "UDALLY_TOKEN"` 추가, 환경 변수 `UDALLY_TOKEN=<TOKEN>` |
-| Claude 앱 / claude.ai | 설정 → 커넥터 → 커스텀 커넥터 추가 → URL `https://project.sio2.kr/u/<TOKEN>/mcp`, 인증 없음 |
-| ChatGPT | 설정 → 커넥터(개발자 모드) → 추가 → URL `https://project.sio2.kr/u/<TOKEN>/mcp`, 인증 없음 |
+| Claude Code | `claude mcp add --transport http udally https://udally.sio2.kr/mcp --header "Authorization: Bearer <TOKEN>"` |
+| Codex CLI | `~/.codex/config.toml`에 `[mcp_servers.udally]` `url = "https://udally.sio2.kr/mcp"` `bearer_token_env_var = "UDALLY_TOKEN"` 추가, 환경 변수 `UDALLY_TOKEN=<TOKEN>` |
+| Claude 앱 / claude.ai | 설정 → 커넥터 → 커스텀 커넥터 추가 → URL `https://udally.sio2.kr/u/<TOKEN>/mcp`, 인증 없음 |
+| ChatGPT | 설정 → 커넥터(개발자 모드) → 추가 → URL `https://udally.sio2.kr/u/<TOKEN>/mcp`, 인증 없음 |
 
 주의 문구: "개인 비밀 URL은 비밀번호와 같다. 공유하지 말고, 유출되면 `/settings/tokens`에서 폐기한다."
 
