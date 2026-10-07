@@ -12,7 +12,12 @@ def split_to_subtasks(apps, schema_editor):
     ChangeLog = apps.get_model("tasks", "ChangeLog")
     ChecklistItem = apps.get_model("tasks", "ChecklistItem")
     for log in ChangeLog.objects.filter(target_type="task", field="split"):
-        top = Task.objects.filter(pk=log.target_id, group__isnull=True, is_template=False).first()
+        top = Task.objects.filter(
+            pk=log.target_id,
+            group__isnull=True,
+            is_template=False,
+            status__in=("todo", "doing", "paused", "blocked", "review"),  # 닫힌 원본은 건너뛴다(I2)
+        ).first()
         if top is None:
             continue
         ids = [

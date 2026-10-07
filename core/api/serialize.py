@@ -10,7 +10,6 @@ from tasks.brief import task_brief, user_brief
 from tasks.services import (
     attach_group_visible,
     linked_projects,
-    mask_task_refs,
     subtask_progress,
     subtask_view,
     visible_tasks,
@@ -22,13 +21,14 @@ def link_out(link) -> dict:
     return {"id": link.pk, "title": link.title, "url": link.url, "kind": link.kind}
 
 
-def changelog_out(log, hidden=frozenset()) -> dict:
-    """hidden: 받는 사람이 볼 수 없는 'TASK-n'(tasks.services.hidden_task_refs) — group·split 값에서 가린다."""
+def changelog_out(log, mask=None) -> dict:
+    """mask: tasks.services.history_masker(logs, viewer) — 받는 사람이 못 보는 태스크·프로젝트를 가린다."""
+    mask = mask or (lambda field, value: value)
     return {
         "id": log.pk,
         "field": log.field,
-        "old_value": mask_task_refs(log.field, log.old_value, hidden),
-        "new_value": mask_task_refs(log.field, log.new_value, hidden),
+        "old_value": mask(log.field, log.old_value),
+        "new_value": mask(log.field, log.new_value),
         "note": log.note,
         "actor": user_brief(log.actor),
         "source": log.source,

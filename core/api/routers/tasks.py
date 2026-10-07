@@ -26,7 +26,7 @@ from tasks.services import (
     delete_task,
     duplicate_task,
     extend_due,
-    hidden_task_refs,
+    history_masker,
     leaf_only,
     link_project,
     reject_link,
@@ -282,28 +282,9 @@ def history(request, task_id: int):
     logs = list(
         ChangeLog.objects.filter(target_type="task", target_id=task.pk).select_related("actor")
     )
-    hidden = hidden_task_refs(logs, request.auth)  # 못 보는 상위·하위 번호는 가린다(R5)
-    out = [changelog_out(log, hidden) for log in logs]
-    # 연결·연동 프로젝트 이력의 값은 프로젝트 id다. 못 보는 프로젝트 id는 지운다(Sol 검토 R7).
-    pfields = ("projects", "git_project")
-    ids = {
-        int(v)
-        for r in out
-        if r["field"] in pfields
-        for v in (r["old_value"], r["new_value"])
-        if v.isdecimal()
-    }
-    if ids:
-        seen = {
-            str(pk)
-            for pk in visible_projects(request.auth).filter(pk__in=ids).values_list("pk", flat=True)
-        }
-        for r in out:
-            if r["field"] in pfields:
-                for k in ("old_value", "new_value"):
-                    if r[k].isdecimal() and r[k] not in seen:
-                        r[k] = ""
-    return out
+    # 못 보는 상위·하위 번호, 옮기기·연결·연동 프로젝트 id는 가린다(R5·R7·S2 — 웹과 같은 함수).
+    mask = history_masker(logs, request.auth)
+    return [changelog_out(log, mask) for log in logs]
 
 
 def _widening_400(e: WideningRequired):
