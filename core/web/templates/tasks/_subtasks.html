@@ -1,0 +1,55 @@
+{# 상위·하위 태스크 칸(IMPL-PLAN-12 §5.2). 패널의 독립 구역 — tasks/_projects.html 옆에 같은 방식으로 붙는다. #}
+{% if sub.show %}
+<details class="section" id="task-subtasks" open>
+  <summary>하위 태스크 {{ sub.done }}/{{ sub.total }}</summary>
+  {% if sub.total %}<div class="bar" role="img" aria-label="하위 {{ sub.done }}/{{ sub.total }} 완료"><i style="width: {% widthratio sub.done sub.total 100 %}%"></i></div>{% endif %}
+  {% if sub_msg %}<p class="muted t13" role="status">{{ sub_msg }}</p>{% endif %}
+  {% if sub.suggest_done %}
+  <form class="notice" hx-post="{% url 'task_status' task.pk %}" hx-target="#panel" hx-swap="innerHTML">
+    <span class="grow">하위 태스크가 모두 끝났습니다. 상위를 완료로 표시해 주세요.</span>
+    <input type="hidden" name="status" value="done">
+    <input type="hidden" name="from" value="panel">
+    <input type="hidden" name="version" value="{{ task.version }}">
+    <button class="btn sm">완료로 표시</button>
+  </form>
+  {% endif %}
+  {% if sub.subtasks %}
+  <ul class="stack subtask-list" aria-label="하위 태스크">
+    {% for s in sub.subtasks %}
+    <li class="row">
+      <a href="{% url 'task_detail' s.pk %}">{{ s.number }} {{ s.title }}</a>
+      <span class="muted t13">{{ s.assignee.display_name }}</span>
+      <span class="pill sm {{ s.status }}">{{ s.get_status_display }}</span>
+      {% if s.due_date %}<span class="muted t13">{{ s.due_date|date:"n월 j일" }}</span>{% endif %}
+      {% if s.due_after_group %}<span class="badge warn">상위 기한 초과</span>{% endif %}
+      <form hx-post="{% url 'task_ungroup' s.pk %}" hx-target="#panel" hx-swap="innerHTML">
+        <input type="hidden" name="version" value="{{ s.version }}">
+        <input type="hidden" name="back" value="{{ task.pk }}">
+        <button class="btn sm">떼어내기</button>
+      </form>
+    </li>
+    {% endfor %}
+  </ul>
+  {% elif not sub.hidden %}<p class="muted t13">하위 태스크가 없습니다. 큰 일은 하위 태스크로 나누면 진행률이 보입니다. 하위 아래에 또 하위를 두지는 않습니다.</p>{% endif %}
+  {% if sub.hidden %}<p class="muted t13">볼 수 없는 하위 {{ sub.hidden }}건</p>{% endif %}
+  {% if sub.can_add %}
+  <form class="row" hx-post="{% url 'subtask_create' task.pk %}" hx-target="#panel" hx-swap="innerHTML">
+    <input class="input" name="title" required placeholder="하위 태스크 제목" aria-label="하위 태스크 제목">
+    <select name="assignee" class="select auto" aria-label="하위 담당자">
+      {% for u in org_members %}<option value="{{ u.pk }}"{% if u.pk == task.assignee_id %} selected{% endif %}>{{ u.display_name }}</option>{% endfor %}
+    </select>
+    <input class="input auto" type="date" name="due_date" value="{{ task.due_date|date:'Y-m-d' }}" aria-label="하위 목표일">
+    {% if sub.need_done_when %}<input class="input" name="done_when" required placeholder="완료 조건" aria-label="하위 완료 조건">{% endif %}
+    <button class="btn sm">하위 만들기</button>
+  </form>
+  {% if sub.candidates %}
+  <form class="row" hx-post="{% url 'task_group' task.pk %}" hx-target="#panel" hx-swap="innerHTML">
+    <select name="task" class="select auto" aria-label="하위로 넣을 태스크">
+      {% for c in sub.candidates %}<option value="{{ c.pk }}">{{ c.number }} {{ c.title }}</option>{% endfor %}
+    </select>
+    <button class="btn sm">기존 태스크 넣기</button>
+  </form>
+  {% endif %}
+  {% endif %}
+</details>
+{% endif %}

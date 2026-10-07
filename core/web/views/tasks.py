@@ -26,7 +26,7 @@ from tasks.models import ChangeLog, ChecklistItem, Link
 from tasks.work_requests import pending_assignee
 
 from ..forms import LinkForm
-from . import task_projects
+from . import subtasks, task_projects
 from .common import (
     CONFLICT_MSG,
     can_admin,
@@ -142,6 +142,9 @@ def _panel_ctx(request, task, **extra):
         "extend_open": False,
     }
     ctx.update(task_projects.panel_ctx(request.user, task))  # 연결 프로젝트 칸(§3.6)
+    ctx.update(subtasks.panel_ctx(request.user, task))  # 상위·하위 칸(IMPL-PLAN-12 §5.2)
+    sub = ctx["sub"]
+    ctx.update(sub_msg="", sub_count=sub and len(sub["subtasks"]) + sub["hidden"])
     if task.project.dev_tools:  # 비개발 프로젝트는 GitHub 조회(repo_state)를 하지 않는다
         ctx.update(_git_ctx(request, task))
     ctx.update(extra)

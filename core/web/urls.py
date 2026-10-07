@@ -26,6 +26,7 @@ from .views import (
     search,
     settings,
     split,
+    subtasks,
     task_projects,
     tasks,
     teams,
@@ -345,6 +346,10 @@ urlpatterns = [
         task_projects.reject,
         name="task_project_reject",
     ),
+    # ---- IMPL-PLAN-12 G2: 상위·하위 태스크 ----
+    path("tasks/<int:task_id>/subtasks", subtasks.create, name="subtask_create"),
+    path("tasks/<int:task_id>/group", subtasks.put, name="task_group"),
+    path("tasks/<int:task_id>/ungroup", subtasks.ungroup, name="task_ungroup"),
     # ---- IMPL-PLAN-11 D2: 문서 화면 ----
     path("orgs/<int:org_id>/docs", docs.org_docs, name="org_docs"),
     path("orgs/<int:org_id>/docs/new", docs.org_doc_new, name="org_doc_new"),

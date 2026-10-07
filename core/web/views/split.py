@@ -36,7 +36,7 @@ def task_split(request, task_id):
         except ServiceError as e:
             error = " ".join(e.errors.values())
         else:
-            messages.success(request, f"{len(made)}건으로 나눴습니다.")
+            messages.success(request, f"하위 태스크 {len(made)}건을 만들었습니다.")
             return hx_redirect(request, reverse("task_detail", args=[task.pk]))
     rows = [{"user": u, "checked": u.pk in picked, "role": roles.get(u.pk, "")} for u in members]
     ctx = {

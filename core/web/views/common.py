@@ -4,7 +4,7 @@ from datetime import date, timedelta
 from urllib.parse import urlencode
 
 from django.contrib import messages
-from django.db.models import prefetch_related_objects
+from django.db.models import Count, Q, prefetch_related_objects
 from django.http import Http404, HttpResponse
 from django.shortcuts import redirect, render
 from django.urls import reverse
@@ -18,7 +18,13 @@ from orgs.services import is_admin, is_member, orgs_of
 from projects.models import Project
 from projects.services import can_view_project
 from tasks.models import Task
-from tasks.services import attach_linked, get_visible_task, today_flag, today_membership
+from tasks.services import (
+    attach_linked,
+    get_visible_task,
+    today_flag,
+    today_membership,
+    visible_tasks,
+)
 
 CONFLICT_MSG = "다른 사람이 먼저 수정했습니다. 최신 내용을 다시 확인하세요."
 
@@ -199,6 +205,8 @@ FIELD_LABELS = {
     "parent": "계열",
     "projects": "연결 프로젝트",
     "git_project": "연동 프로젝트",
+    "group": "상위 태스크",
+    "split": "사람별로 나누기",
 }
 
 
@@ -229,6 +237,16 @@ def _display(field, raw: str, viewer=None) -> str:
         if p is None:
             return raw
         return p.name if viewer is None or can_view_project(viewer, p) else "볼 수 없는 프로젝트"
+    if field in ("group", "split"):
+        # 상위·하위 번호(IMPL-PLAN-12 §4.1): 보는 사람이 못 보는 태스크는 번호를 내지 않는다.
+        nums = [n for n in raw.split(",") if n]
+        if viewer is None:
+            return ", ".join(nums)
+        ids = [int(n[5:]) for n in nums if n[5:].isdecimal()]
+        seen = set(visible_tasks(viewer).filter(pk__in=ids).values_list("pk", flat=True))
+        return ", ".join(
+            n if n[5:].isdecimal() and int(n[5:]) in seen else "볼 수 없는 태스크" for n in nums
+        )
     if field == "owners":
         names = [u.display_name for u in User.objects.filter(pk__in=raw.split(","))]
         return ", ".join(names) or raw
@@ -259,7 +277,63 @@ def history_rows(logs, viewer=None) -> list[dict]:
 
 # ---------- 태스크 행 ----------
 
-ROW_OPTS = ("next", "move", "noassignee", "notoday", "ro", "today", "board")
+ROW_OPTS = ("next", "move", "noassignee", "notoday", "ro", "today", "board", "sub", "fold")
+
+
+def attach_subtasks(tasks, viewer) -> None:
+    """행·카드 표시용(IMPL-PLAN-12 §5.1): `sub_done`·`sub_total`(취소를 뺀 하위), `group_shown`(viewer가
+    상위를 볼 수 있는가 — 못 보면 '↳ TASK-N'을 그리지 않는다). 태스크 수와 무관하게 쿼리 한두 번."""
+    tasks = [t for t in tasks if not hasattr(t, "sub_total")]
+    if not tasks:
+        return
+    counts = {
+        r["group_id"]: r
+        for r in Task.objects.filter(group_id__in=[t.pk for t in tasks])
+        .exclude(status="cancelled")
+        .values("group_id")
+        .order_by()
+        .annotate(total=Count("id"), done=Count("id", filter=Q(status="done")))
+    }
+    gids = {t.group_id for t in tasks if t.group_id}
+    shown = (
+        set(visible_tasks(viewer).filter(pk__in=gids).values_list("pk", flat=True))
+        if gids
+        else set()
+    )
+    for t in tasks:
+        c = counts.get(t.pk, {})
+        t.sub_total, t.sub_done = c.get("total", 0), c.get("done", 0)
+        t.group_shown = t.group_id in shown
+
+
+def nest_rows(rows) -> list[dict]:
+    """프로젝트 목록 보기만(§5.3): 기한순 목록에서 상위 바로 뒤에 그 하위를 붙인다(하위끼리는 기한순 그대로).
+    상위가 목록에 없으면 하위는 제자리에 평면 행으로 남는다('↳ TASK-N'이 길을 알려 준다)."""
+    present = {r["task"].pk for r in rows}
+    kids = {}
+    for r in rows:
+        if r["task"].group_id in present:
+            kids.setdefault(r["task"].group_id, []).append(r)
+    out = []
+    for r in rows:
+        if r["task"].group_id in present:
+            continue
+        out.append(r)
+        for k in kids.get(r["task"].pk, ()):
+            _add_opt(k, "sub")
+            out.append(k)
+        if r["task"].pk in kids:
+            _add_opt(r, "fold")
+    return out
+
+
+def _add_opt(r, opt):
+    """행 자기 갱신(task_row)이 같은 모양으로 다시 그리도록 opts에 남긴다."""
+    opts = ",".join(sorted({*filter(None, r["row_opts"].split(",")), opt}))
+    r.update(
+        row_opts=opts, row_query=urlencode({"opts": opts}), nested=r.get("nested") or opt == "sub"
+    )
+    r["foldable"] = r.get("foldable") or opt == "fold"
 
 
 def row_ctx(user, task, opts: str = "", membership: dict | None = None, selected_id=None) -> dict:
@@ -271,6 +345,7 @@ def row_ctx(user, task, opts: str = "", membership: dict | None = None, selected
     m = membership or today_membership(user)
     flag = today_flag(task, m)
     attach_linked([task], user)  # rows_for가 이미 붙였으면 쿼리 없음
+    attach_subtasks([task], user)
     items = list(task.checklist.all())
     opts = ",".join(sorted(o))
     return {
@@ -295,6 +370,13 @@ def row_ctx(user, task, opts: str = "", membership: dict | None = None, selected
         # 연결 프로젝트(보는 사람이 볼 수 있는 것만). 행에 "↔ n"으로, 이름은 툴팁에.
         "linked": task.linked_shown,
         "linked_names": ", ".join(name for _, name in task.linked_shown),
+        # 상위·하위(§5.1). 하위 행은 '↳ TASK-N'(상위를 볼 수 있을 때만), 상위 행은 '하위 n/m'.
+        "sub_done": task.sub_done,
+        "sub_total": task.sub_total,
+        "sub_pct": task.sub_done * 100 // task.sub_total if task.sub_total else 0,
+        "group_shown": task.group_shown,
+        "nested": "sub" in o,
+        "foldable": "fold" in o,
     }
 
 
@@ -303,6 +385,7 @@ def rows_for(user, tasks, opts: str = "", selected_id=None) -> list[dict]:
     # 행마다 체크리스트를 따로 읽지 않게 한 번에 붙인다(이미 붙어 있으면 건너뛴다).
     prefetch_related_objects(tasks, "checklist")
     attach_linked(tasks, user)
+    attach_subtasks(tasks, user)
     m = today_membership(user)
     return [row_ctx(user, t, opts, m, selected_id) for t in tasks]
 

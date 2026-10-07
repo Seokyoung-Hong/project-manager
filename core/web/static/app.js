@@ -313,6 +313,12 @@
       el.hidden = !el.hidden;
       if (b.dataset.alt) { var t = b.textContent; b.textContent = b.dataset.alt; b.dataset.alt = t; }
       if (!el.hidden) { var i = el.querySelector("input:not([type=hidden]), textarea"); if (i) i.focus(); }
+    } else if (a === "toggle-subtasks") {
+      // 프로젝트 목록 보기: 상위 행 "하위 n/m"이 그 아래 하위 행을 접고 편다. 상태는 저장하지 않는다.
+      // ponytail: 접힘 기억은 필요해지면 localStorage.
+      var open = b.getAttribute("aria-expanded") !== "true";
+      b.setAttribute("aria-expanded", open ? "true" : "false");
+      document.querySelectorAll('.task-row[data-group="' + b.dataset.group + '"]').forEach(function (r) { r.hidden = !open; });
     } else if (a === "toggle-rail") {
       setRailClosed(!getRailClosed());
       applyRail();
