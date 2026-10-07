@@ -149,8 +149,18 @@ def reconcile_team(team, *, actor, on_result=None) -> tuple[int, list[str]]:
 # ---------- 이슈와 브랜치 ----------
 
 
+def _task_conn(task):
+    """연동 프로젝트의 저장소(§3.3). 연결 프로젝트가 있는데 고르지 않았으면 쓰기를 거절한다."""
+    from .services import task_repo
+
+    conn = task_repo(task)
+    if conn is None:
+        raise ServiceError({"github": "연동 프로젝트를 먼저 선택하세요."})
+    return conn
+
+
 def create_issue(task, *, actor, body="") -> dict:
-    conn = task.project.repo
+    conn = _task_conn(task)
     data = client.request(
         "POST",
         f"/repos/{conn.full_name}/issues",
@@ -181,7 +191,7 @@ def create_branch(task, name: str, *, actor) -> str:
 
     이름에 태스크 번호가 들어가므로 나중에 push·PR이 자동으로 이 태스크에 붙는다.
     """
-    conn = task.project.repo
+    conn = _task_conn(task)
     token = _actor_token(actor)
     name = (name or "").strip().lstrip("/")
     if not name or ".." in name or name.endswith("/") or " " in name:

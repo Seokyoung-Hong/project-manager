@@ -12,7 +12,7 @@ from github import client as github_client
 from github import writes as gh_writes
 from github.client import GitHubError
 from github.models import RepoIssue, TaskGitLink
-from github.services import can_view_repo, continuation, repo_state, user_token
+from github.services import can_view_repo, continuation, task_repo, task_repo_state, user_token
 from orgs.services import ai_denied
 from orgs.settings import effective
 from projects.services import visible_projects
@@ -233,12 +233,13 @@ def create_task_issue(request, task_id: int):
         not effective("ai.enabled", org=org) or effective("ai.create_task", org=org) == "deny"
     ):
         raise ServiceError({"github": ai_denied("GitHub 이슈 생성")})
-    state = repo_state(request.auth, task.project)["state"]
+    state = task_repo_state(request.auth, task)["state"]
     if state != "ok":
         raise ServiceError(
             {
                 "github": {
                     "none": "프로젝트에 연결된 저장소가 없습니다.",
+                    "unselected": "연동 프로젝트를 먼저 선택하세요.",
                     "unlinked": "GitHub 계정을 먼저 연결해야 합니다.",
                     "denied": "이 저장소에 접근할 권한이 없습니다.",
                 }[state]
@@ -250,7 +251,7 @@ def create_task_issue(request, task_id: int):
         data = gh_writes.create_issue(task, actor=request.auth)
     except GitHubError as e:
         raise HttpError(502, e.message) from e
-    full_name = task.project.repo.full_name
+    full_name = task_repo(task).full_name
     return 201, {
         "number": data["number"],
         "title": data["title"],
@@ -341,6 +342,11 @@ def patch_task(request, task_id: int, payload: TaskPatchIn):
         data["reviewer"] = User.objects.filter(pk=rid).first() if rid else None
         if rid and data["reviewer"] is None:
             raise HttpError(400, "검토자를 찾을 수 없습니다.")
+    if "git_project_id" in data:
+        gid = data.pop("git_project_id")
+        data["git_project"] = visible_projects(request.auth).filter(pk=gid).first() if gid else None
+        if gid and data["git_project"] is None:
+            raise HttpError(404, "프로젝트를 찾을 수 없습니다.")
     if "project_id" in data:
         pid = data.pop("project_id")
         data["project"] = visible_projects(request.auth).filter(pk=pid).first()

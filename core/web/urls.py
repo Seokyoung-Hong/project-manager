@@ -323,6 +323,8 @@ urlpatterns = [
         "tasks/<int:task_id>/git/branch/create", github.git_branch_create, name="git_branch_create"
     ),
     path("tasks/<int:task_id>/git/issue/close", github.git_issue_close, name="git_issue_close"),
+    # IMPL-PLAN-11 P1b: 연동 프로젝트 고르기
+    path("tasks/<int:task_id>/git/project", github.git_project, name="git_project"),
     # ---- IMPL-PLAN-11 S1: 사람별로 나누기 ----
     path("tasks/<int:task_id>/split", split.task_split, name="task_split"),
 ]

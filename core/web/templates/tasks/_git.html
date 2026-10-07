@@ -3,7 +3,21 @@
   <div class="label">GitHub</div>
   {% if gh.continued_by %}<p class="notice t13">이 작업은 PR·이슈가 다시 열려 <a href="{% url 'task_detail' gh.continued_by.pk %}">{{ gh.continued_by.number }}</a>로 이어졌습니다.</p>{% endif %}
   {% if gh.continued_from %}<p class="muted t13"><a href="{% url 'task_detail' gh.continued_from.pk %}">{{ gh.continued_from.number }}</a>에서 이어진 작업입니다(닫힌 뒤 다시 열린 PR·이슈).</p>{% endif %}
-  {% if gh.state == "none" %}
+  {% if gh.has_links %}
+  {# IMPL-PLAN-11 §3.3: 연결 프로젝트가 있으면 GitHub 자동 연동은 사용자가 고른 연동 프로젝트만 따른다 #}
+  <form class="row t13" hx-post="{% url 'git_project' task.pk %}" hx-target="#panel" hx-swap="innerHTML">
+    <input type="hidden" name="version" value="{{ task.version }}">
+    <label for="git-project-{{ task.pk }}" class="muted">연동 프로젝트</label>
+    <select id="git-project-{{ task.pk }}" name="project" class="select auto">
+      <option value="">선택 안 함(자동 연동 끔)</option>
+      {% for p in gh.choices %}<option value="{{ p.pk }}"{% if p.pk == task.git_project_id %} selected{% endif %}>{{ p.name }} · {{ p.repo.full_name }}</option>{% endfor %}
+    </select>
+    <button class="btn sm">선택</button>
+  </form>
+  {% endif %}
+  {% if gh.state == "unselected" %}
+  <p class="conn t13"><span class="conn-state off">연동 프로젝트를 선택하세요</span> <span class="muted">여러 프로젝트에 연결된 태스크라 고르기 전에는 TASK 번호·브랜치·PR이 상태를 바꾸지 않습니다.</span></p>
+  {% elif gh.state == "none" %}
   <p class="conn t13"><span class="conn-state off">저장소 미연결</span> <a href="{% url 'project_repo' task.project_id %}">저장소 연결</a></p>
   {% elif gh.state == "unlinked" %}
   <p class="conn t13"><span class="conn-state off">계정 미연결</span> <span class="muted">GitHub를 연결하면 저장소 정보가 보입니다.</span> <a href="{% url 'profile' %}">GitHub 연결</a></p>

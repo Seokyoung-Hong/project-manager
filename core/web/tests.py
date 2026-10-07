@@ -1858,11 +1858,11 @@ def gh_on(settings, monkeypatch):
     settings.GITHUB_ENABLED = True
     calls = []
 
-    def fake_repo_state(user, project):
-        calls.append(project.pk)
+    def fake_repo_state(user, task):
+        calls.append(task.project_id)
         return {"state": "none"}
 
-    monkeypatch.setattr("web.views.tasks.repo_state", fake_repo_state)
+    monkeypatch.setattr("web.views.tasks.task_repo_state", fake_repo_state)
     return calls
 
 

@@ -32,6 +32,7 @@ description: 유달리(조직 업무 관리)를 MCP로 다룬다. 태스크를 �
 | 프로젝트 담당 팀 | `get_project`로 version → `set_project_teams` |
 | 주간 보고 | `get_weekly_report_data` — 여기 없는 진척은 만들어 쓰지 않는다 |
 | 다른 프로젝트에도 연결 | `link_task_project` — 해제·승인 요청 취소는 `unlink_task_project`. 아래 규칙 "열람 확대" |
+| 연결 태스크의 GitHub 연동 | 연결 프로젝트가 있으면 자동 연동이 꺼진다. 사용자에게 어느 프로젝트(저장소)를 따를지 물은 뒤 `update_task(git_project_id=)` |
 
 ## 이슈 기반 AI 개발과 의사결정 기록
 

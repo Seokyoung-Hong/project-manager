@@ -650,11 +650,15 @@ def update_task(
     reviewer_id: int | None = None,
     clear_reviewer: bool = False,
     is_template: bool | None = None,
+    git_project_id: int | None = None,
+    clear_git_project: bool = False,
 ) -> dict:
     """태스크 수정. version은 get_task로 읽은 최신 값. 바꿀 항목만 준다. due_date는 YYYY-MM-DD.
     reviewer_id는 지정 검토자(검토 대기 → 완료를 이 사람이나 관리자만 한다). 비우려면 clear_reviewer=True.
     is_template=True면 템플릿으로 둔다(시작 전에서만, 기한이 지워진다). 템플릿은 상태를 바꾸지 않는다.
     회차는 duplicate_task로 만든다.
+    git_project_id: 연동 프로젝트(GitHub). 연결 프로젝트가 있는 태스크는 이걸 고르기 전엔 GitHub 자동 연동이
+    꺼져 있다. 주 프로젝트나 확정 연결 중 저장소가 있는 것만. 끄려면 clear_git_project=True.
     담당자를 비우려면 clear_assignee=True, 기한을 비우려면 clear_due_date=True 와 no_due_reason.
     checklist는 [{text, is_done}] 전체 교체.
     stop_reason은 일시정지·막힘 상태에서만 바꿀 수 있다. notes는 통째로 교체되므로 덧붙이려면 append_note."""
@@ -675,6 +679,7 @@ def update_task(
         "checklist": checklist,
         "reviewer_id": reviewer_id,
         "is_template": is_template,
+        "git_project_id": git_project_id,
     }.items():
         if v is not None:
             body[k] = v
@@ -686,6 +691,8 @@ def update_task(
         body["assignee_id"] = None
     if clear_reviewer:
         body["reviewer_id"] = None
+    if clear_git_project:
+        body["git_project_id"] = None
     return _core().patch(f"/api/tasks/{task_id}", body)
 
 
