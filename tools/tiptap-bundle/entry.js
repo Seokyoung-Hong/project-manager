@@ -1,7 +1,7 @@
 // 유달리 문서 화면의 Tiptap 시험 편집기. 확장 구성과 md 왕복 보정을 여기 한곳에 둔다 —
 // 브라우저(doc-tiptap.js)와 왕복 시험(roundtrip.mjs)이 같은 번들을 쓰게 하기 위해서다.
 // 보정 근거: docs/review-2026-10-08/W-tiptap-roundtrip.md(운영 문서 81개 왕복 시험)
-import { Editor, Node } from "@tiptap/core";
+import { Editor, Mark, Node } from "@tiptap/core";
 import StarterKit from "@tiptap/starter-kit";
 import CodeBlock from "@tiptap/extension-code-block";
 import Link from "@tiptap/extension-link";
@@ -12,7 +12,7 @@ import Image from "@tiptap/extension-image";
 import { Placeholder } from "@tiptap/extensions";
 import { Marked } from "marked";
 import { DragHandle } from "@tiptap/extension-drag-handle";
-import { TextSelection } from "@tiptap/pm/state";
+import { NodeSelection, TextSelection } from "@tiptap/pm/state";
 
 export { Editor };
 
@@ -90,30 +90,32 @@ const HtmlBlock = Node.create({
   renderMarkdown: (node) => node.attrs.raw,
 });
 
-// (6) 문장 속 HTML 태그(<span>, <kbd>, <!-- … --> 등)는 기본 처리에서 태그가 버려진다. 태그 하나를 원문 그대로 든 인라인 원자로
-// 들고 있다가 그대로 쓴다. 화면에는 실행하지 않고 글자로만 보인다(블록 HTML과 같은 원칙). 태그 사이 글은 보통 글이다.
-const INLINE_TAG = /^(?:<!--[\s\S]*?-->|<\/[A-Za-z][A-Za-z0-9-]*\s*>|<[A-Za-z][A-Za-z0-9-]*(?:\s+[A-Za-z_:][\w:.-]*(?:\s*=\s*(?:"[^"]*"|'[^']*'|[^\s"'=<>`]+))?)*\s*\/?>)/;
-const HtmlInline = Node.create({
+// (6) 문장 속 HTML 태그(<span>, <kbd>, <!-- … -->, CDATA, <?…?>, <!DOCTYPE>)는 기본 처리에서 버려진다.
+// 태그 원문을 글자로 두고 "HTML 원문" 표시(mark)를 붙인다 — 글자이므로 링크·굵게 같은 다른 표시가 함께 붙고 그대로 저장된다
+// ([<br>](주소), **<br>**, [<kbd>x</kbd>](주소)). 화면에는 실행하지 않고 글자로만 보인다. 코드처럼 이스케이프하지 않는다.
+const INLINE_TAG = new RegExp(
+  "^(?:<!--[\\s\\S]*?-->|<!\\[CDATA\\[[\\s\\S]*?\\]\\]>|<\\?[\\s\\S]*?\\?>|<![A-Za-z][^>]*>" +
+    "|<\\/[A-Za-z][A-Za-z0-9-]*\\s*>" +
+    "|<[A-Za-z][A-Za-z0-9-]*(?:\\s+[A-Za-z_:][\\w:.-]*(?:\\s*=\\s*(?:\"[^\"]*\"|'[^']*'|[^\\s\"'=<>`]+))?)*\\s*\\/?>)",
+);
+const HtmlInline = Mark.create({
   name: "htmlInline",
-  group: "inline",
-  inline: true,
-  atom: true,
-  selectable: true,
-  addAttributes: () => ({ raw: { default: "" } }),
-  parseHTML: () => [{ tag: "span[data-html-inline]", getAttrs: (el) => ({ raw: el.textContent }) }],
-  renderHTML: ({ node }) => ["span", { "data-html-inline": "", class: "tt-html-inline", title: "HTML 원문(그대로 보존)" }, node.attrs.raw],
+  code: true, // 저장할 때 이스케이프하지 않는다(setupMarkdown의 codeTypes)
+  inclusive: false, // 태그 바로 뒤에 이어 쓰는 글은 원문 표시가 아니다
+  parseHTML: () => [{ tag: "span[data-html-inline]" }],
+  renderHTML: () => ["span", { "data-html-inline": "", class: "tt-html-inline", title: "HTML 원문(그대로 보존)" }, 0],
   markdownTokenName: "htmlInline",
   markdownTokenizer: {
     name: "htmlInline",
     level: "inline",
-    start: (src) => src.search(/<[A-Za-z!/]/),
+    start: (src) => src.search(/<[A-Za-z!/?]/),
     tokenize: (src) => {
       const m = INLINE_TAG.exec(src);
       return m ? { type: "htmlInline", raw: m[0] } : undefined;
     },
   },
-  parseMarkdown: (token, h) => h.createNode("htmlInline", { raw: token.raw }),
-  renderMarkdown: (node) => node.attrs.raw,
+  parseMarkdown: (token, h) => h.applyMark("htmlInline", [{ type: "text", text: token.raw }]),
+  renderMarkdown: (node, h) => h.renderChildren(node.content),
 });
 
 // 블록 손잡이(끌어 옮기기). 칸 왼쪽 여백 안에 선다. 터치 기기에서는 CSS로 숨기고 Alt+↑/↓(md-field.js)를 쓴다.
@@ -134,18 +136,28 @@ function dragHandle() {
 }
 
 // 현재 블록(목록 안이면 그 항목)을 위(-1)·아래(+1)로 한 칸 옮긴다. 옮겼으면 true.
+// 블록 HTML·그림처럼 통째로 선택된 블록(NodeSelection)은 그 블록을 옮기고 옮긴 뒤에도 선택을 유지한다.
 export function moveBlock(editor, dir) {
-  const { state } = editor, $f = state.selection.$from;
-  let d = $f.depth;
-  while (d > 1 && !/^(listItem|taskItem)$/.test($f.node(d).type.name)) d--;
-  if (d < 1) return false;
-  const parent = $f.node(d - 1), idx = $f.index(d - 1), j = idx + dir;
+  const { state } = editor, sel = state.selection;
+  let node, start, parent, idx;
+  if (sel instanceof NodeSelection && sel.node.isBlock) {
+    const $s = state.doc.resolve(sel.from);
+    [node, start, parent, idx] = [sel.node, sel.from, $s.parent, $s.index()];
+  } else {
+    const $f = sel.$from;
+    let d = $f.depth;
+    while (d > 1 && !/^(listItem|taskItem)$/.test($f.node(d).type.name)) d--;
+    if (d < 1) return false;
+    [node, start, parent, idx] = [$f.node(d), $f.before(d), $f.node(d - 1), $f.index(d - 1)];
+  }
+  const j = idx + dir;
   if (j < 0 || j >= parent.childCount) return false;
-  const node = $f.node(d), start = $f.before(d), end = $f.after(d), offset = state.selection.from - start;
-  const tr = state.tr.delete(start, end);
+  const offset = sel.from - start;
+  const tr = state.tr.delete(start, start + node.nodeSize);
   const at = dir < 0 ? start - parent.child(j).nodeSize : start + parent.child(j).nodeSize;
   tr.insert(at, node);
-  tr.setSelection(TextSelection.near(tr.doc.resolve(Math.min(at + offset, tr.doc.content.size))));
+  if (sel instanceof NodeSelection) tr.setSelection(NodeSelection.create(tr.doc, at));
+  else tr.setSelection(TextSelection.near(tr.doc.resolve(Math.min(at + offset, tr.doc.content.size))));
   editor.view.dispatch(tr.scrollIntoView());
   return true;
 }

@@ -88,7 +88,39 @@ assert.equal(T.safeUrl("https://a.example/i.png", { image: true }), "https://a.e
   assert.ok(el.textContent.includes("<span>"), "글자로 보임");
 }
 
+// ---- 인라인 HTML에 걸린 링크·굵게 보존, 특수 토큰(CDATA·<?…?>·<!DOCTYPE>) 원문 유지 — 저장·다시 열기 ----
+{
+  const lines = [
+    "[<br>](https://a.example)",
+    "[<kbd>x</kbd>](https://a.example)",
+    "**<br>**",
+    "p <![CDATA[hello]]> q",
+    "p <?target data?> q",
+    "p <!DOCTYPE html> q",
+    'p <![CDATA[<img src=x onerror="window.xss++">]]> q',
+  ];
+  const md = "앞\n\n" + lines.join("\n\n") + "\n";
+  const out = editFirstParagraph(md);
+  for (const l of lines) assert.ok(out.includes(l), "보존 " + JSON.stringify(l) + "\n" + out);
+  const { ed: again, el } = open(out); // 다시 열어 저장해도 같다
+  assert.equal(again.getMarkdown(), out);
+  assert.equal(el.querySelectorAll("img, kbd, [onerror]").length, 0, "실행 안 함");
+  assert.equal(el.querySelector("a")?.getAttribute("href"), "https://a.example");
+}
+
 // ---- 블록 옮기기(Alt+↑/↓의 바탕) ----
+// 통째로 선택된 블록(블록 HTML·그림)도 옮긴다
+{
+  const { ed } = open("<aside>hello</aside>\n\nend\n\n![g](/media/a.png)\n");
+  ed.commands.setNodeSelection(0);
+  assert.equal(T.moveBlock(ed, 1), true, "블록 HTML 아래로");
+  assert.ok(ed.getMarkdown().startsWith("end\n\n<aside>hello</aside>"), ed.getMarkdown());
+  assert.equal(ed.state.selection.node?.type.name, "htmlBlock", "선택 유지");
+  assert.equal(T.moveBlock(ed, 1), true, "그림 아래로도");
+  assert.ok(ed.getMarkdown().trim().endsWith("<aside>hello</aside>"), ed.getMarkdown());
+  ed.commands.undo();
+  assert.ok(ed.getMarkdown().startsWith("<aside>hello</aside>\n\nend\n\n![g]"), "undo(연달아 옮긴 것은 한 번에 되돌린다) " + ed.getMarkdown());
+}
 {
   const { ed } = open("첫째\n\n둘째\n\n- 가\n- 나\n");
   ed.commands.setTextSelection(3); // "첫째" 안
