@@ -1372,6 +1372,30 @@ def test_docs_first_one_opens_by_default(logged, project):
     assert 'id="doc-editor"' in body and "개요" in body
 
 
+def test_doc_tiptap_trial_only_with_query(logged, project):
+    """?editor=tiptap일 때만 시험 편집기(번들·스크립트)가 붙고, 기본 화면은 notes.js 그대로다."""
+    from projects.docs import create_doc
+
+    doc = create_doc(project=project, actor=project.created_by, title="개요", body_md="# 배경")
+    url = f"/projects/{project.pk}/docs?doc={doc.pk}"
+
+    r = logged.get(url + "&editor=tiptap")
+    body = r.content.decode()
+    assert r.status_code == 200
+    assert (
+        "vendor/tiptap.bundle.js" in body and "doc-tiptap.js" in body and 'id="doc-tiptap"' in body
+    )
+    assert 'class="doc"' not in body  # notes.js가 같은 본문에 겹쳐 붙지 않는다
+
+    body = logged.get(url).content.decode()
+    assert "tiptap" not in body and 'class="doc"' in body
+
+    # /docs/N 정식 주소로 따라가도 시험 화면에 남는다
+    assert (
+        logged.get(f"/docs/{doc.pk}?editor=tiptap").headers["Location"].endswith("&editor=tiptap")
+    )
+
+
 # ---------- GitHub를 끈 상태 ----------
 
 

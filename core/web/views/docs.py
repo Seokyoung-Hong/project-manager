@@ -146,6 +146,8 @@ def _page(request, *, org, project=None):
         + [(f"t{t.pk}", f"팀 · {t.name}") for t in teams],
         "templates": ts_docs.visible_docs(user, org).filter(is_template=True, kind="doc"),
         "here": request.get_full_path(),
+        # ?editor=tiptap: Tiptap 시험 편집기(doc-tiptap.js). 그 외에는 기존 notes.js 그대로.
+        "tiptap": request.GET.get("editor") == "tiptap",
     }
     if project is not None:
         ctx["project_files"] = attachments_of(project)
@@ -175,7 +177,11 @@ def project_docs(request, project_id):
 @login_required
 def doc_home(request, doc_id):
     """정식 주소 /docs/<id>. 문서 본문 링크와 백링크가 여기를 가리킨다."""
-    return redirect(page_url(_doc_or_404(request.user, doc_id)))
+    url = page_url(_doc_or_404(request.user, doc_id))
+    # 시험 편집기에서 문서 링크를 따라가도 시험 화면에 남는다
+    if request.GET.get("editor") == "tiptap":
+        url += "&editor=tiptap"
+    return redirect(url)
 
 
 # ---------- 만들기·올리기 ----------
