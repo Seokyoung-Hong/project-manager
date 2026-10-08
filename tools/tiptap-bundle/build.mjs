@@ -24,8 +24,25 @@ const patchList = {
   },
 };
 
+// 끌어 옮기기(extension-drag-handle)는 공동 편집(Yjs)용 모듈을 import하지만, 공동 편집을 켜지 않으면 쓰지 않는다
+// (ySyncPluginKey.getState가 null이면 바로 돌아간다). yjs를 통째로 싣지 않도록 빈 대역으로 바꾼다.
+const noCollab = {
+  name: "no-collaboration",
+  setup(b) {
+    b.onResolve({ filter: /^@tiptap\/(extension-collaboration|y-tiptap)$/ }, (args) => ({ path: args.path, namespace: "no-collab" }));
+    b.onLoad({ filter: /.*/, namespace: "no-collab" }, () => ({
+      contents:
+        "export const isChangeOrigin = () => false;\n" +
+        "export const ySyncPluginKey = { getState: () => null };\n" +
+        "export const absolutePositionToRelativePosition = () => null;\n" +
+        "export const relativePositionToAbsolutePosition = () => null;\n",
+      loader: "js",
+    }));
+  },
+};
+
 const result = await build({
-  plugins: [patchList],
+  plugins: [patchList, noCollab],
   entryPoints: [join(here, "entry.js")],
   bundle: true,
   format: "esm",

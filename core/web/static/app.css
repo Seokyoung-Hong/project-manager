@@ -909,6 +909,7 @@ details > summary { cursor: pointer; font-weight: 600; }
 .md .ProseMirror pre, .md pre { margin-left: 0; margin-right: 0; padding: 12px 14px; overflow-x: auto; background: var(--c-soft); border: 1px solid var(--c-line); border-radius: var(--r-md); white-space: pre; overflow-wrap: normal; word-break: normal; }
 .md pre code { padding: 0; background: none; font-size: var(--fs-sm); line-height: 20px; }
 .md pre.tt-html { font-family: var(--f-mono); font-size: var(--fs-xs); color: var(--c-muted); background: var(--c-bg); border-style: dashed; white-space: pre-wrap; }
+.md .tt-html-inline { font-family: var(--f-mono); font-size: .85em; color: var(--c-muted); } /* 문장 속 HTML 태그: 실행하지 않고 원문 글자로 */
 /* 체크리스트: 완료는 보조색+취소선(투명도 금지, DESIGN.md 7장) */
 .md ul[data-type="taskList"] { list-style: none; padding-left: 0; }
 .md ul[data-type="taskList"] > li { display: flex; gap: var(--sp-2); align-items: flex-start; }
@@ -957,6 +958,15 @@ details > summary { cursor: pointer; font-weight: 600; }
 /* 칸 안 제목은 칸 밖 고정 제목(Jua)보다 항상 작다 */
 .mdf-body.md h1, .mdf-body.md h2 { font-family: var(--f-body); font-weight: 700; font-size: var(--fs-lg); line-height: 1.5; margin-top: var(--sp-4); padding: 0; border: 0; }
 .mdf-body.md h3 { font-size: var(--fs-task); margin-top: var(--sp-3); }
+/* 블록 손잡이(끌어 옮기기): 칸 안 왼쪽 여백(30px)에 선다 — 칸 밖으로 나가 레이아웃을 밀지 않는다.
+   편집할 수 있을 때만(플러그인이 읽기 전용에서 숨긴다), 터치 기기에서는 숨긴다(키보드 대안 Alt+↑/↓). */
+@media (pointer: fine) { .mdf-body, .mdf > .md-editor { padding-left: 30px; } }
+.drag-handle { display: flex; align-items: center; justify-content: center; width: 20px; height: 24px; margin-right: 4px; border-radius: var(--r-xs);
+  color: var(--c-faint); cursor: grab; }
+.drag-handle:hover { background: var(--c-soft); color: var(--c-ink); }
+.drag-handle[data-dragging="true"] { cursor: grabbing; }
+.drag-handle svg { width: 16px; height: 16px; fill: currentColor; stroke: none; }
+@media (pointer: coarse) { .drag-handle { display: none !important; } }
 .mdf-cue { padding: 6px 14px; border-bottom: 1px dashed var(--c-line); font-size: var(--fs-xs); font-weight: 400; color: var(--c-muted); }
 .mdf.on .mdf-cue { display: none; }
 .mdf-bar { display: flex; align-items: center; gap: 2px; padding: 4px 6px; overflow: hidden; background: var(--c-surface); border-radius: 0 0 var(--r-md) var(--r-md); }

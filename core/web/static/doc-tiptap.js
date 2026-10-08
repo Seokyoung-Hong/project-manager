@@ -34,7 +34,8 @@ function editor(T, root) {
   const ed = new T.Editor({
     element: root,
     editable: false,
-    extensions: T.extensions({ placeholder: "여기에 씁니다.", checkInView: true }),
+    extensions: T.extensions({ placeholder: "여기에 씁니다.", checkInView: true, drag: true }),
+    editorProps: { attributes: { tabindex: "0" } }, // 보기 상태에서도 탭으로 닿는다(setEditable이 DOM 속성을 다시 써도 남는다)
     content: T.preprocess(src.value),
     contentType: "markdown",
     onUpdate: () => { if (touched) schedule(); },
@@ -48,7 +49,7 @@ function editor(T, root) {
   let touched = false;
   let baseline = ed.getMarkdown();
   const touch = () => { touched = true; };
-  for (const ev of ["beforeinput", "paste", "drop", "compositionstart"]) dom.addEventListener(ev, touch);
+  for (const ev of ["beforeinput", "paste", "drop", "compositionstart"]) dom.addEventListener(ev, touch, true); // 캡처: 편집기가 처리(→ update)하기 전에 표시
   dom.addEventListener("keydown", (e) => { if (e.ctrlKey || e.metaKey || e.key.length === 1 || /^(Enter|Backspace|Delete|Tab)$/.test(e.key)) touch(); });
   // 조합이 끝나면 그때 저장을 예약한다. 조합 중 onUpdate가 와도 schedule이 타이머를 걸지 않는다.
   dom.addEventListener("compositionend", () => { if (bodyDirty) schedule(); });
@@ -267,8 +268,8 @@ function editor(T, root) {
       ed.chain().focus(at ? at.pos : "end").run();
     }
   });
-  // 좁은 화면은 [본문 편집] 줄을 숨기므로 보기 상태의 본문도 탭으로 닿고 Enter·Space로 편집을 시작한다.
-  dom.tabIndex = 0;
+  // 좁은 화면은 [본문 편집] 줄을 숨기므로 보기 상태의 본문도 탭으로 닿고(editorProps의 tabindex) Enter·Space로 편집을 시작한다.
+  // Esc로 마치면 [본문 편집] 버튼이 보이면 그리로, 숨어 있으면 보기 상태의 본문으로 초점을 돌려 다시 Enter로 들어올 수 있다.
   dom.addEventListener("keydown", (e) => {
     if (!ed.isEditable && (e.key === "Enter" || e.key === " ") && e.target === dom) {
       e.preventDefault();
@@ -278,7 +279,8 @@ function editor(T, root) {
     }
     if (e.key !== "Escape") return;
     setEditing(false);
-    if (editStart) editStart.focus();
+    if (editStart && editStart.getClientRects().length) editStart.focus();
+    else dom.focus();
   });
   // 보기 상태의 체크: TaskItem은 콜백만 부르고 문서는 바꾸지 않는다. 체크 상자가 속한 항목을 찾아 직접 바꾼다.
   root.addEventListener("change", (e) => {

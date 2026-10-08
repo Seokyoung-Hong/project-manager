@@ -17,4 +17,5 @@ def test_document_editor_enters_and_returns_focus_to_the_button():
     script = (WEB_DIR / "static" / "doc-tiptap.js").read_text(encoding="utf-8")
     assert 'editStart.addEventListener("click"' in script
     assert 'if (e.key !== "Escape") return;' in script
-    assert "if (editStart) editStart.focus();" in script
+    assert "if (editStart && editStart.getClientRects().length) editStart.focus();" in script
+    assert "else dom.focus();" in script  # 좁은 화면: 숨은 버튼 대신 보기 상태 본문으로

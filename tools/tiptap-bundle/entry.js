@@ -11,6 +11,8 @@ import { TaskList, TaskItem } from "@tiptap/extension-list";
 import Image from "@tiptap/extension-image";
 import { Placeholder } from "@tiptap/extensions";
 import { Marked } from "marked";
+import { DragHandle } from "@tiptap/extension-drag-handle";
+import { TextSelection } from "@tiptap/pm/state";
 
 export { Editor };
 
@@ -88,9 +90,72 @@ const HtmlBlock = Node.create({
   renderMarkdown: (node) => node.attrs.raw,
 });
 
+// (6) 문장 속 HTML 태그(<span>, <kbd>, <!-- … --> 등)는 기본 처리에서 태그가 버려진다. 태그 하나를 원문 그대로 든 인라인 원자로
+// 들고 있다가 그대로 쓴다. 화면에는 실행하지 않고 글자로만 보인다(블록 HTML과 같은 원칙). 태그 사이 글은 보통 글이다.
+const INLINE_TAG = /^(?:<!--[\s\S]*?-->|<\/[A-Za-z][A-Za-z0-9-]*\s*>|<[A-Za-z][A-Za-z0-9-]*(?:\s+[A-Za-z_:][\w:.-]*(?:\s*=\s*(?:"[^"]*"|'[^']*'|[^\s"'=<>`]+))?)*\s*\/?>)/;
+const HtmlInline = Node.create({
+  name: "htmlInline",
+  group: "inline",
+  inline: true,
+  atom: true,
+  selectable: true,
+  addAttributes: () => ({ raw: { default: "" } }),
+  parseHTML: () => [{ tag: "span[data-html-inline]", getAttrs: (el) => ({ raw: el.textContent }) }],
+  renderHTML: ({ node }) => ["span", { "data-html-inline": "", class: "tt-html-inline", title: "HTML 원문(그대로 보존)" }, node.attrs.raw],
+  markdownTokenName: "htmlInline",
+  markdownTokenizer: {
+    name: "htmlInline",
+    level: "inline",
+    start: (src) => src.search(/<[A-Za-z!/]/),
+    tokenize: (src) => {
+      const m = INLINE_TAG.exec(src);
+      return m ? { type: "htmlInline", raw: m[0] } : undefined;
+    },
+  },
+  parseMarkdown: (token, h) => h.createNode("htmlInline", { raw: token.raw }),
+  renderMarkdown: (node) => node.attrs.raw,
+});
+
+// 블록 손잡이(끌어 옮기기). 칸 왼쪽 여백 안에 선다. 터치 기기에서는 CSS로 숨기고 Alt+↑/↓(md-field.js)를 쓴다.
+function dragHandle() {
+  return DragHandle.configure({
+    render() {
+      const el = document.createElement("div");
+      el.className = "drag-handle";
+      el.title = "끌어서 옮기기 (키보드: Alt+↑/↓)";
+      el.setAttribute("aria-hidden", "true");
+      el.style.visibility = "hidden"; // 블록 위에 마우스가 올 때까지 숨긴다(플러그인이 처음에는 숨기지 않는다)
+      el.innerHTML = '<svg viewBox="0 0 24 24" focusable="false"><circle cx="9" cy="6" r="1.5"/><circle cx="15" cy="6" r="1.5"/><circle cx="9" cy="12" r="1.5"/><circle cx="15" cy="12" r="1.5"/><circle cx="9" cy="18" r="1.5"/><circle cx="15" cy="18" r="1.5"/></svg>';
+      return el;
+    },
+    computePositionConfig: { placement: "left-start", strategy: "absolute" },
+    nested: { edgeDetection: "none" }, // 목록 항목도 하나씩 옮긴다(가장자리 근처에서 바깥 목록으로 바뀌지 않게)
+  });
+}
+
+// 현재 블록(목록 안이면 그 항목)을 위(-1)·아래(+1)로 한 칸 옮긴다. 옮겼으면 true.
+export function moveBlock(editor, dir) {
+  const { state } = editor, $f = state.selection.$from;
+  let d = $f.depth;
+  while (d > 1 && !/^(listItem|taskItem)$/.test($f.node(d).type.name)) d--;
+  if (d < 1) return false;
+  const parent = $f.node(d - 1), idx = $f.index(d - 1), j = idx + dir;
+  if (j < 0 || j >= parent.childCount) return false;
+  const node = $f.node(d), start = $f.before(d), end = $f.after(d), offset = state.selection.from - start;
+  const tr = state.tr.delete(start, end);
+  const at = dir < 0 ? start - parent.child(j).nodeSize : start + parent.child(j).nodeSize;
+  tr.insert(at, node);
+  tr.setSelection(TextSelection.near(tr.doc.resolve(Math.min(at + offset, tr.doc.content.size))));
+  editor.view.dispatch(tr.scrollIntoView());
+  return true;
+}
+
 // checkInView: 보기 상태에서도 체크 상자를 바꿀 수 있게 한다(문서 반영은 doc-tiptap.js). 끄면 읽기 전용 그대로.
-export function extensions({ placeholder = "", checkInView = false } = {}) {
+// drag: 편집기에만 손잡이를 붙인다(읽기 전용 보기에는 없다).
+export function extensions({ placeholder = "", checkInView = false, drag = false } = {}) {
   return [
+    ...(drag ? [dragHandle()] : []),
+    HtmlInline,
     StarterKit.configure({ codeBlock: false, link: false }),
     CodeBlockFixed,
     LinkBare.configure({

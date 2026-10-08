@@ -75,5 +75,35 @@ assert.equal(T.safeUrl("https://a.example/i.png", { image: true }), "https://a.e
   assert.equal(ed.getMarkdown().trim(), md.trim(), "영상 md 그대로");
 }
 
+// ---- 인라인 HTML: 문장 속 태그를 원문 그대로 저장하고, 화면에는 실행하지 않고 글자로 ----
+{
+  const md = "가격 <span>~3</span> 끝 <kbd>Ctrl</kbd> <!-- 메모 --> <b onclick=\"x()\">굵</b>\n\n`<i>코드</i>` 그리고 <https://a.example> a<b\n";
+  const out = editFirstParagraph(md);
+  assert.ok(out.startsWith("가격 <span>~3</span> 끝 <kbd>Ctrl</kbd> <!-- 메모 --> <b onclick=\"x()\">굵</b>!"), "인라인 HTML 보존 " + JSON.stringify(out));
+  assert.ok(out.includes("`<i>코드</i>`"), "코드 안은 그대로");
+  assert.ok(out.includes("<https://a.example>") || out.includes("https://a.example"), "자동 링크");
+  const { el } = open(md);
+  assert.equal(el.querySelectorAll("span[data-html-inline]").length, 7);
+  assert.equal(el.querySelectorAll("kbd, b[onclick], [onclick]").length, 0, "태그 실행 안 함");
+  assert.ok(el.textContent.includes("<span>"), "글자로 보임");
+}
+
+// ---- 블록 옮기기(Alt+↑/↓의 바탕) ----
+{
+  const { ed } = open("첫째\n\n둘째\n\n- 가\n- 나\n");
+  ed.commands.setTextSelection(3); // "첫째" 안
+  assert.equal(T.moveBlock(ed, 1), true);
+  assert.ok(ed.getMarkdown().startsWith("둘째\n\n첫째"), ed.getMarkdown());
+  assert.equal(T.moveBlock(ed, -1), true);
+  assert.ok(ed.getMarkdown().startsWith("첫째\n\n둘째"));
+  assert.equal(T.moveBlock(ed, -1), false, "맨 위에서는 안 움직인다");
+  const li = ed.getText().indexOf("나");
+  let pos = 0;
+  ed.state.doc.descendants((n, p) => { if (n.isText && n.text === "나") pos = p + 1; });
+  ed.commands.setTextSelection(pos);
+  assert.equal(T.moveBlock(ed, -1), true, li);
+  assert.match(ed.getMarkdown(), /- 나\n- 가/);
+}
+
 console.log("tiptap bundle check OK");
 process.exit(0);

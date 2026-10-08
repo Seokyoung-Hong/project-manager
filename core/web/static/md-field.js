@@ -186,11 +186,17 @@ export function toolbar(T, ed, box, body, { position = "bottom", touch = () => {
     if (e.key === "ArrowUp") { e.preventDefault(); items[(i - 1 + items.length) % items.length].focus(); }
     if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); closeMenu(true); }
   });
-  // ProseMirror보다 먼저 받는다(조상에서 캡처): Ctrl+K 링크, Alt+F10 서식 줄로
+  // ProseMirror보다 먼저 받는다(조상에서 캡처): Ctrl+K 링크, Alt+F10 서식 줄로, Alt+↑/↓ 블록 옮기기(끌어 옮기기의 키보드 대안)
   const onKey = (e) => {
     if (e.isComposing || !ed.isEditable) return;
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") { e.preventDefault(); e.stopPropagation(); act("link"); }
     if (e.altKey && e.key === "F10") { e.preventDefault(); shown[0]?.focus(); }
+    if (e.altKey && !e.ctrlKey && !e.metaKey && (e.key === "ArrowUp" || e.key === "ArrowDown")) {
+      e.preventDefault();
+      e.stopPropagation();
+      touch();
+      T.moveBlock(ed, e.key === "ArrowUp" ? -1 : 1);
+    }
   };
   body.addEventListener("keydown", onKey, true);
   // Ctrl/Cmd+클릭은 링크를 연다(편집 중 그냥 클릭은 커서만 놓는다)
@@ -250,7 +256,7 @@ function field(T, ta) {
   ta.after(box);
   const ed = new T.Editor({
     element: body,
-    extensions: T.extensions({ placeholder: ta.placeholder || "", checkInView: true }),
+    extensions: T.extensions({ placeholder: ta.placeholder || "", checkInView: true, drag: true }),
     content: T.preprocess(ta.value),
     contentType: "markdown",
   });
@@ -264,7 +270,7 @@ function field(T, ta) {
   // 열기만으로는 값을 바꾸지 않는다: 실제 조작(touched)이 있고 불러온 직후(base)와 다를 때만 textarea에 쓴다.
   let touched = false;
   const touch = () => { touched = true; };
-  for (const ev of ["beforeinput", "paste", "drop", "compositionstart"]) dom.addEventListener(ev, touch);
+  for (const ev of ["beforeinput", "paste", "drop", "compositionstart"]) dom.addEventListener(ev, touch, true); // 캡처: 편집기가 처리(→ update)하기 전에 표시
   dom.addEventListener("keydown", (e) => { if (e.ctrlKey || e.metaKey || e.key.length === 1 || /^(Enter|Backspace|Delete|Tab)$/.test(e.key)) touch(); });
   dom.addEventListener("click", (e) => { if (e.target.type === "checkbox") touch(); }, true);
   const orig = ta.value, base = ed.getMarkdown();
