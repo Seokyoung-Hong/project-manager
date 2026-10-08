@@ -107,11 +107,11 @@
   {% if editable %}
   <form method="post" class="stack">{% csrf_token %}
     <input type="hidden" name="action" value="governance_extra">
-    <textarea name="governance_extra" class="textarea" rows="8">{{ governance_extra }}</textarea>
+    <textarea name="governance_extra" class="textarea" rows="8" data-md data-toolbar="top" aria-label="프로젝트 거버넌스 추가 문단" placeholder="이 프로젝트에만 적용할 규칙을 적습니다.">{{ governance_extra }}</textarea>
     <button class="btn primary">거버넌스 저장</button>
   </form>
   {% else %}
-  <p class="t13">{{ governance_extra|default:"없음" }}</p>
+  {% if governance_extra %}<div class="md-view md"><textarea class="md-src textarea" rows="8" readonly aria-label="프로젝트 거버넌스 추가 문단">{{ governance_extra }}</textarea></div>{% else %}<p class="t13">없음</p>{% endif %}
   {% endif %}
 </section>
 {% endblock %}

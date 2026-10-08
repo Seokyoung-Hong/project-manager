@@ -25,7 +25,7 @@
   </p>
   {% if is_admin %}
   <form method="post">{% csrf_token %}
-    <textarea name="text" class="textarea" rows="28" aria-label="거버넌스 본문">{{ text }}</textarea>
+    <textarea name="text" class="textarea" rows="28" data-md data-toolbar="top" aria-label="거버넌스 본문">{{ text }}</textarea>
     {% if error %}<div class="error">{{ error }}</div>{% endif %}
     <div class="row mt-2">
       <button class="btn primary">거버넌스 저장</button>
@@ -35,10 +35,6 @@
     </div>
   </form>
   <p class="muted t13">마크다운으로 씁니다. 2만 자까지. 비워서 저장하면 기본안으로 되돌아갑니다.</p>
-  <details>
-    <summary>미리보기</summary>
-    <div class="md-view md"><textarea class="md-src textarea" rows="4" readonly aria-label="거버넌스 Markdown">{{ text }}</textarea></div>
-  </details>
   {% else %}
   {# 문서·회의록과 같은 렌더러(Tiptap)로 그린다 — 마크다운 원문을 그대로 보이는 화면은 읽기 어렵다 #}
   <div class="md-view md"><textarea class="md-src textarea" rows="16" readonly aria-label="거버넌스 Markdown">{{ text }}</textarea></div>

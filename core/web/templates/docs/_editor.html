@@ -1,41 +1,15 @@
-{# 문서·회의록 본문 편집기(doc-tiptap.js). 넘길 값: save_url, version, body. 같은 .card 안의 [data-note-field]도 함께 저장한다. #}
+{# 문서·회의록 본문 편집기(doc-tiptap.js, 서식 줄은 md-field.js 공용). 넘길 값: save_url, version, body. 같은 .card 안의 [data-note-field]도 함께 저장한다. #}
 <form id="doc-form" method="post" action="{{ save_url }}">{% csrf_token %}
   <input type="hidden" name="field" value="body_md">
   <input type="hidden" name="version" value="{{ version }}">
-  <div class="tt-bar" role="toolbar" aria-label="서식" hidden>
-    <button type="button" class="btn sm" data-cmd="h1">제목1</button>
-    <button type="button" class="btn sm" data-cmd="h2">제목2</button>
-    <button type="button" class="btn sm" data-cmd="h3">제목3</button>
-    <button type="button" class="btn sm" data-cmd="bold"><b>굵게</b></button>
-    <button type="button" class="btn sm" data-cmd="bullet">목록</button>
-    <button type="button" class="btn sm" data-cmd="ordered">번호</button>
-    <button type="button" class="btn sm" data-cmd="task">체크</button>
-    <button type="button" class="btn sm" data-cmd="quote">인용</button>
-    <button type="button" class="btn sm" data-cmd="link">링크</button>
-    <button type="button" class="btn sm" data-cmd="code">코드</button>
-    <button type="button" class="btn sm" data-cmd="table">표</button>
-    <span class="tt-table" hidden>
-      <button type="button" class="btn sm" data-cmd="row+">행 추가</button>
-      <button type="button" class="btn sm" data-cmd="col+">열 추가</button>
-      <button type="button" class="btn sm" data-cmd="row-">행 삭제</button>
-      <button type="button" class="btn sm" data-cmd="col-">열 삭제</button>
-      <button type="button" class="btn sm danger" data-cmd="table-">표 삭제</button>
-    </span>
-    <button type="button" class="btn sm" data-cmd="undo" aria-label="실행 취소">↶</button>
-    <button type="button" class="btn sm" data-cmd="redo" aria-label="다시 실행">↷</button>
-    <button type="button" class="btn sm" data-cmd="done">완료</button>
-  </div>
-  <div class="tt-linkbar t13" hidden>
-    <a class="tt-href" href="#"></a>
-    <button type="button" class="btn sm" data-cmd="link">수정</button>
-    <button type="button" class="btn sm" data-cmd="unlink">해제</button>
-  </div>
   <div class="md-edit-row">
     <button type="button" class="btn sm md-edit-start" aria-controls="doc-body">본문 편집</button>
     <span class="muted t13">본문을 누르면 바로 씁니다. 입력을 멈추면 0.8초 뒤 저장됩니다. Esc로 편집을 마칩니다.</span>
   </div>
-  <div id="doc-body" class="md-editor md" data-url="{{ save_url }}" data-version="{{ version }}">
-    <textarea class="md-src textarea" name="value" rows="16" aria-label="본문 Markdown">{{ body }}</textarea>
+  <div class="mdf" data-toolbar="top">{# 서식 줄은 md-field.js(공용)가 칸 위에 붙인다 #}
+    <div id="doc-body" class="md-editor md" data-url="{{ save_url }}" data-version="{{ version }}">
+      <textarea class="md-src textarea" name="value" rows="16" aria-label="본문 Markdown">{{ body }}</textarea>
+    </div>
   </div>
   <noscript><button class="btn sm primary">저장</button></noscript>
 </form>

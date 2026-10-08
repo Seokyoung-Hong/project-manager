@@ -133,6 +133,7 @@
 {% endif %}
 <dialog id="dialog"></dialog>
 <script src="{% static 'app.js' %}"></script>
+<script type="module" src="{% static 'md-field.js' %}"></script>
 <script type="module" src="{% static 'doc-tiptap.js' %}"></script>
 {% if user.is_authenticated %}{# WebMCP: 브라우저 안의 AI 에이전트에게 태스크 도구를 넘긴다 #}
 <script src="{% static 'webmcp.js' %}"></script>{% endif %}

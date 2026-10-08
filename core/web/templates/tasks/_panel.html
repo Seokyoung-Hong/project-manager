@@ -85,9 +85,9 @@
       {% if task.is_stopped or block_pending or reject_pending %}{% include "tasks/_stop.html" %}{% endif %}
       {% if series %}{% include "tasks/_series.html" %}{% endif %}
       {% include "tasks/_subtasks.html" %}
-      <label class="field">설명
-        <textarea class="textarea" name="value" rows="{{ desc_rows }}" data-autosave hx-post="{% url 'task_text' task.pk 'description' %}" hx-trigger="change" hx-swap="none">{{ task.description }}</textarea>
-      </label>
+      <div class="md-field"><label for="task-desc-{{ task.pk }}">설명</label>
+        <textarea id="task-desc-{{ task.pk }}" class="textarea" name="value" rows="{{ desc_rows }}" data-md data-toolbar="bottom" data-autosave placeholder="무엇을 하는 태스크인지 적습니다." hx-post="{% url 'task_text' task.pk 'description' %}" hx-trigger="change" hx-swap="none">{{ task.description }}</textarea>
+      </div>
       <div class="section due-block task-due-row">
         <div class="label">목표일</div>
         <div class="value{% if due_class == "overdue" %} danger{% endif %}">{{ due_full }}</div>
@@ -108,18 +108,18 @@
       </div>
     </div>
     <div class="stack">
-      <label class="field">완료 조건
-        <textarea class="textarea" name="value" rows="2" data-autosave hx-post="{% url 'task_text' task.pk 'done_when' %}" hx-trigger="change" hx-swap="none">{{ task.done_when }}</textarea>
-      </label>
+      <div class="md-field"><label for="task-done-{{ task.pk }}">완료 조건</label>
+        <textarea id="task-done-{{ task.pk }}" class="textarea" name="value" rows="2" data-md data-toolbar="bottom" data-autosave placeholder="끝났다고 볼 조건을 적습니다." hx-post="{% url 'task_text' task.pk 'done_when' %}" hx-trigger="change" hx-swap="none">{{ task.done_when }}</textarea>
+      </div>
       <label class="field">다음 행동
         <input class="input" name="value" value="{{ task.next_action }}" placeholder="다음에 할 일을 한 문장으로 적으세요." data-autosave hx-post="{% url 'task_text' task.pk 'next_action' %}" hx-trigger="change" hx-swap="none">
       </label>
       <div id="checklist">{% include "tasks/_checklist.html" %}</div>
-      <label class="field">진행 메모
-        <textarea class="textarea notes" name="value" data-autosave{% if focus_notes %} data-focus{% endif %} placeholder="지금까지 한 일, 막힌 점, 다음에 할 일"
+      <div class="md-field"><label for="task-notes-{{ task.pk }}">진행 메모</label>
+        <textarea id="task-notes-{{ task.pk }}" class="textarea notes" name="value" data-md data-toolbar="bottom" data-autosave{% if focus_notes %} data-focus{% endif %} placeholder="지금까지 한 일, 막힌 점, 다음에 할 일"
                   hx-post="{% url 'task_text' task.pk 'notes' %}" hx-trigger="change, keyup changed delay:600ms" hx-swap="none">{{ task.notes }}</textarea>
-        <span class="muted t13">진행 메모는 입력을 멈춘 뒤 0.6초 후 또는 다른 칸으로 이동할 때 자동 저장됩니다. 저장 완료 표시를 확인하세요.</span>
-      </label>
+        <span class="muted t13">설명·완료 조건·진행 메모는 입력을 멈추면 곧 또는 다른 칸으로 이동할 때 자동 저장됩니다. 저장 완료 표시를 확인하세요.</span>
+      </div>
       {% if github_enabled and task.project.dev_tools %}<details class="git-fold"><summary>GitHub · {{ gh_summary }}</summary>{% include "tasks/_git.html" %}</details>{% endif %}
       <div id="refs">{% include "tasks/_refs.html" %}</div>
       <details><summary>변경 이력 {{ history|length }}</summary>{% include "tasks/_history.html" %}</details>

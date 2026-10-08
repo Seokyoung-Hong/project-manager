@@ -18,11 +18,11 @@
       </div>
 
       {% if record.question_summary %}<p class="muted t13 mt-2">질문 요지: {{ record.question_summary }}</p>{% endif %}
-      <p class="pre-wrap">{{ record.summary }}</p>
-      {% if record.reason_summary %}<p class="t13"><strong>이유:</strong> {{ record.reason_summary }}</p>{% endif %}
+      <div class="md-view md small"><textarea class="md-src textarea" rows="2" readonly aria-label="결정 내용">{{ record.summary }}</textarea></div>
+      {% if record.reason_summary %}<div class="t13 mt-2"><strong>이유</strong><div class="md-view md small"><textarea class="md-src textarea" rows="2" readonly aria-label="이유">{{ record.reason_summary }}</textarea></div></div>{% endif %}
       {% if record.rejection_reason %}<p class="t13"><strong>제외 사유:</strong> {{ record.rejection_reason }}</p>{% endif %}
       {% if record.alternatives %}<p class="muted t13"><strong>검토한 대안:</strong> {% for alternative in record.alternatives %}{% if not forloop.first %} · {% endif %}{{ alternative }}{% endfor %}</p>{% endif %}
-      {% if record.impact_summary %}<p class="muted t13"><strong>영향:</strong> {{ record.impact_summary }}</p>{% endif %}
+      {% if record.impact_summary %}<div class="t13 mt-2"><strong>영향</strong><div class="md-view md small"><textarea class="md-src textarea" rows="2" readonly aria-label="영향">{{ record.impact_summary }}</textarea></div></div>{% endif %}
 
       <div class="muted t13 mt-2">
         {% if record.kind == "user_input" %}
@@ -67,11 +67,11 @@
                 <option value="ai_workflow_instruction">AI 협업 방식 지시</option>
               </select>
             </label>
-            <label class="field">정정된 결정 내용 <textarea class="textarea" name="summary" rows="3" maxlength="800" required></textarea></label>
+            <div class="md-field"><label for="dec-{{ record.pk }}-summary">정정된 결정 내용</label><textarea id="dec-{{ record.pk }}-summary" class="textarea" name="summary" rows="3" maxlength="800" required data-md data-toolbar="bottom"></textarea></div>
             <label class="field">질문 요지 <input class="input" name="question_summary" maxlength="300"></label>
-            <label class="field">이유 <textarea class="textarea" name="reason_summary" rows="2" maxlength="500"></textarea></label>
-            <label class="field">검토한 대안 <textarea class="textarea" name="alternatives" rows="2"></textarea></label>
-            <label class="field">영향 <textarea class="textarea" name="impact_summary" rows="2" maxlength="500"></textarea></label>
+            <div class="md-field"><label for="dec-{{ record.pk }}-reason_summary">이유</label><textarea id="dec-{{ record.pk }}-reason_summary" class="textarea" name="reason_summary" rows="2" maxlength="500" data-md data-toolbar="bottom"></textarea></div>
+            <div class="md-field"><label for="dec-{{ record.pk }}-alternatives">검토한 대안</label><textarea id="dec-{{ record.pk }}-alternatives" class="textarea" name="alternatives" rows="2" data-md data-toolbar="bottom"></textarea></div>
+            <div class="md-field"><label for="dec-{{ record.pk }}-impact_summary">영향</label><textarea id="dec-{{ record.pk }}-impact_summary" class="textarea" name="impact_summary" rows="2" maxlength="500" data-md data-toolbar="bottom"></textarea></div>
             <button class="btn sm" type="submit">정정 기록 저장</button>
           </form>
         </details>

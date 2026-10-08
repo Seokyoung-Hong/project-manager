@@ -13,7 +13,7 @@
     받는 쪽 {% if req.team %}{{ req.team.name }} 팀{% else %}{{ req.to_user.display_name }}{% endif %}
   </p>
   {% if req.due_date %}<p class="t13">희망 기한: {{ req.due_date|date:"Y-m-d" }} ({{ req.due_date|due_text }})</p>{% endif %}
-  {% if req.body %}<p>{{ req.body|linebreaksbr }}</p>{% endif %}
+  {% if req.body %}<div class="md-view md small"><textarea class="md-src textarea" rows="4" readonly aria-label="요청 내용">{{ req.body }}</textarea></div>{% endif %}
   {% if req.task %}<p>태스크: <a href="{% url 'task_detail' req.task.pk %}">{{ req.task.number }} {{ req.task.title }}</a></p>{% endif %}
 </section>
 

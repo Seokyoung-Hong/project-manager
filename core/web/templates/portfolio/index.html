@@ -30,7 +30,7 @@
     <input type="hidden" name="version" value="{{ draft.version }}">
     <input type="hidden" name="org" value="{{ draft.org_id }}">
     <label class="field"><span>초안 제목</span><input class="input" type="text" name="title" maxlength="200" value="{% if form_title != None %}{{ form_title }}{% else %}{{ draft.title }}{% endif %}" required></label>
-    <label class="field"><span>Markdown 본문</span><textarea class="input" name="body_md" rows="28" spellcheck="true">{% if form_body != None %}{{ form_body }}{% else %}{{ draft.body_md }}{% endif %}</textarea></label>
+    <div class="md-field"><label for="portfolio-body">본문</label><textarea id="portfolio-body" class="input" name="body_md" rows="28" spellcheck="true" data-md data-toolbar="top" placeholder="이번 학기 한 일을 적습니다.">{% if form_body != None %}{{ form_body }}{% else %}{{ draft.body_md }}{% endif %}</textarea></div>
     <div class="row gap">
       <button class="btn primary" type="submit">초안 저장</button>
       <a class="btn" href="{% url 'portfolio_export' draft.pk %}">Markdown 다운로드</a>

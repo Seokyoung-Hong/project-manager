@@ -1,40 +1,25 @@
-// 문서·회의록 편집기와 Markdown 보기(이슈 본문·거버넌스). 화면에 그릴 것이 있을 때만 Tiptap 번들을 불러온다.
-// 마크업
-//   편집기  .md-editor[data-url][data-version] > textarea.md-src   (docs/_editor.html, 같은 .card 안에 도구 막대)
-//   보기    .md-view > textarea.md-src                              (JS가 없으면 원문이 그대로 보인다)
+// 문서·회의록 본문 편집기. 서식 줄·보기 렌더는 md-field.js(공용)를 쓰고, 여기는 저장 큐와 보기↔편집만 맡는다.
+// 마크업  .mdf > .md-editor[data-url][data-version] > textarea.md-src   (docs/_editor.html)
 // 저장 규약: 입력이 멈추고 800ms 뒤 저장, 요청은 하나씩, 응답의 X-Note-Version을 다음 요청이 이어 쓴다,
 // 409(충돌)면 저장을 멈추고 알린다. 한글 IME 조합 중에는 저장을 미룬다. 열기만으로는 절대 저장하지 않는다.
 // 링크·이미지 주소 검사(safeUrl)와 Markdown 보정은 번들(tools/tiptap-bundle/entry.js) 한곳에 있다.
-let bundle = null;
-const load = () => (bundle ??= import(new URL("vendor/tiptap.bundle.js", import.meta.url).href));
+import { load, toolbar } from "./md-field.js";
 
 function init(root) {
-  const found = [...(root.querySelectorAll?.(".md-view, .md-editor") || [])];
-  if (root.matches?.(".md-view, .md-editor")) found.push(root);
+  const found = [...(root.querySelectorAll?.(".md-editor") || [])];
+  if (root.matches?.(".md-editor")) found.push(root);
   const todo = found.filter((el) => !el.dataset.ready);
   if (!todo.length) return;
   todo.forEach((el) => { el.dataset.ready = "loading"; });
-  load().then((T) => todo.forEach((el) => (el.classList.contains("md-editor") ? editor(T, el) : view(T, el))));
+  load().then((T) => todo.forEach((el) => editor(T, el)));
 }
 init(document);
-// HTMX가 나중에 끼워 넣은 조각(이슈 패널 등)에도 붙인다.
 document.addEventListener("htmx:load", (e) => init(e.target));
-
-function view(T, el) {
-  const src = el.querySelector(".md-src");
-  new T.Editor({ element: el, editable: false, extensions: T.extensions(), content: T.preprocess(src.value), contentType: "markdown" });
-  src.hidden = true;
-  el.dataset.ready = "1";
-}
 
 function editor(T, root) {
   const safeUrl = T.safeUrl;
   const scope = root.closest(".card") || document;
   const src = root.querySelector(".md-src");
-  const bar = scope.querySelector(".tt-bar");
-  const tableBar = bar.querySelector(".tt-table");
-  const linkBar = scope.querySelector(".tt-linkbar");
-  const hrefEl = linkBar.querySelector(".tt-href");
   const editStart = scope.querySelector(".md-edit-start");
   const statusEl = scope.querySelector("#note-status");
   const conflictEl = scope.querySelector("#note-conflict");
@@ -53,7 +38,6 @@ function editor(T, root) {
     content: T.preprocess(src.value),
     contentType: "markdown",
     onUpdate: () => { if (touched) schedule(); },
-    onTransaction: syncBar,
   });
   T.setupMarkdown(ed);
   src.hidden = true;
@@ -226,11 +210,10 @@ function editor(T, root) {
   // ---------- 보기 ↔ 편집 ----------
   function setEditing(on) {
     ed.setEditable(on);
-    bar.hidden = !on;
     root.classList.toggle("editing", on);
     if (editStart) editStart.parentElement.hidden = on;
-    if (!on) { linkBar.hidden = true; stageBody(); }
-    dock();
+    if (!on) stageBody();
+    tb.refresh();
   }
   if (editStart) editStart.addEventListener("click", () => { setEditing(true); ed.commands.focus("end"); });
 
@@ -240,9 +223,10 @@ function editor(T, root) {
       e.preventDefault();
       const href = a.getAttribute("href");
       if (!safeUrl(href)) return;
+      if (ed.isEditable) return; // 편집 중: Ctrl+클릭은 공용 서식 줄(md-field.js)이 열고, 그냥 클릭은 커서만 놓는다
       if (e.ctrlKey || e.metaKey) window.open(href, "_blank", "noopener");
-      else if (!ed.isEditable) go(href);
-      return; // 편집 중 그냥 클릭: 커서만 놓고 아래 링크 막대에서 연다
+      else go(href);
+      return;
     }
     if (!ed.isEditable && !e.target.closest("input")) {
       const at = ed.view.posAtCoords({ left: e.clientX, top: e.clientY });
@@ -267,92 +251,8 @@ function editor(T, root) {
     }
   });
 
-  // ---------- 도구 막대 ----------
-  const cmds = {
-    h1: (c) => c.toggleHeading({ level: 1 }),
-    h2: (c) => c.toggleHeading({ level: 2 }),
-    h3: (c) => c.toggleHeading({ level: 3 }),
-    bold: (c) => c.toggleBold(),
-    bullet: (c) => c.toggleBulletList(),
-    ordered: (c) => c.toggleOrderedList(),
-    task: (c) => c.toggleTaskList(),
-    quote: (c) => c.toggleBlockquote(),
-    code: (c) => c.toggleCodeBlock(),
-    table: (c) => c.insertTable({ rows: 3, cols: 3, withHeaderRow: true }),
-    "row+": (c) => c.addRowAfter(),
-    "col+": (c) => c.addColumnAfter(),
-    "row-": (c) => c.deleteRow(),
-    "col-": (c) => c.deleteColumn(),
-    "table-": (c) => c.deleteTable(),
-    undo: (c) => c.undo(),
-    redo: (c) => c.redo(),
-    unlink: (c) => c.extendMarkRange("link").unsetLink(),
-  };
-  const active = {
-    h1: () => ed.isActive("heading", { level: 1 }),
-    h2: () => ed.isActive("heading", { level: 2 }),
-    h3: () => ed.isActive("heading", { level: 3 }),
-    bold: () => ed.isActive("bold"),
-    bullet: () => ed.isActive("bulletList"),
-    ordered: () => ed.isActive("orderedList"),
-    task: () => ed.isActive("taskList"),
-    quote: () => ed.isActive("blockquote"),
-    code: () => ed.isActive("codeBlock"),
-    link: () => ed.isActive("link"),
-  };
-
-  function editLink() {
-    const prev = ed.getAttributes("link").href || "";
-    const input = window.prompt("링크 주소(https://… 또는 /docs/번호). 비우면 링크를 지웁니다.", prev);
-    if (input === null) return;
-    const href = input.trim();
-    const chain = ed.chain().focus().extendMarkRange("link");
-    if (!href) { chain.unsetLink().run(); return; }
-    if (!safeUrl(href)) { window.alert("https://, mailto: 또는 /로 시작하는 주소만 넣을 수 있습니다."); return; }
-    if (ed.state.selection.empty && !ed.isActive("link")) {
-      chain.insertContent({ type: "text", text: href, marks: [{ type: "link", attrs: { href } }] }).run();
-    } else {
-      chain.setLink({ href }).run();
-    }
-  }
-
-  for (const el of [bar, linkBar]) {
-    el.addEventListener("mousedown", (e) => { if (!e.target.closest("a")) e.preventDefault(); }); // 포커스·모바일 키보드 유지
-    el.addEventListener("click", (e) => {
-      const b = e.target.closest("[data-cmd]");
-      if (!b) return;
-      const cmd = b.dataset.cmd;
-      if (cmd === "done") { setEditing(false); if (editStart) editStart.focus(); return; }
-      touch();
-      if (cmd === "link") editLink();
-      else cmds[cmd](ed.chain().focus()).run();
-    });
-  }
-  hrefEl.addEventListener("click", (e) => {
-    e.preventDefault();
-    const href = hrefEl.getAttribute("href");
-    if (safeUrl(href)) go(href);
-  });
-
-  function syncBar() {
-    if (!ed.isEditable) return;
-    for (const b of bar.querySelectorAll("[data-cmd]")) {
-      const f = active[b.dataset.cmd];
-      if (f) b.setAttribute("aria-pressed", String(f()));
-    }
-    tableBar.hidden = !ed.isActive("table");
-    const href = ed.isActive("link") ? ed.getAttributes("link").href : "";
-    linkBar.hidden = !href;
-    if (href) { hrefEl.textContent = href; hrefEl.setAttribute("href", href); }
-  }
-
-  // 모바일: 도구 막대를 화면 키보드 바로 위에 붙인다(visualViewport가 키보드만큼 줄어든다).
-  const vv = window.visualViewport;
-  function dock() {
-    const kb = vv ? Math.max(0, window.innerHeight - vv.height - vv.offsetTop) : 0;
-    bar.style.setProperty("--tt-kb", kb + "px");
-  }
-  if (vv) { vv.addEventListener("resize", dock); vv.addEventListener("scroll", dock); }
+  // ---------- 서식 줄(공용) ----------
+  const tb = toolbar(T, ed, root.parentElement, root, { position: "top", touch, openLink: (href) => { if (safeUrl(href)) go(href); } });
 
   root.dataset.ready = "1";
   window.udallyEditor = ed; // 콘솔·브라우저 시험용

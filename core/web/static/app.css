@@ -929,17 +929,50 @@ details > summary { cursor: pointer; font-weight: 600; }
 /* 편집기 */
 .md-edit-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2) var(--sp-3); margin-top: var(--sp-3); }
 .md-edit-row[hidden] { display: none; }
-.md-editor { margin-top: var(--sp-3); padding-top: var(--sp-5); border-top: 1px solid var(--c-line); min-height: 200px; cursor: text; }
+.md-editor { min-height: 200px; cursor: text; }
 .md-editor.editing { cursor: auto; }
 .md-editor.editing .ProseMirror { min-height: 320px; }
 .md-editor.editing a { cursor: text; }
-/* 도구 막대: 데스크톱은 머리 아래에 붙고, 모바일은 화면 키보드 바로 위에 붙는다 */
-.tt-bar { position: sticky; top: var(--header-h); z-index: var(--z-sticky); display: flex; flex-wrap: wrap; gap: var(--sp-1); margin-top: var(--sp-3); padding: var(--sp-2) 0; background: var(--c-surface); border-bottom: 1px solid var(--c-line); }
-.tt-bar[hidden], .tt-table[hidden], .tt-linkbar[hidden] { display: none; }
-.tt-table { display: contents; }
-.tt-bar .btn[aria-pressed="true"] { background: var(--c-ink); color: var(--c-surface); border-color: var(--c-ink); }
-.tt-linkbar { display: flex; align-items: center; gap: var(--sp-2); padding: var(--sp-2) 0; min-width: 0; }
-.tt-linkbar .tt-href { color: var(--c-accent); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.md.small .ProseMirror { font-size: var(--fs-md); line-height: 1.6; }
+
+/* 마크다운 긴 글 칸(md-field.js). 고정 제목·라벨은 칸 밖, 편집 영역은 늘 테두리 있는 칸.
+   서식 줄은 초점이 있을 때만 보이고, 위치(위/아래)만 칸마다 다르다. 모든 버튼은 아이콘만(이름은 title·aria-label). */
+.md-field { display: flex; flex-direction: column; gap: 6px; min-width: 0; font-size: var(--fs-sm); color: var(--c-muted); font-weight: 600; }
+.md-field > textarea, .md-field > .mdf { color: var(--c-ink); font-weight: 400; }
+.mdf { position: relative; min-width: 0; border: 1px solid var(--c-line); border-radius: var(--r-md); background: var(--c-surface); cursor: text;
+  transition: border-color var(--dur-fast) var(--ease), box-shadow var(--dur-fast) var(--ease); }
+.md-edit-row + .mdf { margin-top: var(--sp-3); }
+.mdf:hover { border-color: var(--c-faint); }
+.mdf.on { border-color: var(--c-accent); box-shadow: 0 0 0 3px var(--c-accent-soft); }
+.mdf.bad { border-color: var(--c-danger); }
+.mdf-body, .mdf > .md-editor { padding: 10px 14px; }
+.mdf-body.md .ProseMirror { font-size: var(--fs-md); line-height: 1.6; min-height: calc(1.6em * var(--rows, 3)); }
+.mdf-body.md .ProseMirror > * + * { margin-top: var(--sp-2); }
+/* 칸 안 제목은 칸 밖 고정 제목(Jua)보다 항상 작다 */
+.mdf-body.md h1, .mdf-body.md h2 { font-family: var(--f-body); font-weight: 700; font-size: var(--fs-lg); line-height: 1.5; margin-top: var(--sp-4); padding: 0; border: 0; }
+.mdf-body.md h3 { font-size: var(--fs-task); margin-top: var(--sp-3); }
+.mdf-cue { padding: 6px 14px; border-bottom: 1px dashed var(--c-line); font-size: var(--fs-xs); font-weight: 400; color: var(--c-muted); }
+.mdf.on .mdf-cue { display: none; }
+.mdf-bar { display: flex; align-items: center; gap: 2px; padding: 4px 6px; overflow: hidden; background: var(--c-surface); border-radius: 0 0 var(--r-md) var(--r-md); }
+.mdf[data-toolbar="bottom"] .mdf-bar { border-top: 1px solid var(--c-line); }
+.mdf[data-toolbar="top"] .mdf-bar { position: sticky; top: var(--header-h); z-index: var(--z-sticky); border-bottom: 1px solid var(--c-line); border-radius: var(--r-md) var(--r-md) 0 0; }
+.mdf:not(.on) .mdf-bar { display: none; }
+.mdf .mdf-bar .btn, .mdf .mdf-link .btn { flex: none; width: 32px; height: 32px; min-height: 0; min-width: 0; padding: 0; border-color: transparent; background: none; color: var(--c-muted); }
+.mdf .mdf-bar .btn:hover, .mdf .mdf-link .btn:hover { background: var(--c-soft); color: var(--c-ink); }
+.mdf .mdf-bar .btn[aria-pressed="true"] { background: var(--c-ink); color: var(--c-surface); }
+.mdf .mdf-bar .btn[hidden] { display: none; }
+.mdf .mdf-bar .more { margin-left: auto; }
+.mdf svg { width: 18px; height: 18px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.mdf-link { display: flex; align-items: center; gap: var(--sp-1); padding: 2px 6px 2px 14px; min-width: 0; font-weight: 400; border-top: 1px dashed var(--c-line); }
+.mdf-link[hidden] { display: none; }
+.mdf-link .mdf-href { flex: 1; min-width: 0; color: var(--c-accent); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mdf-menu { position: fixed; z-index: var(--z-dropdown); min-width: 200px; padding: var(--sp-1); display: flex; flex-direction: column;
+  background: var(--c-surface); border: 1px solid var(--c-line); border-radius: var(--r-md); box-shadow: var(--sh-pop); cursor: auto; }
+.mdf-menu[hidden] { display: none; }
+.mdf-menu button { all: unset; box-sizing: border-box; display: flex; align-items: center; gap: var(--sp-3); padding: 8px 12px; border-radius: var(--r-sm);
+  font-size: var(--fs-sm); color: var(--c-ink); cursor: pointer; }
+.mdf-menu button:hover, .mdf-menu button:focus-visible { background: var(--c-soft); outline: none; }
+.mdf-menu kbd { color: var(--c-muted); font-family: var(--f-mono); font-size: var(--fs-xs); }
 .issue-markdown { margin-top: var(--sp-2); }
 .issue-body { white-space: pre-wrap; overflow-wrap: anywhere; }
 
@@ -1330,17 +1363,20 @@ details.card.settings-section { padding: 0; gap: 0; }
   .settings-section { scroll-margin-top: 180px; }
   .md h1 { font-size: var(--fs-2xl); margin-top: var(--sp-6); }
   .md h2 { font-size: var(--fs-xl); }
-  .md-editor .ProseMirror { font-size: var(--fs-lg); } /* iOS 입력 확대 방지 */
+  .md-editor .ProseMirror, .mdf-body.md .ProseMirror { font-size: var(--fs-lg); } /* iOS 입력 확대 방지 */
   /* 본문이 먼저 보이게: 터치 화면은 본문을 눌러 편집하므로 편집 버튼 줄과 작성자 줄을 숨긴다 */
   .md-edit-row, .doc-meta { display: none; }
-  .md-editor { margin-top: var(--sp-2); padding-top: var(--sp-3); }
-  .tt-bar {
-    position: fixed; left: 0; right: 0; top: auto; bottom: var(--tt-kb, 0px); margin: 0;
-    flex-wrap: nowrap; overflow-x: auto; padding: var(--sp-2) var(--sp-3);
-    border-top: 1px solid var(--c-line); border-bottom: 0; box-shadow: var(--sh-pop);
+  .md-edit-row + .mdf { margin-top: var(--sp-2); }
+  /* 서식 줄: 위치와 무관하게 화면 키보드 바로 위 한 줄. 보이는 높이 40px, 누르는 영역은 위아래 2px씩 넓혀 44px, 가로 스크롤 없음 */
+  .mdf.on .mdf-bar, .mdf[data-toolbar].on .mdf-bar {
+    position: fixed; left: 0; right: 0; top: auto; bottom: var(--md-kb, 0px); z-index: var(--z-overlay); height: 40px; padding: 0 var(--sp-2); gap: 0;
+    border: 0; border-top: 1px solid var(--c-line); border-radius: 0; box-shadow: var(--sh-2);
   }
-  .tt-bar .btn { flex: none; min-height: 44px; }
-  .md-editor.editing { padding-bottom: 72px; } /* 고정 막대에 마지막 줄이 가리지 않게 */
+  .mdf .mdf-bar .btn { position: relative; height: 40px; min-width: 44px; width: 44px; }
+  .mdf .mdf-bar .btn::after { content: ""; position: absolute; inset: -2px 0; }
+  .mdf .mdf-link .btn { width: 44px; height: 44px; }
+  .mdf-menu button { min-height: 44px; }
+  .mdf.on { margin-bottom: 48px; } /* 고정 줄에 마지막 줄이 가리지 않게 */
   dialog { padding: var(--sp-5); }
   dialog form.stack > .row:last-child { margin: 0 -20px -20px; padding: var(--sp-3) var(--sp-5); bottom: -20px; }
   .toast { bottom: 18px; max-width: calc(100% - 32px); }

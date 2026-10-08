@@ -157,6 +157,7 @@ animation·transition을 끈다(파일 맨 끝 규칙).
 |---|---|---|---|
 | 버튼 | `.btn` + `.primary` `.tint` `.sm` `.icon` `.link` `.danger`, `[aria-pressed]` | 화면당 주 버튼(`.primary`) 하나. 되돌릴 수 없는 행동은 `.danger`. 누르면 1px 내려간다 | 주 버튼 둘, 링크를 버튼처럼 칠하기, 아이콘만 있는 버튼에 `aria-label` 빠뜨리기 |
 | 입력 | `label.field` > `.input`/`.select`/`.textarea`, `.helptext`, `label.check` | 라벨은 위, 도움말·오류는 아래. 클래스 없는 Django 위젯도 `:where()` 기본 규칙으로 같은 모양 | placeholder로 라벨 대신하기, 입력을 알약 모양으로 |
+| 마크다운 긴 글 | `.md-field` > `label` + `textarea[data-md][data-toolbar="top\|bottom"]` → `md-field.js`가 `.mdf` 칸(Tiptap)을 붙인다. 읽기 전용은 `.md-view` | 모든 칸이 같은 기능·같은 우선순위. 서식 줄은 초점이 있을 때만, 아이콘만(이름은 `title`·`aria-label`, [더보기] 메뉴만 아이콘+글씨). 큰 칸은 위(sticky), 작은 칸은 아래, 모바일은 화면 키보드 위 40px 한 줄. 고정 제목·라벨은 칸 밖, 칸 안 제목은 그보다 작게 | 칸마다 기능 빼기, 글자 버튼, 테두리 없는 편집 영역, 열기만으로 저장 |
 | 카드 | `.card`, `.card-head`, `.card > h2`, `.box`, `.card.compact`, `.card.alert` | 묶음에 의미가 있을 때만. 제목은 Jua 24px | 카드 안 카드, 한 줄짜리 묶음마다 카드 쌓기(→ `.group-stack` 구분선) |
 | 배지 | `.badge` + `.high` `.primary` `.ok` `.warn` `.danger` `.info`, `.tag`, GitHub용 `.pr-open` `.pr-merged` `.pr-closed` `.pr-draft` | 6px 모서리의 납작한 표식. 상태·수량·종류 | 알약 배지 남발, 배지에 클릭 동작 |
 | 칩 | `.chips .chip`(체크박스·버튼·링크) | 필터·토글. 눌림은 잉크 색 채움 + ✓ | 칩으로 주 행동 |
