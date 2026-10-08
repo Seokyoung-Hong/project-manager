@@ -27,7 +27,7 @@ function editor(T, root) {
   const csrf = scope.querySelector("[name=csrfmiddlewaretoken]").value;
 
   let version = Number(root.dataset.version);
-  let dead = false, timer = null, bodyDirty = false, worker = null, seq = 0, navigating = false;
+  let destroyed = false, dead = false, timer = null, bodyDirty = false, worker = null, seq = 0, navigating = false;
   const pending = Object.create(null);
   const saved = Object.fromEntries(fields.map((f) => [f.dataset.noteField, f.value]));
 
@@ -153,6 +153,7 @@ function editor(T, root) {
 
   // 남은 입력을 모두 보낸다. 보내는 사이 새 입력이 생기면 다시 돈다.
   async function flushAll() {
+    if (destroyed) return !hasUnsaved();
     for (const f of fields) if (f.value !== saved[f.dataset.noteField]) stage(f.dataset.noteField, f.value);
     const ok = await (bodyDirty ? stageBody() : runQueue());
     if (!ok || dead) return false;
@@ -172,18 +173,46 @@ function editor(T, root) {
       });
     }
   }
-  document.addEventListener("visibilitychange", () => { if (document.hidden && hasUnsaved()) flushAll(); });
-  window.addEventListener("beforeunload", (e) => {
+  const onHidden = () => { if (document.hidden && hasUnsaved()) flushAll(); };
+  const onUnload = (e) => {
     if (navigating || !hasUnsaved()) return;
     e.preventDefault();
     e.returnValue = "";
-  });
+  };
+  document.addEventListener("visibilitychange", onHidden);
+  window.addEventListener("beforeunload", onUnload);
+
+  // 남은 저장을 모두 마쳤을 때만 true. 실패·409·한글 조합 중이면 false — 부르는 쪽은 화면에 머문다.
+  async function settle() {
+    const ok = await flushAll();
+    if (ok && !hasUnsaved()) return true;
+    if (ok && ed.view.composing) flash("입력을 마친 뒤 다시 눌러 주세요. 아직 저장하지 않았습니다.", "pending");
+    return false;
+  }
 
   async function go(href) {
-    await flushAll();
-    navigating = !hasUnsaved();
+    if (!(await settle())) return false;
+    navigating = true;
     location.assign(href);
+    return true;
   }
+
+  // 회의록 확정처럼 같은 화면의 다른 폼([data-flush-first])은 본문·메타를 모두 저장한 뒤에만 보낸다.
+  scope.addEventListener("submit", async (e) => {
+    const form = e.target;
+    if (!form.matches?.("[data-flush-first]") || e.defaultPrevented) return; // 확인 창에서 취소하면 그대로 멈춘다
+    if (!hasUnsaved()) return;
+    e.preventDefault();
+    const btn = form.querySelector("button");
+    if (btn) btn.disabled = true;
+    try {
+      if (!(await settle())) return;
+      navigating = true;
+      form.submit();
+    } finally {
+      if (btn) btn.disabled = false;
+    }
+  });
 
   // 모바일 ‘목록으로’: 저장을 마치고 나서 떠난다.
   const back = scope.querySelector(".note-back");
@@ -201,7 +230,7 @@ function editor(T, root) {
     if (!b || !scope.contains(b)) return;
     e.preventDefault();
     const m = b.dataset.insertMd.match(/^!\[([^\]]*)\]\(([^)\s]+)\)$/);
-    if (!m || !safeUrl(m[2])) return;
+    if (!m || !safeUrl(m[2], { image: true })) return;
     touch();
     ed.chain().insertContentAt(ed.state.doc.content.size, { type: "image", attrs: { alt: m[1], src: m[2] } }).run();
     flash("본문 끝에 이미지를 넣었습니다.", "pending");
@@ -223,6 +252,10 @@ function editor(T, root) {
       e.preventDefault();
       const href = a.getAttribute("href");
       if (!safeUrl(href)) return;
+      if (a.classList.contains("md-video")) { // 예전 영상 문법: 보기 상태에서는 새 탭으로
+        if (!ed.isEditable || e.ctrlKey || e.metaKey) window.open(href, "_blank", "noopener");
+        return;
+      }
       if (ed.isEditable) return; // 편집 중: Ctrl+클릭은 공용 서식 줄(md-field.js)이 열고, 그냥 클릭은 커서만 놓는다
       if (e.ctrlKey || e.metaKey) window.open(href, "_blank", "noopener");
       else go(href);
@@ -234,7 +267,15 @@ function editor(T, root) {
       ed.chain().focus(at ? at.pos : "end").run();
     }
   });
+  // 좁은 화면은 [본문 편집] 줄을 숨기므로 보기 상태의 본문도 탭으로 닿고 Enter·Space로 편집을 시작한다.
+  dom.tabIndex = 0;
   dom.addEventListener("keydown", (e) => {
+    if (!ed.isEditable && (e.key === "Enter" || e.key === " ") && e.target === dom) {
+      e.preventDefault();
+      setEditing(true);
+      ed.commands.focus("end");
+      return;
+    }
     if (e.key !== "Escape") return;
     setEditing(false);
     if (editStart) editStart.focus();
@@ -254,6 +295,17 @@ function editor(T, root) {
   // ---------- 서식 줄(공용) ----------
   const tb = toolbar(T, ed, root.parentElement, root, { position: "top", touch, openLink: (href) => { if (safeUrl(href)) go(href); } });
 
+  // HTMX가 이 조각을 지울 때(md-field.js의 htmx:beforeCleanupElement): 남은 입력을 보내고 리스너·타이머·편집기를 정리한다.
+  root._mdDestroy = () => {
+    if (hasUnsaved()) flushAll();
+    destroyed = true;
+    clearTimeout(timer);
+    for (const k in fieldTimers) clearTimeout(fieldTimers[k]);
+    document.removeEventListener("visibilitychange", onHidden);
+    window.removeEventListener("beforeunload", onUnload);
+    tb.destroy();
+    ed.destroy();
+  };
   root.dataset.ready = "1";
   window.udallyEditor = ed; // 콘솔·브라우저 시험용
 }

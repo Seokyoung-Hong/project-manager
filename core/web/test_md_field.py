@@ -1,6 +1,8 @@
 """마크다운 긴 글 칸은 모두 공용 편집기(md-field.js, textarea[data-md])를 쓴다. 서식 줄 위치만 칸마다 다르다."""
 
 import re
+import shutil
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -87,3 +89,28 @@ def test_stop_reason_box_uses_md_field(logged, task):
         r'<textarea id="stop-reason-\d+" class="textarea" name="reason"[^>]*data-md', body
     )
     assert f'<label class="label" for="stop-reason-{task.pk}">' in body
+
+
+BUNDLE_DIR = WEB_DIR.parents[1] / "tools" / "tiptap-bundle"
+
+
+@pytest.mark.skipif(
+    not shutil.which("node") or not (BUNDLE_DIR / "node_modules" / "happy-dom").exists(),
+    reason="node와 tools/tiptap-bundle의 npm install(happy-dom)이 있을 때만",
+)
+def test_bundle_roundtrip_keeps_code_and_html_and_checks_urls():
+    """코드·HTML 원문 보존(물결표), 주소 검사 우회 차단, 예전 영상 문법은 링크(check.mjs)."""
+    r = subprocess.run(
+        ["node", str(BUNDLE_DIR / "check.mjs")], capture_output=True, text=True, timeout=120
+    )
+    assert r.returncode == 0, r.stdout + r.stderr
+
+
+def test_doc_editor_stays_on_failed_save_and_flushes_before_finalize():
+    script = (WEB_DIR / "static" / "doc-tiptap.js").read_text(encoding="utf-8")
+    assert (
+        "if (!(await settle())) return false;" in script
+    )  # 저장 실패·409·조합 중이면 이동하지 않는다
+    assert "root._mdDestroy = () => {" in script
+    notes = (TPL / "notes" / "list.html").read_text(encoding="utf-8")
+    assert "data-flush-first action=\"{% url 'note_finalize' note.pk %}\"" in notes

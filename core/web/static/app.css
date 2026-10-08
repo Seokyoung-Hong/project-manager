@@ -933,6 +933,12 @@ details > summary { cursor: pointer; font-weight: 600; }
 .md-editor.editing { cursor: auto; }
 .md-editor.editing .ProseMirror { min-height: 320px; }
 .md-editor.editing a { cursor: text; }
+/* 예전 영상 문법 ![제목](영상 주소): 재생기 대신 새 탭 링크. 열 수 없는 그림 주소는 이름만 */
+.md a.md-video { display: inline-flex; align-items: center; gap: var(--sp-2); padding: 6px 12px; border: 1px solid var(--c-line); border-radius: var(--r-md); background: var(--c-soft); text-decoration: none; }
+.md a.md-video::before { content: ""; width: 18px; height: 18px; flex: none; background: currentColor;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect x='2' y='5' width='20' height='14' rx='3' fill='none' stroke='black' stroke-width='1.8'/%3E%3Cpath d='M10 9l5 3-5 3z'/%3E%3C/svg%3E") center / contain no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect x='2' y='5' width='20' height='14' rx='3' fill='none' stroke='black' stroke-width='1.8'/%3E%3Cpath d='M10 9l5 3-5 3z'/%3E%3C/svg%3E") center / contain no-repeat; }
+.md .md-img-blocked { display: inline-block; padding: 2px 8px; border: 1px dashed var(--c-line); border-radius: var(--r-sm); color: var(--c-muted); font-size: var(--fs-sm); }
 .md.small .ProseMirror { font-size: var(--fs-md); line-height: 1.6; }
 
 /* 마크다운 긴 글 칸(md-field.js). 고정 제목·라벨은 칸 밖, 편집 영역은 늘 테두리 있는 칸.

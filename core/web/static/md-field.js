@@ -66,7 +66,7 @@ function editLink(T, ed) {
 function addImage(T, ed) {
   const v = window.prompt("그림 주소(https://… 또는 /로 시작)");
   if (!v) return;
-  if (!T.safeUrl(v)) return window.alert("https:// 또는 /로 시작하는 주소만 넣을 수 있습니다.");
+  if (!T.safeUrl(v, { image: true })) return window.alert("https:// 또는 /로 시작하는 주소만 넣을 수 있습니다.");
   ed.chain().focus().setImage({ src: v.trim(), alt: "" }).run();
 }
 // 초점을 즉시 옮긴다(chain().focus는 한 프레임 늦어 첫 글자를 놓칠 수 있다)

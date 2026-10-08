@@ -8,17 +8,19 @@
   },
   "dependencies": {
     "@tiptap/core": "3.31.4",
+    "@tiptap/extension-code-block": "3.31.4",
+    "@tiptap/extension-image": "3.31.4",
+    "@tiptap/extension-link": "3.31.4",
+    "@tiptap/extension-list": "3.31.4",
+    "@tiptap/extension-table": "3.31.4",
+    "@tiptap/extensions": "3.31.4",
+    "@tiptap/markdown": "3.31.4",
     "@tiptap/pm": "3.31.4",
     "@tiptap/starter-kit": "3.31.4",
-    "@tiptap/markdown": "3.31.4",
-    "@tiptap/extension-code-block": "3.31.4",
-    "@tiptap/extension-link": "3.31.4",
-    "@tiptap/extension-table": "3.31.4",
-    "@tiptap/extension-list": "3.31.4",
-    "@tiptap/extension-image": "3.31.4",
-    "@tiptap/extensions": "3.31.4"
+    "marked": "17.0.6"
   },
   "devDependencies": {
-    "esbuild": "0.25.10"
+    "esbuild": "0.25.10",
+    "happy-dom": "20.14.5"
   }
 }

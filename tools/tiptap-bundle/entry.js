@@ -10,16 +10,48 @@ import { TableKit } from "@tiptap/extension-table";
 import { TaskList, TaskItem } from "@tiptap/extension-list";
 import Image from "@tiptap/extension-image";
 import { Placeholder } from "@tiptap/extensions";
+import { Marked } from "marked";
 
 export { Editor };
 
-// notes.js의 safeUrl과 같은 규칙: http(s)·mailto·같은 사이트 경로만. //evil.com은 걸러진다.
-export function safeUrl(u) {
+// 주소 검사. 브라우저가 해석하는 대로(new URL) 보고 판단한다 — 정규식만 보면 /\evil.example 같은 주소가
+// "같은 사이트 경로"로 통과하지만 브라우저는 http://evil.example로 연다.
+// 링크: http(s)·mailto·같은 사이트 경로. 그림(image: true): http(s)·같은 사이트 경로만.
+// 역슬래시·제어문자·공백이 든 주소는 해석이 브라우저마다 달라 받지 않는다. 통과하면 원래 문자열(앞뒤 공백만 뺀)을 돌려준다.
+const HERE = globalThis.location?.origin && globalThis.location.origin !== "null" ? globalThis.location.origin : "https://udally.invalid";
+export function safeUrl(u, { image = false } = {}) {
   u = (u || "").trim();
-  if (/^(https?:\/\/|mailto:)/i.test(u)) return u;
-  if (/^\/[^/]/.test(u)) return u;
+  if (!u || /[\\\s\u0000-\u001f\u007f]/.test(u)) return null;
+  let url;
+  try { url = new URL(u, HERE); } catch { return null; }
+  if (u.startsWith("/")) return !u.startsWith("//") && url.origin === HERE ? u : null;
+  if (!/^[a-z][a-z0-9+.-]*:/i.test(u)) return null; // 상대 주소(docs/3, ./a)는 받지 않는다
+  if (url.protocol === "http:" || url.protocol === "https:") return /^https?:\/\/[^/]/i.test(u) ? u : null;
+  if (!image && url.protocol === "mailto:") return u;
   return null;
 }
+
+// 예전 문서의 영상 문법 ![제목](YouTube·Vimeo·영상 파일). iframe은 되살리지 않고 새 탭으로 여는 링크로 보인다(md는 그대로).
+const VIDEO = /(?:youtube\.com\/(?:watch\?|shorts\/|embed\/)|youtu\.be\/|vimeo\.com\/|\.(?:mp4|webm|ogv|ogg|mov|m4v)(?:[?#]|$))/i;
+const SafeImage = Image.extend({
+  parseHTML() {
+    return [{ tag: "img[src]", getAttrs: (el) => (safeUrl(el.getAttribute("src"), { image: true }) ? null : false) }]; // 붙여넣기: 위험한 그림은 버린다
+  },
+  renderHTML({ node, HTMLAttributes }) {
+    const src = node.attrs.src || "", alt = node.attrs.alt || "";
+    if (VIDEO.test(src) && safeUrl(src, { image: true })) {
+      return ["a", { href: src, class: "md-video", target: "_blank", rel: "noopener noreferrer nofollow", title: src }, alt || "영상 보기"];
+    }
+    // 불러온 md의 위험한 그림 주소는 불러오지 않고 글자로만 보인다(저장 md는 그대로)
+    if (!safeUrl(src, { image: true })) return ["span", { class: "md-img-blocked", title: "열 수 없는 그림 주소" }, alt || "그림"];
+    return ["img", HTMLAttributes];
+  },
+});
+
+// (5) 홑물결 ~는 marked(GFM)가 취소선으로 읽는다(예전 보기 화면은 ~~만 취소선). 원문을 고치지 않고 토큰 규칙에서 막는다 —
+// 그러면 코드(펜스·들여쓰기)와 HTML 원문은 손대지 않는다. ~~는 원래 규칙(false → 기본 처리)으로 넘긴다.
+const marked = new Marked({ gfm: true });
+marked.use({ tokenizer: { del: (src) => (/^~(?!~)/.test(src) ? undefined : false) } });
 
 // (1) 목록 안 들여쓴 ``` 코드 블록이 사라지는 문제: 원본은 raw.startsWith('```')만 본다.
 const CodeBlockFixed = CodeBlock.extend({
@@ -68,7 +100,7 @@ export function extensions({ placeholder = "", checkInView = false } = {}) {
       isAllowedUri: (u) => Boolean(safeUrl(u)),
     }),
     HtmlBlock,
-    Markdown,
+    Markdown.configure({ marked }),
     TableKit.configure({ table: { resizable: false } }),
     TaskList,
     TaskItem.configure({
@@ -76,7 +108,7 @@ export function extensions({ placeholder = "", checkInView = false } = {}) {
       onReadOnlyChecked: checkInView ? () => true : undefined,
       a11y: { checkboxLabel: (node, checked) => (checked ? "완료: " : "할 일: ") + (node.firstChild?.textContent || "빈 항목") },
     }),
-    Image,
+    SafeImage,
     Placeholder.configure({ placeholder }),
   ];
 }
@@ -102,10 +134,5 @@ export function setupMarkdown(editor) {
   };
 }
 
-// (5) 불러올 때: 홑물결 ~는 marked가 취소선으로 읽는다(notes.js는 ~~만 취소선). 코드 밖에서만 \~로 막는다.
-export const preprocess = (md) =>
-  md
-    .replace(/\r\n/g, "\n")
-    .split(/(```[\s\S]*?```|`[^`\n]*`)/)
-    .map((p, i) => (i % 2 ? p : p.replace(/(?<![~\\])~(?!~)/g, "\\~")))
-    .join("");
+// 불러올 때: 줄바꿈만 맞춘다. 물결표 보정은 위 marked 규칙(5)이 한다.
+export const preprocess = (md) => md.replace(/\r\n/g, "\n");

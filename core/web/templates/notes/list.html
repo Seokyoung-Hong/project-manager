@@ -99,7 +99,7 @@
     {% if note.status == "draft" %}
     <div class="notice">초안 — 진행자와 조직 관리자만 봅니다.{% if recording and recording.status != "draft" and recording.status != "done" %} 녹음·전사가 끝나면 확정할 수 있습니다.{% endif %}</div>
     {% if can_finalize %}
-    <form class="row" method="post" action="{% url 'note_finalize' note.pk %}" onsubmit="return confirm('확정하면 고른 공개 범위의 사람이 이 회의록을 봅니다. 확정할까요?')">{% csrf_token %}
+    <form class="row" method="post" data-flush-first action="{% url 'note_finalize' note.pk %}" onsubmit="return confirm('확정하면 고른 공개 범위의 사람이 이 회의록을 봅니다. 확정할까요?')">{% csrf_token %}
       <label class="field">
         <span class="label">확정 뒤 공개 범위</span>
         <select class="select" name="scope">
