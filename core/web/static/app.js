@@ -446,4 +446,26 @@
       try { onChange(String(JSON.parse(ev.data).id)); } catch (err) { /* 형식이 아니면 무시 */ }
     };
   })();
+
+  // 문서 트리: 서버는 현재 문서까지 가는 가지만 펴서 보낸다. 사용자가 펴고 접은 가지는 브라우저가 기억한다.
+  (function () {
+    var tree = document.querySelector(".doc-tree");
+    if (!tree) return;
+    var KEY = "udally.docTreeOpen";
+    var open = {};
+    try { open = JSON.parse(localStorage.getItem(KEY) || "{}") || {}; } catch (err) { open = {}; }
+    tree.querySelectorAll("details[data-doc]").forEach(function (d) {
+      if (open[d.dataset.doc] === true) d.open = true;
+    });
+    // 사용자가 직접 펴고 접은 것만 기억한다(서버가 펴 준 조상 가지까지 쌓이지 않게).
+    tree.addEventListener("click", function (e) {
+      var s = e.target.closest("summary");
+      if (!s || e.target.closest("a")) return;
+      var d = s.parentElement;
+      setTimeout(function () {
+        if (d.open) open[d.dataset.doc] = true; else delete open[d.dataset.doc];
+        try { localStorage.setItem(KEY, JSON.stringify(open)); } catch (err) { /* 저장소를 못 쓰면 이번 화면에서만 */ }
+      }, 0);
+    });
+  })();
 })();

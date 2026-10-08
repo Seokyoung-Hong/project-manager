@@ -56,7 +56,8 @@ const HtmlBlock = Node.create({
   renderMarkdown: (node) => node.attrs.raw,
 });
 
-export function extensions({ placeholder = "" } = {}) {
+// checkInView: 보기 상태에서도 체크 상자를 바꿀 수 있게 한다(문서 반영은 doc-tiptap.js). 끄면 읽기 전용 그대로.
+export function extensions({ placeholder = "", checkInView = false } = {}) {
   return [
     StarterKit.configure({ codeBlock: false, link: false }),
     CodeBlockFixed,
@@ -72,7 +73,7 @@ export function extensions({ placeholder = "" } = {}) {
     TaskList,
     TaskItem.configure({
       nested: true,
-      onReadOnlyChecked: () => true, // 보기 상태 체크 허용(문서 반영은 doc-tiptap.js의 change 처리기)
+      onReadOnlyChecked: checkInView ? () => true : undefined,
       a11y: { checkboxLabel: (node, checked) => (checked ? "완료: " : "할 일: ") + (node.firstChild?.textContent || "빈 항목") },
     }),
     Image,

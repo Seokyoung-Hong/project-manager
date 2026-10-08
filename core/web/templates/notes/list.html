@@ -58,6 +58,9 @@
       <span id="note-status" class="note-save-status" data-state="saved" aria-live="polite">저장됨 · v{{ note.version }} · {{ note.updated_at|date:"n/j H:i" }}</span>
     </div>
     <input class="title-input" data-note-field="title" value="{{ note.title }}" aria-label="제목">
+    <details class="note-meta-box">
+      <summary class="t13"><span class="label">회의 정보</span>
+        <span class="muted">{% if note.project %}{{ note.project.name }}{% else %}조직 공통{% endif %} · {{ note.created_on|date:"n/j H:i" }} · {{ note.created_by.display_name }}{% if note.tags %} · {{ note.tags|join:", " }}{% endif %}</span></summary>
     <div class="note-meta">
       <label class="note-meta-field">
         <span class="label">프로젝트</span>
@@ -91,6 +94,7 @@
         <input class="input auto" data-note-field="tags" value="{{ note.tags|join:', ' }}" placeholder="예: 스프린트, 결정사항" aria-label="태그">
       </label>
     </div>
+    </details>
     <div id="note-conflict" class="notice bad" hidden>⚠ 다른 사람이 먼저 수정해 저장하지 못했습니다. 작성 중인 내용을 복사한 뒤 새로고침하고, 아래 이전 버전에서 변경 내용을 확인하세요.</div>
     {% if note.status == "draft" %}
     <div class="notice">초안 — 진행자와 조직 관리자만 봅니다.{% if recording and recording.status != "draft" and recording.status != "done" %} 녹음·전사가 끝나면 확정할 수 있습니다.{% endif %}</div>
@@ -109,19 +113,7 @@
     {% endif %}
     {% endif %}
 
-    <form id="doc-form" method="post" action="{% url 'note_save' note.pk %}">{% csrf_token %}
-      <input type="hidden" name="field" value="body_md">
-      <input type="hidden" name="version" value="{{ note.version }}">
-      <div class="doc-edit-toolbar">
-        <button type="button" class="btn sm doc-edit-start" aria-controls="doc-body">본문 편집</button>
-        <span class="muted t13">본문 편집을 눌러 작성하세요.</span>
-      </div>
-      <div id="doc" class="doc" data-url="{% url 'note_save' note.pk %}" data-version="{{ note.version }}">
-        <div id="doc-body"></div>
-        <textarea id="doc-src" name="value" class="textarea" rows="16">{{ note.body_md }}</textarea>
-      </div>
-      <button id="doc-submit" class="btn sm primary">회의록 저장</button>
-    </form>
+    {% url 'note_save' note.pk as save_url %}{% include "docs/_editor.html" with version=note.version body=note.body_md %}
 
     {% if recording and recording.transcript_md %}
     <details>
@@ -132,13 +124,7 @@
     {% include "docs/_extras.html" with doc=note %}
 
     <div class="row t13 muted divider-top">
-      {# 한 줄에 12개를 욱여넣으면 아무도 읽지 않는다. 필요할 때 펼치게 둔다. #}
-      <details class="grow">
-        <summary>쓰는 법</summary>
-        <p class="t13 muted mt-2">‘본문 편집’을 누르거나 본문을 눌러 바로 씁니다. 본문은 입력을 멈춘 뒤 0.8초 후 자동 저장됩니다. 제목과 선택 항목은 변경 후 저장됩니다. 저장 완료 표시를 확인하세요. 키보드에서는 Enter로 편집을 시작하고 Esc로 편집을 마칩니다.<br>
-          <code># 제목</code> · <code>- 목록</code> · <code>- [ ] 체크</code> · <code>&gt; 인용</code> · <code>---</code> 구분선 · <code>**굵게**</code> · <code>*기울임*</code> · <code>`코드`</code><br>
-          Enter 새 줄, Backspace 합치기, 화살표로 이동.</p>
-      </details>
+      <span class="grow"></span>
       {% if can_delete %}<form method="post" action="{% url 'note_delete' note.pk %}" onsubmit="return confirm('이 회의록을 삭제할까요? 본문과 태스크 연결이 삭제되며 되돌릴 수 없습니다.')">{% csrf_token %}<button class="btn sm danger">회의록 삭제</button></form>{% endif %}
     </div>
   </section>

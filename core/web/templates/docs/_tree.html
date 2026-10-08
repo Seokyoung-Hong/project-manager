@@ -2,7 +2,7 @@
   {% for n in nodes %}
   <li>
     {% if n.children %}
-    <details open>
+    <details data-doc="{{ n.doc.pk }}"{% if n.doc.pk in open_ids %} open{% endif %}>
       <summary><a class="doc-node{% if doc.pk == n.doc.pk %} sel{% endif %}" href="?{% if scope %}scope={{ scope }}&amp;{% endif %}doc={{ n.doc.pk }}"{% if doc.pk == n.doc.pk %} aria-current="page"{% endif %}>{{ n.doc.title }}</a> <span class="muted t13">{{ n.children|length }}</span></summary>
       {% include "docs/_tree.html" with nodes=n.children nested=True %}
     </details>

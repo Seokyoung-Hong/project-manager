@@ -4,20 +4,17 @@ WEB_DIR = Path(__file__).resolve().parent
 
 
 def test_editable_documents_expose_a_keyboard_entry_button():
-    for relative in ("notes/list.html", "projects/docs.html"):
-        template = (WEB_DIR / "templates" / relative).read_text(encoding="utf-8")
-        assert 'class="btn sm doc-edit-start"' in template
-        assert 'type="button"' in template
-        assert 'aria-controls="doc-body"' in template
-        assert "본문 편집을 눌러 작성하세요." in template
-        assert "키보드에서는 Enter로 편집을 시작하고 Esc로 편집을 마칩니다." in template
+    """문서·회의록이 같이 쓰는 편집기 조각에 키보드로 편집을 시작하는 버튼이 있다."""
+    template = (WEB_DIR / "templates" / "docs" / "_editor.html").read_text(encoding="utf-8")
+    assert 'class="btn sm md-edit-start" aria-controls="doc-body"' in template
+    assert 'id="doc-body" class="md-editor' in template
+    assert "Esc로 편집을 마칩니다." in template
+    for page in ("docs/index.html", "notes/list.html"):
+        assert '"docs/_editor.html"' in (WEB_DIR / "templates" / page).read_text(encoding="utf-8")
 
 
 def test_document_editor_enters_and_returns_focus_to_the_button():
-    script = (WEB_DIR / "static" / "notes.js").read_text(encoding="utf-8")
-
-    assert 'editStart.addEventListener("click", beginEditing)' in script
-    assert "function beginEditing()" in script
-    assert "function exitEditing()" in script
+    script = (WEB_DIR / "static" / "doc-tiptap.js").read_text(encoding="utf-8")
+    assert 'editStart.addEventListener("click"' in script
+    assert 'if (e.key !== "Escape") return;' in script
     assert "if (editStart) editStart.focus();" in script
-    assert script.count("e.preventDefault(); exitEditing();") == 2

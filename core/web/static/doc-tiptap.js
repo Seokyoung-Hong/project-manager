@@ -1,76 +1,83 @@
-// Tiptap 시험 편집기 — 문서 화면에서 ?editor=tiptap일 때만 붙는다. 정식 편집기는 notes.js다.
-// 저장 규칙은 notes.js와 같다: 입력이 멈추고 800ms 뒤 저장, 요청은 하나씩, 응답의
-// X-Note-Version을 다음 요청이 이어 쓴다, 409(충돌)면 저장을 멈추고 알린다.
-// 한글 IME: 조합 중에는 저장(getMarkdown)을 미루고, 본문을 다시 그리지 않는다(setContent는 처음 한 번뿐).
-const root = document.getElementById("doc-tiptap");
-if (root) start(root);
+// 문서·회의록 편집기와 Markdown 보기(이슈 본문·거버넌스). 화면에 그릴 것이 있을 때만 Tiptap 번들을 불러온다.
+// 마크업
+//   편집기  .md-editor[data-url][data-version] > textarea.md-src   (docs/_editor.html, 같은 .card 안에 도구 막대)
+//   보기    .md-view > textarea.md-src                              (JS가 없으면 원문이 그대로 보인다)
+// 저장 규약: 입력이 멈추고 800ms 뒤 저장, 요청은 하나씩, 응답의 X-Note-Version을 다음 요청이 이어 쓴다,
+// 409(충돌)면 저장을 멈추고 알린다. 한글 IME 조합 중에는 저장을 미룬다. 열기만으로는 절대 저장하지 않는다.
+// 링크·이미지 주소 검사(safeUrl)와 Markdown 보정은 번들(tools/tiptap-bundle/entry.js) 한곳에 있다.
+let bundle = null;
+const load = () => (bundle ??= import(new URL("vendor/tiptap.bundle.js", import.meta.url).href));
 
-let safeUrl; // 번들의 safeUrl(notes.js와 같은 규칙)
+function init(root) {
+  const found = [...(root.querySelectorAll?.(".md-view, .md-editor") || [])];
+  if (root.matches?.(".md-view, .md-editor")) found.push(root);
+  const todo = found.filter((el) => !el.dataset.ready);
+  if (!todo.length) return;
+  todo.forEach((el) => { el.dataset.ready = "loading"; });
+  load().then((T) => todo.forEach((el) => (el.classList.contains("md-editor") ? editor(T, el) : view(T, el))));
+}
+init(document);
+// HTMX가 나중에 끼워 넣은 조각(이슈 패널 등)에도 붙인다.
+document.addEventListener("htmx:load", (e) => init(e.target));
 
-// /docs/N 링크를 따라가도 시험 화면에 남게 한다(서버 doc_home이 editor 값을 넘겨준다).
-function keepMode(href) {
-  const u = new URL(href, location.href);
-  if (u.origin === location.origin && (u.searchParams.has("doc") || /^\/docs\/\d+$/.test(u.pathname))) {
-    u.searchParams.set("editor", "tiptap");
-  }
-  return u.href;
+function view(T, el) {
+  const src = el.querySelector(".md-src");
+  new T.Editor({ element: el, editable: false, extensions: T.extensions(), content: T.preprocess(src.value), contentType: "markdown" });
+  src.hidden = true;
+  el.dataset.ready = "1";
 }
 
-async function start(root) {
-  const T = await import(root.dataset.bundle);
-  const scope = root.closest(".card");
-  const src = scope.querySelector("#doc-src");
+function editor(T, root) {
+  const safeUrl = T.safeUrl;
+  const scope = root.closest(".card") || document;
+  const src = root.querySelector(".md-src");
   const bar = scope.querySelector(".tt-bar");
   const tableBar = bar.querySelector(".tt-table");
   const linkBar = scope.querySelector(".tt-linkbar");
   const hrefEl = linkBar.querySelector(".tt-href");
+  const editStart = scope.querySelector(".md-edit-start");
   const statusEl = scope.querySelector("#note-status");
   const conflictEl = scope.querySelector("#note-conflict");
-  const titleEl = scope.querySelector('[data-note-field="title"]');
+  const fields = [...scope.querySelectorAll("[data-note-field]")];
   const csrf = scope.querySelector("[name=csrfmiddlewaretoken]").value;
-
-  document.querySelectorAll('#doc-list a[href*="doc="], .doc-path a').forEach((a) => { a.href = keepMode(a.href); });
 
   let version = Number(root.dataset.version);
   let dead = false, timer = null, bodyDirty = false, worker = null, seq = 0, navigating = false;
   const pending = Object.create(null);
-  const saved = { title: titleEl ? titleEl.value : "" };
+  const saved = Object.fromEntries(fields.map((f) => [f.dataset.noteField, f.value]));
 
-  safeUrl = T.safeUrl;
-  // 확장 구성·md 보정은 번들(tools/tiptap-bundle/entry.js) 한곳에 있다.
-  const editor = new T.Editor({
+  const ed = new T.Editor({
     element: root,
     editable: false,
-    extensions: T.extensions({ placeholder: "여기에 씁니다." }),
+    extensions: T.extensions({ placeholder: "여기에 씁니다.", checkInView: true }),
     content: T.preprocess(src.value),
     contentType: "markdown",
     onUpdate: () => { if (touched) schedule(); },
     onTransaction: syncBar,
   });
-  T.setupMarkdown(editor);
-  const dom = editor.view.dom;
-  dom.setAttribute("aria-label", "문서 본문");
-  // 열기만으로는 절대 저장하지 않는다: (1) 사용자의 실제 입력·조작이 있어야 하고(touched),
+  T.setupMarkdown(ed);
+  src.hidden = true;
+  const dom = ed.view.dom;
+  dom.setAttribute("aria-label", "본문");
+  // 열기만으로는 저장하지 않는다: (1) 사용자의 실제 입력·조작이 있어야 하고(touched),
   // (2) 저장 직전 md가 마지막 기준(불러온 직후 또는 마지막 저장)과 달라야 한다(baseline).
   let touched = false;
-  let baseline = editor.getMarkdown();
+  let baseline = ed.getMarkdown();
   const touch = () => { touched = true; };
   for (const ev of ["beforeinput", "paste", "drop", "compositionstart"]) dom.addEventListener(ev, touch);
   dom.addEventListener("keydown", (e) => { if (e.ctrlKey || e.metaKey || e.key.length === 1 || /^(Enter|Backspace|Delete|Tab)$/.test(e.key)) touch(); });
   // 조합이 끝나면 그때 저장을 예약한다. 조합 중 onUpdate가 와도 schedule이 타이머를 걸지 않는다.
   dom.addEventListener("compositionend", () => { if (bodyDirty) schedule(); });
 
-  // ---------- 저장(notes.js와 같은 큐) ----------
+  // ---------- 저장 ----------
   function flash(text, state) {
     if (!statusEl) return;
     statusEl.textContent = text;
     statusEl.dataset.state = state || "saved";
   }
 
-  function hasUnsaved() {
-    const titleDirty = titleEl && titleEl.value !== saved.title;
-    return Boolean(timer || bodyDirty || worker || Object.keys(pending).length || titleDirty);
-  }
+  const fieldDirty = () => fields.some((f) => f.value !== saved[f.dataset.noteField]);
+  const hasUnsaved = () => Boolean(timer || bodyDirty || worker || Object.keys(pending).length || fieldDirty());
 
   async function requestSave(field, value) {
     const data = new FormData();
@@ -104,6 +111,8 @@ async function start(root) {
     version = v;
     root.dataset.version = String(v);
     saved[field] = value;
+    // 제목을 바꾸면 목록·트리의 이름도 바로 바꾼다.
+    if (field === "title") document.querySelectorAll(".doc-node.sel, .note-item.sel > b").forEach((n) => { n.textContent = value; });
     return true;
   }
 
@@ -141,7 +150,7 @@ async function start(root) {
     bodyDirty = true;
     clearTimeout(timer);
     timer = null;
-    if (editor.view.composing) { flash("입력 중…", "pending"); return; } // compositionend가 다시 부른다
+    if (ed.view.composing) { flash("입력 중…", "pending"); return; } // compositionend가 다시 부른다
     flash("저장 대기…", "pending");
     timer = setTimeout(stageBody, 800);
   }
@@ -149,17 +158,37 @@ async function start(root) {
   function stageBody() {
     clearTimeout(timer);
     timer = null;
-    if (editor.view.composing) return Promise.resolve(false); // 조합이 끝나면 compositionend → schedule
+    if (ed.view.composing) return Promise.resolve(false); // 조합이 끝나면 compositionend → schedule
     if (!bodyDirty) return runQueue();
     bodyDirty = false;
-    const md = editor.getMarkdown();
+    const md = ed.getMarkdown();
     if (md === baseline) return runQueue(); // 바뀐 내용이 없다(정규화·커서 이동만)
     baseline = md;
     return stage("body_md", md);
   }
 
-  if (titleEl) titleEl.addEventListener("change", () => stage("title", titleEl.value));
-  document.addEventListener("visibilitychange", () => { if (document.hidden && bodyDirty) stageBody(); });
+  // 남은 입력을 모두 보낸다. 보내는 사이 새 입력이 생기면 다시 돈다.
+  async function flushAll() {
+    for (const f of fields) if (f.value !== saved[f.dataset.noteField]) stage(f.dataset.noteField, f.value);
+    const ok = await (bodyDirty ? stageBody() : runQueue());
+    if (!ok || dead) return false;
+    return hasUnsaved() && !ed.view.composing ? flushAll() : true;
+  }
+
+  // 메타 필드(제목·프로젝트·회의 일시·태그). 제목은 입력을 멈추면 저장하고, 그 사이에는 "저장 대기"를 보인다.
+  const fieldTimers = {};
+  for (const f of fields) {
+    const name = f.dataset.noteField;
+    f.addEventListener("change", () => { clearTimeout(fieldTimers[name]); if (f.value !== saved[name]) stage(name, f.value); });
+    if (f.tagName === "INPUT" && f.type === "text") {
+      f.addEventListener("input", () => {
+        clearTimeout(fieldTimers[name]);
+        flash("저장 대기…", "pending");
+        fieldTimers[name] = setTimeout(() => stage(name, f.value), 800);
+      });
+    }
+  }
+  document.addEventListener("visibilitychange", () => { if (document.hidden && hasUnsaved()) flushAll(); });
   window.addEventListener("beforeunload", (e) => {
     if (navigating || !hasUnsaved()) return;
     e.preventDefault();
@@ -167,20 +196,43 @@ async function start(root) {
   });
 
   async function go(href) {
-    await stageBody();
-    if (worker) await worker;
+    await flushAll();
     navigating = !hasUnsaved();
-    location.assign(keepMode(href));
+    location.assign(href);
   }
+
+  // 모바일 ‘목록으로’: 저장을 마치고 나서 떠난다.
+  const back = scope.querySelector(".note-back");
+  if (back) back.addEventListener("click", (e) => {
+    if (!hasUnsaved()) return;
+    e.preventDefault();
+    if (back.getAttribute("aria-disabled") === "true") return;
+    back.setAttribute("aria-disabled", "true");
+    go(back.href).finally(() => back.removeAttribute("aria-disabled"));
+  });
+
+  // 파일 묶음의 [본문에 넣기]: 첨부 이미지를 본문 끝에 붙이고 저장한다.
+  scope.addEventListener("click", (e) => {
+    const b = e.target.closest?.("[data-insert-md]");
+    if (!b || !scope.contains(b)) return;
+    e.preventDefault();
+    const m = b.dataset.insertMd.match(/^!\[([^\]]*)\]\(([^)\s]+)\)$/);
+    if (!m || !safeUrl(m[2])) return;
+    touch();
+    ed.chain().insertContentAt(ed.state.doc.content.size, { type: "image", attrs: { alt: m[1], src: m[2] } }).run();
+    flash("본문 끝에 이미지를 넣었습니다.", "pending");
+  });
 
   // ---------- 보기 ↔ 편집 ----------
   function setEditing(on) {
-    editor.setEditable(on);
+    ed.setEditable(on);
     bar.hidden = !on;
     root.classList.toggle("editing", on);
+    if (editStart) editStart.parentElement.hidden = on;
     if (!on) { linkBar.hidden = true; stageBody(); }
     dock();
   }
+  if (editStart) editStart.addEventListener("click", () => { setEditing(true); ed.commands.focus("end"); });
 
   root.addEventListener("click", (e) => {
     const a = e.target.closest("a[href]");
@@ -188,25 +240,29 @@ async function start(root) {
       e.preventDefault();
       const href = a.getAttribute("href");
       if (!safeUrl(href)) return;
-      if (e.ctrlKey || e.metaKey) window.open(keepMode(href), "_blank", "noopener");
-      else if (!editor.isEditable) go(href);
+      if (e.ctrlKey || e.metaKey) window.open(href, "_blank", "noopener");
+      else if (!ed.isEditable) go(href);
       return; // 편집 중 그냥 클릭: 커서만 놓고 아래 링크 막대에서 연다
     }
-    if (!editor.isEditable && !e.target.closest("input")) {
-      const at = editor.view.posAtCoords({ left: e.clientX, top: e.clientY });
+    if (!ed.isEditable && !e.target.closest("input")) {
+      const at = ed.view.posAtCoords({ left: e.clientX, top: e.clientY });
       setEditing(true);
-      editor.chain().focus(at ? at.pos : "end").run();
+      ed.chain().focus(at ? at.pos : "end").run();
     }
   });
-  dom.addEventListener("keydown", (e) => { if (e.key === "Escape") setEditing(false); });
+  dom.addEventListener("keydown", (e) => {
+    if (e.key !== "Escape") return;
+    setEditing(false);
+    if (editStart) editStart.focus();
+  });
   // 보기 상태의 체크: TaskItem은 콜백만 부르고 문서는 바꾸지 않는다. 체크 상자가 속한 항목을 찾아 직접 바꾼다.
   root.addEventListener("change", (e) => {
-    if (editor.isEditable || e.target.type !== "checkbox") return;
+    if (ed.isEditable || e.target.type !== "checkbox") return;
     touch();
-    const $pos = editor.state.doc.resolve(editor.view.posAtDOM(e.target.closest("li"), 0));
+    const $pos = ed.state.doc.resolve(ed.view.posAtDOM(e.target.closest("li"), 0));
     for (let d = $pos.depth; d > 0; d--) {
       if ($pos.node(d).type.name !== "taskItem") continue;
-      editor.view.dispatch(editor.state.tr.setNodeMarkup($pos.before(d), undefined, { ...$pos.node(d).attrs, checked: e.target.checked }));
+      ed.view.dispatch(ed.state.tr.setNodeMarkup($pos.before(d), undefined, { ...$pos.node(d).attrs, checked: e.target.checked }));
       return;
     }
   });
@@ -220,6 +276,7 @@ async function start(root) {
     bullet: (c) => c.toggleBulletList(),
     ordered: (c) => c.toggleOrderedList(),
     task: (c) => c.toggleTaskList(),
+    quote: (c) => c.toggleBlockquote(),
     code: (c) => c.toggleCodeBlock(),
     table: (c) => c.insertTable({ rows: 3, cols: 3, withHeaderRow: true }),
     "row+": (c) => c.addRowAfter(),
@@ -232,26 +289,27 @@ async function start(root) {
     unlink: (c) => c.extendMarkRange("link").unsetLink(),
   };
   const active = {
-    h1: () => editor.isActive("heading", { level: 1 }),
-    h2: () => editor.isActive("heading", { level: 2 }),
-    h3: () => editor.isActive("heading", { level: 3 }),
-    bold: () => editor.isActive("bold"),
-    bullet: () => editor.isActive("bulletList"),
-    ordered: () => editor.isActive("orderedList"),
-    task: () => editor.isActive("taskList"),
-    code: () => editor.isActive("codeBlock"),
-    link: () => editor.isActive("link"),
+    h1: () => ed.isActive("heading", { level: 1 }),
+    h2: () => ed.isActive("heading", { level: 2 }),
+    h3: () => ed.isActive("heading", { level: 3 }),
+    bold: () => ed.isActive("bold"),
+    bullet: () => ed.isActive("bulletList"),
+    ordered: () => ed.isActive("orderedList"),
+    task: () => ed.isActive("taskList"),
+    quote: () => ed.isActive("blockquote"),
+    code: () => ed.isActive("codeBlock"),
+    link: () => ed.isActive("link"),
   };
 
   function editLink() {
-    const prev = editor.getAttributes("link").href || "";
+    const prev = ed.getAttributes("link").href || "";
     const input = window.prompt("링크 주소(https://… 또는 /docs/번호). 비우면 링크를 지웁니다.", prev);
     if (input === null) return;
     const href = input.trim();
-    const chain = editor.chain().focus().extendMarkRange("link");
+    const chain = ed.chain().focus().extendMarkRange("link");
     if (!href) { chain.unsetLink().run(); return; }
     if (!safeUrl(href)) { window.alert("https://, mailto: 또는 /로 시작하는 주소만 넣을 수 있습니다."); return; }
-    if (editor.state.selection.empty && !editor.isActive("link")) {
+    if (ed.state.selection.empty && !ed.isActive("link")) {
       chain.insertContent({ type: "text", text: href, marks: [{ type: "link", attrs: { href } }] }).run();
     } else {
       chain.setLink({ href }).run();
@@ -264,10 +322,10 @@ async function start(root) {
       const b = e.target.closest("[data-cmd]");
       if (!b) return;
       const cmd = b.dataset.cmd;
-      if (cmd !== "done") touch();
-      if (cmd === "done") setEditing(false);
-      else if (cmd === "link") editLink();
-      else cmds[cmd](editor.chain().focus()).run();
+      if (cmd === "done") { setEditing(false); if (editStart) editStart.focus(); return; }
+      touch();
+      if (cmd === "link") editLink();
+      else cmds[cmd](ed.chain().focus()).run();
     });
   }
   hrefEl.addEventListener("click", (e) => {
@@ -277,13 +335,13 @@ async function start(root) {
   });
 
   function syncBar() {
-    if (!editor.isEditable) return;
+    if (!ed.isEditable) return;
     for (const b of bar.querySelectorAll("[data-cmd]")) {
       const f = active[b.dataset.cmd];
       if (f) b.setAttribute("aria-pressed", String(f()));
     }
-    tableBar.hidden = !editor.isActive("table");
-    const href = editor.isActive("link") ? editor.getAttributes("link").href : "";
+    tableBar.hidden = !ed.isActive("table");
+    const href = ed.isActive("link") ? ed.getAttributes("link").href : "";
     linkBar.hidden = !href;
     if (href) { hrefEl.textContent = href; hrefEl.setAttribute("href", href); }
   }
@@ -297,5 +355,5 @@ async function start(root) {
   if (vv) { vv.addEventListener("resize", dock); vv.addEventListener("scroll", dock); }
 
   root.dataset.ready = "1";
-  window.udallyTiptap = editor; // 시험용: 콘솔에서 확인
+  window.udallyEditor = ed; // 콘솔·브라우저 시험용
 }

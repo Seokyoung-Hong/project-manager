@@ -1,7 +1,7 @@
-{% extends "base.html" %}{% load static %}{% block title %}{% if project %}{{ project.name }}{% else %}{{ org.name }}{% endif %} · 문서{% endblock %}
+{% extends "base.html" %}{% block title %}{% if project %}{{ project.name }}{% else %}{{ org.name }}{% endif %} · 문서{% endblock %}
 {% block main %}
 {% if project %}{% include "projects/_tabs.html" %}{% else %}{% include "orgs/_tabs.html" %}{% endif %}
-<div class="notes-columns{% if doc %} note-editor-open{% endif %}">
+<div class="notes-columns docs-columns{% if editor_open %} note-editor-open{% endif %}">
   <section class="card list note-list" id="doc-list">
     <div class="card-head">
       <h2>문서 <span class="muted">{{ docs|length }}</span></h2>
@@ -54,66 +54,14 @@
       <span id="note-status" class="note-save-status" data-state="saved" aria-live="polite">저장됨 · v{{ doc.version }} · {{ doc.updated_at|date:"n/j H:i" }}</span>
     </div>
     <input class="title-input" data-note-field="title" value="{{ doc.title }}" aria-label="제목">
-    <div class="row t13 muted">
+    <div class="row t13 muted doc-meta">
       <span class="badge">{% if doc.project %}프로젝트 · {{ doc.project.name }}{% elif doc.team %}팀 · {{ doc.team.name }}{% else %}조직 전체{% endif %}</span>
       <span>만든 사람 {{ doc.created_by.display_name }}</span>
       {% if doc.updated_by %}<span>마지막 수정 {{ doc.updated_by.display_name }}{% if doc.updated_source != "web" %} <span class="badge">{{ doc.get_updated_source_display }}</span>{% endif %}</span>{% endif %}
     </div>
     <div id="note-conflict" class="notice bad" hidden>⚠ 다른 사람이 먼저 수정해 저장하지 못했습니다. 작성 중인 내용을 복사한 뒤 새로고침하고, 아래 이전 버전에서 변경 내용을 확인하세요.</div>
 
-    <form id="doc-form" method="post" action="{% url 'doc_save' doc.pk %}">{% csrf_token %}
-      <input type="hidden" name="field" value="body_md">
-      <input type="hidden" name="version" value="{{ doc.version }}">
-      {% if tiptap %}
-      {# Tiptap 시험 편집기. notes.js는 .doc에만 붙으므로 여기엔 붙지 않는다. #}
-      <div class="doc-edit-toolbar">
-        <span class="badge warn">시험</span>
-        <span class="muted t13">Tiptap 시험 편집기입니다. 본문을 누르면 편집하고, 입력을 멈추면 0.8초 뒤 저장됩니다. 편집 중 링크는 Ctrl(⌘)+클릭으로 엽니다.</span>
-        <a class="btn sm link" href="?doc={{ doc.pk }}">기존 편집기로</a>
-      </div>
-      <div class="tt-bar" role="toolbar" aria-label="서식" hidden>
-        <button type="button" class="btn sm" data-cmd="h1">제목1</button>
-        <button type="button" class="btn sm" data-cmd="h2">제목2</button>
-        <button type="button" class="btn sm" data-cmd="h3">제목3</button>
-        <button type="button" class="btn sm" data-cmd="bold"><b>굵게</b></button>
-        <button type="button" class="btn sm" data-cmd="bullet">목록</button>
-        <button type="button" class="btn sm" data-cmd="ordered">번호</button>
-        <button type="button" class="btn sm" data-cmd="task">체크</button>
-        <button type="button" class="btn sm" data-cmd="link">링크</button>
-        <button type="button" class="btn sm" data-cmd="code">코드</button>
-        <button type="button" class="btn sm" data-cmd="table">표</button>
-        <span class="tt-table" hidden>
-          <button type="button" class="btn sm" data-cmd="row+">행 추가</button>
-          <button type="button" class="btn sm" data-cmd="col+">열 추가</button>
-          <button type="button" class="btn sm" data-cmd="row-">행 삭제</button>
-          <button type="button" class="btn sm" data-cmd="col-">열 삭제</button>
-          <button type="button" class="btn sm danger" data-cmd="table-">표 삭제</button>
-        </span>
-        <button type="button" class="btn sm" data-cmd="undo" aria-label="실행 취소">↶</button>
-        <button type="button" class="btn sm" data-cmd="redo" aria-label="다시 실행">↷</button>
-        <button type="button" class="btn sm" data-cmd="done">완료</button>
-      </div>
-      <div class="tt-linkbar t13" hidden>
-        <a class="tt-href" href="#"></a>
-        <button type="button" class="btn sm" data-cmd="link">수정</button>
-        <button type="button" class="btn sm" data-cmd="unlink">해제</button>
-      </div>
-      <div id="doc-tiptap" class="tt-doc" data-url="{% url 'doc_save' doc.pk %}" data-version="{{ doc.version }}" data-bundle="{% static 'vendor/tiptap.bundle.js' %}"></div>
-      <textarea id="doc-src" class="textarea" hidden aria-hidden="true">{{ doc.body_md }}</textarea>
-      <link rel="stylesheet" href="{% static 'doc-tiptap.css' %}">
-      <script type="module" src="{% static 'doc-tiptap.js' %}"></script>
-      {% else %}
-      <div class="doc-edit-toolbar">
-        <button type="button" class="btn sm doc-edit-start" aria-controls="doc-body">본문 편집</button>
-        <span class="muted t13">본문을 누르면 바로 씁니다. 입력을 멈추면 0.8초 뒤 저장됩니다. <code>/</code>로 블록 메뉴를 엽니다.</span>
-      </div>
-      <div id="doc" class="doc" data-url="{% url 'doc_save' doc.pk %}" data-version="{{ doc.version }}">
-        <div id="doc-body"></div>
-        <textarea id="doc-src" name="value" class="textarea" rows="16">{{ doc.body_md }}</textarea>
-      </div>
-      <button id="doc-submit" class="btn sm primary">문서 저장</button>
-      {% endif %}
-    </form>
+    {% url 'doc_save' doc.pk as save_url %}{% include "docs/_editor.html" with version=doc.version body=doc.body_md %}
 
     {% include "docs/_extras.html" %}
 

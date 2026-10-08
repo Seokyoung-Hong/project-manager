@@ -1068,8 +1068,8 @@ def test_note_click_shows_selected_body(logged, org, member):
 
     body = logged.get(f"/orgs/{org.pk}/notes?scope=all&note={n2.pk}").content.decode()
     assert 'class="notes-columns note-editor-open"' in body
-    assert 'class="doc"' in body
-    assert 'id="doc-src"' in body
+    assert 'class="md-editor md"' in body
+    assert 'class="md-src textarea"' in body
     assert 'class="card note-editor-card" id="note-editor"' in body
     assert 'class="btn sm note-back"' in body
     assert 'class="note-save-status" data-state="saved"' in body
@@ -1372,28 +1372,41 @@ def test_docs_first_one_opens_by_default(logged, project):
     assert 'id="doc-editor"' in body and "개요" in body
 
 
-def test_doc_tiptap_trial_only_with_query(logged, project):
-    """?editor=tiptap일 때만 시험 편집기(번들·스크립트)가 붙고, 기본 화면은 notes.js 그대로다."""
+def test_doc_screen_uses_tiptap_editor(logged, project):
+    """문서 화면은 Tiptap 편집기(doc-tiptap.js)로 보고 쓴다. 예전 편집기(notes.js)는 없다."""
     from projects.docs import create_doc
 
     doc = create_doc(project=project, actor=project.created_by, title="개요", body_md="# 배경")
-    url = f"/projects/{project.pk}/docs?doc={doc.pk}"
-
-    r = logged.get(url + "&editor=tiptap")
+    r = logged.get(f"/projects/{project.pk}/docs?doc={doc.pk}")
     body = r.content.decode()
     assert r.status_code == 200
-    assert (
-        "vendor/tiptap.bundle.js" in body and "doc-tiptap.js" in body and 'id="doc-tiptap"' in body
-    )
-    assert 'class="doc"' not in body  # notes.js가 같은 본문에 겹쳐 붙지 않는다
+    assert "doc-tiptap.js" in body and "notes.js" not in body
+    assert 'class="md-editor md"' in body and "# 배경</textarea>" in body
+    assert 'class="notes-columns docs-columns note-editor-open"' in body
 
-    body = logged.get(url).content.decode()
-    assert "tiptap" not in body and 'class="doc"' in body
 
-    # /docs/N 정식 주소로 따라가도 시험 화면에 남는다
-    assert (
-        logged.get(f"/docs/{doc.pk}?editor=tiptap").headers["Location"].endswith("&editor=tiptap")
-    )
+def test_doc_list_back_link_shows_list_on_mobile(logged, project):
+    """고르지 않고 들어오면 첫 문서를 오른쪽에 보이되, 모바일에서 목록을 숨기는 표시(note-editor-open)는 없다."""
+    from projects.docs import create_doc
+
+    create_doc(project=project, actor=project.created_by, title="개요", body_md="배경")
+    body = logged.get(f"/projects/{project.pk}/docs").content.decode()
+    assert 'id="doc-editor"' in body and "note-editor-open" not in body
+
+
+def test_doc_tree_opens_only_the_current_branch(logged, project):
+    from projects.docs import create_doc
+
+    actor = project.created_by
+    a = create_doc(project=project, actor=actor, title="가지 A")
+    a1 = create_doc(project=project, actor=actor, title="A-1", parent=a)
+    create_doc(project=project, actor=actor, title="A-1-가", parent=a1)
+    b = create_doc(project=project, actor=actor, title="가지 B")
+    create_doc(project=project, actor=actor, title="B-1", parent=b)
+    body = logged.get(f"/projects/{project.pk}/docs?doc={a1.pk}").content.decode()
+    assert f'<details data-doc="{a.pk}" open>' in body
+    assert f'<details data-doc="{a1.pk}" open>' in body
+    assert f'<details data-doc="{b.pk}">' in body
 
 
 # ---------- GitHub를 끈 상태 ----------

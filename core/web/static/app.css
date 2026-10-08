@@ -835,8 +835,9 @@ details > summary { cursor: pointer; font-weight: 600; }
 
 /* ---- 20. 회의록 · 문서 편집기 ---- */
 .notes-columns { display: flex; flex-wrap: wrap; gap: var(--sp-4); align-items: flex-start; }
-.notes-columns > .list { flex: 1 1 320px; min-width: 0; }
-.notes-columns > .card:last-child { flex: 9999 1 420px; min-width: 0; }
+.notes-columns > .list { flex: 1 1 280px; max-width: 360px; min-width: 0; }
+.notes-columns > .note-editor-card { flex: 9999 1 480px; min-width: 0; }
+.notes-columns > #files { flex: 1 1 100%; }
 .note-editor-toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: var(--sp-3); min-height: 28px; }
 .note-back { display: none; }
 .note-save-status {
@@ -850,7 +851,10 @@ details > summary { cursor: pointer; font-weight: 600; }
 .note-meta-field { display: flex; min-width: 0; flex-direction: column; gap: 6px; font-size: var(--fs-sm); color: var(--c-muted); }
 .note-meta-field > .input, .note-meta-field > .select { width: 100%; color: var(--c-ink); }
 .note-author-value { min-width: 0; min-height: 44px; display: flex; align-items: center; overflow-wrap: anywhere; color: var(--c-ink); }
-.note-editor-card.note-returning [data-note-field], .note-editor-card.note-returning .doc { opacity: .65; cursor: progress; }
+/* 회의 정보는 접어 두고 한 줄 요약만 보인다 — 모바일에서 본문이 먼저 오게 */
+.note-meta-box > summary { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-1) var(--sp-2); min-height: 32px; list-style: none; cursor: pointer; }
+.note-meta-box > summary::-webkit-details-marker { display: none; }
+.note-meta-box[open] > summary { margin-bottom: var(--sp-3); }
 /* 목록 항목은 링크지만 문장 속 링크가 아니다 — 밑줄·링크색이면 카드가 글처럼 읽힌다 */
 .note-item {
   display: flex; flex-direction: column; gap: var(--sp-1); padding: 14px var(--sp-4); border: 1px solid var(--c-line); border-radius: var(--r-lg);
@@ -861,9 +865,13 @@ details > summary { cursor: pointer; font-weight: 600; }
 /* 문서 트리(IMPL-PLAN-11 D2). 하위 문서는 들여쓰고 접고 편다 */
 .doc-tree { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
 .doc-tree .doc-tree { padding-left: var(--sp-4); border-left: 1px solid var(--c-line); margin-left: var(--sp-2); }
-.doc-tree summary { display: flex; align-items: center; gap: var(--sp-2); font-weight: 400; }
+.doc-tree summary { display: flex; align-items: center; gap: var(--sp-1); font-weight: 400; list-style: none; cursor: pointer; }
+.doc-tree summary::-webkit-details-marker { display: none; }
+/* 펴고 접는 손잡이: 링크 왼쪽의 작은 삼각형(링크를 누르면 문서로 이동) */
+.doc-tree summary::before, .note-meta-box > summary::before { content: ""; flex: none; width: 16px; height: 16px; background: var(--c-muted); clip-path: polygon(35% 25%, 72% 50%, 35% 75%); transition: transform var(--dur-fast) var(--ease); }
+.doc-tree details[open] > summary::before, .note-meta-box[open] > summary::before { transform: rotate(90deg); }
 .doc-node { display: inline-flex; min-height: 32px; align-items: center; padding: 2px var(--sp-2); border-radius: var(--r-sm); color: var(--c-ink); text-decoration: none; }
-.doc-node.leaf { margin-left: var(--sp-4); }
+.doc-node.leaf { margin-left: 20px; } /* 손잡이(16px)+간격만큼 */
 .doc-node:hover { background: var(--c-soft); }
 .doc-node.sel { background: var(--c-accent-soft); color: var(--c-accent); font-weight: 600; }
 .doc-path a { color: var(--c-muted); }
@@ -873,37 +881,66 @@ details > summary { cursor: pointer; font-weight: 600; }
 .plain-list, .doc-extras ul.plain { list-style: none; margin: var(--sp-2) 0; padding: 0; display: flex; flex-direction: column; gap: var(--sp-2); }
 .revision-body { white-space: pre-wrap; overflow-wrap: anywhere; max-height: 320px; overflow: auto; padding: var(--sp-3); background: var(--c-soft); border-radius: var(--r-sm); font-family: var(--f-mono); font-size: var(--fs-sm); }
 .note-item.sel { border-color: var(--c-accent); box-shadow: inset 4px 0 0 var(--c-accent); }
-.note-editor-card .doc, #doc-editor .doc { margin-top: var(--sp-2); padding-top: var(--sp-5); border-top: 1px solid var(--c-line); }
-.doc { display: flex; flex-direction: column; min-height: 360px; padding: var(--sp-2) 0; cursor: text; }
-.doc-edit-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2) var(--sp-3); margin-bottom: var(--sp-1); }
-.blk { padding: 2px 6px; font-size: var(--fs-task); line-height: 1.65; display: flex; gap: var(--sp-2); align-items: baseline; }
-.blk .txt { flex: 1; min-width: 0; }
-.blk .mk { flex: none; color: var(--c-muted); }
-.blk-h { display: block; padding-top: var(--sp-2); }
-.blk-h.h1 .txt { font-family: var(--f-display); font-weight: 400; font-size: var(--fs-h2); line-height: 1.3; }
-.blk-h.h2 .txt { font-family: var(--f-display); font-weight: 400; font-size: var(--fs-h3); line-height: 1.35; }
-.blk-h.h3 .txt { font-size: var(--fs-lead); line-height: 26px; font-weight: 700; }
-.blk-quote .txt { padding-left: var(--sp-3); border-left: 3px solid var(--c-sage-strong); color: var(--c-muted); }
-.blk-todo .txt.done { text-decoration: line-through; color: var(--c-muted); }
-.blk code { background: var(--c-soft); border-radius: 4px; padding: 1px 4px; }
-.blk hr { width: 100%; border: 0; border-top: 1px dashed var(--c-line); }
-.blk a { color: var(--c-accent); text-decoration: underline; }
-.blk img, .blk video { display: block; max-width: 100%; height: auto; border-radius: var(--r-md); }
-.blk iframe { display: block; width: 100%; max-width: 720px; aspect-ratio: 16 / 9; border: 0; border-radius: var(--r-md); }
-.blk-embed { display: block; }
-/* 코드 블록은 ``` 여는 줄부터 닫는 줄까지가 한 덩어리다 */
-.blk-code { display: block; position: relative; padding: 2px 6px; }
-.blk-code pre { margin: 4px 0; padding: 12px 14px; overflow-x: auto; background: var(--c-soft); border: 1px solid var(--c-line); border-radius: var(--r-md); }
-.blk-code code { padding: 0; background: none; font-size: var(--fs-sm); line-height: 20px; }
-.blk-code .lang { position: absolute; top: 12px; right: 14px; font-size: var(--fs-2xs); letter-spacing: 0.04em; text-transform: uppercase; color: var(--c-muted); }
-#doc-body, .doc-body { position: relative; }
-.slash { position: absolute; z-index: var(--z-overlay); min-width: 236px; max-height: 272px; overflow-y: auto; padding: var(--sp-1); background: var(--c-surface); border: 1px solid var(--c-line); border-radius: var(--r-md); box-shadow: var(--sh-pop); }
-.slash .opt { display: flex; gap: var(--sp-3); align-items: baseline; padding: 6px 10px; border-radius: var(--r-sm); font-size: var(--fs-md); cursor: pointer; }
-.slash .opt[aria-selected="true"] { background: var(--c-accent-soft); }
-.slash .opt .hint { margin-left: auto; font-family: var(--f-mono); font-size: var(--fs-xs); color: var(--c-muted); }
-.blk-edit { display: block; width: 100%; padding: 2px 6px; border: 0; border-radius: 4px; background: var(--c-soft); outline: none; font: inherit; font-size: var(--fs-task); line-height: 1.65; resize: none; overflow: hidden; color: var(--c-ink); }
-.issue-markdown .doc-body { min-height: 0; cursor: default; overflow-wrap: anywhere; }
-.issue-markdown { min-width: 0; min-height: 0; cursor: default; overflow-x: auto; }
+/* Markdown 본문(doc-tiptap.js): 문서·회의록 편집기(.md-editor)와 읽기 전용(.md-view, 이슈·거버넌스)이 같은 모양이다.
+   글줄은 읽기 좋은 폭(72자)에서 끊고, 표·코드는 본문 폭을 다 쓰되 넘치면 그 블록 안에서만 가로로 민다. */
+.md { min-width: 0; }
+.md .ProseMirror { outline: none; font-size: var(--fs-task); line-height: 1.75; color: var(--c-ink); overflow-wrap: anywhere; word-break: keep-all; }
+.md .ProseMirror > :not(.tableWrapper):not(table):not(pre) { max-width: 72ch; }
+.md .ProseMirror > * + * { margin-top: var(--sp-3); }
+.md .ProseMirror > :first-child { margin-top: 0; }
+.md p { margin: 0; text-wrap: pretty; }
+.md h1, .md h2 { font-family: var(--f-display); font-weight: 400; line-height: 1.3; text-wrap: balance; }
+.md h1 { font-size: var(--fs-h2); margin-top: var(--sp-8); }
+.md h2 { font-size: var(--fs-h3); margin-top: var(--sp-6); padding-bottom: var(--sp-1); border-bottom: 1px solid var(--c-line); }
+.md h3 { font-size: var(--fs-lead); line-height: 1.5; font-weight: 700; margin-top: var(--sp-5); }
+.md h4, .md h5, .md h6 { font-size: var(--fs-task); font-weight: 700; margin-top: var(--sp-4); }
+.md a { color: var(--c-accent); text-decoration: underline; text-underline-offset: 2px; }
+.md strong { font-weight: 700; }
+.md blockquote { margin: 0; padding: var(--sp-1) 0 var(--sp-1) var(--sp-4); border-left: 3px solid var(--c-sage-strong); color: var(--c-muted); }
+.md hr { border: 0; border-top: 1px dashed var(--c-line); margin: var(--sp-6) 0; }
+.md img { display: block; max-width: 100%; height: auto; border-radius: var(--r-md); }
+.md img.ProseMirror-selectednode { outline: 3px solid var(--c-accent-soft); }
+.md ul, .md ol { margin: 0; padding-left: var(--sp-6); }
+.md li + li { margin-top: var(--sp-1); }
+.md li > p { margin: 0; }
+.md li > ul, .md li > ol { margin-top: var(--sp-1); }
+/* 코드: 인라인은 6px(--r-xs), 블록은 12px 면. 블록은 줄을 접지 않고 블록 안에서 가로로 민다 */
+.md code { font-family: var(--f-mono); font-size: .9em; background: var(--c-soft); border-radius: var(--r-xs); padding: 1px 5px; }
+.md .ProseMirror pre, .md pre { margin-left: 0; margin-right: 0; padding: 12px 14px; overflow-x: auto; background: var(--c-soft); border: 1px solid var(--c-line); border-radius: var(--r-md); white-space: pre; overflow-wrap: normal; word-break: normal; }
+.md pre code { padding: 0; background: none; font-size: var(--fs-sm); line-height: 20px; }
+.md pre.tt-html { font-family: var(--f-mono); font-size: var(--fs-xs); color: var(--c-muted); background: var(--c-bg); border-style: dashed; white-space: pre-wrap; }
+/* 체크리스트: 완료는 보조색+취소선(투명도 금지, DESIGN.md 7장) */
+.md ul[data-type="taskList"] { list-style: none; padding-left: 0; }
+.md ul[data-type="taskList"] > li { display: flex; gap: var(--sp-2); align-items: flex-start; }
+.md ul[data-type="taskList"] > li > label { flex: none; display: flex; align-items: center; height: 1.75em; }
+.md ul[data-type="taskList"] > li > label input { width: 16px; height: 16px; margin: 0; accent-color: var(--c-accent); cursor: pointer; }
+.md ul[data-type="taskList"] > li > div { flex: 1; min-width: 0; }
+.md ul[data-type="taskList"] > li[data-checked="true"] > div > p { color: var(--c-muted); text-decoration: line-through; }
+/* 표: table.grid와 같은 결 — 머리는 soft 면, 선은 line */
+.md .tableWrapper { overflow-x: auto; }
+.md table { border-collapse: collapse; font-size: var(--fs-md); line-height: 1.55; }
+.md th, .md td { border: 1px solid var(--c-line); padding: 6px 10px; vertical-align: top; min-width: 80px; position: relative; overflow-wrap: normal; }
+.md th { background: var(--c-soft); font-size: var(--fs-sm); font-weight: 700; text-align: left; }
+.md td > p, .md th > p { margin: 0; }
+.md .selectedCell::after { content: ""; position: absolute; inset: 0; background: var(--c-accent-soft); opacity: .5; pointer-events: none; }
+.md .ProseMirror p.is-editor-empty:first-child::before { content: attr(data-placeholder); float: left; height: 0; color: var(--c-faint); pointer-events: none; }
+.issue-markdown .ProseMirror { font-size: var(--fs-md); }
+
+/* 편집기 */
+.md-edit-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2) var(--sp-3); margin-top: var(--sp-3); }
+.md-edit-row[hidden] { display: none; }
+.md-editor { margin-top: var(--sp-3); padding-top: var(--sp-5); border-top: 1px solid var(--c-line); min-height: 200px; cursor: text; }
+.md-editor.editing { cursor: auto; }
+.md-editor.editing .ProseMirror { min-height: 320px; }
+.md-editor.editing a { cursor: text; }
+/* 도구 막대: 데스크톱은 머리 아래에 붙고, 모바일은 화면 키보드 바로 위에 붙는다 */
+.tt-bar { position: sticky; top: var(--header-h); z-index: var(--z-sticky); display: flex; flex-wrap: wrap; gap: var(--sp-1); margin-top: var(--sp-3); padding: var(--sp-2) 0; background: var(--c-surface); border-bottom: 1px solid var(--c-line); }
+.tt-bar[hidden], .tt-table[hidden], .tt-linkbar[hidden] { display: none; }
+.tt-table { display: contents; }
+.tt-bar .btn[aria-pressed="true"] { background: var(--c-ink); color: var(--c-surface); border-color: var(--c-ink); }
+.tt-linkbar { display: flex; align-items: center; gap: var(--sp-2); padding: var(--sp-2) 0; min-width: 0; }
+.tt-linkbar .tt-href { color: var(--c-accent); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.issue-markdown { margin-top: var(--sp-2); }
 .issue-body { white-space: pre-wrap; overflow-wrap: anywhere; }
 
 /* ---- 21. API 문서 ---- */
@@ -1291,7 +1328,19 @@ details.card.settings-section { padding: 0; gap: 0; }
   .dependency-form-actions { justify-content: flex-end; }
   .settings-save-bar { top: calc(var(--header-h) + 8px); }
   .settings-section { scroll-margin-top: 180px; }
-  .blk-h.h1 .txt { font-size: var(--fs-2xl); }
+  .md h1 { font-size: var(--fs-2xl); margin-top: var(--sp-6); }
+  .md h2 { font-size: var(--fs-xl); }
+  .md-editor .ProseMirror { font-size: var(--fs-lg); } /* iOS 입력 확대 방지 */
+  /* 본문이 먼저 보이게: 터치 화면은 본문을 눌러 편집하므로 편집 버튼 줄과 작성자 줄을 숨긴다 */
+  .md-edit-row, .doc-meta { display: none; }
+  .md-editor { margin-top: var(--sp-2); padding-top: var(--sp-3); }
+  .tt-bar {
+    position: fixed; left: 0; right: 0; top: auto; bottom: var(--tt-kb, 0px); margin: 0;
+    flex-wrap: nowrap; overflow-x: auto; padding: var(--sp-2) var(--sp-3);
+    border-top: 1px solid var(--c-line); border-bottom: 0; box-shadow: var(--sh-pop);
+  }
+  .tt-bar .btn { flex: none; min-height: 44px; }
+  .md-editor.editing { padding-bottom: 72px; } /* 고정 막대에 마지막 줄이 가리지 않게 */
   dialog { padding: var(--sp-5); }
   dialog form.stack > .row:last-child { margin: 0 -20px -20px; padding: var(--sp-3) var(--sp-5); bottom: -20px; }
   .toast { bottom: 18px; max-width: calc(100% - 32px); }
@@ -1309,7 +1358,7 @@ details.card.settings-section { padding: 0; gap: 0; }
   .hero-copy { max-width: 70%; }
 }
 @media (pointer: coarse) {
-  .doc-edit-toolbar > .muted { display: none; }
+  .md-edit-row > .muted { display: none; }
 }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
