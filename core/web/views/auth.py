@@ -56,7 +56,10 @@ def landing(user) -> str:
 
 
 def root(request):
-    return redirect(landing(request.user) if request.user.is_authenticated else "login")
+    """로그인했으면 처음 화면으로, 아니면 소개(랜딩) 페이지."""
+    if request.user.is_authenticated:
+        return redirect(landing(request.user))
+    return render(request, "landing.html")
 
 
 def login_view(request):

@@ -131,32 +131,7 @@
 {% else %}
 <main id="main-content" class="layout auth-main" tabindex="-1"><div class="card {% block auth_card %}auth-card{% endblock %}">{% block auth %}{% endblock %}</div></main>
 {% endif %}
-<footer class="site-footer t13">
-  <div class="foot-in">
-    <div class="foot-top">
-      <div class="foot-intro">
-        <p class="foot-brand">유달리</p>
-        <p>일은 차근차근, 우리는 무럭무럭.</p>
-      </div>
-      <p class="foot-copyright">© {% now "Y" %} Quanect. All rights reserved.</p>
-    </div>
-    <div class="foot-policy">
-      <p class="foot-label">정책 및 약관</p>
-      <a href="{% url 'privacy' %}"><strong>개인정보 처리방침</strong></a>
-    </div>
-    <address class="biz">
-      <div>
-        <p><span class="biz-label">상호:</span> 쿼넥트(Quanect)</p>
-        <p><span class="biz-label">대표:</span> 홍석영</p>
-        <p><span class="biz-label">사업자등록번호:</span> 537-16-02777</p>
-      </div>
-      <div>
-        <p><span class="biz-label">주소:</span> 경기도 시흥시 산기대학로 237, <span class="biz-unit">P동 306-10호</span></p>
-        <p class="biz-email"><span class="biz-label">이메일:</span> <a href="mailto:contact@quanect.kr">contact@quanect.kr</a></p>
-      </div>
-    </address>
-  </div>
-</footer>
+{% include "_site_footer.html" %}
 <dialog id="dialog"></dialog>
 {# 공용 확인 창: data-confirm="결과 문장" data-confirm-ok="버튼 문구"를 단 폼·버튼을 app.js가 여기로 묻는다(DESIGN.md 3절) #}
 <dialog id="confirm" aria-labelledby="confirm-text">
