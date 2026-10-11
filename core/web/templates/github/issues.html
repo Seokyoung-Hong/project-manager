@@ -6,19 +6,19 @@
   <p class="t13"><a href="{% url 'integration_help' %}#issues">이슈 동기화 문제 해결 및 질문 복사</a></p>
   <form class="row wrap gap" method="get">
     {% if not project %}
-    <select name="repo" onchange="this.form.submit()">
+    <select name="repo" aria-label="저장소" onchange="this.form.submit()"> {# copy-draft #}
       <option value="">저장소 전체</option>
       {% for r in repos %}
       <option value="{{ r.pk }}" {% if repo_id == r.pk|stringformat:"s" %}selected{% endif %}>{{ r.full_name }}</option>
       {% endfor %}
     </select>
     {% endif %}
-    <select name="state" onchange="this.form.submit()">
+    <select name="state" aria-label="가져온 상태" onchange="this.form.submit()"> {# copy-draft #}
       <option value="todo" {% if state == "todo" %}selected{% endif %}>아직 가져오지 않은 이슈</option>
       <option value="done" {% if state == "done" %}selected{% endif %}>태스크로 가져온 이슈</option>
       <option value="all" {% if state == "all" %}selected{% endif %}>모든 이슈</option>
     </select>
-    <input type="search" name="q" value="{{ q }}" placeholder="제목·본문 검색">
+    <label class="seg-label" for="issue-q">검색어</label><input id="issue-q" type="search" name="q" value="{{ q }}" placeholder="제목·본문 검색"> {# copy-draft #}
     <button class="btn sm">이슈 찾기</button>
   </form>
   <form method="post" action="{% if project %}{% url 'project_issues_sync' project.pk %}{% else %}{% url 'org_issues_sync' org.pk %}{% endif %}">

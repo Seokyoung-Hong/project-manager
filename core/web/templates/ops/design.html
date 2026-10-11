@@ -76,7 +76,13 @@
   <h3 class="t15">대화상자 <span class="muted t12">dialog (네이티브 showModal)</span></h3>
   <button type="button" class="btn sm" onclick="document.getElementById('sg-dialog').showModal()">대화상자 열기</button>
   <dialog id="sg-dialog"><form method="dialog" class="stack"><h2>새 마일스톤</h2><label class="field">이름<input class="input"></label><div class="row"><button class="btn primary">저장</button><button class="btn">닫기</button></div></form></dialog>
-  <h3 class="t15">표 · 빈 상태 <span class="muted t12">table.grid · td.empty-cell · .empty (+ compact)</span></h3>
+  <h3 class="t15">확인 창 <span class="muted t12">data-confirm · data-confirm-ok (+ data-confirm-cancel) → base.html dialog#confirm · 누른 버튼이 .danger면 위험 스타일</span></h3>
+  <div class="row wrap gap">
+    {# 견본이라 확인해도 보내지 않는다(onsubmit이 막는다) #}
+    <form data-confirm="Discord 연결을 해제합니다. 기한 알림 DM과 봇 명령이 멈춥니다." data-confirm-ok="연결 해제" onsubmit="return false"><button class="btn danger">Discord 계정 연결 해제</button></form>{# copy-draft #}
+    <form data-confirm="v3의 제목과 본문으로 되돌립니다. 지금 내용도 이전 버전으로 남습니다." data-confirm-ok="이 버전으로 되돌리기" onsubmit="return false"><button class="btn">이 버전으로 되돌리기</button></form>{# copy-draft #}
+  </div>
+  <h3 class="t15">표 · 빈 상태<span class="muted t12">table.grid · td.empty-cell · .empty (+ compact)</span></h3>
   <table class="grid"><thead><tr><th>이름</th><th class="num">미완료</th></tr></thead><tbody><tr><td>김관리</td><td class="num">5</td></tr><tr><td colspan="2" class="empty-cell">더 보여 줄 행이 없습니다.</td></tr></tbody></table>
   <div class="sg-cols"><p class="empty">조건에 맞는 기록이 없습니다.</p><p class="empty compact">첨부 파일 없음</p></div>
   <h3 class="t15">설정 페이지 레이아웃 <span class="muted t12">.settings-split → .settings-jump + .settings-main · .setting-row</span></h3>
@@ -149,7 +155,7 @@
     <p class="t13">태스크·변경 이력의 내용까지 담긴 파일을 내려받습니다. 실행은 감사 기록에 남습니다.</p>
     <label class="field">사유 <textarea class="textarea" required minlength="5" maxlength="300"></textarea></label>
     <label class="field">확인을 위해 <code>export</code>를 그대로 입력해 주세요 <input class="input" autocomplete="off"></label>
-    <div class="row"><button class="btn danger">내보내기</button><button class="btn link">취소</button></div>
+    <div class="row"><button class="btn danger">내보내기</button><button class="btn link">닫기</button></div> {# copy-draft #}
   </form></dialog>
 </section>
 <section class="card" id="sg-integrations">

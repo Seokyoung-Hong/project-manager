@@ -8,8 +8,8 @@
         <a href="{% url 'attachment_download' a.pk a.name %}" target="_blank" rel="noopener">{{ a.name }}</a>
         <span class="muted t13">v{{ a.version }} · {{ a.size|filesizeformat }} · {{ a.created_by.display_name }}{% if a.note %} · {{ a.note }}{% endif %}</span>
         {% if a.created_by_id == user.pk or is_admin %}
-        {% if hx %}<button type="button" class="btn link danger" hx-post="{% url 'attachment_delete' a.pk %}" hx-target="#refs" hx-swap="innerHTML" hx-confirm="첨부 파일 {{ a.name }}을(를) 삭제할까요? 되돌릴 수 없습니다.">삭제</button>
-        {% else %}<form method="post" action="{% url 'attachment_delete' a.pk %}" onsubmit="return confirm('첨부 파일을 삭제할까요? 되돌릴 수 없습니다.')">{% csrf_token %}<button class="btn link danger">삭제</button></form>{% endif %}
+        {% if hx %}<button type="button" class="btn link danger" hx-post="{% url 'attachment_delete' a.pk %}" hx-target="#refs" hx-swap="innerHTML" aria-label="첨부 {{ a.name }} 삭제" data-confirm="첨부 파일 {{ a.name }}을(를) 삭제할까요? 되돌릴 수 없습니다." data-confirm-ok="첨부 삭제">삭제</button> {# copy-draft #}
+        {% else %}<form method="post" action="{% url 'attachment_delete' a.pk %}" data-confirm="첨부 파일을 삭제할까요? 되돌릴 수 없습니다." data-confirm-ok="첨부 삭제">{% csrf_token %}<button class="btn link danger" aria-label="첨부 {{ a.name }} 삭제">삭제</button></form>{% endif %} {# copy-draft #}
         {% endif %}
       </div>
       {% if a.history %}<details><summary class="t13">이전 버전 {{ a.history|length }}</summary><ul>{% for h in a.history %}<li class="t13"><a href="{% url 'attachment_download' h.pk h.name %}" target="_blank" rel="noopener">v{{ h.version }} {{ h.name }}</a>{% if h.note %} · {{ h.note }}{% endif %}</li>{% endfor %}</ul></details>{% endif %}

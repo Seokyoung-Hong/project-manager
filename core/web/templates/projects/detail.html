@@ -57,7 +57,7 @@
 </section>
 <section class="card">
   <h2>참고 링크</h2>
-  <ul class="links">{% for l in links %}<li class="row"><span class="badge">{{ l.get_kind_display }}</span><a href="{{ l.url }}" target="_blank" rel="noopener">{{ l.title }}</a><form method="post" action="{% url 'link_delete' l.pk %}">{% csrf_token %}<button class="btn link danger">삭제</button></form></li>{% empty %}<li class="muted t13">링크 없음</li>{% endfor %}</ul>
+  <ul class="links">{% for l in links %}<li class="row"><span class="badge">{{ l.get_kind_display }}</span><a href="{{ l.url }}" target="_blank" rel="noopener">{{ l.title }}</a><form method="post" action="{% url 'link_delete' l.pk %}" data-confirm="참고 링크 {{ l.title }}을(를) 목록에서 지웁니다. 원본 자료는 삭제되지 않습니다." data-confirm-ok="링크 삭제">{% csrf_token %}<button class="btn link danger" aria-label="링크 {{ l.title }} 삭제">삭제</button></form></li>{% empty %}<li class="muted t13">링크 없음</li>{% endfor %}</ul> {# copy-draft #}
   <button type="button" class="btn sm" data-action="toggle" data-target="#link-form" data-alt="입력 닫기">＋ 링크 추가</button>
   <form id="link-form"{% if not link_open %} hidden{% endif %} method="post" action="{% url 'project_link_add' project.pk %}" class="row">{% csrf_token %}
     <select name="kind" class="select auto" aria-label="링크 종류">{% for code, label in link_form.fields.kind.choices %}<option value="{{ code }}"{% if link_form.kind.value == code %} selected{% endif %}>{{ label }}</option>{% endfor %}</select>

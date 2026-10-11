@@ -8,7 +8,6 @@ from django.shortcuts import render
 from django.urls import reverse
 from django.views.decorators.http import require_POST
 
-from accounts.models import User
 from common.dates import fmt_md
 from common.errors import ServiceError
 from orgs.services import is_admin, orgs_of
@@ -64,9 +63,6 @@ def _ctx(request):
         row["today_state_query"] = v["today_state_query"]
         if v["today_state_query"]:
             row["row_query"] = f"{row['row_query']}&{v['today_state_query']}"
-    v["auto_pull_choices"] = [
-        (n, f"{n}일 이내" if n else "사용 안 함") for n, _ in User.AUTO_PULL_CHOICES
-    ]
     v["focus_due"] = due_label(v["focus"]) if v["focus"] else ""
     v["focus_due_class"] = due_class(v["focus"]) if v["focus"] else ""
     return v
@@ -304,13 +300,3 @@ def restore(request):
 def move(request, task_id, direction):
     ts.today_move(request.user, task_or_404(request.user, task_id), direction)
     return _list(request)
-
-
-@login_required
-@require_POST
-def auto_pull(request):
-    try:
-        ts.today_set_auto_pull(request.user, int(request.POST.get("auto_pull_days", "5")))
-    except (ValueError, ServiceError):
-        pass
-    return trigger(_list(request), "today-changed")

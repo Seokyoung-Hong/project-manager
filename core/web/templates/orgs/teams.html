@@ -32,7 +32,7 @@
       </td>
       <td class="t13">{% if r.m.user.discord_user_id %}연결{% else %}<span class="muted">없음</span>{% endif %}</td>
       <td class="num">{{ r.load.open|default:0 }}{% if r.load.overdue %} <span class="danger t13">초과 {{ r.load.overdue }}</span>{% endif %}</td>
-      <td>{% if r.can_remove %}<form method="post" action="{% url 'member_remove' r.m.pk %}" onsubmit="return confirm('조직에서 제거할까요? 담당 중인 태스크는 담당자 그대로 조직에 남습니다. 조직과 사용자 모두 GitHub에 연결되어 있으면 GitHub 조직에서도 제거를 요청합니다. 처리 결과를 확인하세요.')">{% csrf_token %}<button class="btn sm danger">조직에서 제거</button></form>
+      <td>{% if r.can_remove %}<form method="post" action="{% url 'member_remove' r.m.pk %}" data-confirm="조직에서 제거할까요? 담당 중인 태스크는 담당자 그대로 조직에 남습니다. 조직과 사용자 모두 GitHub에 연결되어 있으면 GitHub 조직에서도 제거를 요청합니다. 처리 결과를 확인하세요." data-confirm-ok="조직에서 제거">{% csrf_token %}<button class="btn sm danger" aria-label="{{ r.m.user.display_name }} 조직에서 제거">조직에서 제거</button></form> {# copy-draft #}
         {% else %}<button class="btn sm" disabled title="마지막 관리자는 제거할 수 없습니다">조직에서 제거</button>{% endif %}</td>
     </tr>
     {% endfor %}
@@ -56,7 +56,7 @@
       </td>
       <td>{{ i.expires_at|date:"Y-m-d H:i" }}</td>
       <td class="num">{{ i.use_count }}</td>
-      <td><form method="post" action="{% url 'invite_revoke' i.pk %}" onsubmit="return confirm('초대 링크를 폐기할까요? 이 링크로는 더 이상 참여할 수 없습니다.')">{% csrf_token %}<button class="btn sm danger">초대 링크 폐기</button></form></td>{# copy-draft #}
+      <td><form method="post" action="{% url 'invite_revoke' i.pk %}" data-confirm="초대 링크를 폐기할까요? 이 링크로는 더 이상 참여할 수 없습니다." data-confirm-ok="초대 링크 폐기">{% csrf_token %}<button class="btn sm danger">초대 링크 폐기</button></form></td>{# copy-draft #}
     </tr>
     {% empty %}<tr><td colspan="4" class="empty-cell">초대 링크가 없습니다.</td></tr>{% endfor %}
     </tbody>
@@ -87,7 +87,7 @@
       <td>{% if not row.team.dev_tools %}<span class="muted">—</span>{% elif row.github %}<span class="badge">@{{ row.github.slug }}</span>{% else %}<span class="muted">미연결</span>{% endif %}</td>
       <td class="row">
         <button type="button" class="btn sm" hx-get="{% url 'team_edit' row.team.pk %}" hx-target="#dialog" hx-swap="innerHTML">팀 수정</button>
-        <form method="post" action="{% url 'team_delete' row.team.pk %}" onsubmit="return confirm('팀을 삭제할까요? 멤버와 프로젝트는 그대로 남습니다. GitHub 팀은 남습니다.')">{% csrf_token %}<button class="btn sm danger">팀 삭제</button></form>
+        <form method="post" action="{% url 'team_delete' row.team.pk %}" data-confirm="팀을 삭제할까요? 멤버와 프로젝트는 그대로 남습니다. GitHub 팀은 남습니다." data-confirm-ok="팀 삭제">{% csrf_token %}<button class="btn sm danger">팀 삭제</button></form> {# copy-draft #}
       </td>
     </tr>
     {% empty %}<tr><td colspan="5" class="empty-cell">팀이 없습니다.</td></tr>{% endfor %}

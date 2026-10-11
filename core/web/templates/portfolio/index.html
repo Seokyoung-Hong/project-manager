@@ -102,9 +102,9 @@
 
     {% if generation_prompt %}
     <section class="subgroup mt-6">
-      <div class="row gap wrap"><h2 class="t16">AI에게 전달할 프롬프트</h2><button type="button" class="btn sm" onclick="copyText(document.getElementById('portfolio-prompt').value, '프롬프트 복사됨')">프롬프트 복사</button></div>
+      <div class="row gap wrap"><h2 class="t16" id="portfolio-prompt-title">AI에게 전달할 프롬프트</h2><button type="button" class="btn sm" onclick="copyText(document.getElementById('portfolio-prompt').value, '프롬프트 복사됨')">프롬프트 복사</button></div>
       <p class="muted t13">선택한 기록의 의사 요지만 포함합니다. 프롬프트를 Codex, Claude Code, OpenCode 등에 전달한 뒤 생성된 Markdown을 아래에 붙여 넣어 저장하세요.</p>
-      <textarea id="portfolio-prompt" class="input" rows="16" readonly>{{ generation_prompt }}</textarea>
+      <textarea id="portfolio-prompt" class="input" rows="16" readonly aria-labelledby="portfolio-prompt-title">{{ generation_prompt }}</textarea>
       <form method="post" action="{% url 'portfolio_create' %}" class="stack mt-3">
         {% csrf_token %}<input type="hidden" name="org" value="{{ filters.org }}"><input type="hidden" name="project" value="{{ filters.project }}"><input type="hidden" name="from" value="{{ filters.from }}"><input type="hidden" name="to" value="{{ filters.to }}"><input type="hidden" name="input_type" value="{{ filters.input_type }}">
         {% for record in records %}{% if record.id|stringformat:"s" in selected_ids %}<input type="hidden" name="source_ids" value="{{ record.id }}">{% endif %}{% endfor %}

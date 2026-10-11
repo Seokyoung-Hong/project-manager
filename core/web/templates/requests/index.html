@@ -25,8 +25,8 @@
       <td>{{ lk.created_by.display_name }}</td>
       <td>{{ lk.created_at|date:"m-d H:i" }}</td>
       <td class="row">
-        <form method="post" action="{% url 'task_project_approve' lk.task_id lk.project_id %}">{% csrf_token %}<button class="btn sm">승인</button></form>
-        <form method="post" action="{% url 'task_project_reject' lk.task_id lk.project_id %}">{% csrf_token %}<button class="btn sm">거절</button></form>
+        <form method="post" action="{% url 'task_project_approve' lk.task_id lk.project_id %}">{% csrf_token %}<button class="btn sm" aria-label="{{ lk.task.number }}의 {{ lk.project.name }} 연결 승인">승인</button></form>
+        <form method="post" action="{% url 'task_project_reject' lk.task_id lk.project_id %}">{% csrf_token %}<button class="btn sm" aria-label="{{ lk.task.number }}의 {{ lk.project.name }} 연결 거절">거절</button></form>
       </td>
     </tr>
     {% empty %}<tr><td colspan="6" class="empty-cell">승인을 기다리는 연결이 없습니다.</td></tr>{% endfor %}

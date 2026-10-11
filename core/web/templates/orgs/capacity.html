@@ -5,7 +5,7 @@
   <div class="card-head">
     <h2>부하 현황</h2>
     <form method="get" class="row">
-      <select class="select" name="team" onchange="this.form.requestSubmit()">
+      <select class="select" name="team" aria-label="팀" onchange="this.form.requestSubmit()">
         <option value="">전체 팀</option>
         {% for t in teams %}<option value="{{ t.pk }}"{% if team_id == t.pk|stringformat:"s" %} selected{% endif %}>{{ t.name }}</option>{% endfor %}
       </select>

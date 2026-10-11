@@ -1,3 +1,4 @@
+from types import SimpleNamespace
 from urllib.parse import urlencode
 
 from django.conf import settings
@@ -11,7 +12,7 @@ from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_POST
 
 from accounts.consents import NOTICES, TARGETS
-from accounts.models import ApiToken
+from accounts.models import ApiToken, User
 from accounts.services import (
     give_consent,
     has_consent,
@@ -25,6 +26,7 @@ from accounts.services import (
 )
 from common.errors import ServiceError
 from orgs.settings import effective, specs_for
+from tasks.services import today_set_auto_pull
 
 from ..forms import ProfileForm, TokenForm
 
@@ -122,6 +124,9 @@ def preferences(request):
                 data[spec.key] = request.POST[spec.key]
         try:
             set_user_settings(user, data)
+            if "auto_pull_days" in request.POST:
+                days = request.POST["auto_pull_days"]
+                today_set_auto_pull(user, int(days) if days.isdigit() else -1)
             messages.success(request, "환경설정을 저장했습니다.")
         except ServiceError as e:
             messages.error(request, " ".join(e.errors.values()))
@@ -135,9 +140,27 @@ def preferences(request):
         }
         for s in specs
     ]
+    # 오늘 목록 자동 담기는 User 필드라 설정 명세 밖에 있다. 같은 줄 모양으로 그린다(b-workspace 중-5).
+    auto_pull = {
+        "spec": SimpleNamespace(
+            key="auto_pull_days",
+            kind="int",
+            label="오늘 목록 자동 담기",
+            help="기한이 이 기간 안인 내 태스크를 오늘 목록에 자동으로 담습니다.",  # copy-draft
+            input_choices=[
+                (n, f"기한 {n}일 이내" if n else "쓰지 않음") for n, _ in User.AUTO_PULL_CHOICES
+            ],
+        ),
+        "value": user.auto_pull_days,
+        "can_edit": True,
+        "show_override": False,
+    }
     groups = [
         ("알림", [row for row in rows if row["spec"].key.startswith("user.notify_")]),
-        ("화면 기본값", [row for row in rows if not row["spec"].key.startswith("user.notify_")]),
+        (
+            "화면 기본값",
+            [auto_pull] + [row for row in rows if not row["spec"].key.startswith("user.notify_")],
+        ),
     ]
     return render(request, "settings/preferences.html", {"rows": rows, "groups": groups})
 

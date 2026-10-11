@@ -17,15 +17,8 @@
     <a href="{% url 'me' %}?status=review"><b>{{ counts.review }}</b><span>검토 대기</span></a>
     <a href="{% url 'me' %}?status=blocked"><b>{{ counts.blocked }}</b><span>막힘</span></a>
   </nav>
-  {# 자동 담기 설정은 매일 묻지 않는다. 결과 한 줄 + 접힌 [설정 바꾸기](b-workspace 중-5). #}
-  <details class="today-auto muted t13">
-    <summary>{% if not auto_pull_days %}기한 기준 자동 담기를 쓰지 않습니다.{% elif counts.auto_pulled %}기한이 {{ auto_pull_days }}일 안인 태스크 {{ counts.auto_pulled }}건을 자동으로 담았습니다.{% else %}기한이 {{ auto_pull_days }}일 안인 태스크를 자동으로 담습니다.{% endif %} <span class="today-auto-change">설정 바꾸기</span></summary>{# copy-draft #}
-    <label class="today-auto-pull">기한 기준 자동 담기{# copy-draft #}
-      <select name="auto_pull_days" class="select auto" hx-post="{% url 'today_settings' %}{% if today_state_query %}?{{ today_state_query }}{% endif %}" hx-target="#today-list" hx-swap="outerHTML" hx-trigger="change">
-        {% for v, label in auto_pull_choices %}<option value="{{ v }}"{% if v == auto_pull_days %} selected{% endif %}>{{ label }}</option>{% endfor %}
-      </select>
-    </label>
-  </details>
+  {# 자동 담기 설정은 환경설정에 있다. 여기는 결과 한 줄만(b-workspace 중-5). #}
+  <p class="today-auto muted t13">{% if not auto_pull_days %}기한 기준 자동 담기를 쓰지 않습니다.{% elif counts.auto_pulled %}기한이 {{ auto_pull_days }}일 안인 태스크 {{ counts.auto_pulled }}건을 자동으로 담았습니다.{% else %}기한이 {{ auto_pull_days }}일 안인 태스크를 자동으로 담습니다.{% endif %} <a href="{% url 'preferences' %}#setting-auto_pull_days">설정 바꾸기</a></p>{# copy-draft #}
   {% if counts.excluded %}<p class="muted t13">오늘 목록에서 뺀 태스크 {{ counts.excluded }}건 · <button type="button" class="btn link" hx-post="{% url 'today_restore' %}{% if today_state_query %}?{{ today_state_query }}{% endif %}" hx-target="#today-list" hx-swap="outerHTML">오늘 목록에 복원</button></p>{% endif %}
   <ul class="tasks">
     {% for r in rows %}{% task_row r %}{% empty %}

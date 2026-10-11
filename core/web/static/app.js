@@ -65,6 +65,42 @@
       (reason ? " " + reason : " 다시 시도하세요.")));
   }
 
+  // ---------- 공용 확인 창 (DESIGN.md 3절 "확인 창") ----------
+  // data-confirm="결과 문장" data-confirm-ok="행동 버튼 문구"[, data-confirm-cancel]을 폼·제출 버튼·HTMX 요소에 단다.
+  // 행동 버튼은 누른 버튼이 .danger(또는 data-confirm-danger)면 위험 스타일, 아니면 주 버튼. 초점은 [그대로 두기]에서 시작한다.
+  var confirmDlg = document.getElementById("confirm");
+  function askConfirm(el, styleFrom, then) {
+    var msg = el.dataset.confirm;
+    if (!confirmDlg || typeof confirmDlg.showModal !== "function") {
+      if (window.confirm(msg)) then();  // ponytail: <dialog>를 못 쓰는 옛 브라우저만 기본 창
+      return;
+    }
+    confirmDlg.querySelector("#confirm-text").textContent = msg;
+    var ok = confirmDlg.querySelector("[value=ok]");
+    ok.textContent = el.dataset.confirmOk || "계속하기";
+    ok.className = "btn " + (styleFrom && styleFrom.matches(".danger, [data-confirm-danger]") ? "danger" : "primary");
+    confirmDlg.querySelector("[value=cancel]").textContent = el.dataset.confirmCancel || "그대로 두기";
+    confirmDlg.returnValue = "";
+    confirmDlg.onclose = function () { if (confirmDlg.returnValue === "ok") then(); };
+    confirmDlg.showModal();
+  }
+  // 일반 폼: 캡처 단계에서 먼저 막아 htmx·편집기 저장보다 앞선다. 확인 뒤 같은 제출 버튼으로 다시 보낸다.
+  window.addEventListener("submit", function (e) {
+    var form = e.target, sub = e.submitter;
+    var el = sub && sub.hasAttribute("data-confirm") ? sub : form.hasAttribute("data-confirm") ? form : null;
+    if (!el) return;
+    if (form.dataset.confirmed) { delete form.dataset.confirmed; return; }
+    e.preventDefault(); e.stopImmediatePropagation();
+    askConfirm(el, sub || el, function () { form.dataset.confirmed = "1"; form.requestSubmit(sub || null); });
+  }, true);
+  // HTMX 요소(폼 밖 hx-post 버튼 등): 요청을 멈췄다가 확인하면 그대로 보낸다.
+  body.addEventListener("htmx:confirm", function (e) {
+    var el = e.detail.elt;
+    if (!el.hasAttribute("data-confirm") || el.tagName === "FORM") return;
+    e.preventDefault();
+    askConfirm(el, el, function () { e.detail.issueRequest(true); });
+  });
+
   function openPanel(url, pushUrl) {
     htmx.ajax("GET", url, { target: "#panel", swap: "innerHTML" });
     if (pushUrl) history.pushState(null, "", pushUrl);
@@ -351,7 +387,7 @@
   if (dlg) dlg.addEventListener("click", function (e) { if (e.target === dlg) { dlg.close(); dlg.innerHTML = ""; } });
   document.addEventListener("keydown", function (e) {
     var panel = document.getElementById("panel");
-    if (e.key === "Escape" && panel && panel.children.length && !(dlg && dlg.open)) {
+    if (e.key === "Escape" && panel && panel.children.length && !(dlg && dlg.open) && !(confirmDlg && confirmDlg.open)) {
       var close = panel.querySelector("[data-action='close-panel']");
       if (close) close.click();
     }

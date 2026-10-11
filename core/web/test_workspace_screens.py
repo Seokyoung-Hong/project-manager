@@ -51,9 +51,20 @@ def test_today_auto_pull_setting_is_folded_into_one_line(logged, task, member):
     member.auto_pull_days = 5
     member.save()
     body = logged.get("/today").content.decode()
-    assert '<details class="today-auto' in body
     assert "기한이 5일 안인 태스크 1건을 자동으로 담았습니다." in body
-    assert body.index('<details class="today-auto') < body.index('name="auto_pull_days"')
+    assert 'name="auto_pull_days"' not in body  # 설정은 환경설정 화면에 있다(중-5)
+    assert "/settings/preferences#setting-auto_pull_days" in body
+
+
+def test_auto_pull_setting_lives_in_preferences(logged, member):
+    body = logged.get("/settings/preferences").content.decode()
+    assert 'id="setting-auto_pull_days"' in body
+    logged.post("/settings/preferences", {"auto_pull_days": "3"})
+    member.refresh_from_db()
+    assert member.auto_pull_days == 3
+    logged.post("/settings/preferences", {"auto_pull_days": "4"})  # 고를 수 없는 값은 거절
+    member.refresh_from_db()
+    assert member.auto_pull_days == 3
 
 
 def test_today_empty_without_org_points_to_org_creation(client, db):

@@ -64,7 +64,6 @@ urlpatterns = [
     path("today/exclude/<int:task_id>", today.exclude, name="today_exclude"),
     path("today/restore", today.restore, name="today_restore"),
     path("today/move/<int:task_id>/<str:direction>", today.move, name="today_move"),
-    path("today/settings", today.auto_pull, name="today_settings"),
     path("requests", work_requests.request_index, name="request_index"),
     path("requests/new", work_requests.request_new, name="request_new"),
     path("requests/<int:req_id>", work_requests.request_detail, name="request_detail"),

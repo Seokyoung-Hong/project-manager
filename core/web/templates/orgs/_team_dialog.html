@@ -12,6 +12,6 @@
   {% for f in form %}{% for e in f.errors %}<div class="error">{{ f.label }}: {{ e }}</div>{% endfor %}{% endfor %}
   <div class="row">
     <button class="btn primary">{% if team %}변경 내용 저장{% else %}팀 만들기{% endif %}</button>
-    <button type="button" class="btn" data-action="close-dialog">취소</button>
+    <button type="button" class="btn" data-action="close-dialog">닫기</button> {# copy-draft #}
   </div>
 </form>

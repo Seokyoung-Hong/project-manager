@@ -20,7 +20,7 @@
   {% for msg in errors.values %}<div class="error">{{ msg }}</div>{% endfor %}
   <div class="row">
     <button class="btn primary">{% if ms %}변경 내용 저장{% else %}마일스톤 만들기{% endif %}</button>
-    <button type="button" class="btn" data-action="close-dialog">취소</button>
-    {% if ms %}<button type="button" class="btn danger ml-auto" hx-post="{% url 'milestone_delete' ms.pk %}" hx-confirm="이 마일스톤을 삭제할까요?">삭제</button>{% endif %}
+    <button type="button" class="btn" data-action="close-dialog">닫기</button> {# copy-draft #}
+    {% if ms %}<button type="button" class="btn danger ml-auto" hx-post="{% url 'milestone_delete' ms.pk %}" data-confirm="이 마일스톤을 삭제할까요?" data-confirm-ok="마일스톤 삭제">삭제</button>{% endif %} {# copy-draft #}
   </div>
 </form>

@@ -9,7 +9,7 @@
     {{ org.discord_linked_at|date:"Y-m-d H:i" }} 연결{% if org.discord_linked_by %} · {{ org.discord_linked_by.display_name }}{% endif %}
   </p>
   <form method="post" action="{% url 'discord_unlink' org.pk %}"
-        onsubmit="return confirm('이 조직의 Discord 서버 연결을 해제합니다. 알림이 멈춥니다.')">
+        data-confirm="이 조직의 Discord 서버 연결을 해제합니다. 알림이 멈춥니다." data-confirm-ok="Discord 연결 해제"> {# copy-draft #}
     {% csrf_token %}<button class="btn sm danger">연결 해제</button>
   </form>
   {% else %}

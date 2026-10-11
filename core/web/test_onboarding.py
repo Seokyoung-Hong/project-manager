@@ -58,10 +58,10 @@ def test_consent_withdraw_confirms_with_token_count(client, admin):
     admin.tokens.model.issue(admin, "a", for_ai=True)
     admin.tokens.model.issue(admin, "b", for_ai=True)
     body = client.get("/settings/consents").content.decode()
-    assert "return confirm(" in body and "2개가 폐기됩니다" in body
+    assert "data-confirm=" in body and "2개가 폐기됩니다" in body
     assert "동의 철회하고 연결 끊기" in body
     tokens = client.get("/settings/tokens").content.decode()
-    assert tokens.count("return confirm(") == 2  # 토큰마다 폐기 확인
+    assert tokens.count('data-confirm-ok="토큰 폐기"') == 2  # 토큰마다 폐기 확인
 
 
 # ---------- B1·B2: 가치 먼저, 동의하면 하던 일을 마저 ----------

@@ -10,12 +10,12 @@
       <span class="text">{{ item.text }}</span>
       <button type="button" class="btn sm icon" hx-post="{% url 'checklist_action' item.pk 'up' %}" hx-target="#checklist" hx-swap="innerHTML" aria-label="체크 항목 {{ item.text }} 위로 이동">↑</button>
       <button type="button" class="btn sm icon" hx-post="{% url 'checklist_action' item.pk 'down' %}" hx-target="#checklist" hx-swap="innerHTML" aria-label="체크 항목 {{ item.text }} 아래로 이동">↓</button>
-      <button type="button" class="btn sm icon" hx-post="{% url 'checklist_action' item.pk 'delete' %}" hx-target="#checklist" hx-swap="innerHTML" hx-confirm="이 체크 항목을 삭제할까요?" aria-label="체크 항목 {{ item.text }} 삭제">✕</button>
+      <button type="button" class="btn sm icon" hx-post="{% url 'checklist_action' item.pk 'delete' %}" hx-target="#checklist" hx-swap="innerHTML" data-confirm="이 체크 항목을 삭제할까요?" data-confirm-ok="항목 삭제" data-confirm-danger aria-label="체크 항목 {{ item.text }} 삭제">✕</button> {# copy-draft #}
     </li>
     {% endfor %}
   </ul>
   <form class="row" hx-post="{% url 'checklist_add' task.pk %}" hx-target="#checklist" hx-swap="innerHTML">
-    <input class="input grow" name="text" placeholder="항목 추가" required>
+    <input class="input grow" name="text" placeholder="항목 추가" aria-label="새 체크 항목" required> {# copy-draft #}
     <button class="btn sm">체크 항목 추가</button>
   </form>
   {% if error %}<div class="error">{{ error }}</div>{% endif %}

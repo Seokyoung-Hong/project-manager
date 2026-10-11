@@ -117,8 +117,8 @@
   {% endif %}
   <div class="layout{% block layout_class %}{% endblock %}">
     <main id="main-content" tabindex="-1">
-      {% for m in messages %}<div class="notice{% if m.tags == 'error' %} bad{% endif %}" role="status">
-        {% if m.tags == 'error' %}<span aria-hidden="true">⚠</span>{% endif %}
+      {% for m in messages %}<div class="notice{% if m.level_tag == 'error' %} bad{% elif m.level_tag == 'warning' %} warn{% endif %}" role="{% if m.level_tag == 'error' %}alert{% else %}status{% endif %}">
+        {% if m.level_tag == 'error' or m.level_tag == 'warning' %}<span aria-hidden="true">⚠</span>{% endif %}
         <span class="grow">{{ m }}</span>
         {% if 'integration-help' in m.tags %}<a href="{% url 'integration_help' %}" class="btn sm">해결 절차·질문 복사</a>{% endif %}
         <button type="button" class="btn link" data-action="dismiss" aria-label="닫기">✕</button>
@@ -158,6 +158,16 @@
   </div>
 </footer>
 <dialog id="dialog"></dialog>
+{# 공용 확인 창: data-confirm="결과 문장" data-confirm-ok="버튼 문구"를 단 폼·버튼을 app.js가 여기로 묻는다(DESIGN.md 3절) #}
+<dialog id="confirm" aria-labelledby="confirm-text">
+  <form method="dialog">
+    <p id="confirm-text"></p>
+    <div class="row">
+      <button class="btn" value="cancel" autofocus>그대로 두기</button>{# copy-draft #}
+      <button class="btn danger" value="ok">계속하기</button>
+    </div>
+  </form>
+</dialog>
 <script src="{% static 'app.js' %}"></script>
 <script type="module" src="{% static 'md-field.js' %}"></script>
 <script type="module" src="{% static 'doc-tiptap.js' %}"></script>

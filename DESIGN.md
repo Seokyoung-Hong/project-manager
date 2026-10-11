@@ -49,7 +49,8 @@
 | `--c-surface` | `#FFFDF8` | `#30362C` | 카드·패널·입력 |
 | `--c-soft` | `#EFE9DC` | `#3C4434` | 약한 면: 배지·보드 열·표 머리 |
 | `--c-fill` | `#E6E0D1` | `#465040` | 진행 막대 바탕·이니셜 |
-| `--c-line` | `#E2DFD4` | `#4A5143` | 구분선·테두리 |
+| `--c-line` | `#E2DFD4` | `#4A5143` | 구분선·카드 테두리 |
+| `--c-line-strong` | `#8A8677` | `#8A9480` | 입력·셀렉트·편집 칸 테두리 전용(바탕·표면·soft 위 3:1 이상) |
 | `--c-ink` | `#33372D` | `#F5F0DF` | 본문·제목 |
 | `--c-muted` | `#64655A` | `#BDC2B3` | 보조 글자(메타·도움말) |
 | `--c-faint` | `#8A8A7C` | `#8F9984` | 장식·placeholder·비활성 전용 — 읽어야 하는 글자에 쓰지 않는다 |
@@ -85,6 +86,8 @@
 | ink / yellow · sage · coral | 8.5 · 9.6 · 7.6 | 6.2 · 7.1 · 7.4 |
 | danger / danger-soft · success / success-soft · warning / warning-soft · info / info-soft | 5.6 · 5.0 · 5.7 · 6.6 | 7.4 · 6.3 · 6.9 · 7.0 |
 | faint / surface (장식 전용) | 3.4 | 4.2 |
+| line-strong / bg · surface · soft (입력 경계, 비텍스트 3:1) | 3.4 · 3.6 · 3.0 | 4.7 · 3.9 · 3.2 |
+| muted / yellow — **쓰지 않는다**(yellow·coral·fill 위 보조 글자는 잉크로) | 4.1 | 3.9 |
 | danger / coral — **쓰지 않는다** | 4.3 | 4.9 |
 
 ### 2.2 글자
@@ -156,18 +159,19 @@ animation·transition을 끈다(파일 맨 끝 규칙).
 | 컴포넌트 | 클래스 | 규칙 | 하지 말 것 |
 |---|---|---|---|
 | 버튼 | `.btn` + `.primary` `.tint` `.sm` `.icon` `.link` `.danger`, `[aria-pressed]` | 화면당 주 버튼(`.primary`) 하나. 폼을 여는 주 버튼은 `data-hide-open`을 붙여 열린 동안 숨긴다(폼의 제출 버튼이 주 버튼으로 남는다). 카드가 여럿인 화면은 저장 하나만 주 버튼, 파일 올리기·연결은 `.btn`. 되돌릴 수 없는 행동은 `.danger`. 누르면 1px 내려간다 | 주 버튼 둘, 열면 [닫기]로 바뀌는 주 버튼(토글형 주 버튼), 카드마다 주 버튼, 링크를 버튼처럼 칠하기, 아이콘만 있는 버튼에 `aria-label` 빠뜨리기 |
-| 입력 | `label.field` > `.input`/`.select`/`.textarea`, `.helptext`, `label.check` | 라벨은 위, 도움말·오류는 아래. 클래스 없는 Django 위젯도 `:where()` 기본 규칙으로 같은 모양 | placeholder로 라벨 대신하기, 입력을 알약 모양으로 |
+| 입력 | `label.field` > `.input`/`.select`/`.textarea`, `.helptext`, `label.check` | 라벨은 위, 도움말·오류는 아래. 테두리는 `--c-line-strong`. 한 줄 필터·추가 칸처럼 라벨 자리가 없으면 `.seg-label` 라벨을 앞에 두거나 `aria-label`을 단다. 클래스 없는 Django 위젯도 `:where()` 기본 규칙으로 같은 모양 | placeholder로 라벨 대신하기, 입력을 알약 모양으로 |
 | 마크다운 긴 글 | `.md-field` > `label` + `textarea[data-md][data-toolbar="top\|bottom"]` → `md-field.js`가 `.mdf` 칸(Tiptap)을 붙인다. 읽기 전용은 `.md-view` | 모든 칸이 같은 기능·같은 우선순위. 서식 줄은 초점이 있을 때만, 아이콘만(이름은 `title`·`aria-label`, [더보기] 메뉴만 아이콘+글씨). 큰 칸은 위(sticky), 작은 칸은 아래, 모바일은 화면 키보드 위 40px 한 줄. 고정 제목·라벨은 칸 밖, 칸 안 제목은 그보다 작게 | 칸마다 기능 빼기, 글자 버튼, 테두리 없는 편집 영역, 열기만으로 저장 |
 | 카드 | `.card`, `.card-head`, `.card > h2`, `.box`, `.card.compact`, `.card.alert` | 묶음에 의미가 있을 때만. 제목은 Jua 24px | 카드 안 카드, 한 줄짜리 묶음마다 카드 쌓기(→ `.group-stack` 구분선) |
 | 배지 | `.badge` + `.high` `.primary` `.ok` `.warn` `.danger` `.info`, `.tag`, GitHub용 `.pr-open` `.pr-merged` `.pr-closed` `.pr-draft` | 6px 모서리의 납작한 표식. 상태·수량·종류 | 알약 배지 남발, 배지에 클릭 동작 |
 | 칩 | `.chips .chip`(체크박스·버튼·링크) | 필터·토글. 눌림은 잉크 색 채움 + ✓ | 칩으로 주 행동 |
 | 선택 카드 | `.radios .radio-card` | 설명이 필요한 선택지(프로젝트 상태 등) | 2개뿐인 선택에 쓰기 |
 | 탭 | `nav.tabs a[aria-current="page"]`, `.view-switch` | 화면 안 이동. 현재 탭은 표면색 + 그림자 | 탭으로 동작 실행 |
-| 대화상자 | 네이티브 `dialog` + `#dialog` HTMX 대상 | 생성·수정 폼. 긴 폼은 하단 버튼 줄이 붙는다 | 확인 한 번이면 될 일을 대화상자로 |
+| 대화상자 | 네이티브 `dialog` + `#dialog` HTMX 대상 | 생성·수정 폼. 긴 폼은 하단 버튼 줄이 붙는다. 닫는 버튼은 [닫기] | 확인 한 번이면 될 일을 대화상자로, 닫는 버튼을 "취소"로(상태 '취소'와 겹친다) |
+| 확인 창 | `data-confirm="결과 문장"` + `data-confirm-ok="대상+동사"`(+ `data-confirm-cancel`, 기본 [그대로 두기]) → `base.html` `dialog#confirm`, `app.js` `askConfirm` | 되돌리기 어려운 행동 앞에 한 번. 일반 폼은 `<form>`에, 버튼 하나만 확인할 때는 그 제출 버튼에, HTMX 요소는 그 요소에 단다. 누른 버튼이 `.danger`면(모양을 바꾸기 어려운 아이콘 버튼은 `data-confirm-danger`) 행동 버튼도 위험 스타일. 초점은 [그대로 두기]에서 시작, Esc·바깥은 취소. JS가 없으면 확인 없이 제출되므로 되돌릴 수 없는 일(탈퇴·운영 콘솔)은 서버가 이름 재입력으로 한 번 더 막는다. `<dialog>`를 못 쓰는 브라우저만 기본 `confirm()`으로 대신한다 | `confirm()`·`hx-confirm`·`onsubmit="return confirm"`(테스트가 막는다), "확인/취소/OK" 버튼, 결과 없이 "…할까요?"만 묻기 |
 | 패널 | `aside#panel .panel`, `.panel-bar`(상태 메뉴·저장 표시·복사·닫기), `.panel-meta`(라벨 \| 값 2열), `.panel-folds > details.fold` | 상태는 고정 막대에서 바꾼다. 저장 표시 `#save-status`는 늘 보인다(저장 안내 문단을 따로 두지 않는다). 1단(펼침): 제목·상태 설명·프로젝트·담당·검토자·기한·중요도·다음 행동·진행 메모·완료 조건. 2단(접힘, 머리에 개수): 설명·체크리스트·하위 태스크·연결 프로젝트. 3단(접힘): 자료·첨부·산출물·변경 이력·결정 기록·더보기. 기한은 한 곳에만. 고르기 셀렉트는 빈 첫 옵션("…고르기…") + `required` | 상태 폼 복제, 같은 값 두 번 표시, 옵션 문구에 라벨 끼워 넣기, 미리 골라 둔 연결 대상 |
 | 표 | `table.grid`, `.num`, `.table-scroll`(+`.table-scroll-hint`), `td.empty-cell` | 모바일은 카드 안에서 가로 스크롤. `.table-scroll`에는 항상 `role="region"`·aria-label("좌우로 스크롤 가능")과 힌트를 붙인다. 폭 440px 이하 카드(인증 카드, `w-sm`)에는 표 대신 정의 목록 카드(`dl.consent-recipient`) | 페이지 전체가 가로로 흔들리게 두기, 좁은 카드에 6열 표 |
 | 빈 상태 | `{% include "_empty.html" with what= why= href=/hx_get=/toggle= label= locked= locked_text= %}` → `.empty`(화분 76px) `.empty-what`, `.empty.compact`(글자만), `td.empty-cell` | 무엇이 비었나 + 가치 한 줄 + 행동 하나. 권한이 없으면 행동 대신 `locked_text`. 원인이 여럿이면(조직 없음 → 프로젝트 없음 → 태스크 없음) 앞의 원인 하나만. 빈 표는 머리줄 없이 빈 상태로. 큰 화분은 화면당 하나 | 모든 빈 곳에 화분, 갈 수 없는 곳을 가리키는 안내, 필터 줄만 남은 빈 화면 |
-| 알림 | `.notice`(세이지) `.notice.warn` `.notice.bad`, `.toast` | 경고·실패는 ⚠ 글리프를 앞에 둔다(색 외 단서). 일반 알림엔 글리프 없음. 토스트는 3초 | ⓘ 같은 장식 글리프, 감탄부호 |
+| 알림 | `.notice`(세이지) `.notice.warn` `.notice.bad`, `.toast` | 경고·실패는 ⚠ 글리프를 앞에 둔다(색 외 단서). `messages.warning`은 `.notice.warn`, `messages.error`는 `.notice.bad` + `role="alert"`로 그린다(base.html). 일반 알림엔 글리프 없음. 토스트는 3초 | ⓘ 같은 장식 글리프, 감탄부호 |
 | 지표 | `.tiles .tile`, `.stats .stat`, `.bar` | 첫 칸(대표)만 세이지, 위험 수치(`b.danger`)는 코랄, 나머지 바탕색 | 의미 없는 색 돌림 |
 
 ### 3.1 폼·설정 페이지 레이아웃
@@ -295,10 +299,12 @@ SVG 칠은 `fill="#…"`이 아니라 `.art-pot` `.art-leaf` 같은 클래스로
 
 - 글자 대비 4.5:1 이상(2.1 표). `--c-faint`는 읽어야 하는 글자에 쓰지 않는다. 코랄 위에는 잉크 글자.
 - 초점: `:focus-visible { outline: 3px solid var(--c-accent); outline-offset: 2px }`, 입력은 테두리 + 3px `--c-accent-soft` 링. 초점 표시를 지우지 않는다.
-- 터치 44px: 모바일(≤700px)에서 버튼·상태 select·입력·패널 안 링크형 버튼·지표 링크 모두 44px 이상.
+- 터치 44px: 모바일(≤700px)에서 버튼·상태 select·입력·링크형 버튼(`.btn.link`, 알림 닫기 포함)·지표 링크 모두 44px 이상.
+- 이름: 목록에 되풀이되는 [삭제]·[승인]·[거절] 같은 버튼은 `aria-label`에 대상 이름을 넣는다("첨부 {{ 이름 }} 삭제"). 아이콘만 있는 버튼도 같다.
 - 상태는 색 + 글자(+ 기호)로. 경고는 ⚠. 장식 SVG는 `aria-hidden="true"`.
 - 본문 바로가기 `.skip-link`, 알림 `role="status"`, 저장 표시 `aria-live="polite"`, 표 스크롤 영역 `tabindex="0" role="region" aria-label`.
 - 모션 감소 설정을 존중한다(2.5).
+- 자동 검사(`core/web/test_design_system.py`): `confirm()`·`hx-confirm` 재등장, "확인/취소/OK" 단독 버튼, 라벨 없는 입력, `aria-label` 없는 아이콘 버튼, 주요 글자·바탕 조합 대비(글자 4.5, 입력 경계 3.0, 라이트·다크)를 막는다. 새 색 조합을 쓰면 `CONTRAST_PAIRS`에 넣는다.
 
 ## 9. 반응형 기준점
 

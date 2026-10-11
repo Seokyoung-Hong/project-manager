@@ -53,7 +53,7 @@
       <td>{{ t.get_scope_display }}</td>
       <td>{% if t.for_ai %}AI{% else %}사람{% endif %}</td>
       <td>{{ t.expires_at|date:"Y-m-d"|default:"없음" }}</td>
-      <td><form method="post" action="{% url 'token_revoke' t.pk %}" onsubmit="return confirm('&lsquo;{{ t.name|escapejs }}&rsquo; 토큰을 폐기할까요? 이 토큰을 쓰는 도구는 바로 연결이 끊기고, 폐기한 토큰은 되살릴 수 없습니다.')">{% csrf_token %}<button class="btn sm danger">토큰 폐기</button></form></td>{# copy-draft #}
+      <td><form method="post" action="{% url 'token_revoke' t.pk %}" data-confirm="&lsquo;{{ t.name }}&rsquo; 토큰을 폐기할까요? 이 토큰을 쓰는 도구는 바로 연결이 끊기고, 폐기한 토큰은 되살릴 수 없습니다." data-confirm-ok="토큰 폐기">{% csrf_token %}<button class="btn sm danger">토큰 폐기</button></form></td>{# copy-draft #}
     </tr>
     {% empty %}<tr><td colspan="6" class="empty-cell">토큰이 없습니다.</td></tr>{% endfor %}
     </tbody>

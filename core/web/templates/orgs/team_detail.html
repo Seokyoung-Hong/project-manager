@@ -11,7 +11,7 @@
     </div>
     <div class="row">
       <button type="button" class="btn" hx-get="{% url 'team_edit' team.pk %}" hx-target="#dialog" hx-swap="innerHTML">팀 수정</button>
-      <form method="post" action="{% url 'team_delete' team.pk %}" onsubmit="return confirm('팀을 삭제할까요? 멤버와 프로젝트는 그대로 남습니다. GitHub 팀은 남습니다.')">{% csrf_token %}<button class="btn danger">팀 삭제</button></form>
+      <form method="post" action="{% url 'team_delete' team.pk %}" data-confirm="팀을 삭제할까요? 멤버와 프로젝트는 그대로 남습니다. GitHub 팀은 남습니다." data-confirm-ok="팀 삭제">{% csrf_token %}<button class="btn danger">팀 삭제</button></form> {# copy-draft #}
     </div>
   </div>
 </div>
@@ -27,7 +27,7 @@
   <p class="muted t13">연결을 해제해도 GitHub 팀은 유지됩니다. 멤버 추가는 활성 PM 팀 멤버만 GitHub에 추가를 요청하며, GitHub에만 있는 멤버는 제거하지 않습니다.</p>
   {% else %}
   <form method="post" action="{% url 'team_github_link' team.pk %}" class="row">{% csrf_token %}
-    <select name="gh_team" class="select auto">
+    <select name="gh_team" class="select auto" aria-label="연결할 GitHub 팀"> {# copy-draft #}
       <option value="">GitHub 팀 선택</option>
       {% for t in gh_teams %}<option value="{{ t.id }}:{{ t.slug }}:{{ t.name }}">{{ t.name }} (@{{ t.slug }})</option>{% endfor %}
     </select>
@@ -56,7 +56,7 @@
     </tbody>
   </table>
   <form method="post" action="{% url 'team_member_add' team.pk %}" class="row">{% csrf_token %}
-    <select name="user" class="select auto">
+    <select name="user" class="select auto" aria-label="팀에 추가할 멤버"> {# copy-draft #}
       <option value="">멤버 선택</option>
       {% for u in candidates %}<option value="{{ u.pk }}">{{ u.display_name }}</option>{% endfor %}
     </select>

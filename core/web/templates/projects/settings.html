@@ -87,11 +87,11 @@
   </p>
   <div class="row wrap gap">
     <form method="post" action="{% url 'project_archive' project.pk %}"
-          onsubmit="return confirm('{{ project.name|escapejs }} 프로젝트를 보관할까요? 미완료 태스크가 있으면 보관할 수 없습니다. 데이터는 유지됩니다.')">
+          data-confirm="{{ project.name }} 프로젝트를 보관할까요? 미완료 태스크가 있으면 보관할 수 없습니다. 데이터는 유지됩니다." data-confirm-ok="프로젝트 보관"> {# copy-draft #}
       {% csrf_token %}<button class="btn">프로젝트 보관</button>
     </form>
     <form method="post" action="{% url 'project_archive' project.pk %}"
-          onsubmit="return confirm('{{ project.name|escapejs }} 프로젝트의 미완료 태스크 {{ open_task_count }}건을 모두 취소하고 보관할까요? 태스크와 프로젝트 데이터는 유지됩니다.')">
+          data-confirm="{{ project.name }} 프로젝트의 미완료 태스크 {{ open_task_count }}건을 모두 취소하고 보관할까요? 태스크와 프로젝트 데이터는 유지됩니다." data-confirm-ok="미완료 취소하고 보관"> {# copy-draft #}
       {% csrf_token %}<input type="hidden" name="cancel_open" value="1">
       <button class="btn danger">미완료 태스크를 모두 취소하고 프로젝트 보관</button>
     </form>

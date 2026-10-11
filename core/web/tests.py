@@ -951,11 +951,7 @@ def test_schedule_state_survives_htmx_partial_refreshes(logged, task):
         in body
     )
 
-    body = logged.post(
-        "/today/settings",
-        {"auto_pull_days": 3},
-        headers=headers,
-    ).content.decode()
+    body = logged.post("/today/restore", headers=headers).content.decode()
     assert 'aria-expanded="true"' in body
     assert "일정 닫기" in body
 
