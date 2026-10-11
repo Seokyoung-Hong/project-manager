@@ -63,7 +63,7 @@ def discord_link(request):
 @require_POST
 def discord_unlink(request):
     unlink_discord(request.user)
-    messages.success(request, "Discord 연결을 끊었습니다. 마감 알림 DM도 멈춥니다.")
+    messages.success(request, "Discord 연결을 끊었습니다. 기한 알림 DM도 멈춥니다.")
     return redirect("profile")
 
 
@@ -146,7 +146,7 @@ def preferences(request):
             key="auto_pull_days",
             kind="int",
             label="오늘 목록 자동 담기",
-            help="기한이 이 기간 안인 내 태스크를 오늘 목록에 자동으로 담습니다.",  # copy-draft
+            help="기한까지 남은 날이 이 기간 이내인 내 태스크를 오늘 목록에 자동으로 추가합니다.",
             input_choices=[
                 (n, f"기한 {n}일 이내" if n else "쓰지 않음") for n, _ in User.AUTO_PULL_CHOICES
             ],

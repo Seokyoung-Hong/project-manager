@@ -179,9 +179,9 @@ def test_panel_daily_fields_first_and_rare_ones_folded(logged, task):
     assert body.index("다음 행동") < body.index('class="stack panel-folds"')
     assert body.index("진행 메모") < body.index('id="task-projects"')
     # 기한은 한 곳에만, 보이는 라벨과 함께
-    assert body.count("목표일 연장하기") == 1 and ">기한</span>" in body
+    assert body.count("기한 연장하기") == 1 and ">기한</span>" in body
     # 저장 안내 문단은 없고 막대의 표시만 남는다
-    assert "저장 완료 표시를 확인하세요" not in body
+    assert "저장 완료 표시를 확인해 주세요" not in body
     # 하위 만들기 폼은 [하위 태스크 추가]를 눌러야 펼친다
     assert re.search(r'id="sub-add-\d+" class="stack" hidden', body)
 
@@ -195,7 +195,7 @@ def test_panel_pickers_start_empty(logged, task, org, admin):
     assert '<option value="">프로젝트 고르기…</option>' in body
     assert '<option value="">태스크 고르기…</option>' in body
     r = logged.post(f"/tasks/{task.pk}/projects", {"project": ""}, headers=HX)
-    assert "연결할 프로젝트를 골라 주세요." in r.content.decode()
+    assert "연결할 프로젝트를 선택해 주세요." in r.content.decode()
 
 
 def test_stop_box_buttons_do_not_say_cancel(logged, task):
@@ -210,14 +210,14 @@ def test_stop_box_buttons_do_not_say_cancel(logged, task):
 
 def test_me_with_no_tasks_hides_filters_and_shows_one_action(logged, project):
     body = logged.get("/me").content.decode()
-    assert "맡은 미완료 태스크가 없습니다." in body
+    assert "담당 중인 미완료 태스크가 없습니다." in body
     assert re.search(r'<form id="me-filter"[^>]*hidden', body)
     assert "결과 없음" not in body
 
 
 def test_requests_empty_explains_what_requests_are(logged, org):
     body = logged.get("/requests").content.decode()
-    assert "다른 사람에게 일을 맡기거나 검토를 부탁할 때 씁니다." in body
+    assert "다른 사람이 보낸 작업·검토 요청을 여기서 확인할 수 있습니다." in body
     assert "<th>요청</th>" not in body
 
 
@@ -236,7 +236,7 @@ def test_projects_empty_for_member_is_not_a_dead_end(client, admin, member):
 def test_portfolio_hides_org_picker_and_prompt_button_when_nothing_to_pick(logged, org):
     body = logged.get("/portfolio").content.decode()
     assert 'name="org" onchange' not in body
-    assert "아직 쌓인 결정 기록이 없습니다." in body
+    assert "아직 결정 기록이 없습니다." in body
     assert "AI 요청문 만들기" not in body
 
 

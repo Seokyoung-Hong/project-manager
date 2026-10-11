@@ -6,7 +6,7 @@
     <div>
       <h1 class="t24">내 포트폴리오{% if draft %} 초안{% endif %}</h1>
       {% if draft %}<p class="muted t13">비공개 Markdown 초안 · 마지막 수정 {{ draft.updated_at|date:"Y-m-d H:i" }}</p>
-      {% else %}<p class="muted t13">기록을 골라 AI에 전달할 포트폴리오 작성 요청을 만듭니다. AI가 작성한 내용을 붙여 넣어 비공개 초안으로 저장하세요.</p>{% endif %}
+      {% else %}<p class="muted t13">기록을 골라 AI에 전달할 포트폴리오 작성 요청을 만듭니다. AI가 작성한 내용을 붙여 넣어 비공개 초안으로 저장해 주세요.</p>{% endif %}
     </div>
     {% if draft %}<a class="btn sm" href="{% url 'portfolio' %}">새 초안 준비하기</a>{% endif %}
   </div>
@@ -24,7 +24,7 @@
 
   {% if draft %}
   {% if conflict_message %}<div class="notice bad" role="alert"><span aria-hidden="true">⚠</span><span class="grow">{{ conflict_message }} 현재 서버 초안은 “저장한 비공개 초안” 목록에서 다시 열 수 있습니다. 제출한 편집 내용은 본문 칸에 유지했습니다.</span></div>{% endif %}
-  {% if draft.stale_source_ids %}<div class="notice bad" role="status"><span aria-hidden="true">⚠</span><span class="grow">출처 기록이 정정되거나 변경되었습니다. 현재 초안은 기존 출처 스냅샷을 유지합니다. 내용을 확인한 뒤 직접 수정하세요.</span></div>{% endif %}
+  {% if draft.stale_source_ids %}<div class="notice bad" role="status"><span aria-hidden="true">⚠</span><span class="grow">출처 기록이 정정되거나 변경되었습니다. 현재 초안은 기존 출처 스냅샷을 유지합니다. 내용을 확인한 뒤 직접 수정해 주세요.</span></div>{% endif %}
   <form method="post" action="{% url 'portfolio_save' draft.pk %}" class="stack">
     {% csrf_token %}
     <input type="hidden" name="version" value="{{ draft.version }}">
@@ -34,11 +34,11 @@
     <div class="row gap">
       <button class="btn primary" type="submit">초안 저장</button>
       <a class="btn" href="{% url 'portfolio_export' draft.pk %}">Markdown 다운로드</a>
-      <span class="muted t13">저장한 내용만 내려받습니다. 변경 후 먼저 저장하세요.</span>
+      <span class="muted t13">저장한 내용만 내려받습니다. 변경 후 먼저 저장해 주세요.</span>
     </div>
   </form>
   <div class="subgroup mt-6">
-    <h2 class="t16">사용한 근거 기록</h2>{# copy-draft #}
+    <h2 class="t16">사용한 근거 기록</h2>
     <ul class="stack">
       {% for source in draft.portfolio_sources %}
       <li class="card compact">
@@ -63,10 +63,10 @@
         </select></label>
         <label class="field"><span>시작일</span><input class="input" type="date" name="from" value="{{ filters.from }}"></label>
         <label class="field"><span>종료일</span><input class="input" type="date" name="to" value="{{ filters.to }}"></label>
-        <label class="field"><span>내 결정 종류</span>{# copy-draft #}<select class="select auto" name="input_type">
+        <label class="field"><span>내 결정 종류</span><select class="select auto" name="input_type">
           <option value="">전체 기록</option>{% for code,label in input_type_options %}<option value="{{ code }}"{% if filters.input_type == code %} selected{% endif %}>{{ label }}</option>{% endfor %}
         </select></label>
-        <button class="btn sm" type="submit">근거 기록 보기</button>{# copy-draft #}
+        <button class="btn sm" type="submit">근거 기록 보기</button>
       </div>
     </form>
 
@@ -78,7 +78,7 @@
       <input type="hidden" name="to" value="{{ filters.to }}">
       <input type="hidden" name="input_type" value="{{ filters.input_type }}">
       <div class="row"><h2 class="t16">포트폴리오 근거 기록</h2><span class="muted t13">내 결정과 AI 판단을 구분해 표시합니다. 현재 조건 {{ records|length }}건 / 전체 {{ record_total }}건</span></div>
-      {% if record_total > record_limit %}<p class="muted t13">한 번에 {{ record_limit }}건까지 표시합니다. 더 오래된 출처가 필요하면 프로젝트나 기간 조건을 좁혀 선택하세요.</p>{% endif %}
+      {% if record_total > record_limit %}<p class="muted t13">한 번에 {{ record_limit }}건까지 표시합니다. 더 오래된 출처가 필요하면 프로젝트나 기간 조건을 좁혀 선택해 주세요.</p>{% endif %}
       <ul class="stack">
       {% for record in records %}
         <li class="card compact">
@@ -94,27 +94,27 @@
             </span>
           </label>
         </li>
-      {% empty %}{% if record_total %}{% include "_empty.html" with tag="li" compact=True what="선택한 조건에 맞는 근거 기록이 없습니다. 기간이나 프로젝트 조건을 넓혀 주세요." %}{% else %}{% url 'me' as me_url %}{% include "_empty.html" with tag="li" what="아직 쌓인 결정 기록이 없습니다." why="태스크에서 결정을 기록하면 여기서 포트폴리오 초안을 만들 수 있습니다." href=me_url label="태스크로 가기" %}{% endif %}{# copy-draft #}{% endfor %}
+      {% empty %}{% if record_total %}{% include "_empty.html" with tag="li" compact=True what="선택한 조건에 맞는 근거 기록이 없습니다. 기간이나 프로젝트 조건을 넓혀 주세요." %}{% else %}{% url 'me' as me_url %}{% include "_empty.html" with tag="li" what="아직 결정 기록이 없습니다." why="태스크에서 결정을 기록하면 여기서 포트폴리오 초안을 만들 수 있습니다." href=me_url label="태스크로 가기" %}{% endif %}{% endfor %}
       </ul>
       {# 고를 근거 기록이 없으면 주 버튼을 두지 않는다 — 누를 수 없는 행동을 보이지 않는다 #}
-      {% if records %}<button class="btn primary" type="submit">선택한 근거 기록으로 AI 요청문 만들기</button>{% endif %}{# copy-draft #}
+      {% if records %}<button class="btn primary" type="submit">선택한 근거 기록으로 AI 요청문 만들기</button>{% endif %}
     </form>
 
     {% if generation_prompt %}
     <section class="subgroup mt-6">
       <div class="row gap wrap"><h2 class="t16" id="portfolio-prompt-title">AI에게 전달할 프롬프트</h2><button type="button" class="btn sm" onclick="copyText(document.getElementById('portfolio-prompt').value, '프롬프트 복사됨')">프롬프트 복사</button></div>
-      <p class="muted t13">선택한 기록의 의사 요지만 포함합니다. 프롬프트를 Codex, Claude Code, OpenCode 등에 전달한 뒤 생성된 Markdown을 아래에 붙여 넣어 저장하세요.</p>
+      <p class="muted t13">선택한 기록의 의사 요지만 포함합니다. 프롬프트를 Codex, Claude Code, OpenCode 등에 전달한 뒤 생성된 Markdown을 아래에 붙여 넣어 저장해 주세요.</p>
       <textarea id="portfolio-prompt" class="input" rows="16" readonly aria-labelledby="portfolio-prompt-title">{{ generation_prompt }}</textarea>
       <form method="post" action="{% url 'portfolio_create' %}" class="stack mt-3">
         {% csrf_token %}<input type="hidden" name="org" value="{{ filters.org }}"><input type="hidden" name="project" value="{{ filters.project }}"><input type="hidden" name="from" value="{{ filters.from }}"><input type="hidden" name="to" value="{{ filters.to }}"><input type="hidden" name="input_type" value="{{ filters.input_type }}">
         {% for record in records %}{% if record.id|stringformat:"s" in selected_ids %}<input type="hidden" name="source_ids" value="{{ record.id }}">{% endif %}{% endfor %}
         <label class="field"><span>초안 제목</span><input class="input" type="text" name="title" value="프로젝트 포트폴리오 초안" maxlength="200" required></label>
-        <label class="field"><span>AI가 작성한 Markdown</span><textarea class="input" name="body_md" rows="18" placeholder="AI가 생성한 Markdown 초안을 여기에 붙여 넣으세요."></textarea></label>
+        <label class="field"><span>AI가 작성한 Markdown</span><textarea class="input" name="body_md" rows="18" placeholder="AI가 생성한 Markdown 초안을 여기에 붙여 입력해 주세요."></textarea></label>
         <button class="btn primary" type="submit">비공개 초안 저장</button>
       </form>
     </section>
     {% endif %}
-    {% else %}{% url 'org_new' as org_url %}{% include "_empty.html" with what="아직 속한 조직이 없습니다." why="조직에서 태스크와 결정을 기록하면 여기서 포트폴리오 초안을 만들 수 있습니다." href=org_url label="조직 만들기" %}{# copy-draft #}{% endif %}
+    {% else %}{% url 'org_new' as org_url %}{% include "_empty.html" with what="아직 속한 조직이 없습니다." why="조직에서 태스크와 결정을 기록하면 여기서 포트폴리오 초안을 만들 수 있습니다." href=org_url label="조직 만들기" %}{% endif %}
   {% endif %}
 </section>
 {% endblock %}

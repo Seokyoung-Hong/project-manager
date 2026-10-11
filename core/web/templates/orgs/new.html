@@ -5,7 +5,7 @@
   <form method="post" class="stack">{% csrf_token %}
     {% for e in form.non_field_errors %}<div class="error">{{ e }}</div>{% endfor %}
     {% include "_fields.html" %}
-    <button class="btn primary">만들기</button>
+    <button class="btn primary">조직 만들기</button>
   </form>
 </div>
 {% endblock %}

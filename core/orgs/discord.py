@@ -51,10 +51,16 @@ def guild_from_code(code: str, redirect_uri: str) -> str:
     """
     if not settings.DISCORD_CLIENT_SECRET:
         raise ServiceError(
-            {"guild_id": "서버에 DISCORD_CLIENT_SECRET이 없어 연결을 확인할 수 없습니다."}
+            {
+                "guild_id": "서버의 Discord 인증 설정이 없어 연결할 수 없습니다. 서비스 운영자에게 문의해 주세요."
+            }
         )
     if not code:
-        raise ServiceError({"guild_id": "Discord 설치 응답에 code가 없습니다."})
+        raise ServiceError(
+            {
+                "guild_id": "Discord 인증 응답을 받지 못했습니다. 조직 설정에서 Discord 연결을 다시 시작해 주세요."
+            }
+        )
     body = urllib.parse.urlencode(
         {
             "grant_type": "authorization_code",
@@ -72,11 +78,19 @@ def guild_from_code(code: str, redirect_uri: str) -> str:
             data = json.loads(r.read())
     except (OSError, ValueError, http.client.HTTPException):
         # URLError·TimeoutError·연결 끊김은 모두 OSError다. 500이 아니라 안내로 끝낸다.
-        raise ServiceError({"guild_id": "Discord에서 설치를 확인하지 못했습니다."}) from None
+        raise ServiceError(
+            {
+                "guild_id": "Discord 앱 설치를 확인하지 못했습니다. 서버 관리 권한과 설치 상태를 확인한 뒤 다시 연결해 주세요."
+            }
+        ) from None
     guild = data.get("guild") if isinstance(data, dict) else None
     guild_id = str((guild or {}).get("id") or "") if isinstance(guild, dict) else ""
     if not guild_id:
-        raise ServiceError({"guild_id": "Discord에서 설치를 확인하지 못했습니다."})
+        raise ServiceError(
+            {
+                "guild_id": "Discord 앱 설치를 확인하지 못했습니다. 서버 관리 권한과 설치 상태를 확인한 뒤 다시 연결해 주세요."
+            }
+        )
     return guild_id
 
 
@@ -176,11 +190,17 @@ def link_guild(org, guild_id: str, actor, source: str = "web") -> Organization:
     require_admin(actor, org)
     guild_id = str(guild_id or "").strip()
     if not guild_id.isdecimal():
-        raise ServiceError({"guild_id": "Discord 서버를 확인하지 못했습니다."})
+        raise ServiceError(
+            {
+                "guild_id": "Discord 서버를 확인하지 못했습니다. 서버 관리 권한을 확인한 뒤 다시 연결해 주세요."
+            }
+        )
     taken = Organization.objects.filter(discord_guild_id=guild_id).exclude(pk=org.pk).first()
     if taken is not None:
         raise ServiceError(
-            {"guild_id": f"이 Discord 서버는 이미 {taken.name} 조직에 연결되어 있습니다."}
+            {
+                "guild_id": f"이 Discord 서버는 이미 {taken.name} 조직에 연결되어 있습니다. 기존 조직의 연결을 해제하거나 다른 서버를 선택해 주세요."
+            }
         )
     old = org.discord_guild_id
     org.discord_guild_id = guild_id
@@ -230,12 +250,22 @@ def set_channel_by_guild(guild_id: str, actor, channel_id: str) -> Organization:
     """`/알림채널`이 부른다. 길드에 붙은 조직의 관리자만 바꿀 수 있다."""
     org = org_by_guild(guild_id)
     if org is None:
-        raise ServiceError({"guild_id": "이 서버는 아직 조직에 연결되지 않았습니다."})
+        raise ServiceError(
+            {
+                "guild_id": "Discord 서버가 조직에 연결되지 않았습니다. 조직 설정에서 서버를 연결해 주세요."
+            }
+        )
     if not is_admin(actor, org):
-        raise ServiceError({"org": "조직 관리자만 할 수 있습니다."})
+        raise ServiceError(
+            {"org": "조직 관리자만 할 수 있는 작업입니다. 조직 관리자에게 요청해 주세요."}
+        )
     channel_id = str(channel_id or "").strip()
     if not channel_id.isdecimal():
-        raise ServiceError({"channel_id": "채널을 확인하지 못했습니다."})
+        raise ServiceError(
+            {
+                "channel_id": "Discord 채널을 확인하지 못했습니다. 채널이 존재하는지와 봇의 접근 권한을 확인해 주세요."
+            }
+        )
     old = org.discord_channel_id
     org.discord_channel_id = channel_id
     org.save(update_fields=["discord_channel_id"])

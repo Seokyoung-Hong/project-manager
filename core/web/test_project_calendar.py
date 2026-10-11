@@ -25,7 +25,7 @@ def cal_data(project, member, admin):
         due_date=date(2031, 3, 10),
     )
     Milestone.objects.create(
-        project=project, name="3월 캠페인 마감", target_date=date(2031, 3, 20), created_by=admin
+        project=project, name="3월 캠페인 기한", target_date=date(2031, 3, 20), created_by=admin
     )
     return t
 
@@ -36,7 +36,7 @@ def test_calendar_view_200_with_due_and_milestone(logged, project, cal_data):
     )
     assert r.status_code == 200
     html = r.content.decode()
-    assert "2031년 3월" in html and "카드뉴스 게시" in html and "3월 캠페인 마감" in html
+    assert "2031년 3월" in html and "카드뉴스 게시" in html and "3월 캠페인 기한" in html
     assert f"/tasks/{cal_data.pk}" in html
 
 

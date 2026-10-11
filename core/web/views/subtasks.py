@@ -98,7 +98,7 @@ def put(request, task_id):
     """기존 태스크 넣기 — 고른 태스크를 이 태스크의 하위로."""
     group = task_or_404(request.user, task_id)
     if not request.POST.get("task"):
-        return _panel(request, group, error="하위로 넣을 태스크를 골라 주세요.")  # copy-draft
+        return _panel(request, group, error="하위 태스크로 넣을 태스크를 선택해 주세요.")
     child = ts.get_visible_task(request.user, int(request.POST.get("task") or 0))
     if child is None:
         return _panel(request, group, error="그 태스크를 넣을 수 없습니다.")

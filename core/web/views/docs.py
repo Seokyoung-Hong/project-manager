@@ -269,7 +269,7 @@ def _import(request, org, default_project=None):
         else reverse("org_docs", args=[org.pk])
     )
     if not files:
-        messages.error(request, "가져올 Markdown 파일(.md) 또는 ZIP을 선택하세요.")
+        messages.error(request, "가져올 Markdown 파일(.md) 또는 ZIP을 선택해 주세요.")
         return _back(request, fallback=fallback)
     parent = _parent_from_post(request)
     if "scope" in request.POST:
@@ -416,7 +416,7 @@ def doc_attachment_add(request, doc_id):
     upload = request.FILES.get("file")
     try:
         if upload is None:
-            raise ServiceError({"file": "파일을 고르세요."})
+            raise ServiceError({"file": "파일을 골라 주세요."})
         at.add_attachment(
             actor=request.user, upload=upload, doc=doc, note=request.POST.get("note", "")
         )
@@ -438,7 +438,7 @@ def task_doc_link(request, task_id):
     try:
         doc = _doc_or_404(request.user, int(request.POST.get("doc", "")))
     except (TypeError, ValueError, Http404):
-        return _refs(request, task, error="문서를 선택하세요.")
+        return _refs(request, task, error="문서를 선택해 주세요.")
     try:
         ts_docs.link_task(doc, task, request.user, as_output=request.POST.get("as_output") == "1")
     except ServiceError as e:
@@ -474,7 +474,7 @@ def doc_task_link(request, doc_id):
     )
     if task is None:
         messages.error(
-            request, "연결할 태스크를 찾지 못했습니다. 태스크 번호(TASK-n)를 확인하세요."
+            request, "연결할 태스크를 찾지 못했습니다. 태스크 번호(TASK-n)를 확인해 주세요."
         )
         return _back(request, doc)
     try:

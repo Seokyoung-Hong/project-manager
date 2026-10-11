@@ -115,7 +115,9 @@ def get_portfolio_draft(request, draft_id: int):
     try:
         draft = drafts.get_draft(request.auth, draft_id)
     except (ValidationError, ServiceError) as exc:
-        raise HttpError(404, "포트폴리오 초안을 찾을 수 없습니다.") from exc
+        raise HttpError(
+            404, "초안이 삭제되었거나 접근할 수 없습니다. 포트폴리오 목록에서 다시 선택해 주세요."
+        ) from exc
     return _draft_out(draft)
 
 
@@ -149,7 +151,9 @@ def export_portfolio_markdown(request, draft_id: int):
         draft = drafts.get_draft(request.auth, draft_id)
         markdown = drafts.export_markdown(request.auth, draft_id)
     except (ValidationError, ServiceError) as exc:
-        raise HttpError(404, "포트폴리오 초안을 찾을 수 없습니다.") from exc
+        raise HttpError(
+            404, "초안이 삭제되었거나 접근할 수 없습니다. 포트폴리오 목록에서 다시 선택해 주세요."
+        ) from exc
     return {
         "draft_id": draft.pk,
         "title": draft.title,

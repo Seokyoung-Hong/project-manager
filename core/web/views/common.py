@@ -28,7 +28,7 @@ from tasks.services import (
     visible_tasks,
 )
 
-CONFLICT_MSG = "다른 사람이 먼저 수정했습니다. 최신 내용을 다시 확인하세요."
+CONFLICT_MSG = "다른 사람이 먼저 수정했습니다. 최신 내용을 다시 확인해 주세요."
 
 
 def task_or_404(user, task_id):
@@ -166,8 +166,8 @@ def due_label(task) -> str:
     if not task.due_date:
         return "기한 미정"
     if task.is_closed:
-        return f"목표일 {fmt_md(task.due_date)}"
-    label = "오늘 마감" if task.due_date == today_kst() else fmt_md(task.due_date)
+        return f"기한 {fmt_md(task.due_date)}"
+    label = "오늘까지" if task.due_date == today_kst() else fmt_md(task.due_date)
     return label + " 초과" if _overdue(task) else label
 
 
@@ -208,7 +208,7 @@ FIELD_LABELS = {
     "projects": "연결 프로젝트",
     "git_project": "연동 프로젝트",
     "group": "상위 태스크",
-    "split": "사람별로 나누기",
+    "split": "담당자별 태스크로 나누기",
 }
 
 

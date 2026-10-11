@@ -149,7 +149,7 @@ SPECS: dict[str, Spec] = {
             True,
             "task",
             "기본 기한(영업일)",
-            "생성 화면에서 오늘 이후 설정한 영업일 수만큼 지난 목표일을 제안합니다. 영업일은 월~금이며 공휴일은 따로 제외하지 않습니다. 자동으로 채우지는 않습니다. 0이면 제안하지 않습니다.",
+            "생성 화면에서 오늘 이후 설정한 영업일 수만큼 지난 기한을 제안합니다. 영업일은 월~금이며 공휴일은 따로 제외하지 않습니다. 자동으로 채우지는 않습니다. 0이면 제안하지 않습니다.",
             lo=0,
             hi=30,
         ),
@@ -304,7 +304,7 @@ SPECS: dict[str, Spec] = {
             False,
             "project",
             "프로젝트 설정 편집",
-            "저장소 규칙과 프로젝트 거버넌스 문단을 포함합니다.",
+            "저장소 규칙과 프로젝트 업무 규칙 문단을 포함합니다.",
             choices=(("owner", "프로젝트 관리자"), ("admin", "조직 관리자만")),
         ),
         Spec(
@@ -394,7 +394,7 @@ SPECS: dict[str, Spec] = {
             False,
             "org",
             "첨부 파일 용량(MB)",
-            "조직 전체 첨부 파일의 합계 상한입니다. 0이면 업로드를 막습니다.",
+            "조직 전체 첨부 파일의 합계 상한입니다. 0이면 올리기를 막습니다.",
             lo=0,
             hi=102400,
         ),
@@ -599,7 +599,7 @@ SPECS: dict[str, Spec] = {
             "org",
             False,
             "notify",
-            "보내는 마감 알림",
+            "보내는 기한 알림",
             "",
             choices=ALARM_KINDS,
         ),
@@ -610,7 +610,7 @@ SPECS: dict[str, Spec] = {
             "org",
             False,
             "notify",
-            "마감 알림 시각",
+            "기한 알림 시각",
             "0~23은 알림을 보낼 시각입니다. -1이면 서버에 설정된 기본 시각을 따릅니다.",
             lo=-1,
             hi=23,
@@ -639,7 +639,7 @@ SPECS: dict[str, Spec] = {
             False,
             "notify",
             "주말에는 보내지 않기",
-            "켜면 토·일에는 마감 DM을 보내지 않습니다.",
+            "켜면 토·일에는 기한 DM을 보내지 않습니다.",
         ),
         Spec("notify.weekly_enabled", "bool", True, "org", False, "notify", "주간 보고", ""),
         Spec(
@@ -864,7 +864,7 @@ SPECS: dict[str, Spec] = {
             False,
             "user",
             "개인 DM 받기",
-            "끄면 마감·막힘·검토 대기 관리자 알림·GitHub DM을 받지 않습니다. 채널 주간 보고는 그대로입니다.",
+            "끄면 기한·막힘·검토 대기 관리자 알림·GitHub DM을 받지 않습니다. 채널 주간 보고는 그대로입니다.",
         ),
         Spec(
             "user.notify_kinds",
@@ -873,7 +873,7 @@ SPECS: dict[str, Spec] = {
             "user",
             False,
             "user",
-            "받을 마감 알림",
+            "받을 기한 알림",
             "조직이 끈 종류는 켤 수 없습니다.",
             choices=ALARM_KINDS,
         ),
@@ -884,8 +884,8 @@ SPECS: dict[str, Spec] = {
             "user",
             False,
             "user",
-            "내 마감 알림 시각",
-            "0~23은 내 마감 알림 시각입니다. -1이면 조직 설정을 따릅니다.",
+            "내 기한 알림 시각",
+            "0~23은 내 기한 알림 시각입니다. -1이면 조직 설정을 따릅니다.",
             lo=-1,
             hi=23,
         ),
@@ -1034,7 +1034,9 @@ def merge_secrets(data: dict, old: dict) -> dict:
                 out[key] = _ENC + encrypt(raw.strip())
             except ValueError:
                 raise ServiceError(
-                    {key: "서버에 CREDENTIAL_KEY가 없어 키를 저장할 수 없습니다."}
+                    {
+                        key: "서버의 암호화 설정이 없어 키를 저장할 수 없습니다. 서비스 운영자에게 문의해 주세요."
+                    }
                 ) from None
     return out
 

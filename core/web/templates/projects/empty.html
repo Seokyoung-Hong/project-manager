@@ -2,6 +2,6 @@
 {% block main %}
 <div class="card">
   <h1 class="t24">프로젝트</h1>
-  {% include "_empty.html" with what="이 조직에는 아직 프로젝트가 없습니다." why="프로젝트를 만들면 할 일을 모아 오늘 목록으로 가져올 수 있습니다." hx_get=new_url label="첫 프로젝트 만들기" locked=locked locked_text="관리자가 프로젝트를 만들면 여기에 표시됩니다." %}{# copy-draft #}
+  {% include "_empty.html" with what="이 조직에는 아직 프로젝트가 없습니다." why="프로젝트를 만들면 할 일을 모아 오늘 목록으로 가져올 수 있습니다." hx_get=new_url label="첫 프로젝트 만들기" locked=locked locked_text="관리자가 프로젝트를 만들면 여기에 표시됩니다." %}
 </div>
 {% endblock %}

@@ -80,7 +80,7 @@ def test_panel_contains_sections(logged, task):
         "변경 이력",
         'id="checklist"',
         "진행 메모",
-        "목표일",
+        "기한",
         'class="panel-mobile-context"',
         'aria-label="태스크 상세 닫기"',
     ):
@@ -138,7 +138,7 @@ def test_project_dialog_and_create(client, org, admin):
     assert "/projects/" in r.headers["HX-Redirect"]
     r = client.post("/projects/new", {"org": org.pk, "status": "active"}, headers=HX)
     assert r.status_code == 200
-    assert "이름을 입력하세요" in r.content.decode()
+    assert "이름을 입력해 주세요" in r.content.decode()
 
 
 def test_project_inline_task_create(logged, project, member):
@@ -255,7 +255,7 @@ def test_me_omits_empty_due_groups_and_marks_advanced_filters(logged, task):
     body = logged.get("/me").content.decode()
     assert task.title in body
     assert "<h2>기한 초과 <" not in body
-    assert "<h2>오늘 마감 <" not in body
+    assert "<h2>오늘까지 <" not in body
     # 필터는 [필터] 하나로 접혀 있고, 걸린 필터만 칩으로 보인다(b-workspace 중-7).
     assert '<details class="me-filter-details">' in body
     assert "기한 · 프로젝트 · 상태 · 중요도" in body and "filter-chip" not in body
@@ -829,7 +829,7 @@ def test_shelf_closed_rows_show_neutral_due(logged, project, member):
     (t,) = _close(project, member, 1, days_ago=1)
     Task.objects.filter(pk=t.pk).update(due_date=today_kst() - timedelta(days=20))
     body = logged.get(f"/projects/{project.pk}?part=shelf").content.decode()
-    assert 'class="due closed">목표일 ' in body
+    assert 'class="due closed">기한 ' in body
     assert "초과" not in body
 
 
@@ -1008,17 +1008,17 @@ def test_schedule_labels(logged, project, member):
     create_task(project=project, title="라벨용", actor=member, source="web", due_date=due)
 
     body = logged.get(f"/today?schedule=1&month={due:%Y-%m}&day={due.isoformat()}").content.decode()
-    assert "마감 1건" in body
+    assert "기한 1건" in body
 
     empty_day = due + timedelta(days=1)
     body = logged.get(
         f"/today?schedule=1&month={empty_day:%Y-%m}&day={empty_day.isoformat()}"
     ).content.decode()
-    assert "마감 없음" in body
+    assert "기한 없음" in body
 
     other_month_day = (today_kst().replace(day=1) - timedelta(days=40)).isoformat()
     body = logged.get(f"/today?schedule=1&day={other_month_day}").content.decode()
-    assert "날짜를 누르면 그날 마감이 보입니다" in body
+    assert "날짜를 누르면 그날 기한이 보입니다" in body
 
 
 def test_schedule_counts_exclude_closed(logged, project, member):
@@ -1226,7 +1226,7 @@ def test_spec_upload_json_only(logged, project):
         f"/projects/{project.pk}/api",
         {"file": SimpleUploadedFile("spec.txt", b"not json", content_type="text/plain")},
     )
-    assert "json 파일만" in r.content.decode()
+    assert "JSON 파일(.json)" in r.content.decode()
     assert not hasattr(project, "api_spec") or project.api_spec is None
 
 
@@ -1282,7 +1282,7 @@ def test_panel_survives_changelog_without_actor(logged, task):
 def test_governance_page(client, org, admin, member):
     client.force_login(admin)
     r = client.get(f"/orgs/{org.pk}/governance")
-    assert r.status_code == 200 and "업무 거버넌스" in r.content.decode()
+    assert r.status_code == 200 and "업무 규칙" in r.content.decode()
     assert client.post(f"/orgs/{org.pk}/governance", {"text": "# 우리 규칙"}).status_code == 302
     org.refresh_from_db()
     assert org.governance == "# 우리 규칙"
@@ -1470,7 +1470,10 @@ def test_task_refs_rejects_doc_from_another_project(logged, project, org, admin,
     doc = create_doc(project=other, actor=admin, title="남의 문서")
     r = logged.post(f"/tasks/{task.pk}/docs/link", {"doc": doc.pk}, headers=HX)
     assert r.status_code == 200
-    assert "같은 프로젝트의 태스크여야 합니다." in r.content.decode()
+    assert (
+        "다른 프로젝트의 태스크는 연결할 수 없습니다. 같은 프로젝트의 태스크를 선택해 주세요."
+        in r.content.decode()
+    )
     assert not task.docs.exists()
 
 
@@ -1578,7 +1581,7 @@ def test_settings_controls_have_programmatic_labels(client, member, admin, org, 
     project_page = client.get(f"/projects/{project.pk}/settings").content.decode()
     assert "{# 태스크 규칙" not in project_page
     assert "프로젝트 설정 저장" in project_page
-    assert "거버넌스 저장" in project_page
+    assert "업무 규칙 저장" in project_page
 
 
 def test_governance_shows_enforced_settings(as_admin, org):
@@ -1859,7 +1862,7 @@ def test_login_follows_safe_next_only(client, member, org):
 def test_sixth_attempt_is_locked_even_with_right_password(client, member):
     for _ in range(5):
         body = _login(client, password="wrong").content.decode()
-        assert "아이디 또는 비밀번호가 맞지 않습니다." in body
+        assert "아이디 또는 비밀번호가 일치하지 않습니다. 비밀번호를 다시 입력해 주세요." in body
     r = _login(client)
     assert r.status_code == 200
     assert "로그인 시도가 너무 많습니다. 15분 뒤 다시 시도해 주세요." in r.content.decode()
@@ -1868,7 +1871,7 @@ def test_sixth_attempt_is_locked_even_with_right_password(client, member):
 
 def test_unknown_username_gets_the_same_message(client, db):
     body = _login(client, username="nobody").content.decode()
-    assert "아이디 또는 비밀번호가 맞지 않습니다." in body
+    assert "아이디 또는 비밀번호가 일치하지 않습니다. 비밀번호를 다시 입력해 주세요." in body
 
 
 def test_logout_needs_post(logged):
@@ -2071,7 +2074,7 @@ def test_task_link_out_kind(logged, task):
 def test_governance_default_is_generic(client, org, admin):
     client.force_login(admin)
     body = client.get(f"/orgs/{org.pk}/governance").content.decode()
-    assert "업무 거버넌스" in body and "비개발 프로젝트" in body
+    assert "업무 규칙" in body and "비개발 프로젝트" in body
 
 
 # ---------- 완료 조건 필수일 때 웹 생성 폼(SPEC-FUNCTIONAL 부록 A) ----------
@@ -2093,7 +2096,10 @@ def test_inline_task_form_done_when_required(logged, org, project, member):
         "no_due_reason": "미정",
     }
     r = logged.post(f"/projects/{project.pk}/tasks", data, headers=HX)
-    assert r.status_code == 200 and "완료 조건을 입력해야 합니다" in r.content.decode()
+    assert (
+        r.status_code == 200
+        and "완료 조건이 없습니다. 완료 조건을 입력해 주세요" in r.content.decode()
+    )
     r = logged.post(f"/projects/{project.pk}/tasks", {**data, "done_when": "게시 링크"}, headers=HX)
     assert r.status_code == 204
     assert Task.objects.get(title="카드뉴스").done_when == "게시 링크"
@@ -2104,7 +2110,10 @@ def test_quick_add_done_when_required(logged, org, project, member):
     assert 'name="done_when"' in logged.get("/today").content.decode()
     data = {"title": "빠른 카드뉴스", "project": project.pk, "priority": 5, "no_due_reason": "미정"}
     r = logged.post("/today/quick", data, headers=HX)
-    assert r.status_code == 200 and "완료 조건을 입력해야 합니다" in r.content.decode()
+    assert (
+        r.status_code == 200
+        and "완료 조건이 없습니다. 완료 조건을 입력해 주세요" in r.content.decode()
+    )
     r = logged.post("/today/quick", {**data, "done_when": "게시 링크"}, headers=HX)
     assert r.status_code == 204
     assert Task.objects.get(title="빠른 카드뉴스").done_when == "게시 링크"

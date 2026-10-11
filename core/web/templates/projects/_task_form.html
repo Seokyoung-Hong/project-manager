@@ -1,7 +1,7 @@
 <form id="task-form" class="stack box" hx-post="{% url 'project_task_create' project.pk %}" hx-target="#task-form" hx-swap="outerHTML"{% if not form_open %} hidden{% endif %}>
   <h2 class="t17">{{ project.name }}에 태스크 만들기</h2>
   {{ form.idem }}
-  <label class="field">할 일{# copy-draft #}<input class="input lg" name="title" value="{{ form.title.value|default:'' }}" placeholder="해야 할 일" required autofocus></label>
+  <label class="field">할 일<input class="input lg" name="title" value="{{ form.title.value|default:'' }}" placeholder="해야 할 일" required autofocus></label>
   <div class="row">
     <label class="field">담당자 (1명)<select class="select auto" name="assignee">{% for u in form.fields.assignee.queryset %}<option value="{{ u.pk }}"{% if form.assignee.value|stringformat:"s" == u.pk|stringformat:"s" %} selected{% endif %}>{% if u.pk == user.pk %}나 ({{ u.display_name }}){% else %}{{ u.display_name }}{% endif %}</option>{% endfor %}</select></label>
     <label class="field">중요도 (1~10)<select class="select auto" name="priority">{% for v, label in form.fields.priority.choices %}<option value="{{ v }}"{% if form.priority.value|stringformat:"s" == v|stringformat:"s" %} selected{% endif %}>{{ label }}</option>{% endfor %}</select></label>

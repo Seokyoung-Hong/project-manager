@@ -11,15 +11,15 @@
 </div>
 <div class="card">
   <h2>Discord 연결</h2>
-  <p class="muted t13">연결하면 마감 알림(D-3 · D-1 · 당일 · 기한 초과)을 개인 DM으로 받고, 봇에게 DM으로 태스크를 처리할 수 있습니다.</p>
+  <p class="muted t13">연결하면 기한 알림(D-3 · D-1 · 당일 · 기한 초과)을 개인 DM으로 받고, 봇에게 DM으로 태스크를 처리할 수 있습니다.</p>
   {% if link_code %}
-  <p>Discord에서 봇에게 <b>DM</b>으로 아래 한 줄을 <b>10분 안에</b> 보내세요.</p>
+  <p>Discord에서 봇에게 <b>DM</b>으로 아래 한 줄을 <b>10분 안에</b> 보내 주세요.</p>
   <p><code class="t20">연결 {{ link_code }}</code></p>
-  <p class="warning t13">이 코드는 지금 한 번만 보입니다. 놓치면 다시 발급하세요.</p>
+  <p class="warning t13">연결 코드는 지금만 확인할 수 있습니다. 코드를 잃어버리면 새로 발급해 주세요.</p>
   {% endif %}
   {% if user.discord_user_id %}
   <div class="conn"><span class="conn-state on">연결됨</span> <span class="muted t13">{{ user.discord_linked_at|date:"Y-m-d H:i" }}</span>
-    <form method="post" action="{% url 'discord_unlink' %}" data-confirm="Discord 연결을 해제할까요? 마감 알림 DM과 봇 명령이 멈춥니다. 다시 쓰려면 연결 코드를 새로 받아야 합니다." data-confirm-ok="Discord 연결 해제">{% csrf_token %}<button class="btn sm danger">Discord 계정 연결 해제</button></form>{# copy-draft #}
+    <form method="post" action="{% url 'discord_unlink' %}" data-confirm="Discord 연결을 해제합니다. 기한 알림 DM과 봇 명령이 멈춥니다. 다시 쓰려면 연결 코드를 새로 받아야 합니다." data-confirm-ok="Discord 연결 해제">{% csrf_token %}<button class="btn sm danger">Discord 계정 연결 해제</button></form>
   </div>
   <p class="muted t13">해제하면 DM 알림이 멈춥니다. Discord에서 봇에게 <code>연결해제</code>를 보내도 됩니다.</p>
   {% else %}
@@ -33,7 +33,7 @@
   <h2>GitHub 연결</h2>
   {% if user.github %}
   <div class="conn"><span class="conn-state on">연결됨</span> <code>@{{ user.github.login }}</code>
-    <form method="post" action="{% url 'github_unlink' %}" data-confirm="GitHub 연결을 해제할까요? 태스크와 저장소를 잇는 기능을 내 계정으로 쓸 수 없게 됩니다. 다시 쓰려면 다시 연결해야 합니다." data-confirm-ok="GitHub 연결 해제">{% csrf_token %}<button class="btn sm danger">GitHub 계정 연결 해제</button></form>{# copy-draft #}
+    <form method="post" action="{% url 'github_unlink' %}" data-confirm="GitHub 연결을 해제합니다. 태스크와 저장소를 잇는 기능을 내 계정으로 쓸 수 없게 됩니다. 다시 쓰려면 다시 연결해야 합니다." data-confirm-ok="GitHub 연결 해제">{% csrf_token %}<button class="btn sm danger">GitHub 계정 연결 해제</button></form>
   </div>
   <p class="muted t13">접근 가능 저장소 {{ user.github.repos|length }}개
     {% if user.github.repos_checked_at %}· {{ user.github.repos_checked_at|date:"Y-m-d H:i" }} 확인{% endif %}</p>

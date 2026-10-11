@@ -65,7 +65,9 @@ def request_new(request):
             try:
                 due = date.fromisoformat(values["due_date"]) if values.get("due_date") else None
             except ValueError:
-                raise ServiceError({"due_date": "기한 형식이 올바르지 않습니다."}) from None
+                raise ServiceError(
+                    {"due_date": "기한을 날짜로 읽지 못했습니다. 달력에서 날짜를 선택해 주세요."}
+                ) from None
             req = wr.create_request(
                 org=org,
                 kind=values.get("kind", ""),
@@ -143,7 +145,9 @@ def request_act(request, req_id, action):
             try:
                 due = date.fromisoformat(post["due_date"]) if post.get("due_date") else None
             except ValueError:
-                raise ServiceError({"due_date": "기한 형식이 올바르지 않습니다."}) from None
+                raise ServiceError(
+                    {"due_date": "기한을 날짜로 읽지 못했습니다. 달력에서 날짜를 선택해 주세요."}
+                ) from None
             wr.accept(
                 req,
                 request.user,

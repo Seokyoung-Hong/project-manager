@@ -19,7 +19,7 @@
     {% if can_reject %}<button type="button" class="btn sm" hx-get="{% url 'task_panel' task.pk %}?reject=1" hx-target="#panel" hx-swap="innerHTML">반려</button>{% endif %}
     {% endif %}
     {# 저장 안내는 이 한 곳에만 둔다(b-workspace 중-12). app.js가 저장 뒤 "저장됨"으로 바꾼다. #}
-    <span id="save-status" class="status" aria-live="polite" data-idle="입력하면 자동 저장됩니다">입력하면 자동 저장됩니다</span>{# copy-draft #}
+    <span id="save-status" class="status" aria-live="polite" data-idle="변경 내용은 자동으로 저장됩니다">변경 내용은 자동으로 저장됩니다</span>
     <button type="button" class="btn sm icon" data-copy="{{ task.pk }}" aria-label="태스크 링크 복사" title="태스크 링크 복사"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M6.5 9.5l3-3M7 4.5l1.2-1.2a2.8 2.8 0 014 4L11 8.5M9 11.5l-1.2 1.2a2.8 2.8 0 01-4-4L5 7.5"></path></svg></button>
     {% if not full_page %}
     <button type="button" class="btn sm" data-action="toggle-wide">패널 넓히기</button>
@@ -39,7 +39,7 @@
           <input type="hidden" name="version" value="{{ task.version }}">
           <button class="btn link">떼어내기</button>
         </form>
-        {% if sub.due_warn %}<div class="notice warn" role="status"><span>⚠ 목표일이 상위 {{ sub.group.number }}({{ sub.group.due_date|date:"n월 j일" }})보다 늦습니다.</span></div>{% endif %}
+        {% if sub.due_warn %}<div class="notice warn" role="status"><span>⚠ 기한이 상위 {{ sub.group.number }}({{ sub.group.due_date|date:"n월 j일" }})보다 늦습니다.</span></div>{% endif %}
         {% endif %}
         <input class="title-input" name="value" value="{{ task.title }}" aria-label="제목" data-autosave
                hx-post="{% url 'task_text' task.pk 'title' %}" hx-trigger="change" hx-swap="none">
@@ -83,7 +83,7 @@
               {% if task.is_template %}<span class="badge primary">템플릿</span>{% endif %}
               {% if task.is_open %}
               <button type="button" class="btn link" data-action="toggle" data-target="#extend-form"
-                      data-alt="{% if extend_open %}{% if task.due_date %}목표일 연장하기{% else %}목표일 정하기{% endif %}{% else %}입력 닫기{% endif %}">{% if extend_open %}입력 닫기{% elif task.due_date %}목표일 연장하기{% else %}목표일 정하기{% endif %}</button>
+                      data-alt="{% if extend_open %}{% if task.due_date %}기한 연장하기{% else %}기한 정하기{% endif %}{% else %}입력 닫기{% endif %}">{% if extend_open %}입력 닫기{% elif task.due_date %}기한 연장하기{% else %}기한 정하기{% endif %}</button>
               {% endif %}
             </div>
             {% if task.is_open %}
@@ -91,8 +91,8 @@
             {% if not task.due_date %}
             <form class="meta-wide">
               <input type="hidden" name="version" value="{{ task.version }}">
-              <label class="field">목표일 미정 사유
-                <input class="input" name="no_due_reason" value="{{ task.no_due_reason }}" placeholder="목표일을 정하지 못한 이유"
+              <label class="field">기한 미정 사유
+                <input class="input" name="no_due_reason" value="{{ task.no_due_reason }}" placeholder="기한 미정 사유"
                        hx-post="{% url 'task_meta' task.pk %}" hx-target="#panel" hx-swap="innerHTML" hx-trigger="change">
               </label>
             </form>
@@ -112,7 +112,7 @@
       </div>
       {% if task.is_stopped or block_pending or reject_pending %}{% include "tasks/_stop.html" %}{% endif %}
       <label class="field">다음 행동
-        <input class="input" name="value" value="{{ task.next_action }}" placeholder="다음에 할 일을 한 문장으로 적으세요." data-autosave hx-post="{% url 'task_text' task.pk 'next_action' %}" hx-trigger="change" hx-swap="none">
+        <input class="input" name="value" value="{{ task.next_action }}" placeholder="다음에 할 일을 한 문장으로 적어 주세요." data-autosave hx-post="{% url 'task_text' task.pk 'next_action' %}" hx-trigger="change" hx-swap="none">
       </label>
       <div class="md-field"><label for="task-notes-{{ task.pk }}">진행 메모</label>
         <textarea id="task-notes-{{ task.pk }}" class="textarea notes" name="value" data-md data-toolbar="bottom" data-autosave{% if focus_notes %} data-focus{% endif %} placeholder="지금까지 한 일, 막힌 점, 다음에 할 일"
@@ -124,7 +124,7 @@
       {% if series %}{% include "tasks/_series.html" %}{% endif %}
     </div>
     <div class="stack panel-folds">
-      <details class="fold"><summary>설명{% if not task.description %} <span class="muted">비어 있음</span>{% endif %}</summary>{# copy-draft #}
+      <details class="fold"><summary>설명{% if not task.description %} <span class="muted">내용 없음</span>{% endif %}</summary>
         <div class="md-field"><label for="task-desc-{{ task.pk }}" class="sr-only">설명</label>
           <textarea id="task-desc-{{ task.pk }}" class="textarea" name="value" rows="{{ desc_rows }}" data-md data-toolbar="bottom" data-autosave placeholder="무엇을 하는 태스크인지 적습니다." hx-post="{% url 'task_text' task.pk 'description' %}" hx-trigger="change" hx-swap="none">{{ task.description }}</textarea>
         </div>
@@ -135,7 +135,7 @@
       {% include "tasks/_subtasks.html" %}
       {% include "tasks/_projects.html" %}
       {% if github_enabled and task.project.dev_tools %}<details class="git-fold"><summary>GitHub · {{ gh_summary }}</summary>{% include "tasks/_git.html" %}</details>{% endif %}
-      <details class="fold"{% if link_open %} open{% endif %}><summary>참고 자료·첨부·산출물 <span class="muted">{{ refs_count }}</span></summary>{# copy-draft #}
+      <details class="fold"{% if link_open %} open{% endif %}><summary>참고 자료·첨부·산출물 <span class="muted">{{ refs_count }}</span></summary>
         <div id="refs">{% include "tasks/_refs.html" %}</div>
       </details>
       <details class="fold"><summary>변경 이력 <span class="muted">{{ history|length }}</span></summary>{% include "tasks/_history.html" %}</details>
@@ -150,10 +150,10 @@
           </form>
           {% endif %}
         </div>
-        <p class="muted t13">템플릿은 진행하지 않고 목록·집계에서 빠집니다. 반복하는 일은 템플릿에서 회차를 만드세요.</p>
+        <p class="muted t13">템플릿은 진행하지 않고 목록·집계에서 빠집니다. 반복하는 일은 템플릿에서 회차를 만들어 주세요.</p>
         {% if sub_count %}<p class="muted t13">복제할 때 하위 태스크는 복사하지 않습니다.</p>{% endif %}
         {% if is_admin %}
-        <form method="post" action="{% url 'task_delete' task.pk %}" data-confirm="태스크를 삭제할까요? 체크리스트·링크도 함께 사라지고 되돌릴 수 없습니다.{% if sub_count %} 하위 {{ sub_count }}건은 남고 상위 연결만 풀립니다.{% endif %}" data-confirm-ok="태스크 삭제">{% csrf_token %}<button class="btn link danger">태스크 삭제</button></form> {# copy-draft #}
+        <form method="post" action="{% url 'task_delete' task.pk %}" data-confirm="태스크를 삭제합니다. 체크리스트·링크도 함께 사라지고 되돌릴 수 없습니다.{% if sub_count %} 하위 {{ sub_count }}건은 남고 상위 연결만 풀립니다.{% endif %}" data-confirm-ok="태스크 삭제">{% csrf_token %}<button class="btn link danger">태스크 삭제</button></form>
         {% endif %}
       </details>
     </div>

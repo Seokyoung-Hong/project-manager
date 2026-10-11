@@ -12,18 +12,18 @@
        aria-controls="today-schedule">일정 {% if schedule_open %}닫기{% else %}보기{% endif %}</a>
   </div>
   <nav class="today-assigned-stats" aria-label="전체 조직 내 담당 태스크 상태">
-    <a href="{% url 'me' %}?due=today"><b>{{ counts.due_today }}</b><span>오늘 마감</span></a>
+    <a href="{% url 'me' %}?due=today"><b>{{ counts.due_today }}</b><span>오늘까지</span></a>
     <a href="{% url 'me' %}?due=overdue"><b>{{ counts.overdue }}</b><span>기한 초과</span></a>
     <a href="{% url 'me' %}?status=review"><b>{{ counts.review }}</b><span>검토 대기</span></a>
     <a href="{% url 'me' %}?status=blocked"><b>{{ counts.blocked }}</b><span>막힘</span></a>
   </nav>
   {# 자동 담기 설정은 환경설정에 있다. 여기는 결과 한 줄만(b-workspace 중-5). #}
-  <p class="today-auto muted t13">{% if not auto_pull_days %}기한 기준 자동 담기를 쓰지 않습니다.{% elif counts.auto_pulled %}기한이 {{ auto_pull_days }}일 안인 태스크 {{ counts.auto_pulled }}건을 자동으로 담았습니다.{% else %}기한이 {{ auto_pull_days }}일 안인 태스크를 자동으로 담습니다.{% endif %} <a href="{% url 'preferences' %}#setting-auto_pull_days">설정 바꾸기</a></p>{# copy-draft #}
+  <p class="today-auto muted t13">{% if not auto_pull_days %}기한 기준 자동 담기를 쓰지 않습니다.{% elif counts.auto_pulled %}기한이 {{ auto_pull_days }}일 안인 태스크 {{ counts.auto_pulled }}건을 자동으로 담았습니다.{% else %}기한이 {{ auto_pull_days }}일 안인 태스크를 자동으로 담습니다.{% endif %} <a href="{% url 'preferences' %}#setting-auto_pull_days">설정 바꾸기</a></p>
   {% if counts.excluded %}<p class="muted t13">오늘 목록에서 뺀 태스크 {{ counts.excluded }}건 · <button type="button" class="btn link" hx-post="{% url 'today_restore' %}{% if today_state_query %}?{{ today_state_query }}{% endif %}" hx-target="#today-list" hx-swap="outerHTML">오늘 목록에 복원</button></p>{% endif %}
   <ul class="tasks">
     {% for r in rows %}{% task_row r %}{% empty %}
-    {% if setup %}{% if setup.quick %}{% include "_empty.html" with tag="li" what=setup.what why=setup.why toggle="#quick" label=setup.label %}{% else %}{% include "_empty.html" with tag="li" what=setup.what why=setup.why href=setup.href hx_get=setup.hx_get label=setup.label locked=setup.locked locked_text=setup.locked_text %}{% endif %}{# copy-draft #}
-    {% else %}{% url 'me' as me_url %}{% include "_empty.html" with tag="li" what="오늘 목록이 비어 있습니다." why="내 태스크에서 [오늘 목록에 추가]를 누르면 여기에 표시됩니다." href=me_url label="내 태스크 보기" plain=True %}{# copy-draft #}{% endif %}
+    {% if setup %}{% if setup.quick %}{% include "_empty.html" with tag="li" what=setup.what why=setup.why toggle="#quick" label=setup.label %}{% else %}{% include "_empty.html" with tag="li" what=setup.what why=setup.why href=setup.href hx_get=setup.hx_get label=setup.label locked=setup.locked locked_text=setup.locked_text %}{% endif %}
+    {% else %}{% url 'me' as me_url %}{% include "_empty.html" with tag="li" what="오늘 목록이 비어 있습니다." why="내 태스크에서 [오늘 목록에 추가]를 누르면 여기에 표시됩니다." href=me_url label="내 태스크 보기" plain=True %}{% endif %}
     {% endfor %}
   </ul>
   <details class="today-done"><summary>오늘 완료 ({{ done_rows|length }})</summary><ul class="tasks mt-2">{% for r in done_rows %}{% task_row r %}{% endfor %}</ul></details>

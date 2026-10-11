@@ -31,7 +31,11 @@ def _member_org(user, org_id):
         or not getattr(user, "is_active", False)
         or not is_member(user, org)
     ):
-        raise ServiceError({"org": "이 조직의 멤버가 아닙니다."})
+        raise ServiceError(
+            {
+                "org": "이 조직에 속해 있지 않아 작업할 수 없습니다. 조직 관리자에게 초대를 요청해 주세요."
+            }
+        )
     return org
 
 
@@ -43,9 +47,17 @@ def _owned_draft(user, draft_id):
     )
     if draft is None:
         # Do not disclose whether another user's private draft exists.
-        raise ServiceError({"draft": "포트폴리오 초안을 찾을 수 없습니다."})
+        raise ServiceError(
+            {
+                "draft": "초안이 삭제되었거나 접근할 수 없습니다. 포트폴리오 목록에서 다시 선택해 주세요."
+            }
+        )
     if not getattr(user, "is_active", False) or not is_member(user, draft.org):
-        raise ServiceError({"org": "이 조직의 멤버가 아닙니다."})
+        raise ServiceError(
+            {
+                "org": "이 조직에 속해 있지 않아 작업할 수 없습니다. 조직 관리자에게 초대를 요청해 주세요."
+            }
+        )
     return draft
 
 
@@ -55,13 +67,23 @@ def _normalize_source_ids(source_ids):
     try:
         ids = list(dict.fromkeys(int(item) for item in source_ids))
     except (TypeError, ValueError):
-        raise ServiceError({"source_ids": "출처 기록 ID는 정수 목록이어야 합니다."}) from None
+        raise ServiceError(
+            {
+                "source_ids": "출처 기록 번호 형식이 올바르지 않습니다. 숫자로 된 기록 번호 목록을 보내 주세요."
+            }
+        ) from None
     if not ids:
         raise ServiceError({"source_ids": "최소 한 개의 출처 기록을 선택해 주세요."})
     if len(ids) > 500:
-        raise ServiceError({"source_ids": "출처 기록은 한 초안에 500개까지 선택할 수 있습니다."})
+        raise ServiceError(
+            {"source_ids": "출처 기록이 선택 한도 500개를 넘었습니다. 기록 수를 줄여 주세요."}
+        )
     if any(item < 1 for item in ids):
-        raise ServiceError({"source_ids": "출처 기록 ID가 올바르지 않습니다."})
+        raise ServiceError(
+            {
+                "source_ids": "출처 기록을 확인하지 못했습니다. 근거 기록 목록에서 다시 선택해 주세요."
+            }
+        )
     return ids
 
 
@@ -71,7 +93,9 @@ def _selected_records(user, org_id, source_ids):
         records = get_allowed_records(user, ids)
     except ValidationError:
         raise ServiceError(
-            {"source_ids": "선택한 출처 중 더 이상 사용할 수 없는 기록이 있습니다."}
+            {
+                "source_ids": "선택한 출처에 접근할 수 없는 기록이 있습니다. 근거 기록 목록을 새로 확인하고 다시 선택해 주세요."
+            }
         ) from None
     if any(record.task.project.org_id != org_id for record in records):
         raise ServiceError({"source_ids": "같은 조직에서 사용할 수 있는 기록만 선택해 주세요."})
@@ -109,7 +133,11 @@ def _check_sources(user, draft):
         ).order_by("record_created_at", "id")
     )
     if not sources:
-        raise ServiceError({"source_ids": "출처가 없는 초안은 열 수 없습니다."})
+        raise ServiceError(
+            {
+                "source_ids": "출처 기록이 없어 초안을 열 수 없습니다. 근거 기록을 선택해 새 초안을 만들어 주세요."
+            }
+        )
     ids = [source.decision_record_id for source in sources]
     # A superseded source remains visible to its original subject and should be
     # flagged stale. A rejected/withdrawn source revokes access. Recheck owner,
@@ -128,7 +156,9 @@ def _check_sources(user, draft):
         record = current.get(source.decision_record_id)
         if record is None or record.task.project.org_id != draft.org_id:
             raise ServiceError(
-                {"source_ids": "초안의 출처 기록 중 더 이상 접근할 수 없는 기록이 있습니다."}
+                {
+                    "source_ids": "초안의 출처에 접근할 수 없는 기록이 있습니다. 접근 가능한 근거 기록으로 새 초안을 만들어 주세요."
+                }
             )
         if record.kind == "user_input":
             visible = record.status in {"captured", "confirmed", "superseded"} and (
@@ -138,7 +168,9 @@ def _check_sources(user, draft):
             visible = record.status in {"recorded", "superseded"}
         if not visible:
             raise ServiceError(
-                {"source_ids": "초안의 출처 기록 중 더 이상 접근할 수 없는 기록이 있습니다."}
+                {
+                    "source_ids": "초안의 출처에 접근할 수 없는 기록이 있습니다. 접근 가능한 근거 기록으로 새 초안을 만들어 주세요."
+                }
             )
         stale = (
             record.kind != source.record_kind
@@ -170,10 +202,14 @@ def _validate_title(title):
 
 def _validate_body(body_md):
     if not isinstance(body_md, str):
-        raise ServiceError({"body_md": "Markdown 본문은 문자열이어야 합니다."})
+        raise ServiceError(
+            {"body_md": "본문 형식이 올바르지 않습니다. 마크다운 글을 입력해 주세요."}
+        )
     body_md = body_md.replace("\r\n", "\n").replace("\r", "\n")
     if len(body_md.encode("utf-8")) > MAX_BODY_BYTES:
-        raise ServiceError({"body_md": "본문이 너무 깁니다 (256KB 상한)."})
+        raise ServiceError(
+            {"body_md": "본문이 용량 한도 256KB를 넘었습니다. 본문을 줄여 다시 저장해 주세요."}
+        )
     return body_md
 
 
@@ -181,15 +217,23 @@ def _validate_scope(scope_json):
     if scope_json is None:
         return {}
     if not isinstance(scope_json, dict):
-        raise ServiceError({"scope_json": "출처 선택 범위는 JSON 객체여야 합니다."})
+        raise ServiceError(
+            {
+                "scope_json": "출처 선택 범위의 형식이 올바르지 않습니다. 기간·프로젝트 조건을 다시 선택해 주세요."
+            }
+        )
     try:
         encoded = json.dumps(scope_json, ensure_ascii=False, allow_nan=False)
     except (TypeError, ValueError):
         raise ServiceError(
-            {"scope_json": "출처 선택 범위는 JSON으로 표현할 수 있어야 합니다."}
+            {
+                "scope_json": "출처 선택 범위를 읽지 못했습니다. 기간·프로젝트 조건을 다시 선택해 주세요."
+            }
         ) from None
     if len(encoded.encode("utf-8")) > 16 * 1024:
-        raise ServiceError({"scope_json": "출처 선택 범위는 16KB 이내여야 합니다."})
+        raise ServiceError(
+            {"scope_json": "출처 선택 범위가 용량 한도 16KB를 넘었습니다. 선택 조건을 줄여 주세요."}
+        )
     return scope_json
 
 
@@ -211,7 +255,11 @@ def create_draft(
     body_md = _validate_body(body_md)
     scope_json = _validate_scope(scope_json)
     if not isinstance(prompt_version, str) or len(prompt_version) > 40:
-        raise ServiceError({"prompt_version": "프롬프트 버전은 40자 이내 문자열이어야 합니다."})
+        raise ServiceError(
+            {
+                "prompt_version": "요청문 버전 형식이 올바르지 않습니다. 40자 이내의 글자로 입력해 주세요."
+            }
+        )
     draft = PortfolioDraft.objects.create(
         owner=user,
         org=org,
@@ -244,9 +292,13 @@ def list_drafts(user, *, org_id=None, limit=50):
     try:
         limit = int(limit)
     except (TypeError, ValueError):
-        raise ServiceError({"limit": "목록 개수는 정수여야 합니다."}) from None
+        raise ServiceError(
+            {"limit": "목록 개수 형식이 올바르지 않습니다. 정수를 입력해 주세요."}
+        ) from None
     if limit < 1 or limit > 100:
-        raise ServiceError({"limit": "목록 개수는 1~100 사이여야 합니다."})
+        raise ServiceError(
+            {"limit": "목록 개수가 범위를 벗어났습니다. 1~100 사이의 숫자를 입력해 주세요."}
+        )
 
     from orgs.models import OrgMembership
 
@@ -300,15 +352,25 @@ def update_draft(
         .first()
     )
     if draft is None:
-        raise ServiceError({"draft": "포트폴리오 초안을 찾을 수 없습니다."})
+        raise ServiceError(
+            {
+                "draft": "초안이 삭제되었거나 접근할 수 없습니다. 포트폴리오 목록에서 다시 선택해 주세요."
+            }
+        )
     if not getattr(user, "is_active", False) or not is_member(user, draft.org):
-        raise ServiceError({"org": "이 조직의 멤버가 아닙니다."})
+        raise ServiceError(
+            {
+                "org": "이 조직에 속해 있지 않아 작업할 수 없습니다. 조직 관리자에게 초대를 요청해 주세요."
+            }
+        )
     # Even edits must fail closed if an existing source was withdrawn.
     _check_sources(user, draft)
     try:
         expected_version = int(version)
     except (TypeError, ValueError):
-        raise ServiceError({"version": "초안 버전이 올바르지 않습니다."}) from None
+        raise ServiceError(
+            {"version": "초안 버전을 읽지 못했습니다. 초안을 다시 열어 주세요."}
+        ) from None
     if expected_version != draft.version:
         raise ConflictError(draft)
 

@@ -349,14 +349,20 @@ def import_docs(request, org_id: int):
             data = json.loads(request.body or b"{}")
             files = [(f["name"], f["content"].encode()) for f in data.get("files", [])]
         except (ValueError, KeyError, TypeError, AttributeError):
-            raise ServiceError({"files": "files는 [{name, content}] 목록이어야 합니다."}) from None
+            raise ServiceError(
+                {
+                    "files": "파일 목록 형식이 올바르지 않습니다. 파일 이름과 내용이 포함된 목록을 보내 주세요."
+                }
+            ) from None
 
     def _id(key):
         v = data.get(key)
         try:
             return int(v) if v not in (None, "") else None
         except (TypeError, ValueError):
-            raise ServiceError({key: "숫자 id여야 합니다."}) from None
+            raise ServiceError(
+                {key: "문서 번호 형식이 올바르지 않습니다. 숫자로 된 문서 번호를 입력해 주세요."}
+            ) from None
 
     project, team, parent = _scope(request, _id("project_id"), _id("team_id"), _id("parent_id"))
     out = svc.import_md(

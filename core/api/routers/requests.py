@@ -42,7 +42,7 @@ class RequestNoteIn(Schema):
 
 
 def _not_found(what: str):
-    return HttpError(400, f"{what}을(를) 찾을 수 없습니다.")
+    return HttpError(400, f"{what}을(를) 찾을 수 없습니다. 프로젝트 목록에서 다시 선택해 주세요.")
 
 
 def _request_or_404(request, request_id: int) -> WorkRequest:

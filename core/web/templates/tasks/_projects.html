@@ -28,11 +28,11 @@
   {% elif link_choices %}
   <form class="row" hx-post="{% url 'task_project_link' task.pk %}" hx-target="#panel" hx-swap="innerHTML">
     <select name="project" class="select auto" aria-label="연결할 프로젝트" required>
-      <option value="">프로젝트 고르기…</option>{# copy-draft #}
+      <option value="">프로젝트 고르기…</option>
       {% for p in link_choices %}<option value="{{ p.pk }}">{{ p.name }}</option>{% endfor %}
     </select>
     <button class="btn sm">연결 추가</button>
   </form>
-  <p class="muted t12">한 작업이 여러 프로젝트에 관련되면 연결, 프로젝트마다 따로 하는 일이면 나누기를 쓰세요.</p>
+  <p class="muted t12">한 작업이 여러 프로젝트에 관련되면 연결, 프로젝트마다 따로 하는 일이면 나누기를 사용해 주세요.</p>
   {% endif %}
 </details>

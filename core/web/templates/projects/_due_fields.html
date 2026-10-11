@@ -4,10 +4,10 @@
 {% with reason=form.no_due_reason.value|default:'' %}
 <div class="field due-fields">
   <label class="field">기한<input class="input" type="date" name="due_date" value="{% if not reason %}{{ form.due_date.value|default:'' }}{% endif %}" data-due-input></label>
-  <button type="button" class="btn link" data-action="toggle" data-target="#{{ prefix }}-nodue" data-alt="{% if reason %}기한 없이 만들기{% else %}기한 정하기{% endif %}">{% if reason %}기한 정하기{% else %}기한 없이 만들기{% endif %}</button>{# copy-draft #}
+  <button type="button" class="btn link" data-action="toggle" data-target="#{{ prefix }}-nodue" data-alt="{% if reason %}기한 없이 만들기{% else %}기한 정하기{% endif %}">{% if reason %}기한 정하기{% else %}기한 없이 만들기{% endif %}</button>
 </div>
-<label class="field" id="{{ prefix }}-nodue" data-nodue{% if not reason %} hidden{% endif %}>기한을 정하지 않는 이유{# copy-draft #}
-  <input class="input" name="no_due_reason" list="{{ prefix }}-nodue-reasons" value="{{ reason }}" maxlength="200" placeholder="고르거나 직접 입력해 주세요">{# copy-draft #}
-  <datalist id="{{ prefix }}-nodue-reasons"><option value="다른 일이 끝나야 정할 수 있음"><option value="아직 범위가 정해지지 않음"></datalist>{# copy-draft #}
+<label class="field" id="{{ prefix }}-nodue" data-nodue{% if not reason %} hidden{% endif %}>기한 미정 사유
+  <input class="input" name="no_due_reason" list="{{ prefix }}-nodue-reasons" value="{{ reason }}" maxlength="200" placeholder="고르거나 직접 입력해 주세요">
+  <datalist id="{{ prefix }}-nodue-reasons"><option value="다른 일이 끝나야 정할 수 있음"><option value="아직 범위가 정해지지 않음"></datalist>
 </label>
 {% endwith %}

@@ -58,7 +58,7 @@ class SignupForm(UserCreationForm):
         labels = {"username": "아이디", "display_name": "표시 이름"}
         help_texts = {
             "username": "영문·숫자와 @ . + - _ 만, 150자 이하",
-            "display_name": "팀원과 알림에 보이는 이름입니다.",  # copy-draft
+            "display_name": "팀원에게 표시되며 알림에 쓰이는 이름입니다.",
         }
 
 
@@ -68,7 +68,7 @@ class OrgForm(forms.Form):
         label="목적 한 줄",
         max_length=200,
         required=False,
-        help_text="조직 목록과 개요에 보입니다. 비워 둬도 됩니다.",  # copy-draft
+        help_text="조직 목록과 개요에 표시되는 소개입니다. 입력하지 않아도 됩니다.",
     )
 
 

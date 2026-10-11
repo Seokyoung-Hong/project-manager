@@ -12,7 +12,7 @@
 {% if tab == "links" %}
 <section class="card">
   <p class="muted t13">다른 프로젝트에 태스크를 연결하면 그 프로젝트의 열람자가 새로 태스크를 보게 됩니다. 승인하면 연결이 확정되고, 거절하면 연결 요청이 지워집니다.</p>
-  <p class="table-scroll-hint">좌우로 밀어 요청한 사람과 시각을 보세요.</p>
+  <p class="table-scroll-hint">좌우로 밀어 요청한 사람과 시각을 확인해 주세요.</p>
   <div class="table-scroll" tabindex="0" role="region" aria-label="연결 승인 대기 목록, 좌우로 스크롤 가능">
   <table class="grid request-table">
     <thead><tr><th>태스크</th><th>주 프로젝트</th><th>연결하려는 프로젝트</th><th>요청한 사람</th><th>시각</th><th>처리</th></tr></thead>
@@ -55,9 +55,9 @@
     </tbody>
   </table>
   {% elif tab == "sent" %}
-  {% include "_empty.html" with what="보낸 요청이 없습니다." why="다른 사람에게 일을 맡기거나 검토를 부탁할 때 씁니다. 위의 [새 요청]으로 보내 주세요." %}{# copy-draft #}
+  {% include "_empty.html" with what="보낸 요청이 없습니다." why="일이나 검토를 부탁하려면 [새 요청]에서 요청을 작성해 주세요." %}
   {% else %}
-  {% include "_empty.html" with what="받은 요청이 없습니다." why="요청은 다른 사람에게 일을 맡기거나 검토를 부탁할 때 씁니다. 누군가 요청을 보내면 여기에 표시됩니다." %}{# copy-draft #}
+  {% include "_empty.html" with what="받은 요청이 없습니다." why="다른 사람이 보낸 작업·검토 요청을 여기서 확인할 수 있습니다." %}
   {% endif %}
 </section>
 {% endif %}

@@ -22,7 +22,7 @@
       flash(successLabel || "복사됨");
       return true;
     }, function () {
-      prompt("아래 내용을 선택해 직접 복사하세요.", text);
+      prompt("아래 내용을 선택해 직접 복사해 주세요.", text);
       return false;
     });
   };
@@ -46,7 +46,7 @@
   body.addEventListener("change", function (e) {
     if (!e.target.matches("input[type=file][data-file-name]")) return;
     var label = e.target.closest("form").querySelector("[data-file-name-label]");
-    if (label) label.textContent = e.target.files.length ? e.target.files[0].name : "고른 파일 없음";
+    if (label) label.textContent = e.target.files.length ? e.target.files[0].name : "선택한 파일 없음";
   });
 
   function requestError(e, network) {
@@ -61,8 +61,8 @@
         reason = typeof data.detail === "string" ? data.detail : typeof data.error === "string" ? data.error : "";
       } catch (err) { /* HTML 오류 페이지는 표시하지 않는다. */ }
     }
-    alert(message + (network ? " 네트워크 연결을 확인하고 다시 시도하세요." :
-      (reason ? " " + reason : " 다시 시도하세요.")));
+    alert(message + (network ? " 네트워크 연결을 확인하고 다시 시도해 주세요." :
+      (reason ? " " + reason : " 다시 시도해 주세요.")));
   }
 
   // ---------- 공용 확인 창 (DESIGN.md 3절 "확인 창") ----------

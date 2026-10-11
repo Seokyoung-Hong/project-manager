@@ -86,7 +86,7 @@
       {% for p in nav_projects %}
       <a href="{% url 'project_detail' p.pk %}"{% if p.pk == current_project_id %} aria-current="page"{% endif %}>
         <span class="initial">{{ p.name|initial }}</span>
-        <span class="label">{% if p.visibility == "teams" %}🔒 {% endif %}{{ p.name }}</span>
+        <span class="label">{% if p.visibility == "teams" %}비공개 · {% endif %}{{ p.name }}</span>
         <span class="count t12 muted">미완료 {{ p.open_count }}</span>
       </a>
       {% empty %}<span class="muted t13 project-picker-empty">프로젝트가 없습니다.</span>{% endfor %}
@@ -106,7 +106,7 @@
       <a href="{% url 'project_detail' p.pk %}" title="{{ p.name }}"
          {% if p.pk == current_project_id %}aria-current="page"{% endif %}>
         <span class="initial">{{ p.name|initial }}</span>
-        <span class="label">{% if p.visibility == "teams" %}🔒 {% endif %}{{ p.name }}</span>
+        <span class="label">{% if p.visibility == "teams" %}비공개 · {% endif %}{{ p.name }}</span>
         <span class="count t12 muted">{{ p.open_count }}</span>
       </a>
       {% empty %}<span class="muted t13 rail-only rail-empty">프로젝트 없음</span>{% endfor %}
@@ -163,7 +163,7 @@
   <form method="dialog">
     <p id="confirm-text"></p>
     <div class="row">
-      <button class="btn" value="cancel" autofocus>그대로 두기</button>{# copy-draft #}
+      <button class="btn" value="cancel" autofocus>그대로 두기</button>
       <button class="btn danger" value="ok">계속하기</button>
     </div>
   </form>

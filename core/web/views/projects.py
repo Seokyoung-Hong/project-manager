@@ -1,3 +1,4 @@
+import logging
 from datetime import date, timedelta
 
 from django.conf import settings
@@ -226,7 +227,14 @@ def project_new(request):
                     )
                 except (ServiceError, GitHubError) as e:
                     # 프로젝트는 이미 만들어졌다. 저장소 탭에서 다시 연결하게 한다.
-                    detail = " ".join(e.errors.values()) if isinstance(e, ServiceError) else str(e)
+                    logging.getLogger(__name__).warning(
+                        "프로젝트 생성 후 저장소 연결 실패", exc_info=True
+                    )
+                    detail = (
+                        " ".join(e.errors.values())
+                        if isinstance(e, ServiceError)
+                        else "GitHub 연결이나 저장소 접근 권한을 확인한 뒤 이 화면에서 다시 연결해 주세요."
+                    )
                     messages.warning(
                         request, f"프로젝트를 만들었지만 저장소는 연결하지 못했습니다: {detail}"
                     )
@@ -434,7 +442,7 @@ def project_archive(request, project_id):
         messages.error(
             request,
             f"미완료 태스크가 있어 보관할 수 없습니다: {msg}. "
-            f"함께 취소하고 보관하려면 [미완료까지 취소하고 보관]을 쓰세요."
+            f"함께 취소하고 보관하려면 [미완료까지 취소하고 보관]을 사용해 주세요."
             if msg
             else " ".join(e.errors.values()),
         )
@@ -498,7 +506,9 @@ def project_api(request, project_id):
             upload = request.FILES.get("file")
             if upload:
                 if not upload.name.lower().endswith(".json"):
-                    raise ServiceError({"spec": ".json 파일만 올릴 수 있습니다."})
+                    raise ServiceError(
+                        {"spec": "지원하지 않는 파일 형식입니다. JSON 파일(.json)을 올려 주세요."}
+                    )
                 spec = parse_spec(upload.read(SPEC_MAX + 1), source=upload.name)
                 source = upload.name
             else:
@@ -550,7 +560,7 @@ def project_settings(request, project_id):
                 set_governance_extra(
                     project, request.POST.get("governance_extra", ""), actor=request.user
                 )
-                messages.success(request, "프로젝트 거버넌스를 저장했습니다.")
+                messages.success(request, "프로젝트 업무 규칙을 저장했습니다.")
             else:
                 data = _settings_from_post(request.POST, [s for s in specs if s.key not in locked])
                 set_project_settings(project, data, actor=request.user, source="web")

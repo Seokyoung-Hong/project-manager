@@ -6,7 +6,7 @@
     <div class="stack project-summary-copy">
       {% if project.purpose %}<p class="muted">{{ project.purpose }}</p>{% endif %}
       <div class="row t13 project-meta">
-        <span>관리자 {% for u in owners %}{{ u.display_name }}{% if not forloop.last %}, {% endif %}{% empty %}<span class="warning">미지정</span> <button type="button" class="btn link" hx-get="{% url 'project_edit' project.pk %}" hx-target="#dialog" hx-swap="innerHTML">관리자 정하기</button>{# copy-draft #}{% endfor %}</span>
+        <span>관리자 {% for u in owners %}{{ u.display_name }}{% if not forloop.last %}, {% endif %}{% empty %}<span class="warning">미지정</span> <button type="button" class="btn link" hx-get="{% url 'project_edit' project.pk %}" hx-target="#dialog" hx-swap="innerHTML">관리자 정하기</button>{% endfor %}</span>
         <span class="badge" title="{{ project.status_desc }}">{{ project.status_label }}</span>
         {% for l in links %}<a href="{{ l.url }}" target="_blank" rel="noopener">{{ l.get_kind_display }}: {{ l.title }}</a>{% endfor %}
         {% if project.is_archived %}<span class="badge">보관됨</span>{% endif %}
@@ -52,12 +52,12 @@
   {% elif view == 'board' %}
   {% include "projects/_board.html" %}
   {% else %}
-  <ul class="tasks">{% for r in rows %}{% task_row r %}{% empty %}{% if include_closed %}{% include "_empty.html" with tag="li" compact=True what="이 프로젝트에는 아직 태스크가 없습니다." %}{% else %}{% include "_empty.html" with tag="li" what="남은 태스크가 없습니다." why="할 일을 태스크로 만들면 담당과 기한이 보이고 오늘 목록으로 가져올 수 있습니다." toggle="#task-form" label="태스크 만들기" plain=True %}{% endif %}{# copy-draft #}{% endfor %}</ul>
+  <ul class="tasks">{% for r in rows %}{% task_row r %}{% empty %}{% if include_closed %}{% include "_empty.html" with tag="li" compact=True what="이 프로젝트에는 아직 태스크가 없습니다." %}{% else %}{% include "_empty.html" with tag="li" what="남은 태스크가 없습니다." why="태스크를 만들면 담당자와 기한을 정하고 오늘 목록에 추가할 수 있습니다." toggle="#task-form" label="태스크 만들기" plain=True %}{% endif %}{% endfor %}</ul>
   {% endif %}
 </section>
 <section class="card">
   <h2>참고 링크</h2>
-  <ul class="links">{% for l in links %}<li class="row"><span class="badge">{{ l.get_kind_display }}</span><a href="{{ l.url }}" target="_blank" rel="noopener">{{ l.title }}</a><form method="post" action="{% url 'link_delete' l.pk %}" data-confirm="참고 링크 {{ l.title }}을(를) 목록에서 지웁니다. 원본 자료는 삭제되지 않습니다." data-confirm-ok="링크 삭제">{% csrf_token %}<button class="btn link danger" aria-label="링크 {{ l.title }} 삭제">삭제</button></form></li>{% empty %}<li class="muted t13">링크 없음</li>{% endfor %}</ul> {# copy-draft #}
+  <ul class="links">{% for l in links %}<li class="row"><span class="badge">{{ l.get_kind_display }}</span><a href="{{ l.url }}" target="_blank" rel="noopener">{{ l.title }}</a><form method="post" action="{% url 'link_delete' l.pk %}" data-confirm="참고 링크 {{ l.title }}을(를) 목록에서 지웁니다. 원본 자료는 삭제되지 않습니다." data-confirm-ok="링크 삭제">{% csrf_token %}<button class="btn link danger" aria-label="링크 {{ l.title }} 삭제">링크 삭제</button></form></li>{% empty %}<li class="muted t13">링크 없음</li>{% endfor %}</ul>
   <button type="button" class="btn sm" data-action="toggle" data-target="#link-form" data-alt="입력 닫기">＋ 링크 추가</button>
   <form id="link-form"{% if not link_open %} hidden{% endif %} method="post" action="{% url 'project_link_add' project.pk %}" class="row">{% csrf_token %}
     <select name="kind" class="select auto" aria-label="링크 종류">{% for code, label in link_form.fields.kind.choices %}<option value="{{ code }}"{% if link_form.kind.value == code %} selected{% endif %}>{{ label }}</option>{% endfor %}</select>

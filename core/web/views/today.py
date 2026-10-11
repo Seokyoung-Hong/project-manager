@@ -139,11 +139,11 @@ def _schedule(request, day: date) -> dict:
     this_m = day.replace(day=1)
 
     if not sel_in_month:
-        sel_label = "날짜를 누르면 그날 마감이 보입니다"
+        sel_label = "날짜를 누르면 그날 기한이 보입니다"
     elif sel_tasks:
-        sel_label = f"{fmt_md(sel)} 마감 {len(sel_tasks)}건"
+        sel_label = f"{fmt_md(sel)} 기한 {len(sel_tasks)}건"
     else:
-        sel_label = f"{fmt_md(sel)} 마감 없음"
+        sel_label = f"{fmt_md(sel)} 기한 없음"
 
     return {
         "cal_title": f"{month.year}년 {month.month}월",
@@ -160,7 +160,7 @@ def _schedule(request, day: date) -> dict:
                 "sel": sel_in_month and d == sel,
                 "url": url(d),
                 "aria": (
-                    f"{d.month}월 {d.day}일 마감 {counts.get(d, 0)}건"
+                    f"{d.month}월 {d.day}일 기한 {counts.get(d, 0)}건"
                     f"{' · 오늘' if d == day else ''}"
                     f"{' · 선택됨' if sel_in_month and d == sel else ''}"
                 ),
@@ -261,9 +261,7 @@ def quick_add(request):
             ts.today_add(request.user, task)
             request.session["quick_project"] = task.project_id
             if in_dialog:
-                messages.success(
-                    request, f"{task.number}을 만들고 오늘 목록에 담았습니다."
-                )  # copy-draft
+                messages.success(request, f"{task.number}을 만들고 오늘 목록에 담았습니다.")
                 return hx_redirect(request, _back_url(request))
             return hx_redirect(request, reverse("today"))
         except ServiceError as e:

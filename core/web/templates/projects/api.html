@@ -24,12 +24,12 @@
         <label class="btn sm file-upload-button" for="api-upload-file">OpenAPI JSON 파일 올리기</label>
       </form>
       <span class="t12 muted">UTF-8로 저장한 OpenAPI JSON 파일을 선택하면 바로 등록합니다.</span>
-      <span class="t12 muted">{% if spec_obj %}{{ spec_obj.source_url }} · {{ spec_obj.fetched_at|date:"n/j H:i" }} 저장됨{% else %}아직 등록된 문서가 없습니다. 주소를 넣거나 openapi.json을 올리세요.{% endif %}</span>
+      <span class="t12 muted">{% if spec_obj %}{{ spec_obj.source_url }} · {{ spec_obj.fetched_at|date:"n/j H:i" }} 저장됨{% else %}아직 등록된 문서가 없습니다. 주소를 넣거나 openapi.json을 올려 주세요.{% endif %}</span>
     </div>
   </div>
   {% if error %}
   <p class="error">{{ error }}</p>
-  <p class="t12 muted">서버가 읽을 수 없는 주소(예: localhost)라면 파일로 올리세요.</p>
+  <p class="t12 muted">서버가 읽을 수 없는 주소(예: localhost)라면 파일로 올려 주세요.</p>
   {% endif %}
 </div>
 {% if api %}

@@ -31,7 +31,7 @@ def _add(request, **target):
     p = request.POST
     upload = request.FILES.get("file")
     if upload is None:
-        raise ServiceError({"file": "multipart의 file 필드로 파일을 보내세요."})
+        raise ServiceError({"file": "multipart의 file 필드로 파일을 보내 주세요."})
     replaces = (
         _att_or_404(request, int(p["replaces"])) if p.get("replaces", "").isdecimal() else None
     )

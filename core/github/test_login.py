@@ -61,7 +61,7 @@ def test_same_username_asks_before_signup(gh, client, monkeypatch):
     assert r["Location"] == "/login/github/confirm"
     assert not GitHubIdentity.objects.exists() and "_auth_user_id" not in client.session
     page = client.get("/login/github/confirm").content.decode()
-    assert "GitHub와 연결되지 않은 계정이 존재합니다" in page
+    assert "GitHub에 연결되어 있지 않습니다" in page
     r = client.post("/login/github/confirm", {"age_ok": "1", "consent_ok": "1"})
     assert r["Location"] == "/orgs"
     assert GitHubIdentity.objects.get(github_id=900).user.username == "octo-gh"

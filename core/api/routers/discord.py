@@ -78,7 +78,7 @@ from ..serialize import request_out, task_out
 
 router = Router(tags=["discord"], auth=BotTokenAuth())
 
-UNLINKED = "연결되지 않은 Discord 계정입니다. 웹 설정 → 프로필에서 연결 코드를 받으세요."
+UNLINKED = "연결되지 않은 Discord 계정입니다. 웹 설정 → 프로필에서 연결 코드를 받아 주세요."
 
 
 def _actor(discord_user_id: str):
@@ -364,7 +364,7 @@ def note(request, task_id: int, payload: DiscordNoteIn):
     task = _task(actor, task_id)
     text = payload.text.strip()
     if not text:
-        raise HttpError(400, "메모 내용을 입력하세요.")
+        raise HttpError(400, "메모 내용을 입력해 주세요.")
     notes = f"{task.notes}\n{text}" if task.notes else text
     task = update_text(task, "notes", notes, actor=actor)
     return {"task": task_out(task, actor)}
@@ -450,7 +450,9 @@ def channel_check(request, payload: DiscordChannelCheckIn):
     else:
         raise HttpError(400, "kind는 team 또는 project여야 합니다.")
     if obj is None:
-        raise HttpError(404, "대상을 찾을 수 없습니다.")
+        raise HttpError(
+            404, "대상이 삭제되었거나 접근할 수 없습니다. 목록에서 대상을 다시 선택해 주세요."
+        )
     viewers = None if payload.viewers is None else [v.dict() for v in payload.viewers]
     return org_channels.connect(
         payload.kind,

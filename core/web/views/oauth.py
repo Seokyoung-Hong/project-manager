@@ -79,7 +79,7 @@ def register(request):
         return _error("invalid_client_metadata", "JSON 본문이 필요합니다.")
     uris = body.get("redirect_uris")
     if not isinstance(uris, list) or not 1 <= len(uris) <= 5:
-        return _error("invalid_redirect_uri", "redirect_uris를 1~5개 보내세요.")
+        return _error("invalid_redirect_uri", "redirect_uris를 1~5개 보내 주세요.")
     if not all(isinstance(u, str) and len(u) <= 500 and _redirect_ok(u) for u in uris):
         return _error("invalid_redirect_uri", "https 또는 루프백 주소만 받습니다.")
     client = OAuthClient.register(body.get("client_name", ""), uris)

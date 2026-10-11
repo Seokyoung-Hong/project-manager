@@ -208,7 +208,7 @@ def test_transcript_upload_fills_template_and_notifies(enabled, member, bot):
         f"/meetings/{rec.pk}",
         {
             "status": "draft",
-            "transcript_md": "[00:00:12] 팀원: 안녕하세요",
+            "transcript_md": "[00:00:12] 팀원: 안녕해 주세요",
             "stats": {"engines": [{"engine": "local", "segments": 3, "failed": 0}]},
         },
     )
@@ -216,7 +216,7 @@ def test_transcript_upload_fills_template_and_notifies(enabled, member, bot):
     rec.refresh_from_db()
     assert rec.transcript_md.startswith("[00:00:12]")
     # 전사 원문은 body_md에 넣지 않는다(v2 §4.1). 화면·API가 transcript_md를 따로 낸다
-    assert "## 요약" in rec.note.body_md and "안녕하세요" not in rec.note.body_md
+    assert "## 요약" in rec.note.body_md and "안녕해 주세요" not in rec.note.body_md
     assert Notice.objects.filter(user=member, text__contains="회의록 초안").exists()
 
 

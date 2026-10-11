@@ -57,7 +57,9 @@ def _default_title(kind: str) -> str:
 def _clean_body(value) -> str:
     value = (value or "").replace("\r\n", "\n")
     if len(value.encode()) > MAX_BODY:
-        raise ServiceError({"body_md": "본문이 너무 깁니다 (256KB 상한)."})
+        raise ServiceError(
+            {"body_md": "본문이 용량 한도 256KB를 넘었습니다. 본문을 줄여 다시 저장해 주세요."}
+        )
     return value
 
 
@@ -121,7 +123,11 @@ def get_visible_doc(user, doc_id: int):
 
 def _require_view(user, doc):
     if not can_view_doc(user, doc):
-        raise ServiceError({"doc": "볼 수 없는 문서입니다."})
+        raise ServiceError(
+            {
+                "doc": "문서를 볼 권한이 없습니다. 문서 작성자나 조직 관리자에게 공개 범위를 확인해 달라고 요청해 주세요."
+            }
+        )
 
 
 def _check_ai_edit(org, source: str, action: str):
@@ -133,17 +139,31 @@ def _check_ai_edit(org, source: str, action: str):
 
 def _check_scope(org, actor, project, team):
     if project is not None and team is not None:
-        raise ServiceError({"scope": "공개 범위는 프로젝트나 팀 중 하나만 고릅니다."})
+        raise ServiceError(
+            {"scope": "프로젝트와 팀을 함께 선택할 수 없습니다. 공개 범위를 하나만 선택해 주세요."}
+        )
     if project is not None:
         if project.org_id != org.pk:
-            raise ServiceError({"project": "같은 조직의 프로젝트여야 합니다."})
+            raise ServiceError(
+                {
+                    "project": "다른 조직의 프로젝트는 선택할 수 없습니다. 같은 조직의 프로젝트를 선택해 주세요."
+                }
+            )
         if not can_view_project(actor, project):
-            raise ServiceError({"project": "볼 수 없는 프로젝트입니다."})
+            raise ServiceError(
+                {
+                    "project": "프로젝트를 볼 권한이 없습니다. 프로젝트 관리자에게 접근 권한을 요청해 주세요."
+                }
+            )
     if team is not None:
         if team.org_id != org.pk:
-            raise ServiceError({"team": "같은 조직의 팀이어야 합니다."})
+            raise ServiceError(
+                {"team": "다른 조직의 팀은 선택할 수 없습니다. 같은 조직의 팀을 선택해 주세요."}
+            )
         if not can_view_team(actor, team):
-            raise ServiceError({"team": "볼 수 없는 팀입니다."})
+            raise ServiceError(
+                {"team": "팀을 볼 권한이 없습니다. 조직 관리자에게 팀 참여를 요청해 주세요."}
+            )
 
 
 # ---------- 트리 ----------
@@ -172,9 +192,15 @@ def _check_parent(org, actor, parent, kind):
     if parent is None:
         return
     if kind == "meeting":
-        raise ServiceError({"parent": "회의록에는 상위 문서를 둘 수 없습니다."})
+        raise ServiceError(
+            {"parent": "회의록에는 상위 문서를 지정할 수 없습니다. 상위 문서 선택을 해제해 주세요."}
+        )
     if parent.org_id != org.pk or parent.kind != "doc" or parent.is_template:
-        raise ServiceError({"parent": "같은 조직의 일반 문서만 상위 문서가 될 수 있습니다."})
+        raise ServiceError(
+            {
+                "parent": "같은 조직의 일반 문서만 상위로 지정할 수 있습니다. 상위 문서를 다시 선택해 주세요."
+            }
+        )
     _require_view(actor, parent)
 
 
@@ -222,24 +248,38 @@ def create_doc(
 ) -> Doc:
     """org를 안 주면 project(또는 parent)의 조직. 하위 문서는 부모의 공개 범위를 따른다."""
     if kind not in dict(Doc.KINDS):
-        raise ServiceError({"kind": "알 수 없는 종류입니다."})
+        raise ServiceError(
+            {"kind": "종류가 올바르지 않습니다. 화면에 표시된 종류 중에서 선택해 주세요."}
+        )
     org = org or (project.org if project else parent.org if parent else None)
     if org is None:
-        raise ServiceError({"org": "조직을 고르세요."})
+        raise ServiceError({"org": "조직을 골라 주세요."})
     if not is_member(actor, org):
         # 옛 프로젝트 문서 호출부는 "볼 수 없는 프로젝트"를 기대한다.
-        raise ServiceError({"project": "볼 수 없는 프로젝트입니다."})
+        raise ServiceError(
+            {
+                "project": "프로젝트를 볼 권한이 없습니다. 프로젝트 관리자에게 접근 권한을 요청해 주세요."
+            }
+        )
     require_ai_enabled(org, source, "문서 만들기")
     _check_parent(org, actor, parent, kind)
     if parent is not None:
         if _depth(parent) >= MAX_DEPTH:
-            raise ServiceError({"parent": f"하위 문서는 {MAX_DEPTH}단계까지입니다."})
+            raise ServiceError(
+                {
+                    "parent": f"하위 문서는 {MAX_DEPTH}단계까지입니다. 더 위의 문서를 상위로 선택해 주세요."
+                }
+            )
         project, team = parent.project, parent.team
     else:
         _check_scope(org, actor, project, team)
     if template is not None:
         if not (template.is_template and template.org_id == org.pk):
-            raise ServiceError({"template": "이 조직의 템플릿이 아닙니다."})
+            raise ServiceError(
+                {
+                    "template": "다른 조직의 템플릿은 사용할 수 없습니다. 현재 조직의 템플릿을 선택해 주세요."
+                }
+            )
         body_md = body_md or template.body_md
     meeting = kind == "meeting"
     doc = Doc.objects.create(
@@ -268,10 +308,18 @@ def update_doc(doc, field: str, value, *, actor, expected_version: int, source="
     source는 누가 고쳤는지 남기려는 것이다 — AI(mcp)도 문서를 고치므로 사람이 구별할 수 있어야 한다.
     """
     if not can_view_doc(actor, doc):
-        raise ServiceError({"project": "볼 수 없는 문서입니다."})
+        raise ServiceError(
+            {
+                "project": "문서를 볼 권한이 없습니다. 문서 작성자나 조직 관리자에게 공개 범위를 확인해 달라고 요청해 주세요."
+            }
+        )
     _check_ai_edit(doc.org, source, "문서 고치기")
     if field not in (MEETING_EDITABLE if doc.kind == "meeting" else EDITABLE):
-        raise ServiceError({field: "수정할 수 없는 항목입니다."})
+        raise ServiceError(
+            {
+                field: "직접 수정할 수 없는 항목이 포함되어 있습니다. 수정할 항목을 다시 선택해 주세요."
+            }
+        )
     if field == "title":
         value = (value or "").strip()[:200] or _default_title(doc.kind)
     elif field == "body_md":
@@ -305,9 +353,15 @@ def update_doc(doc, field: str, value, *, actor, expected_version: int, source="
 def revert_doc(doc, revision, *, actor, expected_version: int, source="web") -> Doc:
     """이전 버전의 제목·본문으로 되돌린다. version은 1만 오르고 이전 버전도 1개 생긴다."""
     if revision.doc_id != doc.pk:
-        raise ServiceError({"revision": "이 문서의 이전 버전이 아닙니다."})
+        raise ServiceError(
+            {"revision": "이 문서의 이전 버전이 아닙니다. 현재 문서의 버전 목록에서 선택해 주세요."}
+        )
     if not can_view_doc(actor, doc):
-        raise ServiceError({"doc": "볼 수 없는 문서입니다."})
+        raise ServiceError(
+            {
+                "doc": "문서를 볼 권한이 없습니다. 문서 작성자나 조직 관리자에게 공개 범위를 확인해 달라고 요청해 주세요."
+            }
+        )
     _check_ai_edit(doc.org, source, "문서 되돌리기")
     updated = Doc.objects.filter(pk=doc.pk, version=expected_version).update(
         version=expected_version + 1,
@@ -338,13 +392,25 @@ def move_doc(doc, *, actor, parent=_KEEP, position=None, project=_KEEP, team=_KE
         levels = _descendant_levels(doc)
         if parent is not None:
             if parent.pk == doc.pk or any(parent.pk in lv for lv in levels):
-                raise ServiceError({"parent": "자기 하위 문서 아래로는 옮길 수 없습니다."})
+                raise ServiceError(
+                    {
+                        "parent": "자기 하위 문서 아래로는 옮길 수 없습니다. 다른 상위 문서를 선택해 주세요."
+                    }
+                )
             if _depth(parent) + 1 + len(levels) > MAX_DEPTH:
-                raise ServiceError({"parent": f"하위 문서는 {MAX_DEPTH}단계까지입니다."})
+                raise ServiceError(
+                    {
+                        "parent": f"하위 문서는 {MAX_DEPTH}단계까지입니다. 더 위의 문서를 상위로 선택해 주세요."
+                    }
+                )
         doc.parent = parent
     if doc.parent is not None:
         if project is not _KEEP or team is not _KEEP:
-            raise ServiceError({"scope": "공개 범위는 맨 위 문서에서만 바꿉니다."})
+            raise ServiceError(
+                {
+                    "scope": "하위 문서의 공개 범위는 직접 바꿀 수 없습니다. 맨 위 문서에서 변경해 주세요."
+                }
+            )
         doc.project, doc.team = doc.parent.project, doc.parent.team
     else:
         new_project = doc.project if project is _KEEP else project
@@ -369,7 +435,11 @@ def delete_doc(doc, actor) -> int:
     if not can_view_doc(actor, doc) or (
         doc.created_by_id != actor.pk and not is_admin(actor, doc.org)
     ):
-        raise ServiceError({"doc": "작성자나 조직 관리자만 지울 수 있습니다."})
+        raise ServiceError(
+            {
+                "doc": "작성자나 조직 관리자만 삭제할 수 있습니다. 해당 담당자에게 삭제를 요청해 주세요."
+            }
+        )
     from tasks.models import ChangeLog
 
     children = sum(len(lv) for lv in _descendant_levels(doc))
@@ -391,11 +461,21 @@ def delete_doc(doc, actor) -> int:
 def link_task(doc, task, actor, *, as_output=False):
     """문서를 태스크의 참고 자료로 건다. 같은 조직이면 되고, 프로젝트 문서는 그 프로젝트의 태스크만."""
     if not can_view_doc(actor, doc):
-        raise ServiceError({"project": "볼 수 없는 문서입니다."})
+        raise ServiceError(
+            {
+                "project": "문서를 볼 권한이 없습니다. 문서 작성자나 조직 관리자에게 공개 범위를 확인해 달라고 요청해 주세요."
+            }
+        )
     if task.project.org_id != doc.org_id:
-        raise ServiceError({"task": "같은 조직의 태스크여야 합니다."})
+        raise ServiceError(
+            {"task": "다른 조직의 태스크는 연결할 수 없습니다. 같은 조직의 태스크를 선택해 주세요."}
+        )
     if doc.project_id is not None and task.project_id != doc.project_id:
-        raise ServiceError({"task": "같은 프로젝트의 태스크여야 합니다."})
+        raise ServiceError(
+            {
+                "task": "다른 프로젝트의 태스크는 연결할 수 없습니다. 같은 프로젝트의 태스크를 선택해 주세요."
+            }
+        )
     if as_output and not _all_task_viewers_see(doc, task):
         raise ServiceError(
             {
@@ -443,7 +523,11 @@ def task_doc_choices(task, viewer):
 
 def unlink_task(doc, task, actor):
     if not can_view_doc(actor, doc):
-        raise ServiceError({"project": "볼 수 없는 문서입니다."})
+        raise ServiceError(
+            {
+                "project": "문서를 볼 권한이 없습니다. 문서 작성자나 조직 관리자에게 공개 범위를 확인해 달라고 요청해 주세요."
+            }
+        )
     doc.tasks.remove(task)
 
 
@@ -498,13 +582,19 @@ def search_docs(user, q: str, org=None, kind=None, template=False):
 
 def _decode_md(filename: str, raw: bytes) -> tuple[str, str]:
     if not filename.lower().endswith((".md", ".markdown")):
-        raise ServiceError({"file": ".md 또는 .markdown 파일만 올릴 수 있습니다."})
+        raise ServiceError(
+            {"file": "지원하지 않는 파일 형식입니다. .md 또는 .markdown 파일을 올려 주세요."}
+        )
     if len(raw) > MAX_BODY:
-        raise ServiceError({"file": "파일이 너무 큽니다 (256KB 상한)."})
+        raise ServiceError(
+            {"file": "파일이 용량 한도 256KB를 넘었습니다. 파일을 나눠 올려 주세요."}
+        )
     try:
         body = raw.decode("utf-8-sig")
     except UnicodeDecodeError:
-        raise ServiceError({"file": "UTF-8로 저장된 파일만 읽을 수 있습니다."}) from None
+        raise ServiceError(
+            {"file": "파일의 글자 인코딩을 읽지 못했습니다. UTF-8로 저장한 뒤 다시 올려 주세요."}
+        ) from None
     name = filename.replace("\\", "/").rsplit("/", 1)[-1]
     return re.sub(r"\.(md|markdown)$", "", name, flags=re.I), body
 
@@ -652,7 +742,9 @@ def _read_capped(fh, limit: int, name: str) -> bytes:
     """limit+1바이트까지만 읽는다. 헤더의 크기를 믿지 않는다(ZIP file_size는 위조할 수 있다)."""
     raw = fh.read(limit + 1)
     if len(raw) > limit:
-        raise ServiceError({"file": f"{name}: 파일이 너무 큽니다 (256KB 상한)."})
+        raise ServiceError(
+            {"file": f"{name}: 파일이 용량 한도 256KB를 넘었습니다. 파일을 나눠 올려 주세요."}
+        )
     return raw
 
 
@@ -664,7 +756,9 @@ def _read_import_files(files) -> list[tuple[str, bytes]]:
     3) 읽기: 하나씩 MAX_BODY+1까지만 스트리밍으로 읽고, 실제로 읽은 합도 다시 센다.
     """
     if sum(_size(d) for _, d in files) > ZIP_MAX_TOTAL:
-        raise ServiceError({"file": "올린 파일이 너무 큽니다 (한 번에 20MB 상한)."})
+        raise ServiceError(
+            {"file": "올린 파일이 용량 한도 20MB를 넘었습니다. 파일을 나눠 올려 주세요."}
+        )
     plan = []  # (이름, 읽기 함수, 헤더 크기)
     for name, data in files:
         if name.lower().endswith(".zip"):
@@ -673,7 +767,11 @@ def _read_import_files(files) -> list[tuple[str, bytes]]:
                     io.BytesIO(data) if isinstance(data, bytes | bytearray) else data
                 )
             except zipfile.BadZipFile:
-                raise ServiceError({"file": f"{name}: ZIP 파일을 읽지 못했습니다."}) from None
+                raise ServiceError(
+                    {
+                        "file": f"{name}: ZIP 파일을 읽지 못했습니다. 압축 파일이 열리는지 확인하고 다시 올려 주세요."
+                    }
+                ) from None
             for i in zf.infolist():
                 if (
                     i.is_dir()
@@ -688,14 +786,22 @@ def _read_import_files(files) -> list[tuple[str, bytes]]:
             else:
                 plan.append((name, lambda data=data: data.open("rb"), data.size))
     if not plan:
-        raise ServiceError({"file": ".md 파일이 없습니다."})
+        raise ServiceError(
+            {"file": "가져올 마크다운 파일이 없습니다. .md 파일을 포함해 다시 올려 주세요."}
+        )
     if len(plan) > ZIP_MAX_FILES:
-        raise ServiceError({"file": f"한 번에 {ZIP_MAX_FILES}개까지 가져옵니다."})
+        raise ServiceError(
+            {"file": f"한 번에 {ZIP_MAX_FILES}개까지 가져올 수 있습니다. 파일 수를 줄여 주세요."}
+        )
     if sum(size for _, _, size in plan) > ZIP_MAX_TOTAL:
-        raise ServiceError({"file": "가져올 문서가 너무 큽니다 (풀린 크기 합 20MB 상한)."})
+        raise ServiceError(
+            {"file": "압축을 푼 문서의 합계가 20MB를 넘었습니다. 문서를 나눠 가져와 주세요."}
+        )
     for name, _, size in plan:
         if size > MAX_BODY:
-            raise ServiceError({"file": f"{name}: 파일이 너무 큽니다 (256KB 상한)."})
+            raise ServiceError(
+                {"file": f"{name}: 파일이 용량 한도 256KB를 넘었습니다. 파일을 나눠 올려 주세요."}
+            )
 
     out, total = [], 0
     for name, opener, _ in plan:
@@ -703,7 +809,9 @@ def _read_import_files(files) -> list[tuple[str, bytes]]:
             raw = _read_capped(fh, MAX_BODY, name)
         total += len(raw)
         if total > ZIP_MAX_TOTAL:
-            raise ServiceError({"file": "가져올 문서가 너무 큽니다 (풀린 크기 합 20MB 상한)."})
+            raise ServiceError(
+                {"file": "압축을 푼 문서의 합계가 20MB를 넘었습니다. 문서를 나눠 가져와 주세요."}
+            )
         out.append((name, raw))
     return out
 

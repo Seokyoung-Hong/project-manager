@@ -13,11 +13,11 @@
       <option value="">선택 안 함(자동 연동 끔)</option>
       {% for p in gh.choices %}<option value="{{ p.pk }}"{% if p.pk == task.git_project_id %} selected{% endif %}>{{ p.name }} · {{ p.repo.full_name }}</option>{% endfor %}
     </select>
-    <button class="btn sm">선택</button>
+    <button class="btn sm">연동 프로젝트 바꾸기</button>
   </form>
   {% endif %}
   {% if gh.state == "unselected" %}
-  <p class="conn t13"><span class="conn-state off">연동 프로젝트를 선택하세요</span> <span class="muted">여러 프로젝트에 연결된 태스크라 고르기 전에는 TASK 번호·브랜치·PR이 상태를 바꾸지 않습니다.</span></p>
+  <p class="conn t13"><span class="conn-state off">연동 프로젝트를 선택해 주세요</span> <span class="muted">여러 프로젝트에 연결된 태스크라 고르기 전에는 TASK 번호·브랜치·PR이 상태를 바꾸지 않습니다.</span></p>
   {% elif gh.state == "hidden" %}
   <p class="conn t13"><span class="conn-state off">볼 수 없는 연동 프로젝트</span> <span class="muted">이 태스크는 내가 볼 수 없는 연결 프로젝트의 저장소를 따릅니다.</span></p>
   {% elif gh.state == "none" %}

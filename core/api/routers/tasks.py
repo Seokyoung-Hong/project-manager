@@ -162,7 +162,10 @@ def get_task_github(request, task_id: int):
     if not can_view_repo(request.auth, conn.full_name):
         raise HttpError(403, "이 GitHub 저장소를 볼 권한이 없습니다.")
     if conn.project_id != task.project_id and not can_view_project(request.auth, conn.project):
-        raise HttpError(403, "이 태스크의 연동 프로젝트를 볼 수 없습니다.")  # Sol 검토 R7
+        raise HttpError(
+            403,
+            "태스크의 연동 프로젝트를 볼 권한이 없습니다. 프로젝트 관리자에게 접근 권한을 요청해 주세요.",
+        )  # Sol 검토 R7
     issue = None
     if link.issue_number:
         issue = RepoIssue.objects.filter(connection=conn, number=link.issue_number).first()
@@ -254,16 +257,20 @@ def create_task_issue(request, task_id: int):
         raise ServiceError(
             {
                 "github": {
-                    "none": "프로젝트에 연결된 저장소가 없습니다.",
-                    "unselected": "연동 프로젝트를 먼저 선택하세요.",
-                    "hidden": "이 태스크의 연동 프로젝트를 볼 수 없습니다.",
-                    "unlinked": "GitHub 계정을 먼저 연결해야 합니다.",
-                    "denied": "이 저장소에 접근할 권한이 없습니다.",
+                    "none": "프로젝트에 저장소가 연결되지 않았습니다. 프로젝트의 GitHub 화면에서 저장소를 연결해 주세요.",
+                    "unselected": "연동 프로젝트를 먼저 선택해 주세요.",
+                    "hidden": "태스크의 연동 프로젝트를 볼 권한이 없습니다. 프로젝트 관리자에게 접근 권한을 요청해 주세요.",
+                    "unlinked": "GitHub 계정이 연결되지 않았습니다. 프로필에서 GitHub를 연결해 주세요.",
+                    "denied": "GitHub 저장소에 접근할 권한이 없습니다. 저장소 관리자에게 접근 권한을 요청해 주세요.",
                 }[state]
             }
         )
     if TaskGitLink.objects.filter(task=task).exclude(issue_number=None).exists():
-        raise ServiceError({"github": "이미 이슈가 연결된 태스크입니다."})
+        raise ServiceError(
+            {
+                "github": "이미 이슈가 연결된 태스크입니다. 연결된 이슈를 확인하거나 다른 태스크를 선택해 주세요."
+            }
+        )
     try:
         data = gh_writes.create_issue(task, actor=request.auth)
     except GitHubError as e:
@@ -457,7 +464,9 @@ def _link_or_404(task, project_id):
         .first()
     )
     if link is None:
-        raise HttpError(404, "연결된 프로젝트가 아닙니다.")
+        raise HttpError(
+            404, "태스크에 연결되지 않은 프로젝트입니다. 연결된 프로젝트를 선택해 주세요."
+        )
     return link
 
 

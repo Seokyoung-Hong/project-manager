@@ -58,7 +58,7 @@ def test_panel_create_put_ungroup(logged, project, member):
     assert f"{other.number}을 하위로 넣었습니다." in body and "하위 태스크 0/2" in body
     # 하위 패널: 상위 줄 + 떼어내기, 나누기 버튼 없음(한 겹)
     html = _panel(logged, sub)
-    assert f"{top.number} 행사 준비" in html and "사람별로 나누기" not in html
+    assert f"{top.number} 행사 준비" in html and "담당자별 태스크로 나누기" not in html
     assert 'id="task-subtasks"' not in html
     sub.refresh_from_db()
     body = logged.post(
@@ -102,7 +102,7 @@ def test_panel_suggest_done_and_refusal(logged, project, member):
 def test_due_warning(logged, project, member):
     top = _t(project, member, "상위", due_date=today_kst() + timedelta(days=2))
     sub = _t(project, member, group=top, due_date=today_kst() + timedelta(days=9))
-    assert f"⚠ 목표일이 상위 {top.number}(" in _panel(logged, sub)
+    assert f"⚠ 기한이 상위 {top.number}(" in _panel(logged, sub)
     assert "상위 기한 초과" in _panel(logged, top)
 
 

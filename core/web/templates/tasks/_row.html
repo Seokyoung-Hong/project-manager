@@ -14,7 +14,7 @@
       {% if task.is_stopped %}<span{% if task.is_blocked %} class="danger"{% endif %}>{{ task.stop_reason|default:"사유 없음" }}</span>{% endif %}
       {% if checklist_total %}<span>체크리스트 {{ checklist_done }}/{{ checklist_total }}</span>{% endif %}
       {% if sub_total %}{% if foldable %}<button type="button" class="sub-count" data-action="toggle-subtasks" data-group="{{ task.pk }}" aria-expanded="true" aria-label="하위 태스크 {{ sub_done }}/{{ sub_total }} 접기·펼치기">하위 {{ sub_done }}/{{ sub_total }}</button>{% else %}<span class="sub-count">하위 {{ sub_done }}/{{ sub_total }}</span>{% endif %}{% endif %}
-      {% if show_auto_mark %}<span class="auto-mark" title="목표일이 가까워 오늘 목록에 자동으로 추가되었습니다">자동 추가</span>{% endif %}
+      {% if show_auto_mark %}<span class="auto-mark" title="기한이 가까워 오늘 목록에 자동으로 추가되었습니다">자동 추가</span>{% endif %}
     </div>
     {% if in_board and sub_total %}<div class="bar" role="img" aria-label="하위 {{ sub_pct }}% 완료"><i style="width: {{ sub_pct }}%"></i></div>{% endif %}
     {% if error %}<div class="error">{{ error }}</div>{% endif %}

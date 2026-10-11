@@ -92,9 +92,11 @@ def _stale(message):
 def _apply(request, row, org):
     inst = getattr(org, "github", None)
     if (inst.installation_id if inst else None) != row["installation_id"]:
-        _stale("앱 설치 정보를 다시 확인하세요.")
+        _stale("앱 설치 정보를 다시 확인해 주세요.")
     if inst.account_type == "User":
-        _stale("개인 계정 설치에서는 GitHub 조직·팀 기능을 쓸 수 없습니다.")
+        _stale(
+            "개인 계정에 설치한 앱으로는 GitHub 조직·팀 기능을 사용할 수 없습니다. 조직 관리자가 GitHub 조직에 앱을 설치해 주세요."
+        )
     kind = row["kind"]
     actor = request.user
     if kind == "invite":
@@ -146,7 +148,11 @@ def _apply(request, row, org):
     )
     remote = next((item for item in teams if item["id"] == link.github_team_id), None)
     if remote is None:
-        raise ServiceError({"github": "연결된 GitHub 팀을 현재 계정으로 찾지 못했습니다."})
+        raise ServiceError(
+            {
+                "github": "현재 계정으로 연결된 GitHub 팀을 찾지 못했습니다. GitHub 조직 관리자에게 팀 접근 권한을 확인해 달라고 요청해 주세요."
+            }
+        )
     link.slug = remote["slug"]
     link.save(update_fields=["slug"])
     if kind == "rename":
@@ -191,7 +197,7 @@ def retry_write(request, retry_id):
         text = (
             " ".join(error.errors.values())
             if completed
-            else "GitHub 재시도에 실패했습니다. PM 변경은 유지됩니다. 해결 절차에서 조회 상태를 확인하세요."
+            else "GitHub 재시도에 실패했습니다. PM 변경은 유지됩니다. 해결 절차에서 조회 상태를 확인해 주세요."
         )
         messages.warning(request, text, extra_tags="integration-help")
     if completed:

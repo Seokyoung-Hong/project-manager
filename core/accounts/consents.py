@@ -29,7 +29,7 @@ NOTICES = {
         "아이디로 가입하면 다른 기능은 그대로 쓸 수 있습니다.",
     },
     "discord": {
-        "value": "Discord를 연결하면 마감 알림을 개인 DM으로 받고, 봇에게 DM으로 태스크를 처리할 수 있습니다.",
+        "value": "Discord를 연결하면 기한 알림을 개인 DM으로 받고, 봇에게 DM으로 태스크를 처리할 수 있습니다.",
         "rows": [
             {
                 "recipient": "Discord Inc.",

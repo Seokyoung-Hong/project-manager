@@ -29,7 +29,7 @@ def request_change(org, kind: str, data, *, actor, reason: str = "", token=None)
     require_admin(actor, org)
     if not effective("ai.enabled", org=org):
         # AI를 끈 조직에서 "다시 켜 달라"는 요청이 쌓이지 않게 한다.
-        raise ServiceError({"ai": ai_denied("설정·거버넌스 변경 요청")})
+        raise ServiceError({"ai": ai_denied("설정·업무 규칙 변경 요청")})
     base = _current(org, kind)
     if kind == "settings":
         proposed = clean("org", data, allow_locked=True)
@@ -37,18 +37,22 @@ def request_change(org, kind: str, data, *, actor, reason: str = "", token=None)
     else:
         proposed = (data or "").strip()
         if len(proposed) > GOVERNANCE_MAX:
-            raise ServiceError({"governance": "2만 자를 넘을 수 없습니다."})
+            raise ServiceError(
+                {"governance": "업무 규칙이 너무 깁니다. 2만 자 이내로 줄여 주세요."}
+            )
         # 비어 있으면 기본안이 쓰인다. 실제로 적용되는 글이 같으면 비교 화면이 비어 보이므로 받지 않는다.
         same = (proposed or DEFAULT_GOVERNANCE).strip() == (base or DEFAULT_GOVERNANCE).strip()
     if same:
-        raise ServiceError({kind: "바뀌는 내용이 없습니다."})
+        raise ServiceError(
+            {kind: "기존 내용과 같아 변경할 항목이 없습니다. 변경할 내용을 입력해 주세요."}
+        )
     reason = (reason or "").strip()
     if not reason:
         raise ServiceError(
             {"reason": "왜 바꾸려는지 reason에 적어 주세요. 사람이 허용할지 판단하는 근거입니다."}
         )
     if len(reason) > 500:
-        raise ServiceError({"reason": "변경 이유는 500자까지입니다."})
+        raise ServiceError({"reason": "변경 사유가 너무 깁니다. 500자 이내로 줄여 주세요."})
     return ChangeRequest.objects.create(
         org=org,
         kind=kind,
@@ -90,7 +94,9 @@ def _approve(req, actor):
     org = Organization.objects.select_for_update().get(pk=req.org_id)
     require_admin(actor, org)
     if not req.is_open:
-        raise ServiceError({"request": "이미 처리했거나 만료된 요청입니다."})
+        raise ServiceError(
+            {"request": "이미 처리했거나 만료된 요청입니다. 요청 목록을 새로 확인해 주세요."}
+        )
     if _current(org, req.kind) != req.base:
         # 요청 뒤에 사람이 먼저 바꿨다. 옛 값을 기준으로 만든 변경안이 그 수정을 덮으면 안 된다.
         req.status = "stale"
@@ -109,7 +115,9 @@ def reject(req: ChangeRequest, actor, reason: str = "") -> ChangeRequest:
     req = ChangeRequest.objects.select_for_update().select_related("org").get(pk=req.pk)
     require_admin(actor, req.org)
     if not req.is_open:
-        raise ServiceError({"request": "이미 처리했거나 만료된 요청입니다."})
+        raise ServiceError(
+            {"request": "이미 처리했거나 만료된 요청입니다. 요청 목록을 새로 확인해 주세요."}
+        )
     req.reject_reason = (reason or "").strip()[:300]
     return _close(req, actor, "rejected")
 

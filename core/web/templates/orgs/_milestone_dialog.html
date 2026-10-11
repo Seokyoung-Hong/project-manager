@@ -8,7 +8,7 @@
   </label>
   <label class="field">이름<input class="input" name="name" value="{{ values.name }}" required autofocus></label>
   <label class="field">시작일<input class="input" type="date" name="start_date" value="{{ values.start_date }}"></label>
-  <label class="field">목표일<input class="input" type="date" name="target_date" value="{{ values.target_date }}" required></label>
+  <label class="field">기한<input class="input" type="date" name="target_date" value="{{ values.target_date }}" required></label>
   <fieldset class="choice-fieldset">
     <legend>상태</legend>
     <div class="radios">{% for code, label in statuses %}<label class="radio-card"><input type="radio" name="status" value="{{ code }}"{% if values.status == code %} checked{% endif %}><b>{{ label }}</b></label>{% endfor %}</div>
@@ -20,7 +20,7 @@
   {% for msg in errors.values %}<div class="error">{{ msg }}</div>{% endfor %}
   <div class="row">
     <button class="btn primary">{% if ms %}변경 내용 저장{% else %}마일스톤 만들기{% endif %}</button>
-    <button type="button" class="btn" data-action="close-dialog">닫기</button> {# copy-draft #}
-    {% if ms %}<button type="button" class="btn danger ml-auto" hx-post="{% url 'milestone_delete' ms.pk %}" data-confirm="이 마일스톤을 삭제할까요?" data-confirm-ok="마일스톤 삭제">삭제</button>{% endif %} {# copy-draft #}
+    <button type="button" class="btn" data-action="close-dialog">닫기</button>
+    {% if ms %}<button type="button" class="btn danger ml-auto" hx-post="{% url 'milestone_delete' ms.pk %}" data-confirm="이 마일스톤을 삭제합니다." data-confirm-ok="마일스톤 삭제">마일스톤 삭제</button>{% endif %}
   </div>
 </form>

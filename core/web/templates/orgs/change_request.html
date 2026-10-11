@@ -34,11 +34,11 @@
   </table>
   {% else %}
   <p class="muted t13">빨간 줄은 지워지고 초록 줄이 더해집니다.</p>
-  <pre class="change-diff" aria-label="거버넌스 변경 내용">{% for line in diff %}<span class="{% if line|slice:':1' == '+' %}add{% elif line|slice:':1' == '-' %}del{% endif %}">{{ line }}</span>
+  <pre class="change-diff" aria-label="업무 규칙 변경 내용">{% for line in diff %}<span class="{% if line|slice:':1' == '+' %}add{% elif line|slice:':1' == '-' %}del{% endif %}">{{ line }}</span>
 {% endfor %}</pre>
   <details class="mt-2">
     <summary>허용하면 적용될 전체 글 보기</summary>
-    <pre class="change-diff" aria-label="바뀐 뒤 전체 거버넌스">{{ after }}</pre>
+    <pre class="change-diff" aria-label="바뀐 뒤 전체 업무 규칙">{{ after }}</pre>
   </details>
   {% endif %}
 

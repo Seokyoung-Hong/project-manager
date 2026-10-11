@@ -74,7 +74,7 @@ function editor(T, root) {
     try {
       r = await fetch(root.dataset.url, { method: "POST", headers: { "X-CSRFToken": csrf }, body: data, credentials: "same-origin" });
     } catch {
-      flash("네트워크 연결을 확인하세요. 작성 중인 내용은 이 화면에 남아 있습니다.", "error");
+      flash("네트워크 연결을 확인해 주세요. 작성 중인 내용은 이 화면에 남아 있습니다.", "error");
       return false;
     }
     if (!r.ok) {
@@ -84,13 +84,13 @@ function editor(T, root) {
       }
       const body = await r.json().catch(() => ({}));
       const reason = (body && typeof body.error === "string" && body.error) ||
-        (r.status === 403 ? "저장 권한을 확인하세요." : "요청을 처리하지 못했습니다. (" + r.status + ")");
-      flash(reason + (r.status === 409 ? " 작성 중인 내용을 복사한 뒤 새로고침하세요." : " 작성 중인 내용은 이 화면에 남아 있습니다."), "error");
+        (r.status === 403 ? "저장 권한이 없습니다. 문서 작성자나 조직 관리자에게 권한을 요청해 주세요." : "저장 요청을 처리하지 못했습니다. 잠시 후 다시 저장해 주세요.");
+      flash(reason + (r.status === 409 ? " 작성 중인 내용을 복사한 뒤 새로고침해 주세요." : " 작성 중인 내용은 이 화면에 남아 있습니다."), "error");
       return false;
     }
     const v = Number(r.headers.get("X-Note-Version"));
     if (r.redirected || r.status !== 204 || !Number.isInteger(v) || v <= 0) {
-      flash("저장 완료를 확인하지 못했습니다. 로그인 상태를 확인하세요.", "error");
+      flash("저장 완료를 확인하지 못했습니다. 로그인 상태를 확인해 주세요.", "error");
       return false;
     }
     version = v;

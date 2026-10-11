@@ -56,7 +56,7 @@
   </div>
   <h3 class="t15">입력 <span class="muted t12">label.field · .input · .select · .textarea · label.check</span></h3>
   <div class="row start">
-    <label class="field flex-1">제목<input class="input" placeholder="무엇을 할까요?"><span class="helptext">도움말은 12px 보조색입니다.</span></label>
+    <label class="field flex-1">제목<input class="input" placeholder="할 일을 입력해 주세요"><span class="helptext">도움말은 12px 보조색입니다.</span></label>
     <label class="field">중요도<select class="select auto"><option>5</option></select></label>
     <label class="check"><input type="checkbox" checked> 완료 조건 필수</label>
   </div>
@@ -75,12 +75,12 @@
   <div class="toast sg-static" role="presentation"><svg viewBox="0 0 40 40" aria-hidden="true"><ellipse class="art-pot" cx="20" cy="31" rx="9" ry="7"/><g class="leaf"><path class="art-leaf" d="M20 25Q8 25 7 13Q18 11 20 25"/><path class="art-leaf-2" d="M20 22Q22 9 33 10Q34 21 20 22"/></g></svg><span>완료했습니다. 화분이 한 뼘 자랐습니다.</span></div>
   <h3 class="t15">대화상자 <span class="muted t12">dialog (네이티브 showModal)</span></h3>
   <button type="button" class="btn sm" onclick="document.getElementById('sg-dialog').showModal()">대화상자 열기</button>
-  <dialog id="sg-dialog"><form method="dialog" class="stack"><h2>새 마일스톤</h2><label class="field">이름<input class="input"></label><div class="row"><button class="btn primary">저장</button><button class="btn">닫기</button></div></form></dialog>
+  <dialog id="sg-dialog"><form method="dialog" class="stack"><h2>새 마일스톤</h2><label class="field">이름<input class="input"></label><div class="row"><button class="btn primary">마일스톤 저장</button><button class="btn">닫기</button></div></form></dialog>
   <h3 class="t15">확인 창 <span class="muted t12">data-confirm · data-confirm-ok (+ data-confirm-cancel) → base.html dialog#confirm · 누른 버튼이 .danger면 위험 스타일</span></h3>
   <div class="row wrap gap">
     {# 견본이라 확인해도 보내지 않는다(onsubmit이 막는다) #}
-    <form data-confirm="Discord 연결을 해제합니다. 기한 알림 DM과 봇 명령이 멈춥니다." data-confirm-ok="연결 해제" onsubmit="return false"><button class="btn danger">Discord 계정 연결 해제</button></form>{# copy-draft #}
-    <form data-confirm="v3의 제목과 본문으로 되돌립니다. 지금 내용도 이전 버전으로 남습니다." data-confirm-ok="이 버전으로 되돌리기" onsubmit="return false"><button class="btn">이 버전으로 되돌리기</button></form>{# copy-draft #}
+    <form data-confirm="Discord 연결을 해제합니다. 기한 알림 DM과 봇 명령이 멈춥니다." data-confirm-ok="연결 해제" onsubmit="return false"><button class="btn danger">Discord 계정 연결 해제</button></form>
+    <form data-confirm="v3의 제목과 본문으로 되돌립니다. 지금 내용도 이전 버전으로 남습니다." data-confirm-ok="이 버전으로 되돌리기" onsubmit="return false"><button class="btn">이 버전으로 되돌리기</button></form>
   </div>
   <h3 class="t15">표 · 빈 상태<span class="muted t12">table.grid · td.empty-cell · .empty (+ compact)</span></h3>
   <table class="grid"><thead><tr><th>이름</th><th class="num">미완료</th></tr></thead><tbody><tr><td>김관리</td><td class="num">5</td></tr><tr><td colspan="2" class="empty-cell">더 보여 줄 행이 없습니다.</td></tr></tbody></table>
@@ -105,7 +105,7 @@
   <h3 class="t15">상태 알약 7종 <span class="muted t12">.pill.{상태} (select와 읽기 전용 .static 공용)</span></h3>
   <div class="row">{% for code, label in statuses %}<span class="pill static {{ code }}">{{ code|status_mark }} {{ label }}</span>{% endfor %}</div>
   <h3 class="t15">기한 <span class="muted t12">.due (+ today · overdue · none · closed)</span></h3>
-  <div class="row"><span class="due">10월 12일</span><span class="due today">오늘 마감</span><span class="due overdue">10월 4일 초과</span><span class="due none">기한 미정</span><span class="due closed">목표일 9월 17일</span><span class="auto-mark">자동 추가</span></div>
+  <div class="row"><span class="due">10월 12일</span><span class="due today">오늘까지</span><span class="due overdue">10월 4일 초과</span><span class="due none">기한 미정</span><span class="due closed">기한 9월 17일</span><span class="auto-mark">자동 추가</span></div>
   <h3 class="t15">보드 열 · 카드 <span class="muted t12">.board-track .col[data-status] · ul.tasks .task-row</span></h3>
   <div class="board"><div class="board-track sg-board">
     {% for code, label in statuses %}{% if code != "done" and code != "cancelled" %}<div class="col" data-status="{{ code }}"><h3><i class="col-dot" aria-hidden="true"></i>{{ label }} <span class="muted">1</span></h3>
@@ -116,11 +116,11 @@
     <li class="task-row"><div class="main"><div class="proj">학식 API</div><div class="title">행사 준비</div><div class="meta"><span>김관리</span><button type="button" class="sub-count" aria-expanded="true">하위 2/3</button></div></div><div class="actions"><span class="due">10월 12일</span><span class="pill static todo">○ 시작 전</span></div></li>
     <li class="task-row sub"><div class="main"><div class="proj">학식 API <span class="sub-of">↳ TASK-12</span></div><div class="title">행사 준비 — 이영희</div><div class="meta"><span>이영희</span></div></div><div class="actions"><span class="due">10월 10일</span><span class="pill static doing">▶ 진행 중</span></div></li>
   </ul>
-  <h3 class="t15">결과 선반 <span class="muted t12">.shelf · .shelf-head · .shelf-tabs · .shelf-list · .shelf-more</span></h3>
-  <section class="shelf" aria-label="결과 선반 예시">
-    <div class="shelf-head">{% include "art/_shelf.html" %}<div class="grow"><h3 class="display t24">결과 선반</h3><p class="muted t13">끝낸 일과 멈춘 일을 차곡차곡 모아 둡니다.</p></div></div>
+  <h3 class="t15">끝난 일 <span class="muted t12">.shelf · .shelf-head · .shelf-tabs · .shelf-list · .shelf-more</span></h3>
+  <section class="shelf" aria-label="끝난 일 예시">
+    <div class="shelf-head">{% include "art/_shelf.html" %}<div class="grow"><h3 class="display t24">끝난 일</h3><p class="muted t13">끝낸 일과 멈춘 일을 차곡차곡 모아 둡니다.</p></div></div>
     <div class="shelf-tabs"><span class="chip" aria-pressed="true">완료 전체 <b>18</b>건</span><span class="chip">취소 전체 <b>1</b>건</span></div>
-    <ul class="tasks shelf-list"><li class="task-row closed"><div class="main"><div class="proj">학식 API</div><div class="title">완료한 일</div></div><div class="actions"><span class="due closed">목표일 9월 17일</span><span class="pill static done">✓ 완료</span></div></li>
+    <ul class="tasks shelf-list"><li class="task-row closed"><div class="main"><div class="proj">학식 API</div><div class="title">완료한 일</div></div><div class="actions"><span class="due closed">기한 9월 17일</span><span class="pill static done">✓ 완료</span></div></li>
       <li class="shelf-more"><span class="muted t13">10 / 18건 표시 · 더 있는 기록 8건</span><button type="button" class="btn sm">더 보기</button></li></ul>
   </section>
   <h3 class="t15">달력 <span class="muted t12">.pcal-grid .pcal-cell (+ today · is-empty) · .pcal-task (+ closed)</span></h3>
@@ -155,7 +155,7 @@
     <p class="t13">태스크·변경 이력의 내용까지 담긴 파일을 내려받습니다. 실행은 감사 기록에 남습니다.</p>
     <label class="field">사유 <textarea class="textarea" required minlength="5" maxlength="300"></textarea></label>
     <label class="field">확인을 위해 <code>export</code>를 그대로 입력해 주세요 <input class="input" autocomplete="off"></label>
-    <div class="row"><button class="btn danger">내보내기</button><button class="btn link">닫기</button></div> {# copy-draft #}
+    <div class="row"><button class="btn danger">운영 데이터 내보내기</button><button class="btn link">닫기</button></div>
   </form></dialog>
 </section>
 <section class="card" id="sg-integrations">

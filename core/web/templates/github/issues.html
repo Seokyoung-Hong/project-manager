@@ -6,19 +6,19 @@
   <p class="t13"><a href="{% url 'integration_help' %}#issues">이슈 동기화 문제 해결 및 질문 복사</a></p>
   <form class="row wrap gap" method="get">
     {% if not project %}
-    <select name="repo" aria-label="저장소" onchange="this.form.submit()"> {# copy-draft #}
+    <select name="repo" aria-label="저장소" onchange="this.form.submit()">
       <option value="">저장소 전체</option>
       {% for r in repos %}
       <option value="{{ r.pk }}" {% if repo_id == r.pk|stringformat:"s" %}selected{% endif %}>{{ r.full_name }}</option>
       {% endfor %}
     </select>
     {% endif %}
-    <select name="state" aria-label="가져온 상태" onchange="this.form.submit()"> {# copy-draft #}
+    <select name="state" aria-label="가져온 상태" onchange="this.form.submit()">
       <option value="todo" {% if state == "todo" %}selected{% endif %}>아직 가져오지 않은 이슈</option>
       <option value="done" {% if state == "done" %}selected{% endif %}>태스크로 가져온 이슈</option>
       <option value="all" {% if state == "all" %}selected{% endif %}>모든 이슈</option>
     </select>
-    <label class="seg-label" for="issue-q">검색어</label><input id="issue-q" type="search" name="q" value="{{ q }}" placeholder="제목·본문 검색"> {# copy-draft #}
+    <label class="seg-label" for="issue-q">검색어</label><input id="issue-q" type="search" name="q" value="{{ q }}" placeholder="제목·본문 검색">
     <button class="btn sm">이슈 찾기</button>
   </form>
   <form method="post" action="{% if project %}{% url 'project_issues_sync' project.pk %}{% else %}{% url 'org_issues_sync' org.pk %}{% endif %}">
@@ -45,7 +45,7 @@
     <summary class="muted t13">본문 보기</summary>
     <div class="md-view md issue-markdown"><textarea class="md-src input" readonly aria-label="이슈 Markdown 본문">{{ issue.body }}</textarea></div>
     <details><summary class="muted t13">Markdown 원문 보기</summary><pre class="issue-body">{{ issue.body }}</pre></details>
-    {% if issue.body|length >= 5000 %}<p class="muted t13">긴 본문은 일부만 동기화될 수 있습니다. 전체 본문은 위 이슈 제목의 GitHub 링크에서 확인하세요.</p>{% endif %}
+    {% if issue.body|length >= 5000 %}<p class="muted t13">긴 본문은 일부만 동기화될 수 있습니다. 전체 본문은 위 이슈 제목의 GitHub 링크에서 확인해 주세요.</p>{% endif %}
   </details>
   {% endif %}
   {% if issue.task %}
@@ -62,7 +62,7 @@
 {% empty %}
 <div class="card">
   <p class="muted t13">
-    {% if repos or project %}조건에 맞는 열린 이슈가 없습니다. [GitHub에서 새로 고침]을 눌러 보세요.
+    {% if repos or project %}조건에 맞는 열린 이슈가 없습니다. [GitHub에서 새로 고침]을 눌러 확인해 주세요.
     {% else %}이 조직에는 아직 저장소가 연결된 프로젝트가 없습니다. 프로젝트의 저장소 탭에서 연결해 주세요.{% endif %}
   </p>
 </div>

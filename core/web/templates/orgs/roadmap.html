@@ -55,7 +55,7 @@
       </div>
       {% if d.note %}<p class="dependency-note muted t13">{{ d.note }}</p>{% endif %}
       <span class="dependency-status badge{% if d.is_blocking %} danger{% endif %}">{% if d.is_blocking %}차단{% else %}차단 없음{% endif %}</span>
-      <form class="dependency-actions" method="post" action="{% url 'dependency_delete' d.pk %}">{% csrf_token %}<button class="btn sm danger" aria-label="{{ d.from_project.name }}에서 {{ d.to_project.name }} 의존성 삭제">삭제</button></form>
+      <form class="dependency-actions" method="post" action="{% url 'dependency_delete' d.pk %}">{% csrf_token %}<button class="btn sm danger" aria-label="{{ d.from_project.name }}에서 {{ d.to_project.name }} 의존성 삭제">의존성 삭제</button></form>
     </article>
     {% empty %}<p class="empty compact">의존성이 없습니다.</p>{% endfor %}
   </div>

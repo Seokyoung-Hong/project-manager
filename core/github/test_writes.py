@@ -109,7 +109,7 @@ def test_try_write_reports_github_error(installed, admin, monkeypatch):
         raise GitHubError(403, "You must be a team maintainer")
 
     warning = writes.try_write(deny)
-    assert "403" in warning and "PM에만 적용됐습니다" in warning
+    assert "GitHub에 반영하지 못했습니다" in warning and "유달리에는 적용되었습니다" in warning
 
 
 def test_write_failure_keeps_pm_change(installed, admin, team, monkeypatch):

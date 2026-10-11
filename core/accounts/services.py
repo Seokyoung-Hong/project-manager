@@ -41,13 +41,17 @@ def link_discord(code: str, discord_user_id: str) -> User:
     code = (code or "").strip().upper()
     did = (discord_user_id or "").strip()
     if not did.isdecimal():
-        raise ServiceError({"discord_user_id": "Discord 사용자 ID 형식이 아닙니다."})
+        raise ServiceError(
+            {
+                "discord_user_id": "Discord 사용자 ID 형식이 올바르지 않습니다. Discord에서 사용자 ID를 복사해 입력해 주세요."
+            }
+        )
     now = timezone.now()
     user = User.objects.filter(
         discord_link_code=code, discord_link_expires_at__gt=now, is_active=True
     ).first()
     if user is None:
-        raise ServiceError({"code": "코드가 틀렸거나 만료됐습니다. 웹에서 다시 발급하세요."})
+        raise ServiceError({"code": "코드가 틀렸거나 만료됐습니다. 웹에서 다시 발급해 주세요."})
 
     # 이 snowflake를 들고 있던 옛 행에서 가져온다. 코드와 snowflake가 둘 다 증명된 이 순간,
     # 남의 행에 남아 있는 값이 틀린 것이다. 선점당해 영구히 잠기는 경로를 없앤다.
@@ -63,7 +67,9 @@ def link_discord(code: str, discord_user_id: str) -> User:
         discord_link_expires_at=None,
     )
     if updated != 1:
-        raise ServiceError({"code": "이미 사용된 코드입니다."})
+        raise ServiceError(
+            {"code": "이미 사용한 연결 코드입니다. 프로필에서 새 코드를 발급해 주세요."}
+        )
     user.refresh_from_db()
     return user
 
@@ -143,13 +149,19 @@ def discord_dm_id(user):
 
 def require_consent(user, target: str) -> None:
     if not has_consent(user, target):
-        raise ServiceError({"consent": "국외 이전에 동의해야 연결할 수 있습니다."})
+        raise ServiceError(
+            {
+                "consent": "국외 이전에 동의하지 않아 연결할 수 없습니다. 동의 내용을 확인하고 연결해 주세요."
+            }
+        )
 
 
 def give_consent(user, target: str) -> Consent:
     """이미 동의했으면 그 기록을 그대로 둔다(처음 동의한 시각과 판이 남는다)."""
     if target not in NOTICES:
-        raise ServiceError({"target": "알 수 없는 동의 대상입니다."})
+        raise ServiceError(
+            {"target": "연결할 서비스를 확인하지 못했습니다. 동의 화면을 다시 열어 주세요."}
+        )
     consent, _ = Consent.objects.get_or_create(
         user=user, target=target, withdrawn_at__isnull=True, defaults={"version": POLICY_VERSION}
     )
@@ -315,6 +327,10 @@ def _check_withdraw_confirm(user, confirm: str) -> None:
     """비밀번호가 있으면 비밀번호를, GitHub로만 가입했으면(비밀번호 없음) 아이디를 다시 받는다."""
     if user.has_usable_password():
         if not user.check_password(confirm or ""):
-            raise ServiceError({"confirm": "비밀번호가 맞지 않습니다."})
+            raise ServiceError(
+                {"confirm": "비밀번호가 일치하지 않습니다. 비밀번호를 다시 입력해 주세요."}
+            )
     elif (confirm or "").strip() != user.username:
-        raise ServiceError({"confirm": "아이디가 맞지 않습니다."})
+        raise ServiceError(
+            {"confirm": "아이디가 일치하지 않습니다. 표시된 아이디를 다시 입력해 주세요."}
+        )

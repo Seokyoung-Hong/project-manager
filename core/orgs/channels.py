@@ -121,13 +121,25 @@ def connect(
     require_admin(actor, obj.org)
     channel_id = str(channel_id or "").strip()
     if not channel_id.isdecimal():
-        raise ServiceError({"channel_id": "채널을 확인하지 못했습니다."})
+        raise ServiceError(
+            {
+                "channel_id": "Discord 채널을 확인하지 못했습니다. 채널이 존재하는지와 봇의 접근 권한을 확인해 주세요."
+            }
+        )
     # 채널이 이 조직의 연결 길드 것이어야 한다(다른 서버의 채널 id로 연결하는 것을 막는다)
     if not obj.org.discord_guild_id or str(guild_id) != obj.org.discord_guild_id:
-        raise ServiceError({"guild_id": "이 조직에 연결된 Discord 서버의 채널이 아닙니다."})
+        raise ServiceError(
+            {
+                "guild_id": "조직에 연결된 서버의 채널이 아닙니다. 연결된 Discord 서버에서 채널을 선택해 주세요."
+            }
+        )
     # 한 채널은 한 대상에만 연결한다 — 두 대상이 허용 집합을 다르게 보면 경고·조정이 서로 엇갈린다
     if (other := linked_elsewhere(channel_id, kind, obj.pk)) is not None:
-        raise ServiceError({"channel_id": f"이미 {label(*other)}에 연결된 채널입니다."})
+        raise ServiceError(
+            {
+                "channel_id": f"이미 {label(*other)}에 연결된 채널입니다. 기존 연결을 해제하거나 다른 채널을 선택해 주세요."
+            }
+        )
     unknown = viewers is None and not created
     found = []
     if viewers is not None and not created:
@@ -218,7 +230,9 @@ def resolve(org, alert_id: int, action: str, actor):
     require_discord(actor, org, "managed")
     row = DiscordChannelAlert.objects.filter(pk=alert_id, org=org).first()
     if row is None:
-        raise ServiceError({"alert": "경고를 찾을 수 없습니다."})
+        raise ServiceError(
+            {"alert": "경고가 삭제되었거나 처리되었습니다. 경고 목록을 새로 확인해 주세요."}
+        )
     if action == "allow" and row.status in ("open", "gone"):
         row.status, row.resolved_by, row.resolved_at = "allowed", actor, timezone.now()
         row.save(update_fields=["status", "resolved_by", "resolved_at"])
@@ -265,7 +279,11 @@ def require_discord(user, org, feature: str):
     need = NEEDS[feature]
     if not (row.permissions & ADMINISTRATOR) and (row.permissions & need) != need:
         names = ", ".join(n for bit, n in NEED_NAMES.items() if need & bit)
-        raise ServiceError({"discord": f"Discord 서버에서 {names} 권한이 필요합니다."})
+        raise ServiceError(
+            {
+                "discord": f"Discord 서버에서 {names} 권한이 필요합니다. Discord 서버 관리자에게 봇 권한을 요청해 주세요."
+            }
+        )
 
 
 def record_member_permissions(org, members: list[dict]):
@@ -296,9 +314,17 @@ def set_managed(org, kind: str, target_id: int, managed: bool, actor):
     model = Team if kind == "team" else Project
     obj = model.objects.filter(pk=target_id, org=org).first()
     if obj is None:
-        raise ServiceError({"target": "대상을 찾을 수 없습니다."})
+        raise ServiceError(
+            {
+                "target": "대상이 삭제되었거나 접근할 수 없습니다. 목록에서 대상을 다시 선택해 주세요."
+            }
+        )
     if managed and not obj.discord_channel_id:
-        raise ServiceError({"target": "채널이 연결된 대상만 자동 관리를 켤 수 있습니다."})
+        raise ServiceError(
+            {
+                "target": "연결된 채널이 없어 자동 관리를 켤 수 없습니다. Discord 채널을 먼저 연결해 주세요."
+            }
+        )
     model.objects.filter(pk=obj.pk).update(discord_channel_managed=managed)
 
 

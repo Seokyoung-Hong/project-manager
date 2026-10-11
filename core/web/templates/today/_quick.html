@@ -2,7 +2,7 @@
   <h2>빠른 추가</h2>
   {{ form.idem }}
   {% if in_dialog %}<input type="hidden" name="in_dialog" value="1">{% endif %}
-  <label class="field">할 일{# copy-draft #}<input class="input lg" name="title" value="{{ form.title.value|default:'' }}" placeholder="무엇을 할까요?" required autofocus></label>
+  <label class="field">할 일<input class="input lg" name="title" value="{{ form.title.value|default:'' }}" placeholder="할 일을 입력해 주세요" required autofocus></label>
   <div class="row">
     <label class="field">프로젝트<select class="select auto" name="project" data-due-suggestions>{% for p in form.fields.project.queryset %}<option value="{{ p.pk }}" data-due-suggestion="{{ p.suggested_due_date }}"{% if form.project.value|stringformat:"s" == p.pk|stringformat:"s" %} selected{% endif %}>{{ p.name }}</option>{% endfor %}</select></label>
     <label class="field">중요도 (1~10)<select class="select auto" name="priority">{% for v, label in form.fields.priority.choices %}<option value="{{ v }}"{% if form.priority.value|stringformat:"s" == v|stringformat:"s" %} selected{% endif %}>{{ label }}</option>{% endfor %}</select></label>

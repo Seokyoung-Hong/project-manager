@@ -13,6 +13,8 @@ GitHub가 거부하면 PM 변경은 그대로 두고 경고만 보여 준다. �
 만들지 않는다.
 """
 
+import logging
+
 from django.utils import timezone
 from django.utils.text import slugify
 
@@ -27,10 +29,18 @@ from .services import user_token
 def _org_login(org) -> str:
     inst = getattr(org, "github", None)
     if inst is None:
-        raise ServiceError({"github": "이 조직에 GitHub 앱이 설치되어 있지 않습니다."})
+        raise ServiceError(
+            {
+                "github": "조직에 GitHub 앱이 설치되지 않았습니다. 조직 설정의 GitHub 화면에서 앱을 설치해 주세요."
+            }
+        )
     if inst.account_type == "User":
         # 개인 계정에는 /orgs/*가 없다(404). 부르기 전에 막는다 — 팀·멤버 함수가 전부 여기를 지난다.
-        raise ServiceError({"github": "개인 계정 설치에서는 GitHub 조직·팀 기능을 쓸 수 없습니다."})
+        raise ServiceError(
+            {
+                "github": "개인 계정에 설치한 앱으로는 GitHub 조직·팀 기능을 사용할 수 없습니다. 조직 관리자가 GitHub 조직에 앱을 설치해 주세요."
+            }
+        )
     return inst.account_login
 
 
@@ -38,7 +48,9 @@ def _actor_token(actor) -> str:
     """누른 사람의 토큰. 없으면 아무것도 하지 않는다."""
     identity = getattr(actor, "github", None)
     if identity is None:
-        raise ServiceError({"github": "GitHub를 연결해야 할 수 있습니다."})
+        raise ServiceError(
+            {"github": "GitHub 계정 연결이 필요합니다. 프로필에서 GitHub를 연결해 주세요."}
+        )
     return user_token(identity)
 
 
@@ -56,8 +68,8 @@ def try_write(fn, *args, **kwargs) -> str:
         fn(*args, **kwargs)
         return ""
     except GitHubError as e:
-        status = f"HTTP {e.status}" if e.status else "네트워크 연결 실패"
-        return f"GitHub에 반영하지 못했습니다 ({status}). PM에만 적용됐습니다. PM 작업을 반복하지 말고 연동 문제 해결에서 복구 방법을 확인하세요."
+        logging.getLogger(__name__).warning("GitHub 쓰기 요청 실패: %s", e.status, exc_info=True)
+        return "GitHub에 반영하지 못했습니다. 유달리에는 적용되었습니다. 연동 문제 해결 화면에서 연결 상태와 재시도 방법을 확인해 주세요."
     except ServiceError as e:
         return " ".join(str(v) for v in e.errors.values()) + " PM에만 적용됐습니다."
 
@@ -124,10 +136,16 @@ def set_gh_team_member(link, org, login: str, *, actor, add: bool):
 def reconcile_team(team, *, actor, on_result=None) -> tuple[int, list[str]]:
     """PM 팀 멤버를 GitHub 팀에 맞춘다. 뺄 사람은 건드리지 않는다."""
     if not team.dev_tools:
-        raise ServiceError({"team": "개발 도구를 끈 팀입니다."})
+        raise ServiceError(
+            {
+                "team": "팀의 개발 도구가 꺼져 있습니다. 조직 관리자에게 개발 도구를 켜 달라고 요청해 주세요."
+            }
+        )
     link = getattr(team, "github", None)
     if link is None:
-        raise ServiceError({"github": "연결된 GitHub 팀이 없습니다."})
+        raise ServiceError(
+            {"github": "GitHub 팀이 연결되지 않았습니다. 팀 설정에서 GitHub 팀을 연결해 주세요."}
+        )
     done, warns = 0, []
     for user in team.members.filter(is_active=True):
         login = _login_of(user)
@@ -155,7 +173,7 @@ def _task_conn(task):
 
     conn = task_repo(task)
     if conn is None:
-        raise ServiceError({"github": "연동 프로젝트를 먼저 선택하세요."})
+        raise ServiceError({"github": "연동 프로젝트를 먼저 선택해 주세요."})
     return conn
 
 
@@ -195,7 +213,11 @@ def create_branch(task, name: str, *, actor) -> str:
     token = _actor_token(actor)
     name = (name or "").strip().lstrip("/")
     if not name or ".." in name or name.endswith("/") or " " in name:
-        raise ServiceError({"branch": "쓸 수 없는 브랜치 이름입니다."})
+        raise ServiceError(
+            {
+                "branch": "브랜치 이름 형식이 올바르지 않습니다. 공백과 특수문자를 확인하고 다시 입력해 주세요."
+            }
+        )
     repo = client.request("GET", f"/repos/{conn.full_name}", token)
     ref = client.request(
         "GET", f"/repos/{conn.full_name}/git/ref/heads/{repo['default_branch']}", token

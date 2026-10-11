@@ -72,7 +72,9 @@ def login_view(request):
             form.add_error(None, _too_many(e))
         else:
             if user is None:
-                form.add_error(None, "아이디 또는 비밀번호가 맞지 않습니다.")
+                form.add_error(
+                    None, "아이디 또는 비밀번호가 일치하지 않습니다. 비밀번호를 다시 입력해 주세요."
+                )
             else:
                 login_user(request, user, "password")
                 return redirect(_safe_next(request, request.POST.get("next", "")) or landing(user))
@@ -99,7 +101,7 @@ def signup(request):
         user = form.save()
         record_failure("signup_ip", ip)  # 실패가 아니라 생성 횟수를 센다
         login_user(request, user, "password")
-        messages.info(request, "가입되었습니다. 조직을 만들거나 초대 링크로 참여하세요.")
+        messages.info(request, "가입되었습니다. 조직을 만들거나 초대 링크로 참여해 주세요.")
         # 갓 가입한 사람은 조직이 없다. 오늘 화면은 빈 목록뿐이라 다음에 뭘 해야 하는지 안 보인다.
         # 조직 목록은 [조직 만들기]가 있는 화면이다(초대로 온 사람은 next를 타고 그대로 간다).
         return redirect(_safe_next(request, request.GET.get("next", "")) or "org_list")

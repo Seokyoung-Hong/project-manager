@@ -136,7 +136,11 @@ def discord_installed(request):
     try:
         guild_id = dc.guild_from_code(request.GET.get("code", ""), _redirect_uri())
         if request.GET.get("guild_id") and request.GET["guild_id"] != guild_id:
-            raise ServiceError({"guild_id": "Discord가 알려 준 서버와 요청의 서버가 다릅니다."})
+            raise ServiceError(
+                {
+                    "guild_id": "연결하려는 Discord 서버와 인증한 서버가 다릅니다. 같은 서버를 선택해 다시 연결해 주세요."
+                }
+            )
         dc.link_guild(org, guild_id, actor=request.user)
         messages.success(
             request, "Discord 서버를 연결했습니다. 알림 채널은 그 서버에서 /알림채널로 정해 주세요."

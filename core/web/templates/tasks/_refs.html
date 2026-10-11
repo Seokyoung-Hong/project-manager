@@ -4,7 +4,7 @@
     {% for a in attachments %}{% if a.kind != "file" %}<li class="row"><span class="badge primary">{{ a.get_kind_display }}</span><a href="{% url 'attachment_download' a.pk a.name %}" target="_blank" rel="noopener">{{ a.name }}</a><span class="muted t13">파일 v{{ a.version }}</span></li>{% endif %}{% endfor %}
     {% for l in links %}{% if l.kind == "out" %}<li class="row"><span class="badge primary">산출물</span><a href="{{ l.url }}" target="_blank" rel="noopener">{{ l.title }}</a><span class="muted t13">링크</span></li>{% endif %}{% endfor %}
   </ul>
-  <p class="muted t13">이 태스크로 만든 결과물입니다. 파일·문서·링크를 올릴 때 '산출물'로 표시하면 여기에 모입니다.</p>{# copy-draft #}
+  <p class="muted t13">이 태스크의 결과물입니다. 파일·문서·링크의 종류를 산출물로 선택하면 여기에 표시됩니다.</p>
 </div>
 <div class="section">
   <span class="label">참고 자료</span>
@@ -12,16 +12,16 @@
     {% for d in docs %}
     <li class="row"><span class="badge">문서</span>
       <a href="{% url 'doc_home' d.pk %}">{{ d.title }}</a>
-      <button type="button" class="btn link danger" hx-post="{% url 'task_doc_unlink' task.pk d.pk %}" hx-target="#refs" hx-swap="innerHTML" data-confirm="이 태스크에서 문서 연결을 해제할까요? 문서는 삭제되지 않습니다." data-confirm-ok="연결 해제" aria-label="문서 {{ d.title }} 연결 해제">✕</button></li> {# copy-draft #}
+      <button type="button" class="btn link danger" hx-post="{% url 'task_doc_unlink' task.pk d.pk %}" hx-target="#refs" hx-swap="innerHTML" data-confirm="이 태스크에서 문서 연결을 해제합니다. 문서는 삭제되지 않습니다." data-confirm-ok="연결 해제" aria-label="문서 {{ d.title }} 연결 해제">✕</button></li>
     {% endfor %}
     {% for n in notes %}
     <li class="row"><span class="badge">회의록</span>
       <a href="{% url 'org_notes' n.org_id %}?note={{ n.pk }}">{{ n.title }}</a>
-      <button type="button" class="btn link danger" hx-post="{% url 'task_note_unlink' task.pk n.pk %}" hx-target="#refs" hx-swap="innerHTML" data-confirm="이 태스크에서 회의록 연결을 해제할까요? 회의록은 삭제되지 않습니다." data-confirm-ok="연결 해제" aria-label="회의록 {{ n.title }} 연결 해제">✕</button></li> {# copy-draft #}
+      <button type="button" class="btn link danger" hx-post="{% url 'task_note_unlink' task.pk n.pk %}" hx-target="#refs" hx-swap="innerHTML" data-confirm="이 태스크에서 회의록 연결을 해제합니다. 회의록은 삭제되지 않습니다." data-confirm-ok="연결 해제" aria-label="회의록 {{ n.title }} 연결 해제">✕</button></li>
     {% endfor %}
     {% for l in links %}
     <li class="row"><span class="badge">{{ l.get_kind_display }}</span><a href="{{ l.url }}" target="_blank" rel="noopener">{{ l.title }}</a>
-      <button type="button" class="btn link danger" hx-post="{% url 'link_delete' l.pk %}" hx-target="#refs" hx-swap="innerHTML" data-confirm="이 태스크의 외부 링크를 삭제할까요? 원본 자료는 삭제되지 않습니다." data-confirm-ok="링크 삭제" aria-label="외부 링크 {{ l.title }} 삭제">삭제</button></li> {# copy-draft #}
+      <button type="button" class="btn link danger" hx-post="{% url 'link_delete' l.pk %}" hx-target="#refs" hx-swap="innerHTML" data-confirm="이 태스크의 외부 링크를 삭제합니다. 원본 자료는 삭제되지 않습니다." data-confirm-ok="링크 삭제" aria-label="외부 링크 {{ l.title }} 삭제">링크 삭제</button></li>
     {% empty %}{% if not notes and not docs %}<li class="muted t13">참고 자료 없음</li>{% endif %}{% endfor %}
   </ul>
   {% if project_docs %}

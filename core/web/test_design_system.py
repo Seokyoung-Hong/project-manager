@@ -1,5 +1,6 @@
 """디자인 시스템: 스타일 가이드 권한, 그리고 DESIGN.md·app.css·템플릿이 서로 어긋나지 않는지."""
 
+import ast
 import re
 from pathlib import Path
 
@@ -78,7 +79,21 @@ def test_no_browser_confirm_left():
 
 def test_no_bare_ok_cancel_button_labels():
     """(b) 버튼은 대상+동사로. "확인"·"취소"·"OK" 단독은 결과를 알 수 없다(가이드 DESIGN_SYSTEM 231-233)."""
-    banned = {"확인", "취소", "OK"}
+    banned = {
+        "확인",
+        "취소",
+        "OK",
+        "저장",
+        "선택",
+        "완료",
+        "확정",
+        "추가",
+        "삭제",
+        "연결",
+        "만들기",
+        "적용",
+        "내보내기",
+    }
     hits = []
     for p in TEMPLATES:
         s = p.read_text(encoding="utf-8")
@@ -89,6 +104,84 @@ def test_no_bare_ok_cancel_button_labels():
             if m.group(1).strip() in banned:
                 hits.append(_where(p, s, m.start()))
     assert hits == []
+
+
+COPY_BANNED = re.compile(
+    r"목표일|목표 기한|마감|부하 현황|거버넌스|백링크|결과 선반|"
+    r"업로드|비활성화된 계정|비활성 사용자|막힌 이유|멈춘 이유|"
+    r"하세요|올리세요|고르세요|넣으세요|적으세요|받으세요|쓰세요|보세요|"
+    r"나누세요|떼어내세요|바꾸세요|가져오세요|해요|했어요"
+)
+
+
+def _python_copy_literals(path):
+    """모델 필드·주석·docstring·로그·테스트를 제외한 사용자 문구 리터럴."""
+    tree = ast.parse(path.read_text(encoding="utf-8-sig"))
+    excluded = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Expr) and isinstance(node.value, ast.Constant):
+            excluded.add(id(node.value))  # docstring
+        if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute):
+            owner = node.func.value
+            if (
+                isinstance(owner, ast.Name) and owner.id in {"log", "logger", "logging", "models"}
+            ) or (
+                isinstance(owner, ast.Call)
+                and isinstance(owner.func, ast.Attribute)
+                and owner.func.attr == "getLogger"
+            ):
+                excluded.update(id(child) for child in ast.walk(node))
+    return [
+        (node.lineno, node.value)
+        for node in ast.walk(tree)
+        if isinstance(node, ast.Constant)
+        and isinstance(node.value, str)
+        and id(node) not in excluded
+        and re.search(r"[가-힣]", node.value)
+    ]
+
+
+def test_user_copy_uses_standard_terms_and_tone():
+    """DESIGN.md 용어표. 식별자·모델 필드명·주석은 검사하지 않는다."""
+    hits = []
+    for path in TEMPLATES:
+        source = path.read_text(encoding="utf-8")
+        copy = re.sub(
+            r"\{#.*?#\}|\{%\s*comment\s*%\}.*?\{%\s*endcomment\s*%\}|<!--.*?-->",
+            "",
+            source,
+            flags=re.S,
+        )
+        hits.extend(
+            f"{path.relative_to(WEB)}:{match.group()}" for match in COPY_BANNED.finditer(copy)
+        )
+    for path in WEB.parent.rglob("*.py"):
+        if any(
+            part in {".venv", "migrations", "skills", "mcp_server", "discord_service"}
+            for part in path.parts
+        ):
+            continue
+        if path.name == "models.py" or path.name == "tests.py" or path.name.startswith("test_"):
+            continue
+        for line, copy in _python_copy_literals(path):
+            hits.extend(
+                f"{path.relative_to(WEB.parent)}:{line}:{match.group()}"
+                for match in COPY_BANNED.finditer(copy)
+            )
+    assert hits == []
+
+
+def test_copy_scan_ignores_code_comments_and_model_fields(tmp_path):
+    sample = tmp_path / "copy.py"
+    sample.write_text(
+        "# 목표일을 바꾸세요\n"
+        '"""마감·거버넌스 구현 메모"""\n'
+        'due_date = models.DateField("목표일")\n'
+        'logger.warning("업로드 실패")\n'
+        'message = f"{task_id} 목표일을 선택하세요."\n',
+        encoding="utf-8",
+    )
+    assert _python_copy_literals(sample) == [(5, " 목표일을 선택하세요.")]
 
 
 def test_inputs_have_labels_not_just_placeholders():

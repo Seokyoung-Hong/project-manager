@@ -157,7 +157,7 @@ def test_withdraw_screen_ends_every_session(client, member, org, task):
     assert "되돌릴 수 없습니다" in page.content.decode()
 
     bad = client.post("/settings/account", {"confirm": "nope"})
-    assert "비밀번호가 맞지 않습니다" in bad.content.decode()
+    assert "비밀번호가 일치하지 않습니다" in bad.content.decode()
 
     done = client.post("/settings/account", {"confirm": "pw12345678"})
     assert "탈퇴를 마쳤습니다" in done.content.decode()

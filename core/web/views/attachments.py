@@ -46,7 +46,7 @@ def _upload(request, **target):
         replaces = attachment_or_404(request.user, p["replaces"])
     upload = request.FILES.get("file")
     if upload is None:
-        raise ServiceError({"file": "파일을 고르세요."})
+        raise ServiceError({"file": "파일을 골라 주세요."})
     return at.add_attachment(
         actor=request.user,
         upload=upload,

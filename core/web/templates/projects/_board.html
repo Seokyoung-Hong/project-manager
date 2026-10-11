@@ -9,7 +9,7 @@
               aria-label="다음 상태 열" title="다음 상태 열">›</button>
     </div>
   </div>
-  {% if blocked_count %}<p class="notice warn board-blocked-alert"><span class="grow">⚠ 막힌 태스크가 {{ blocked_count }}건 있습니다.</span><a class="btn sm" href="#board-col-blocked">막힘 열 보기</a></p>{% endif %}{# copy-draft #}
+  {% if blocked_count %}<p class="notice warn board-blocked-alert"><span class="grow">⚠ 막힌 태스크가 {{ blocked_count }}건 있습니다.</span><a class="btn sm" href="#board-col-blocked">막힘 열 보기</a></p>{% endif %}
   {% if error %}<p class="error" role="alert">{{ error }}</p>{% endif %}
   <div class="board-track" tabindex="0" role="region" aria-label="상태별 태스크 보드" aria-describedby="board-guide">
     {% for code, label, col in columns %}

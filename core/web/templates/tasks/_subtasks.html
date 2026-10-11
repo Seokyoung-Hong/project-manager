@@ -34,7 +34,7 @@
   {% if sub.hidden %}<p class="muted t13">볼 수 없는 하위 {{ sub.hidden }}건</p>{% endif %}
   {% if sub.can_add %}
   {# 만들기·넣기 폼은 [하위 태스크 추가]를 눌렀을 때만 펼친다(b-workspace 상-3). 담당 기본값은 나(시스템화 D). #}
-  <button type="button" class="btn sm" data-action="toggle" data-target="#sub-add-{{ task.pk }}" data-alt="입력 닫기">하위 태스크 추가</button>{# copy-draft #}
+  <button type="button" class="btn sm" data-action="toggle" data-target="#sub-add-{{ task.pk }}" data-alt="입력 닫기">하위 태스크 추가</button>
   <div id="sub-add-{{ task.pk }}" class="stack" hidden>
   <form class="row" hx-post="{% url 'subtask_create' task.pk %}" hx-target="#panel" hx-swap="innerHTML">
     <input class="input" name="title" required placeholder="하위 태스크 제목" aria-label="하위 태스크 제목">
@@ -48,7 +48,7 @@
   {% if sub.candidates %}
   <form class="row" hx-post="{% url 'task_group' task.pk %}" hx-target="#panel" hx-swap="innerHTML">
     <select name="task" class="select auto" aria-label="하위로 넣을 태스크" required>
-      <option value="">태스크 고르기…</option>{# copy-draft #}
+      <option value="">태스크 고르기…</option>
       {% for c in sub.candidates %}<option value="{{ c.pk }}">{{ c.number }} {{ c.title }}</option>{% endfor %}
     </select>
     <button class="btn sm">기존 태스크 넣기</button>

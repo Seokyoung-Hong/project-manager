@@ -3,7 +3,7 @@
 <div class="card">
   <div class="card-head">
     <div><h1 class="t24">{{ view.title }}</h1><div class="muted t13">{{ view.hint }}</div></div>
-    <label class="field me-member">누구의 태스크{# copy-draft #}
+    <label class="field me-member">누구의 태스크
     <select name="member" form="me-filter" class="select auto" onchange="this.form.requestSubmit()">
       <option value="0"{% if member_id == 0 %} selected{% endif %}>조직 전체</option>
       {% for m in members %}<option value="{{ m.pk }}"{% if m.pk == member_id %} selected{% endif %}>{% if m.pk == user.pk %}나{% else %}{{ m.display_name }}{% endif %}</option>{% endfor %}
@@ -42,12 +42,12 @@
 <div class="card group-stack">
 {% if view.total == 0 and not view.completion and not has_filter %}
   {% url 'today_quick' as quick_url %}
-  {% if member_id == user.pk %}{% include "_empty.html" with what="맡은 미완료 태스크가 없습니다." why="태스크를 만들면 기한별로 모여 여기에 표시됩니다." hx_get=quick_url label="태스크 만들기" %}{% else %}{% include "_empty.html" with what="미완료 태스크가 없습니다." %}{% endif %}{# copy-draft #}
+  {% if member_id == user.pk %}{% include "_empty.html" with what="담당 중인 미완료 태스크가 없습니다." why="새 태스크를 만들면 기한별로 확인할 수 있습니다." hx_get=quick_url label="태스크 만들기" %}{% else %}{% include "_empty.html" with what="미완료 태스크가 없습니다." %}{% endif %}
 {% else %}
 {% for g in groups %}
 <section class="group">
   <h2>{{ g.title }} <span class="muted">{{ g.count }}</span></h2>
-  {% if g.count == 0 %}{% if has_filter %}<p class="muted">조건에 맞는 태스크가 없습니다. <a href="{% url 'me' %}?member={{ member_id }}&group={{ group }}&sort={{ sort }}">필터 초기화</a></p>{# copy-draft #}{% else %}<p class="muted">{{ g.empty_text }}</p>{% endif %}
+  {% if g.count == 0 %}{% if has_filter %}<p class="muted">조건에 맞는 태스크가 없습니다. <a href="{% url 'me' %}?member={{ member_id }}&group={{ group }}&sort={{ sort }}">필터 초기화</a></p>{% else %}<p class="muted">{{ g.empty_text }}</p>{% endif %}
   {% elif g.flat %}<ul class="tasks">{% for r in g.rows %}{% task_row r %}{% endfor %}</ul>
   {% else %}
     {% for p in g.projects %}

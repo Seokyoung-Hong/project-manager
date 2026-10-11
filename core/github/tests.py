@@ -833,7 +833,7 @@ def test_github_login_resolves_identity_and_keeps_inactive_message(gh, member):
     member.save(update_fields=["is_active"])
     with pytest.raises(ServiceError) as e:
         ghs.login_with_github({"id": 5, "login": "new"}, {})
-    assert "비활성" in e.value.errors["github"]
+    assert "정지된 계정" in e.value.errors["github"]
     assert GitHubIdentity.objects.count() == 1  # 비활성 사람 대신 새 계정을 만들지 않는다
     _, created = ghs.login_with_github({"id": 6, "login": "newbie"}, {})
     assert created

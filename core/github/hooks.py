@@ -15,6 +15,7 @@ Discord 웹훅 URL은 토큰을 품는다. DB·로그·화면·API 응답 어디
 봇 틱마다 다시 시도한다(취소된 생성의 보상 삭제도 여기로 간다).
 """
 
+import logging
 import re
 import secrets
 
@@ -65,7 +66,11 @@ def _conn(project) -> RepoConnection:
     # project.repo는 캐시된 인스턴스라 봇 보고로 바뀐 상태를 못 본다. 늘 다시 읽는다.
     conn = RepoConnection.objects.filter(project=project).select_related("project").first()
     if conn is None:
-        raise ServiceError({"hook": "저장소가 연결된 프로젝트만 설정할 수 있습니다."})
+        raise ServiceError(
+            {
+                "hook": "저장소가 연결되지 않아 설정할 수 없습니다. 프로젝트에 저장소를 먼저 연결해 주세요."
+            }
+        )
     return conn
 
 
@@ -79,14 +84,15 @@ def _reason(e: Exception) -> str:
     if isinstance(e, ServiceError):
         return " ".join(str(v) for v in e.errors.values())
     if isinstance(e, GitHubError):
+        logging.getLogger(__name__).warning("GitHub 웹훅 요청 실패: %s", mask(str(e)))
         if e.status == 0:
             return "GitHub에 연결하지 못했습니다. 잠시 뒤 다시 시도해 주세요."
         if e.status == 404:
-            return "GitHub가 저장소 웹훅을 거부했습니다(HTTP 404). " + APP_FIX
+            return "GitHub에서 저장소 웹훅을 찾지 못했습니다. " + APP_FIX
         if e.status == 403:
-            return "GitHub가 거부했습니다(HTTP 403). 저장소 admin 권한과 앱의 Webhooks 쓰기 권한을 확인해 주세요."
-        return mask(f"GitHub가 거부했습니다(HTTP {e.status}: {e.message}).")
-    return "알 수 없는 오류입니다."
+            return "GitHub 웹훅을 변경할 권한이 없습니다. 저장소 관리자 권한과 앱의 웹훅 쓰기 권한을 확인해 주세요."
+        return "GitHub가 웹훅 변경 요청을 처리하지 못했습니다. 잠시 후 다시 시도해 주세요."
+    return "웹훅 요청을 처리하지 못했습니다. 잠시 후 다시 시도해 주세요."
 
 
 def app_can_write_hooks(org) -> bool | None:
@@ -242,7 +248,11 @@ def request_setup(project, events, *, actor, source="web") -> dict:
     if found := blockers(actor, project):
         raise ServiceError({"hook": f"{found[0]['reason']} {found[0]['fix']}".strip()})
     if (conn.discord_hook or {}).get("state") in BUSY:
-        raise ServiceError({"hook": "이미 설정되어 있거나 처리 중입니다."})
+        raise ServiceError(
+            {
+                "hook": "웹훅이 이미 설정되어 있거나 처리 중입니다. 처리 상태를 새로고침해 확인해 주세요."
+            }
+        )
     events = _events(events)
     _require_repo_admin(conn, _actor_token(actor))
     hook = {
@@ -262,7 +272,9 @@ def update_events(project, events, *, actor, source="web") -> dict:
     _require(actor, project)
     hook = dict(conn.discord_hook or {})
     if hook.get("state") not in ("pending", "active"):
-        raise ServiceError({"hook": "설정된 웹훅이 없거나 처리 중입니다."})
+        raise ServiceError(
+            {"hook": "해제할 웹훅이 없거나 처리 중입니다. 처리 상태를 새로고침해 확인해 주세요."}
+        )
     events = _events(events)
     if hook["state"] == "active":
         try:
@@ -502,9 +514,10 @@ def on_failed(project_id: int, job: str, reason: str) -> dict:
         hook = dict((conn.discord_hook if conn else None) or {})
         if hook.get("state") != "pending" or hook.get("job", "") != str(job):
             return {"ok": False}
+        logging.getLogger(__name__).warning("Discord 웹훅 생성 실패: %s", mask(reason))
         hook.update(
             state="error",
-            error=f"봇이 Discord 웹훅을 만들지 못했습니다({mask(reason)[:200]}). 봇 역할과 그 채널의 "
+            error="봇이 Discord 웹훅을 만들지 못했습니다. 봇 역할과 그 채널의 "
             "권한 덮어쓰기에 웹후크 관리 권한이 있는지 확인해 주세요.",
         )
         _write(conn, hook)
