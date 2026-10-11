@@ -1898,9 +1898,29 @@ def test_signup_without_age_check_is_refused(client, db):
 def test_privacy_page_is_public_and_linked_from_footer(client, db):
     r = client.get("/privacy")
     body = r.content.decode()
-    # JS 없이도 본문이 보여야 한다(법적 고지문): 서버가 넣은 HTML 문단, 원문 textarea가 아니다
-    assert r.status_code == 200 and "<p>준비 중입니다.</p>" in body and "<textarea" not in body
+    # JS 없이도 본문이 보여야 한다(법적 고지문): 서버가 넣은 HTML, 원문 textarea가 아니다
+    assert r.status_code == 200 and "<textarea" not in body
+    assert "쿼넥트" in body and "Anthropic" in body
+    assert '<div class="table-scroll"><table>' in body
+    assert '<h2 id="제1조-개인정보-처리-목적과-근거">' in body
+    assert '<a href="mailto:contact@quanect.kr">' in body
     assert '<footer class="site-footer t13"><a href="/privacy"><strong>' in body
+
+
+def test_privacy_placeholder_warns_only_in_production(settings, tmp_path, monkeypatch):
+    from web import apps
+    from web.views import auth
+
+    page = tmp_path / "privacy.html"
+    monkeypatch.setattr(auth, "PRIVACY_HTML", page)
+    page.write_text("<p>시행일: {{시행일}}</p>", encoding="utf-8")
+    settings.DEBUG = False
+    assert [w.id for w in apps.privacy_placeholder_check(None)] == ["web.W001"]
+    settings.DEBUG = True
+    assert apps.privacy_placeholder_check(None) == []
+    settings.DEBUG = False
+    page.write_text("<p>시행일: 2026-10-20</p>", encoding="utf-8")
+    assert apps.privacy_placeholder_check(None) == []
 
 
 def test_eleventh_signup_from_one_ip_is_refused(client, db):
