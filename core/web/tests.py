@@ -308,10 +308,11 @@ def test_ops_requires_staff(client, member):
 
 def test_export_json_has_no_secrets(client, member, admin, org, task):
     """백업에 비밀번호·초대 token·Discord 연결 코드가 들어가지 않는다."""
-    from accounts.services import issue_link_code
+    from accounts.services import give_consent, issue_link_code
     from orgs.services import create_invite
 
     invite = create_invite(org, admin)
+    give_consent(admin, "discord")
     code = issue_link_code(admin)
     User.objects.filter(pk=member.pk).update(is_staff=True, is_superuser=True)
     client.login(username="member1", password="pw12345678")
@@ -332,7 +333,10 @@ def test_healthz(client):
     assert r.json() == {"ok": True}
 
 
-def test_token_shown_once(logged):
+def test_token_shown_once(logged, member):
+    from accounts.services import give_consent
+
+    give_consent(member, "ai")
     r = logged.post("/settings/tokens", {"name": "t", "scope": "read", "purpose": "ai"})
     assert r.status_code == 302
     assert "pm_" in logged.get("/settings/tokens").content.decode()
@@ -342,7 +346,9 @@ def test_token_shown_once(logged):
 def test_token_purpose_is_chosen_at_issue(logged, member):
     """용도의 기본은 AI용이고, 사람용은 사람이 골라야 나온다. 봇 범위는 폼으로 만들 수 없다."""
     from accounts.models import ApiToken
+    from accounts.services import give_consent
 
+    give_consent(member, "ai")
     logged.post("/settings/tokens", {"name": "ai", "scope": "write", "purpose": "ai"})
     # 사람용은 "AI에 넣지 않겠다"는 확인 없이는 발급되지 않는다.
     r = logged.post("/settings/tokens", {"name": "확인없음", "scope": "write", "purpose": "person"})
@@ -414,8 +420,9 @@ def test_profile_has_no_discord_id_input(client, admin, member):
 
 def test_discord_link_code_is_shown_once_then_unlink_clears(client, admin):
     """코드는 발급 직후 한 번만 보인다(토큰 화면의 new_token과 같은 방식)."""
-    from accounts.services import link_discord
+    from accounts.services import give_consent, link_discord
 
+    give_consent(admin, "discord")
     client.login(username="admin1", password="pw12345678")
     assert client.post("/settings/profile/discord").status_code == 302
     admin.refresh_from_db()
@@ -1709,7 +1716,9 @@ def test_oauth_full_flow_issues_a_working_token(client, logged, member):
     }
     assert "허용" in logged.get("/oauth/authorize", params).content.decode()
 
-    r = logged.post("/oauth/authorize", {**params, "decision": "allow", "scope": "write"})
+    r = logged.post(
+        "/oauth/authorize", {**params, "decision": "allow", "scope": "write", "consent": "1"}
+    )
     assert r.status_code == 302
     location = r.headers["Location"]
     assert location.startswith("https://claude.ai/api/mcp/auth_callback?")
@@ -1765,6 +1774,7 @@ def test_oauth_token_needs_the_matching_verifier(client, logged):
             "code_challenge": challenge,
             "code_challenge_method": "S256",
             "decision": "allow",
+            "consent": "1",
         },
     )
     code = re.search(r"code=([^&]+)", r.headers["Location"]).group(1)

@@ -16,6 +16,8 @@ from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_POST
 
 from accounts.auth import login_user
+from accounts.consents import NOTICES
+from accounts.services import give_consent, has_consent
 from common.errors import ConflictError, ServiceError
 from github import client
 from github import hooks as gh_hooks
@@ -39,6 +41,7 @@ from .common import (
 )
 from .integrations import clear_problem, record_problem
 from .projects import _can_edit_project_settings
+from .settings import consent_redirect
 from .tasks import _panel
 
 
@@ -181,6 +184,8 @@ def _authorize(request):
 @login_required
 def github_connect(request):
     _gh_enabled_or_404()
+    if not has_consent(request.user, "github"):
+        return consent_redirect("github", reverse("github_connect"))
     return _authorize(request)
 
 
@@ -195,12 +200,14 @@ def github_login(request):
     return _authorize(request)
 
 
-def _finish_login(request, data: dict, info: dict):
+def _finish_login(request, data: dict, info: dict, consented: bool = False):
     try:
         identity, created = gh_services.login_with_github(info, data)
     except ServiceError as e:
         messages.error(request, " ".join(e.errors.values()))
         return redirect("login")
+    if consented:
+        give_consent(identity.user, "github")
     try:
         gh_services.sync_repos(identity)
     except (GitHubError, ServiceError):
@@ -219,17 +226,20 @@ def github_login_confirm(request):
     raw = request.session.get("gh_pending")
     if request.user.is_authenticated or not raw:
         return redirect("login")
-    ctx = {"lookalike": request.session.get("gh_lookalike", False)}
+    ctx = {"lookalike": request.session.get("gh_lookalike", False), "notice": NOTICES["github"]}
     if request.method == "POST":
         if not request.POST.get("age_ok"):
             ctx["age_error"] = "만 14세 미만은 가입할 수 없습니다."
+            return render(request, "auth/github_confirm.html", ctx)
+        if not request.POST.get("consent_ok"):
+            ctx["consent_error"] = "국외 이전에 동의하지 않으면 GitHub로 가입할 수 없습니다."
             return render(request, "auth/github_confirm.html", ctx)
         request.session.pop("gh_lookalike", None)
         text = decrypt(request.session.pop("gh_pending"))
         if not text:  # 키를 갈아 복호화가 안 되면 처음부터 다시
             return redirect("login")
         pending = json.loads(text)
-        return _finish_login(request, pending["data"], pending["info"])
+        return _finish_login(request, pending["data"], pending["info"], consented=True)
     return render(request, "auth/github_confirm.html", ctx)
 
 
@@ -270,6 +280,8 @@ def github_callback(request):
             )
             return redirect("github_login_confirm")
         return _finish_login(request, data, info)
+    if not has_consent(request.user, "github"):
+        return consent_redirect("github", reverse("github_connect"))
     if GitHubIdentity.objects.filter(github_id=info["id"]).exclude(user=request.user).exists():
         messages.error(request, "이 GitHub 계정은 이미 다른 사용자에게 연결되어 있습니다.")
         return redirect("profile")

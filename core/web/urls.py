@@ -204,6 +204,13 @@ urlpatterns = [
     path("settings/profile/discord", settings.discord_link, name="discord_link"),
     path("settings/profile/discord/unlink", settings.discord_unlink, name="discord_unlink"),
     path("settings/tokens", settings.tokens, name="tokens"),
+    path("settings/consents", settings.consents, name="consents"),
+    path("settings/consents/<str:target>", settings.consent, name="consent"),
+    path(
+        "settings/consents/<str:target>/withdraw",
+        settings.consent_withdraw,
+        name="consent_withdraw",
+    ),
     path("settings/tokens/<int:token_id>/revoke", settings.token_revoke, name="token_revoke"),
     path("settings/account", settings.account, name="account"),
     path("ops", ops.ops, name="ops"),

@@ -3,7 +3,7 @@ from datetime import timedelta
 import pytest
 
 from accounts.models import ApiToken, User
-from accounts.services import issue_link_code
+from accounts.services import give_consent, issue_link_code
 from api.models import IntegrationStatus
 from common.dates import last_week_start, today_kst, week_bounds
 from orgs.models import OrgMembership
@@ -454,6 +454,7 @@ def test_extend_not_past_the_current_due_date_is_400(client, task, bot_token):
 
 
 def test_link_and_unlink_need_the_bot_scope(client, admin, read_token, write_token, bot_token):
+    give_consent(admin, "discord")
     code = issue_link_code(admin)
     body = {"code": code, "discord_user_id": "222"}
     for raw in (read_token, write_token):

@@ -217,3 +217,29 @@ class LoginLock(models.Model):
 
     def __str__(self):
         return f"{self.kind}:{self.key}"
+
+
+class Consent(models.Model):
+    """연결할 때 받은 국외 이전(제3자 제공) 동의. 고지 내용은 accounts/consents.py.
+
+    철회해도 행을 지우지 않는다 — 언제 어느 판에 동의했다가 철회했는지가 분쟁 때의 근거다.
+    다시 동의하면 새 행이 생긴다. 살아 있는 동의는 사용자·대상마다 하나다.
+    """
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="consents")
+    target = models.CharField(max_length=10)
+    version = models.CharField(max_length=20)
+    agreed_at = models.DateTimeField(auto_now_add=True)
+    withdrawn_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["user", "target"],
+                condition=models.Q(withdrawn_at__isnull=True),
+                name="consent_one_active",
+            )
+        ]
+
+    def __str__(self):
+        return f"{self.user}:{self.target}:{self.version}"

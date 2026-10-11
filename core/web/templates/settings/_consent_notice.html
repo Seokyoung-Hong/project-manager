@@ -1,0 +1,15 @@
+{# 국외 이전(제3자 제공) 법정 고지. 내용은 accounts/consents.py 한 곳에서 온다. #}
+<div class="table-scroll">
+<table class="grid">
+  <thead><tr><th>받는 자</th><th>국가</th><th>항목</th><th>목적</th><th>시기·방법</th><th>보유 기간</th></tr></thead>
+  <tbody>
+  {% for r in notice.rows %}
+  <tr>
+    <td>{{ r.recipient }}<br><a class="t13" href="{{ r.contact }}" rel="noopener" target="_blank">개인정보 문의</a></td>
+    <td>{{ r.country }}</td><td>{{ r.items }}</td><td>{{ r.purpose }}</td><td>{{ r.when }}</td><td>{{ r.retention }}</td>
+  </tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+<p class="t13">동의를 거부할 수 있습니다. {{ notice.refusal }} 동의는 설정 → 개인정보 동의에서 언제든 철회할 수 있습니다.</p>

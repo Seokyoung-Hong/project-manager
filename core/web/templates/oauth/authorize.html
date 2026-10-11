@@ -11,9 +11,14 @@
       <label><input type="radio" name="scope" value="read" checked> 읽기 — 태스크·프로젝트·문서를 보기만 합니다.</label>
       <label><input type="radio" name="scope" value="write"> 읽기·쓰기 — 허용된 조직 정책과 계정 권한 안에서 태스크·프로젝트·문서 등을 조회하고 변경할 수 있습니다.</label>
     </fieldset>
+    {% if notice %}
+    <h3>개인정보 국외 이전(제3자 제공) 동의</h3>
+    {% include "settings/_consent_notice.html" %}
+    <label class="check"><input type="checkbox" name="consent" value="1" required> 위 국외 이전에 동의합니다</label>
+    {% endif %}
     <div class="row">
       <button class="btn primary" name="decision" value="allow">접근 허용</button>
-      <button class="btn" name="decision" value="deny">접근 거절</button>
+      <button class="btn" name="decision" value="deny" formnovalidate>접근 거절</button>
     </div>
   </form>
   <p class="t13 muted">허용하면 API 토큰이 하나 발급됩니다.
