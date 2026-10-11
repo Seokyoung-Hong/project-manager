@@ -25,7 +25,7 @@
     </form>
     <div class="row">
       <button type="button" class="btn sm" onclick="document.getElementById('doc-import-dlg').showModal()">Markdown 올리기</button>
-      <a class="btn sm" href="{% url 'org_doc_export' org.pk %}{% if doc %}?root={{ doc.pk }}{% endif %}">{% if doc %}이 문서와 하위 ZIP{% else %}전체 ZIP 내보내기{% endif %}</a>
+      <a class="btn sm" href="{% url 'org_doc_export' org.pk %}{% if doc %}?root={{ doc.pk }}{% endif %}">{% if doc %}이 문서와 하위 문서 ZIP으로 내보내기{# copy-draft #}{% else %}전체 ZIP 내보내기{% endif %}</a>
     </div>
 
     {% if hits is not None %}
@@ -41,7 +41,7 @@
     {% elif tree %}
     {% include "docs/_tree.html" with nodes=tree %}
     {% else %}
-    <p class="empty">아직 문서가 없습니다. 기획 배경·설계 결정·운영 절차처럼 태스크 하나에 담기 어려운 글을 남기세요.</p>
+    {% include "_empty.html" with what="아직 문서가 없습니다." why="기획 배경·설계 결정·운영 절차처럼 태스크 하나에 담기 어려운 글을 남기면 팀이 같은 내용을 다시 묻지 않습니다. 위의 [새 문서]로 시작해 주세요." %}{# copy-draft #}
     {% endif %}
   </section>
 

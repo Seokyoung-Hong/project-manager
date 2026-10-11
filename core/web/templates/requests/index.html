@@ -36,25 +36,29 @@
 </section>
 {% else %}
 <section class="card">
-  <p class="table-scroll-hint">좌우로 밀어 기한과 시각을 보세요.</p>
-  <div class="table-scroll" tabindex="0" role="region" aria-label="요청 목록, 좌우로 스크롤 가능">
-  <table class="grid request-table">
-    <thead><tr><th>요청</th><th>종류</th><th>상태</th><th>보낸 사람</th><th>받는 쪽</th><th>희망 기한</th><th>시각</th></tr></thead>
+  {% if rows %}
+  {# 모바일에서는 행을 카드로 — 제목·상태·보낸 사람이 먼저 보인다(b-workspace 하-4) #}
+  <table class="grid request-table request-cards">
+    <thead><tr><th>요청</th><th>상태</th><th>보낸 사람</th><th>종류</th><th>받는 쪽</th><th>희망 기한</th><th>시각</th></tr></thead>
     <tbody>
     {% for r in rows %}
     <tr>
       <td><a href="{{ r.path }}">{{ r.number }} {{ r.title }}</a></td>
-      <td>{{ r.get_kind_display }}</td>
       <td><span class="badge{% if r.status == "pending" %} primary{% elif r.status == "accepted" or r.status == "done" %} ok{% elif r.status == "declined" %} danger{% endif %}">{{ r.get_status_display }}</span></td>
-      <td>{{ r.requested_by.display_name }}</td>
-      <td>{% if r.team %}{{ r.team.name }} 팀{% else %}{{ r.to_user.display_name }}{% endif %}</td>
-      <td>{% if r.due_date %}{{ r.due_date|due_text }}{% endif %}</td>
-      <td>{{ r.created_at|date:"m-d H:i" }}</td>
+      <td data-label="보낸 사람">{{ r.requested_by.display_name }}</td>
+      <td data-label="종류">{{ r.get_kind_display }}</td>
+      <td data-label="받는 쪽">{% if r.team %}{{ r.team.name }} 팀{% else %}{{ r.to_user.display_name }}{% endif %}</td>
+      <td data-label="희망 기한">{% if r.due_date %}{{ r.due_date|due_text }}{% endif %}</td>
+      <td data-label="시각">{{ r.created_at|date:"m-d H:i" }}</td>
     </tr>
-    {% empty %}<tr><td colspan="7" class="empty-cell">{% if tab == "sent" %}보낸 요청이 없습니다.{% else %}받은 요청이 없습니다.{% endif %}</td></tr>{% endfor %}
+    {% endfor %}
     </tbody>
   </table>
-  </div>
+  {% elif tab == "sent" %}
+  {% include "_empty.html" with what="보낸 요청이 없습니다." why="다른 사람에게 일을 맡기거나 검토를 부탁할 때 씁니다. 위의 [새 요청]으로 보내 주세요." %}{# copy-draft #}
+  {% else %}
+  {% include "_empty.html" with what="받은 요청이 없습니다." why="요청은 다른 사람에게 일을 맡기거나 검토를 부탁할 때 씁니다. 누군가 요청을 보내면 여기에 표시됩니다." %}{# copy-draft #}
+  {% endif %}
 </section>
 {% endif %}
 {% endblock %}

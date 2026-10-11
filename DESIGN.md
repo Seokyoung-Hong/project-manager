@@ -22,7 +22,7 @@
 
 | 쓰는 곳 | 무엇을 |
 |---|---|
-| 오늘 화면 머리 | 큰 인사(Jua 46px), 약 200px 화분 SVG, 반짝이, 세이지 환영 면(데스크톱 화면 높이 약 1/4), 노란 집계 면, 코랄 메모(지금 할 일) |
+| 오늘 화면 머리 | 큰 슬로건(Jua 46px, 장식이라 `p.hero-title` — 화면의 `h1`은 날짜 줄 "오늘 · 날짜"), 약 200px 화분 SVG, 반짝이, 세이지 환영 면(데스크톱 화면 높이 약 1/4), 노란 집계 면, 코랄 메모(지금 할 일) |
 | 프로젝트 | 대표 지표 세이지 면, 위험 지표 코랄 면, 결과 선반(책·체크 그림) |
 | 페이지 제목 | `.page-head > h1` 아래 노란 붓질 |
 | 빈 상태 | 화면에서 가장 큰 빈 목록 하나에만 화분(76px) |
@@ -155,7 +155,7 @@ animation·transition을 끈다(파일 맨 끝 규칙).
 
 | 컴포넌트 | 클래스 | 규칙 | 하지 말 것 |
 |---|---|---|---|
-| 버튼 | `.btn` + `.primary` `.tint` `.sm` `.icon` `.link` `.danger`, `[aria-pressed]` | 화면당 주 버튼(`.primary`) 하나. 되돌릴 수 없는 행동은 `.danger`. 누르면 1px 내려간다 | 주 버튼 둘, 링크를 버튼처럼 칠하기, 아이콘만 있는 버튼에 `aria-label` 빠뜨리기 |
+| 버튼 | `.btn` + `.primary` `.tint` `.sm` `.icon` `.link` `.danger`, `[aria-pressed]` | 화면당 주 버튼(`.primary`) 하나. 폼을 여는 주 버튼은 `data-hide-open`을 붙여 열린 동안 숨긴다(폼의 제출 버튼이 주 버튼으로 남는다). 카드가 여럿인 화면은 저장 하나만 주 버튼, 파일 올리기·연결은 `.btn`. 되돌릴 수 없는 행동은 `.danger`. 누르면 1px 내려간다 | 주 버튼 둘, 열면 [닫기]로 바뀌는 주 버튼(토글형 주 버튼), 카드마다 주 버튼, 링크를 버튼처럼 칠하기, 아이콘만 있는 버튼에 `aria-label` 빠뜨리기 |
 | 입력 | `label.field` > `.input`/`.select`/`.textarea`, `.helptext`, `label.check` | 라벨은 위, 도움말·오류는 아래. 클래스 없는 Django 위젯도 `:where()` 기본 규칙으로 같은 모양 | placeholder로 라벨 대신하기, 입력을 알약 모양으로 |
 | 마크다운 긴 글 | `.md-field` > `label` + `textarea[data-md][data-toolbar="top\|bottom"]` → `md-field.js`가 `.mdf` 칸(Tiptap)을 붙인다. 읽기 전용은 `.md-view` | 모든 칸이 같은 기능·같은 우선순위. 서식 줄은 초점이 있을 때만, 아이콘만(이름은 `title`·`aria-label`, [더보기] 메뉴만 아이콘+글씨). 큰 칸은 위(sticky), 작은 칸은 아래, 모바일은 화면 키보드 위 40px 한 줄. 고정 제목·라벨은 칸 밖, 칸 안 제목은 그보다 작게 | 칸마다 기능 빼기, 글자 버튼, 테두리 없는 편집 영역, 열기만으로 저장 |
 | 카드 | `.card`, `.card-head`, `.card > h2`, `.box`, `.card.compact`, `.card.alert` | 묶음에 의미가 있을 때만. 제목은 Jua 24px | 카드 안 카드, 한 줄짜리 묶음마다 카드 쌓기(→ `.group-stack` 구분선) |
@@ -164,9 +164,9 @@ animation·transition을 끈다(파일 맨 끝 규칙).
 | 선택 카드 | `.radios .radio-card` | 설명이 필요한 선택지(프로젝트 상태 등) | 2개뿐인 선택에 쓰기 |
 | 탭 | `nav.tabs a[aria-current="page"]`, `.view-switch` | 화면 안 이동. 현재 탭은 표면색 + 그림자 | 탭으로 동작 실행 |
 | 대화상자 | 네이티브 `dialog` + `#dialog` HTMX 대상 | 생성·수정 폼. 긴 폼은 하단 버튼 줄이 붙는다 | 확인 한 번이면 될 일을 대화상자로 |
-| 패널 | `aside#panel .panel`, `.panel-bar`(상태 메뉴·저장 표시·복사·닫기) | 상태는 고정 막대에서 바꾼다. 저장 표시 `#save-status`는 숨기지 않는다 | 상태 폼 복제 |
+| 패널 | `aside#panel .panel`, `.panel-bar`(상태 메뉴·저장 표시·복사·닫기), `.panel-meta`(라벨 \| 값 2열), `.panel-folds > details.fold` | 상태는 고정 막대에서 바꾼다. 저장 표시 `#save-status`는 늘 보인다(저장 안내 문단을 따로 두지 않는다). 1단(펼침): 제목·상태 설명·프로젝트·담당·검토자·기한·중요도·다음 행동·진행 메모·완료 조건. 2단(접힘, 머리에 개수): 설명·체크리스트·하위 태스크·연결 프로젝트. 3단(접힘): 자료·첨부·산출물·변경 이력·결정 기록·더보기. 기한은 한 곳에만. 고르기 셀렉트는 빈 첫 옵션("…고르기…") + `required` | 상태 폼 복제, 같은 값 두 번 표시, 옵션 문구에 라벨 끼워 넣기, 미리 골라 둔 연결 대상 |
 | 표 | `table.grid`, `.num`, `.table-scroll`(+`.table-scroll-hint`), `td.empty-cell` | 모바일은 카드 안에서 가로 스크롤 | 페이지 전체가 가로로 흔들리게 두기 |
-| 빈 상태 | `.empty`(화분 76px), `.empty.compact`(글자만), `td.empty-cell` | 다음 행동을 한 문장으로. 큰 화분은 화면당 하나 | 모든 빈 곳에 화분 |
+| 빈 상태 | `{% include "_empty.html" with what= why= href=/hx_get=/toggle= label= locked= locked_text= %}` → `.empty`(화분 76px) `.empty-what`, `.empty.compact`(글자만), `td.empty-cell` | 무엇이 비었나 + 가치 한 줄 + 행동 하나. 권한이 없으면 행동 대신 `locked_text`. 원인이 여럿이면(조직 없음 → 프로젝트 없음 → 태스크 없음) 앞의 원인 하나만. 빈 표는 머리줄 없이 빈 상태로. 큰 화분은 화면당 하나 | 모든 빈 곳에 화분, 갈 수 없는 곳을 가리키는 안내, 필터 줄만 남은 빈 화면 |
 | 알림 | `.notice`(세이지) `.notice.warn` `.notice.bad`, `.toast` | 경고·실패는 ⚠ 글리프를 앞에 둔다(색 외 단서). 일반 알림엔 글리프 없음. 토스트는 3초 | ⓘ 같은 장식 글리프, 감탄부호 |
 | 지표 | `.tiles .tile`, `.stats .stat`, `.bar` | 첫 칸(대표)만 세이지, 위험 수치(`b.danger`)는 코랄, 나머지 바탕색 | 의미 없는 색 돌림 |
 
@@ -197,13 +197,19 @@ animation·transition을 끈다(파일 맨 끝 규칙).
 - **상태 알약 7종** `.pill.{todo|doing|review|blocked|paused|done|cancelled}` — select와 읽기 전용(`.pill.static`) 공용, 글자 앞에 상태 기호
   (`status_mark`)를 붙여 색 없이도 읽힌다. 색: 시작 전 soft · 진행 중 sage · 검토 대기 yellow · 막힘 coral · 일시정지/취소 soft+muted · 완료 success-soft.
 - **기한** `.due` + `.today`(warning) `.overdue`(danger, 앞에 "!") `.none`(점선) `.closed`(중립 "목표일 …", 닫힌 태스크는 초과로 표시하지 않는다).
-- **태스크 행** `ul.tasks > li.task-row` — 목록에서는 구분선 행, 보드 열에서는 흰 카드(18px). 링크 복사는 hover 때만(터치는 항상).
-- **보드 열** `.board-track > .col[data-status]` + `.col-dot` — 미완료 5열만. 막힘·일시정지 열은 점선 테두리 + 투명 바탕(별도 상태임을 드러낸다).
+- **태스크 행** `ul.tasks > li.task-row` — 목록에서는 구분선 행, 보드 열에서는 흰 카드(18px). 링크 복사·오늘 목록 버튼·↑↓는 hover·초점 때만(터치는 항상).
+  맥락 옵션(`views.common.row_ctx`의 opts): 프로젝트 화면은 `noproject`(프로젝트 이름 숨김), 보드는 `board`(상태 칸 없음 — 열이 상태다),
+  '자동 추가' 표시는 오늘 화면(`today`)에서만.
+- **생성 폼 기본값**(빠른 추가·태스크 만들기·하위 만들기): 지금 보는 프로젝트(없으면 마지막으로 쓴 프로젝트), 담당은 나, 기한은 설정의 제안 기한을
+  미리 채운다. 사유 칸은 [기한 없이 만들기]를 눌렀을 때만 펼치고 자주 쓰는 사유를 고르게 한다(`projects/_due_fields.html`).
+  빠른 추가는 다른 화면에서 대화상자로 열고 끝나면 그 화면으로 돌아온다.
+- **보드 열** `.board-track > .col[data-status]` + `.col-dot` — 미완료 5열만. 1280px 이상은 5열이 한 화면에 들어온다. 그보다 좁으면 막힌 태스크가 있을 때 보드 위 `.notice.warn` 한 줄 + [막힘 열 보기]. 막힘·일시정지 열은 점선 테두리 + 투명 바탕(별도 상태임을 드러낸다).
 - **결과 선반** `.shelf` `.shelf-head` `.shelf-tabs` `.shelf-filters` `.shelf-list` `.shelf-more` — 완료·취소 전체 건수, 기간·검색, 10건씩 더 보기.
 - **달력** `.pcal-grid .pcal-cell`(+`.today`, `.is-empty`) `.pcal-task`(+`.closed`: 보조색+취소선, 투명도 금지) `.pcal-ms`(◆ 마일스톤). 오늘 일정 `.cal`.
 - **연결 프로젝트** `.linked-mark`(행의 "↔ n", 이름은 툴팁) `.project-links`(패널 연결 칸: `.tag` 칩 + 연결 해제 `.btn.sm.icon` + "승인 대기" `.badge.warn`). 열람 확대는 `.notice.warn` ⚠ 문구 + 승인 요청 버튼. 프로젝트 화면에는 연결이 있을 때만 각주 "연결 태스크는 여러 프로젝트에 셉니다".
 - **상위·하위 태스크** `.sub-of`(하위 행의 "↳ TASK-N", 상위를 볼 수 있을 때만) `.sub-count`(상위 행의 "하위 n/m", 프로젝트 목록 보기에서는 접기 버튼) `.task-row.sub`(목록 보기에서 상위 아래 하위 행: 들여쓰기 + 왼쪽 세로선) — 보드는 묶지 않고 상위 카드에 `.bar`만. 패널 `#task-subtasks`(`.bar` 진행률, 완료 제안 `.notice`, 기한 경고 `.notice.warn` ⚠, 하위 행 `.subtask-list`).
-- **오늘** `.today-grid` → `.hero` `.tally` `.focus-memo.memo` `.today-list-card` `.today-schedule-card`. 모바일: 환영 → 집계(가로 한 줄) → 목록 → 메모 → 일정.
+- **오늘** `.today-grid` → `.hero` `.tally` `.focus-memo.memo` `.today-list-card` `.today-schedule-card`. `h1`은 날짜 줄("오늘 · 날짜 · 이름님"), 슬로건은 `p.hero-title`.
+  모바일·패널 열림: 환영 → 집계(가로 한 줄) → 메모(지금 할 한 가지) → 목록 → 일정. 자동 담기 설정은 목록 안 한 줄 결과 + 접힌 [설정 바꾸기].
 
 ## 5. 그림 · 장식
 
@@ -279,8 +285,8 @@ SVG 칠은 `fill="#…"`이 아니라 `.art-pot` `.art-leaf` 같은 클래스로
 | 빈 상태 없음 | taste-skill/SKILL.md:59 | `.empty`로 다음 행동 안내. 단, 화분은 화면당 하나 |
 | 눌림 피드백 없음 | taste-skill/SKILL.md:61 | `.btn:active` 1px 내려감 |
 
-**의도적으로 유지한 것**: 오늘 인사의 큰 Jua 제목(taste-skill/SKILL.md:109 "Oversized H1" 금지와 다르게, 사용자가 고른 '강'의 핵심 장식이라
-오늘 화면에만 둔다), 메모의 기울기, 버튼의 알약 모양(03 README "버튼 캡슐").
+**의도적으로 유지한 것**: 오늘 화면의 큰 Jua 슬로건(사용자가 고른 '강'의 핵심 장식이라 오늘 화면에만 둔다. 2026-10-12부터 `h1`이 아니라
+`p.hero-title` — 화면 제목은 날짜 줄이다), 메모의 기울기, 버튼의 알약 모양(03 README "버튼 캡슐").
 
 ## 8. 접근성
 
@@ -296,10 +302,10 @@ SVG 칠은 `fill="#…"`이 아니라 `.art-pot` `.art-leaf` 같은 클래스로
 | 기준 | 바뀌는 것 |
 |---|---|
 | ≤1150px | 패널이 열리면 본문을 숨기고 패널만. 지표 3열. 태블릿 머리 간격 축소 |
-| ≤960px | 오늘 그리드 1열(환영 → 집계 → 목록 → 메모 → 일정) |
+| ≤960px | 오늘 그리드 1열(환영 → 집계 → 메모 → 목록 → 일정) |
 | ≤850px | 회의록 목록/편집 전환, 설정 행 세로 카드 |
 | ≤720px | 프로젝트 달력이 날짜 목록으로(빈 날짜 숨김) |
-| ≤700px | 머리줄 2줄(`--header-h` 115px), 레일 → 프로젝트 선택기, 보드 열 스냅 스크롤, 지표 가로 스크롤 한 줄, 집계 가로 한 줄, 터치 44px, 입력 16px |
+| ≤700px | 머리줄 2줄(`--header-h` 115px, 메뉴 줄 오른쪽 끝을 흐려 더 있음을 알린다), 레일 → 프로젝트 선택기, 보드 열 스냅 스크롤, 지표 가로 스크롤 한 줄, 집계 가로 한 줄, 터치 44px, 입력 16px |
 | ≤360px | 회의록 메타 1열, 설정 선택지 1열 |
 
 ## 10. 다크 모드

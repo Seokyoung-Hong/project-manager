@@ -10,7 +10,7 @@
     clearTimeout(t1); clearTimeout(t2);
     el.textContent = text;
     if (after) t1 = setTimeout(function () { el.textContent = after; }, 400);
-    t2 = setTimeout(function () { el.textContent = ""; }, 2500);
+    t2 = setTimeout(function () { el.textContent = el.dataset.idle || ""; }, 2500);
   }
 
   // 수동 복사 창을 열거나 취소한 것은 클립보드 복사 성공이 아니다.
@@ -27,28 +27,26 @@
     });
   };
 
-  function updateDueSuggestion() {
-    var form = document.getElementById("quick-form");
-    if (!form) return;
-    var select = form.querySelector("[data-due-suggestions]");
-    var box = form.querySelector("[data-quick-due-suggestion]");
-    if (!select || !box) return;
-    var option = select.options[select.selectedIndex];
-    var date = option ? option.dataset.dueSuggestion : "";
-    box.hidden = !date;
-    box.dataset.date = date || "";
-    box.querySelector("[data-due-suggestion-label]").textContent = date ? "설정에 따른 제안: " + date + " (월~금 기준)" : "";
-  }
-  updateDueSuggestion();
-  body.addEventListener("htmx:afterSwap", updateDueSuggestion);
-  body.addEventListener("change", function (e) {
-    if (e.target.matches("[data-due-suggestions]")) updateDueSuggestion();
+  // 생성 폼 기본값(시스템화 D): 프로젝트를 바꾸면, 손대지 않은 기한을 그 프로젝트의 제안 기한으로 바꾼다.
+  body.addEventListener("focusin", function (e) {
+    if (e.target.matches("[data-due-suggestions]")) e.target.dataset.prev = (e.target.selectedOptions[0] || {}).value || "";
   });
-  body.addEventListener("click", function (e) {
-    var button = e.target.closest('[data-action="use-due-suggestion"]');
-    if (!button) return;
-    var form = button.closest("form"), box = button.closest("[data-quick-due-suggestion]");
-    form.querySelector('[name="due_date"]').value = box.dataset.date;
+  body.addEventListener("change", function (e) {
+    var select = e.target;
+    if (!select.matches("[data-due-suggestions]")) return;
+    var due = select.form && select.form.querySelector("[data-due-input]");
+    if (!due) return;
+    var prev = select.querySelector('option[value="' + (select.dataset.prev || "") + '"]');
+    var option = select.selectedOptions[0];
+    if (!due.value || (prev && due.value === prev.dataset.dueSuggestion)) due.value = option ? option.dataset.dueSuggestion || "" : "";
+    select.dataset.prev = option ? option.value : "";
+  });
+
+  // 버튼 모양 파일 입력: 고른 파일 이름을 옆에 보인다.
+  body.addEventListener("change", function (e) {
+    if (!e.target.matches("input[type=file][data-file-name]")) return;
+    var label = e.target.closest("form").querySelector("[data-file-name-label]");
+    if (label) label.textContent = e.target.files.length ? e.target.files[0].name : "고른 파일 없음";
   });
 
   function requestError(e, network) {
@@ -136,22 +134,6 @@
   window.addEventListener("resize", syncAllBoardNavigation);
   requestAnimationFrame(syncAllBoardNavigation);
 
-  // 고급 필터는 넓은 화면에서 항상 보이고, 모바일 첫 진입에서만 접힌다.
-  // 적용 중인 조건이 있으면 모바일에서도 열어 두어 현재 상태를 숨기지 않는다.
-  var meFilters = document.querySelector(".me-filter-details");
-  if (meFilters) {
-    var mobileFilters = window.matchMedia("(max-width: 700px)");
-    var mobileFilterOpen = meFilters.dataset.filterActive === "1";
-    function syncMeFilters(query) {
-      meFilters.open = query.matches ? mobileFilterOpen : true;
-    }
-    syncMeFilters(mobileFilters);
-    meFilters.addEventListener("toggle", function () {
-      if (mobileFilters.matches) mobileFilterOpen = meFilters.open;
-    });
-    if (mobileFilters.addEventListener) mobileFilters.addEventListener("change", syncMeFilters);
-  }
-
   // 자동 저장 상태 표시
   body.addEventListener("htmx:beforeRequest", function (e) {
     if (e.detail && e.detail.target && e.detail.target.id === "panel" && !e.detail.target.children.length) {
@@ -159,7 +141,12 @@
     }
     if (e.target.hasAttribute && e.target.hasAttribute("data-autosave")) flash("저장 중…");
   });
-  body.addEventListener("saved", function () { flash("자동 저장됨"); });
+  // 저장 표시는 사라지지 않는다 — 저장한 뒤로는 "저장됨"이 남는다(b-workspace 중-12).
+  body.addEventListener("saved", function () {
+    var el = document.getElementById("save-status");
+    if (el) el.dataset.idle = "저장됨";
+    flash("저장됨 · 방금");
+  });
 
   // 설정 섹션 목차의 현재 위치 표시(스크롤 스파이). 화면 위쪽 3분의 1을 지난 마지막 섹션이 현재다.
   function markSettingsJump(link) {
@@ -186,7 +173,7 @@
 
   // 완료 순간 피드백: '완료'로 바꾸는 요청이 성공하면 새싹 알림을 3초 띄운다.
   var toastTimer;
-  function celebrate() {
+  function celebrate(undo) {
     var old = document.querySelector(".toast");
     if (old) old.remove();
     var t = document.createElement("div");
@@ -194,16 +181,34 @@
     t.innerHTML = '<svg viewBox="0 0 40 40" aria-hidden="true"><ellipse class="art-pot" cx="20" cy="31" rx="9" ry="7"/>' +
       '<g class="leaf"><path class="art-leaf" d="M20 25Q8 25 7 13Q18 11 20 25"/><path class="art-leaf-2" d="M20 22Q22 9 33 10Q34 21 20 22"/></g></svg>' +
       "<span>완료했습니다. 화분이 한 뼘 자랐습니다.</span>";
+    if (undo) {
+      // 되돌리기: 완료 전 상태로 다시 보낸다. 오늘 화면 머리를 새로 그린다.
+      var u = document.createElement("button");
+      u.type = "button"; u.className = "btn sm"; u.textContent = "되돌리기";
+      u.addEventListener("click", function () {
+        t.remove();
+        htmx.ajax("POST", undo.url, { target: "#today-head", swap: "outerHTML",
+          values: { status: undo.undo_status, version: undo.version, from: "head" } });
+      });
+      t.appendChild(u);
+    }
     body.appendChild(t);
     clearTimeout(toastTimer);
-    toastTimer = setTimeout(function () { t.classList.add("leaving"); setTimeout(function () { t.remove(); }, 250); }, 3000);
+    toastTimer = setTimeout(function () { t.classList.add("leaving"); setTimeout(function () { t.remove(); }, 250); }, undo ? 6000 : 3000);
   }
   body.addEventListener("htmx:afterRequest", function (e) {
     var d = e.detail || {}, cfg = d.requestConfig || {};
     if (!d.successful || !/\/tasks\/\d+\/status/.test((d.pathInfo && d.pathInfo.requestPath) || "")) return;
     var fd = cfg.formData, status = fd && fd.get ? fd.get("status") : (cfg.parameters || {}).status;
     var trig = (d.xhr && d.xhr.getResponseHeader("HX-Trigger")) || "";
-    if (status === "done" && /task-(updated|changed)/.test(trig)) celebrate();
+    if (status === "done" && /task-(updated|changed)/.test(trig)) {
+      var undo = null;
+      try {
+        var info = JSON.parse(trig)["task-updated"];
+        if (info && info.undo_status) { undo = info; undo.url = d.pathInfo.requestPath; }
+      } catch (err) { /* 이벤트 이름만 온 응답 */ }
+      celebrate(undo);
+    }
   });
   body.addEventListener("htmx:responseError", function (e) {
     requestError(e, false);
@@ -312,6 +317,14 @@
       var el = document.querySelector(b.dataset.target);
       el.hidden = !el.hidden;
       if (b.dataset.alt) { var t = b.textContent; b.textContent = b.dataset.alt; b.dataset.alt = t; }
+      // 여는 버튼이 주 버튼이면 열린 동안 숨긴다 — 폼 안의 제출 버튼이 주 버튼 하나로 남는다(주 버튼 규칙).
+      document.querySelectorAll('[data-hide-open][data-target="' + b.dataset.target + '"]').forEach(function (o) { o.hidden = !el.hidden; });
+      if (el.hasAttribute("data-nodue")) {
+        // [기한 없이 만들기]: 기한을 비우고 사유 칸을 연다. 다시 [기한 정하기]면 기한을 되살리고 사유를 비운다.
+        var dueInput = el.closest("form").querySelector("[data-due-input]");
+        if (!el.hidden) { dueInput.dataset.prev = dueInput.value; dueInput.value = ""; }
+        else { dueInput.value = dueInput.dataset.prev || ""; el.querySelector("input").value = ""; }
+      }
       if (!el.hidden) { var i = el.querySelector("input:not([type=hidden]), textarea"); if (i) i.focus(); }
     } else if (a === "toggle-subtasks") {
       // 프로젝트 목록 보기: 상위 행 "하위 n/m"이 그 아래 하위 행을 접고 편다. 상태는 저장하지 않는다.

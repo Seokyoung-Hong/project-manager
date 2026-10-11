@@ -1,6 +1,6 @@
 {# 연결 프로젝트 칸(IMPL-PLAN-11 §3.6). 패널의 독립 구역 — 다른 구역(하위 태스크 등)은 이 옆에 같은 방식으로 붙인다. #}
-<div class="section" id="task-projects">
-  <div class="label">연결 프로젝트</div>
+<details class="section fold" id="task-projects"{% if widening %} open{% endif %}>
+  <summary>연결 프로젝트 <span class="muted">{{ linked_projects|length }}</span></summary>
   {% if linked_projects %}
   <ul class="project-links" aria-label="연결 프로젝트">
     {% for lp in linked_projects %}
@@ -27,11 +27,12 @@
   </form>
   {% elif link_choices %}
   <form class="row" hx-post="{% url 'task_project_link' task.pk %}" hx-target="#panel" hx-swap="innerHTML">
-    <select name="project" class="select auto" aria-label="연결할 프로젝트">
+    <select name="project" class="select auto" aria-label="연결할 프로젝트" required>
+      <option value="">프로젝트 고르기…</option>{# copy-draft #}
       {% for p in link_choices %}<option value="{{ p.pk }}">{{ p.name }}</option>{% endfor %}
     </select>
     <button class="btn sm">연결 추가</button>
   </form>
   <p class="muted t12">한 작업이 여러 프로젝트에 관련되면 연결, 프로젝트마다 따로 하는 일이면 나누기를 쓰세요.</p>
   {% endif %}
-</div>
+</details>

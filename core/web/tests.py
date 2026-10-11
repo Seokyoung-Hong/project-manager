@@ -233,7 +233,7 @@ def test_events_needs_login(client):
 
 
 def test_me_group_buttons_mark_one(logged, task):
-    """묶음은 '없음'까지 포함해 항상 하나만 눌려 있다(눌림 없음 = 분류 없음이 아니다)."""
+    """묶음은 '묶지 않음'까지 포함해 항상 하나만 눌려 있다(눌림 없음 = 분류 없음이 아니다)."""
     pressed = 'aria-pressed="true"'
 
     def group_row(body):
@@ -247,7 +247,7 @@ def test_me_group_buttons_mark_one(logged, task):
         assert "<h2>미완료 <" not in body
     body = logged.get("/me?member=0&group=none").content.decode()
     assert group_row(body).count(pressed) == 1
-    assert 'value="none" aria-pressed="true">없음' in body
+    assert 'value="none" aria-pressed="true">묶지 않음' in body
     assert "<h2>미완료 <" in body and "<h2>기한 초과 <" not in body
 
 
@@ -256,12 +256,13 @@ def test_me_omits_empty_due_groups_and_marks_advanced_filters(logged, task):
     assert task.title in body
     assert "<h2>기한 초과 <" not in body
     assert "<h2>오늘 마감 <" not in body
-    assert 'data-filter-active="0"' in body
-    assert "기한 · 프로젝트 · 상태 · 중요도" in body
+    # 필터는 [필터] 하나로 접혀 있고, 걸린 필터만 칩으로 보인다(b-workspace 중-7).
+    assert '<details class="me-filter-details">' in body
+    assert "기한 · 프로젝트 · 상태 · 중요도" in body and "filter-chip" not in body
 
     filtered = logged.get("/me?priority=high").content.decode()
-    assert 'data-filter-active="1"' in filtered
-    assert "조건 적용됨" in filtered
+    assert filtered.count('class="chip filter-chip"') == 1
+    assert "기한 · 프로젝트 · 상태 · 중요도" not in filtered
 
 
 def test_me_sort_survives_filters(logged, task):
@@ -816,9 +817,9 @@ def test_shelf_counts_filters_and_pages(logged, project, member):
     assert more.count('class="task-row') == 5 and "15 / 15건 표시" in more
     assert "더 보기" not in more
     recent = logged.get(url + "&period=30").content.decode()
-    assert "조건 일치 <b>12</b>건" in recent
+    assert "찾은 결과 <b>12</b>건" in recent
     found = logged.get(url + "&q=예전").content.decode()
-    assert "조건 일치 <b>3</b>건" in found
+    assert "찾은 결과 <b>3</b>건" in found
     cancelled = logged.get(url + "&shelf=cancelled").content.decode()
     assert cancelled.count('class="task-row') == 2
 
@@ -2150,7 +2151,10 @@ def test_reviewer_select_and_reject_reason_panel(logged, org, admin, task, clien
         f"/tasks/{task.pk}/meta", {"reviewer": admin.pk, "version": task.version}, headers=HX
     )
     task.refresh_from_db()
-    assert task.reviewer == admin and "검토자 관리자" in r.content.decode()
+    body = r.content.decode()
+    # 옵션 문구에 라벨을 끼워 넣지 않고 보이는 라벨을 단다(b-workspace 중-1)
+    assert task.reviewer == admin and f'for="tp-reviewer-{task.pk}">검토자</label>' in body
+    assert f'<option value="{admin.pk}" selected>관리자</option>' in body
     org.settings = {"task.reject_reason_required": True}
     org.save()
     v = task.version

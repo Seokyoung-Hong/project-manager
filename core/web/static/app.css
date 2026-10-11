@@ -590,6 +590,11 @@ select.pill { padding-right: 8px; }
 }
 .empty.compact { flex-direction: row; justify-content: flex-start; padding: var(--sp-2) 0; border: 0; background: none; text-align: left; }
 .empty.compact::before { content: none; }
+/* 빈 상태 부품(templates/_empty.html): 무엇이 비었나(잉크) → 가치 한 줄(보조) → 행동 하나 */
+.empty > p { margin: 0; max-width: 52ch; }
+.empty .empty-what { color: var(--c-ink); font-size: var(--fs-md); font-weight: 600; }
+.empty > .btn { margin-top: var(--sp-1); }
+.empty.compact { flex-wrap: wrap; align-items: baseline; }
 td.empty-cell { padding: var(--sp-6) var(--sp-3); text-align: center; color: var(--c-muted); }
 td.empty-cell::before { content: ""; display: block; width: 52px; height: 52px; margin: 0 auto var(--sp-2); background: var(--art-plant) center / contain no-repeat; }
 
@@ -644,7 +649,6 @@ dialog form.stack > .row:last-child {
 .hero-copy { position: relative; z-index: 1; display: flex; flex-direction: column; gap: var(--sp-3); align-items: flex-start; flex: 1; min-width: 0; }
 .eyebrow { font-size: var(--fs-xs); font-weight: 700; letter-spacing: .02em; }
 .hero-title { font-family: var(--f-display); font-weight: 400; font-size: var(--fs-hero); line-height: 1.18; letter-spacing: -0.01em; }
-.hero-hint { font-size: var(--fs-md); max-width: 46ch; }
 .hero .btn { background: var(--c-surface); border-color: transparent; box-shadow: var(--sh-1); }
 .hero-art { flex: none; width: 210px; height: 200px; margin-right: -8px; align-self: flex-end; }
 .hero-art .leaf { transform-box: fill-box; transform-origin: 100% 100%; animation: float var(--dur-leaf) ease-in-out 2; }
@@ -672,10 +676,13 @@ dialog form.stack > .row:last-child {
 .today-focus-actions { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
 .today-focus-actions .btn:not(.primary) { background: color-mix(in srgb, var(--c-surface) 70%, transparent); border-color: transparent; }
 .focus-memo.is-empty { background: var(--c-soft); }
+.today-auto > summary { font-weight: 400; display: flex; flex-wrap: wrap; gap: var(--sp-2); align-items: center; min-height: 32px; }
+.today-auto-change { color: var(--c-accent); text-decoration: underline; }
+.today-auto[open] > summary { margin-bottom: var(--sp-2); }
+.me-member { flex: none; }
+.filter-chip { pointer-events: none; }
 .today-list-head { align-items: flex-start; }
 .today-list-title { display: flex; min-width: 0; flex-direction: column; gap: 2px; }
-.today-list-tools { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--sp-2) var(--sp-3); }
-.today-scope-label { font-size: var(--fs-sm); line-height: 19px; font-weight: 600; color: var(--c-muted); }
 .today-auto-pull { display: inline-flex; align-items: center; gap: var(--sp-2); }
 .today-auto-pull .select { height: 36px; border-radius: var(--r-md); }
 .today-assigned-stats { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
@@ -737,10 +744,12 @@ ul.tasks > .task-row:last-of-type { border-bottom: 0; }
 .task-row.closed .title { text-decoration: line-through; text-decoration-color: var(--c-faint); font-weight: 500; color: var(--c-muted); }
 .task-row .meta { display: flex; flex-wrap: wrap; gap: var(--sp-1) var(--sp-2); align-items: center; font-size: var(--fs-sm); line-height: 19px; color: var(--c-muted); }
 .task-row .actions { display: flex; flex-wrap: wrap; gap: var(--sp-2); align-items: center; max-width: 100%; }
-/* 링크 복사는 보조 행동 — 마우스가 있는 화면에서는 행에 손을 올릴 때만 보인다 */
+/* 링크 복사·오늘 목록 버튼·↑↓는 보조 행동 — 마우스가 있는 화면에서는 행에 손을 올리거나 초점이 있을 때만 보인다(터치는 항상) */
 @media (pointer: fine) {
-  .task-row [data-copy] { opacity: 0; transition: opacity var(--dur-fast) var(--ease); }
-  .task-row:hover [data-copy], .task-row:focus-within [data-copy] { opacity: 1; }
+  .task-row [data-copy], .task-row .today-btn, .task-row .move-btn { opacity: 0; transition: opacity var(--dur-fast) var(--ease); }
+  .task-row:hover :is([data-copy], .today-btn, .move-btn), .task-row:focus-within :is([data-copy], .today-btn, .move-btn) { opacity: 1; }
+  /* 보드 카드는 빈 자리를 남기지 않는다 */
+  .board-track .task-row:not(:hover):not(:focus-within) .today-btn { display: none; }
 }
 .group { display: flex; flex-direction: column; gap: var(--sp-3); }
 /* 묶음을 카드마다 쌓지 않고 한 장 안에서 구분선으로 나눈다(같은 카드 반복 금지) */
@@ -764,6 +773,11 @@ details > summary { cursor: pointer; font-weight: 600; }
   display: grid; grid-auto-flow: column; grid-auto-columns: minmax(260px, 1fr); gap: var(--sp-4);
   min-width: 0; overflow-x: auto; overscroll-behavior-inline: contain; padding: 2px 2px 10px;
   scrollbar-width: thin; scrollbar-color: var(--c-faint) transparent;
+}
+/* 넓은 화면은 미완료 5열이 한 화면에 다 들어온다 — 막힘·일시정지 열이 잘리지 않게(b-workspace 중-9) */
+@media (min-width: 1280px) {
+  .board-track { grid-auto-columns: minmax(176px, 1fr); }
+  .board-blocked-alert { display: none; }
 }
 .board-track:focus-visible { outline: 3px solid var(--c-accent); outline-offset: 2px; border-radius: var(--r-lg); }
 .board .col {
@@ -856,6 +870,18 @@ details > summary { cursor: pointer; font-weight: 600; }
 }
 .panel .meta .select { height: 36px; width: auto; padding: 0 10px; font-size: var(--fs-xs); border-radius: var(--r-md); }
 .panel .meta .pill.sm { height: 36px; }
+/* 패널 메타: 보이는 라벨 | 값 2열 목록(라벨을 placeholder·옵션 문구에 끼워 넣지 않는다) */
+.panel .meta.panel-meta { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: var(--sp-2) var(--sp-4); align-items: center; }
+.panel-meta .meta-item { display: contents; }
+.panel-meta .meta-label { font-size: var(--fs-sm); font-weight: 600; color: var(--c-muted); }
+.panel-meta .meta-value { display: flex; flex-wrap: wrap; gap: var(--sp-2); align-items: center; min-width: 0; color: var(--c-ink); }
+.panel-meta .meta-wide { grid-column: 1 / -1; }
+.panel-meta .due-value { font-weight: 600; font-variant-numeric: tabular-nums; }
+.panel-meta .due-value.danger { color: var(--c-danger); }
+/* 접히는 묶음(2단·3단). 머리에 개수를 붙인다 */
+.panel-folds > .fold, .panel-folds > .git-fold { border-top: 1px solid var(--c-line); padding-top: var(--sp-3); }
+.fold > summary { display: flex; align-items: center; gap: var(--sp-2); min-height: 36px; font-size: var(--fs-md); }
+.fold[open] > summary { margin-bottom: var(--sp-2); }
 .panel-body > .stack { gap: var(--sp-4); }
 .panel textarea { min-height: 88px; }
 .section { display: flex; flex-direction: column; gap: var(--sp-2); }
@@ -1234,7 +1260,7 @@ details.card.settings-section { padding: 0; gap: 0; }
   .tiles { grid-template-columns: repeat(3, 1fr); }
 }
 @media (max-width: 960px) {
-  .today-grid { grid-template-columns: minmax(0, 1fr); grid-template-areas: "hero" "tally" "error" "quick" "list" "focus" "schedule"; }
+  .today-grid { grid-template-columns: minmax(0, 1fr); grid-template-areas: "hero" "tally" "error" "quick" "focus" "list" "schedule"; }
   .tally { min-height: 0; }
 }
 @media (max-width: 1100px) {
@@ -1295,6 +1321,8 @@ details.card.settings-section { padding: 0; gap: 0; }
   /* 탭이 늘어도 줄이 꺾이지 않게 가로 스크롤로 흘린다 */
   .nav { grid-column: 1 / -1; grid-row: 2; width: 100%; overflow-x: auto; scrollbar-width: none; padding: 3px; }
   .nav::-webkit-scrollbar { display: none; }
+  /* 잘린 메뉴가 가로로 더 있다는 단서: 오른쪽 끝을 흐리게 */
+  .nav { mask-image: linear-gradient(to right, black calc(100% - 32px), transparent); }
   .nav a { flex: none; padding-inline: 13px; }
   .tabs { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
   .tabs::-webkit-scrollbar { display: none; }
@@ -1387,6 +1415,14 @@ details.card.settings-section { padding: 0; gap: 0; }
   .request-table { min-width: 680px; display: table; }
   .request-table th:first-child, .request-table td:first-child { min-width: 200px; width: 220px; }
   .request-table th:not(:first-child), .request-table td:not(:first-child) { white-space: nowrap; }
+  /* 요청 목록은 표 대신 카드: 제목 → 상태 · 보낸 사람 → 나머지(라벨을 앞에) */
+  .request-table.request-cards, .request-cards tbody, .request-cards tr, .request-table.request-cards td { display: block; min-width: 0; width: auto; }
+  .request-cards thead { display: none; }
+  .request-cards tr { padding: var(--sp-3) 0; border-bottom: 1px solid var(--c-line); }
+  .request-table.request-cards td { padding: 2px 0; border: 0; white-space: normal; }
+  .request-table.request-cards td:nth-child(n+2) { display: inline-block; margin-right: var(--sp-3); font-size: var(--fs-sm); color: var(--c-muted); }
+  .request-cards td[data-label]:not(:empty)::before { content: attr(data-label) " "; color: var(--c-muted); }
+  .request-table.request-cards td:empty { display: none; }
   .input, .select, :where(input:not([type=checkbox], [type=radio], [type=hidden], [type=file]), select, textarea) { font-size: var(--fs-lg); }
   .input, .select, :where(input:not([type=checkbox], [type=radio], [type=hidden], [type=file]), select) { height: 44px; }
   /* 배지 글자 수에 따라 줄바꿈이 달라지면 카드 높이가 제멋대로가 된다 */
@@ -1413,7 +1449,6 @@ details.card.settings-section { padding: 0; gap: 0; }
   .hero { min-height: 184px; padding: 18px 20px; border-radius: var(--r-xl); align-items: flex-start; }
   .hero-copy { max-width: 64%; gap: var(--sp-2); }
   .hero-title { font-size: var(--fs-3xl); }
-  .hero-hint { font-size: var(--fs-sm); }
   .hero-art { position: absolute; right: -14px; bottom: 0; width: 150px; height: 144px; opacity: .9; margin: 0; }
   /* 노란 집계는 가로로 납작하게(1차 모바일처럼) — 첫 업무가 첫 화면에 들어오게 한다 */
   .tally { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; padding: 12px 16px; gap: 2px 16px; }

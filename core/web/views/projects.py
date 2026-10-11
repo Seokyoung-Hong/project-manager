@@ -86,7 +86,7 @@ def shelf_context(request, project, params=None) -> dict:
         "shelf_period": period,
         "shelf_periods": ts.SHELF_PERIODS,
         "shelf_q": q,
-        "shelf_rows": rows_for(request.user, qs[start:shown], "board"),
+        "shelf_rows": rows_for(request.user, qs[start:shown], "board,noproject"),
         "shelf_matched": matched,
         "shelf_shown": min(shown, matched),
         "shelf_more": max(0, matched - shown),
@@ -108,11 +108,12 @@ def board_context(request, project) -> dict:
     base = ts.visible_tasks(request.user).filter(
         ts.project_q(project), is_template=False, status__in=Task.OPEN
     )
-    rows = rows_for(request.user, sorted(base, key=ts.by_due), "board")
+    rows = rows_for(request.user, sorted(base, key=ts.by_due), "board,noproject")
     return {
         "project": project,
         "has_linked": _has_linked(project),
         "columns": [(c, labels[c], [r for r in rows if r["task"].status == c]) for c in BOARD_OPEN],
+        "blocked_count": sum(1 for r in rows if r["task"].status == "blocked"),
         **shelf_context(request, project, {}),
     }
 
@@ -135,7 +136,11 @@ def project_index(request):
         return render(
             request,
             "projects/empty.html",
-            {"org": org, "is_admin": can_admin(request.user, org)},
+            {
+                "org": org,
+                "locked": not can_admin(request.user, org),
+                "new_url": f"{reverse('project_new')}?org={org.pk}",
+            },
         )
     return redirect("project_detail", project_id=project.pk)
 
@@ -315,6 +320,17 @@ def project_calendar(request, project_id):
     return render(request, "projects/calendar.html", ctx)
 
 
+def _task_form(request, project) -> TaskInlineForm:
+    """태스크 만들기 폼 기본값(시스템화 D): 이 프로젝트, 담당은 나, 기한은 설정의 제안 기한."""
+    form = TaskInlineForm(
+        org=project.org,
+        project=project,
+        initial={"assignee": request.user.pk, "priority": 5, "idem": new_idem()},
+    )
+    form.initial["due_date"] = form.suggested_due_date
+    return form
+
+
 @login_required
 def project_detail(request, project_id, *, link_form=None):
     project = project_or_404(request.user, project_id)
@@ -344,17 +360,13 @@ def project_detail(request, project_id, *, link_form=None):
         "link_form": link_form if link_form is not None else LinkForm(dev_tools=project.dev_tools),
         "link_open": link_form is not None,
         "tab": "tasks",
-        "form": TaskInlineForm(
-            org=project.org,
-            project=project,
-            initial={"assignee": request.user.pk, "priority": 5, "idem": new_idem()},
-        ),
+        "form": _task_form(request, project),
     }
     # 템플릿은 목록·보드에서 빼고 "템플릿 N" 접이 목록으로만 보인다.
     templates = list(
         ts.tasks_of(project).filter(is_template=True).select_related("project", "assignee")
     )
-    ctx["template_rows"] = rows_for(request.user, templates) if templates else []
+    ctx["template_rows"] = rows_for(request.user, templates, "noproject") if templates else []
     if view == "board":
         ctx.update(board_context(request, project))
     elif view == "calendar":
@@ -367,7 +379,7 @@ def project_detail(request, project_id, *, link_form=None):
         )
         if not include_closed:
             qs = qs.filter(status__in=Task.OPEN)
-        ctx["rows"] = nest_rows(rows_for(request.user, sorted(qs, key=ts.by_due)))
+        ctx["rows"] = nest_rows(rows_for(request.user, sorted(qs, key=ts.by_due), "noproject"))
     return render(request, "projects/detail.html", ctx)
 
 

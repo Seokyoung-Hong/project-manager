@@ -1,9 +1,9 @@
 <div id="today-head" class="today-head-card" hx-get="{% url 'today' %}?part=head" hx-trigger="task-changed from:body, task-updated from:body, today-changed from:body" hx-swap="outerHTML">
   <section class="hero" aria-labelledby="today-greeting">
     <div class="hero-copy">
-      <p class="eyebrow">{{ date_label }} · {{ user.display_name }}님의 오늘</p>
-      <h1 id="today-greeting" class="hero-title">일은 차근차근,<br>우리는 무럭무럭.</h1>
-      <p class="hero-hint">{{ today_hint }}</p>
+      {# h1은 화면 이름(오늘)이다. 슬로건은 장식이라 p로 둔다(b-workspace 중-4). #}
+      <h1 id="today-greeting" class="eyebrow">오늘 · {{ date_label }} · {{ user.display_name }}님</h1>
+      <p class="hero-title">일은 차근차근,<br>우리는 무럭무럭.</p>
       <button type="button" class="btn" data-action="toggle" data-target="#quick" aria-controls="quick">＋ 오늘 할 일 담기</button>
     </div>
     {% include "art/_plant.html" %}
@@ -40,10 +40,10 @@
       <button type="button" class="btn" hx-get="{% url 'task_panel' focus.pk %}" hx-target="#panel" hx-swap="innerHTML" hx-push-url="{% url 'task_detail' focus.pk %}">자세히 보기</button>
     </div>
   </section>
-  {% else %}
+  {% elif not setup %}
   <section class="memo focus-memo is-empty" aria-label="지금 할 일">
     <p class="eyebrow">지금 할 한 가지</p>
-    <p>오늘 할 일이 없습니다. 내 태스크에서 오늘 목록에 추가하거나 새 태스크를 만드세요.</p>
+    <p>오늘 목록의 첫 태스크가 여기에 표시됩니다.</p>{# copy-draft #}
   </section>
   {% endif %}
 </div>

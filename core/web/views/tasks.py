@@ -144,6 +144,8 @@ def _panel_ctx(request, task, **extra):
         "extend_error": None,
         "extend_open": False,
     }
+    refs = [ctx["docs"], ctx["notes"], ctx["links"], ctx["attachments"]]
+    ctx["refs_count"] = sum(len(x) for x in refs)  # 3단 '참고 자료·첨부·산출물' 접힘 머리의 개수
     ctx.update(task_projects.panel_ctx(request.user, task))  # 연결 프로젝트 칸(§3.6)
     ctx.update(subtasks.panel_ctx(request.user, task))  # 상위·하위 칸(IMPL-PLAN-12 §5.2)
     sub = ctx["sub"]
@@ -233,8 +235,13 @@ def _respond(request, task, origin, error=None):
 
 @login_required
 def task_detail(request, task_id):
+    from .projects import board_context
+
     task = task_or_404(request.user, task_id)
-    return render(request, "tasks/detail.html", _panel_ctx(request, task, full_page=True))
+    ctx = _panel_ctx(request, task, full_page=True)
+    if not task.is_template:
+        ctx.update({**board_context(request, task.project), **ctx})  # 패널 값이 이긴다
+    return render(request, "tasks/detail.html", ctx)
 
 
 @login_required
@@ -317,6 +324,7 @@ def task_meta(request, task_id):
 def task_status(request, task_id):
     task = task_or_404(request.user, task_id)
     origin = request.POST.get("from", "row")
+    before = task.status
     try:
         task = ts.transition(
             task,
@@ -340,7 +348,12 @@ def task_status(request, task_id):
     except ConflictError as e:
         return _respond(request, e.latest, origin, error=CONFLICT_MSG)
     event = "task-changed" if origin == "panel" else "task-updated"
-    return trigger(_respond(request, task, origin), event, task)
+    response = trigger(_respond(request, task, origin), event, task)
+    if origin == "head" and task.status == "done" and before != "done":
+        # '지금 할 한 가지'의 [완료로 표시]는 한 번에 끝난다 — 알림에 [되돌리기]를 붙인다(b-workspace 하-9).
+        detail = {"id": task.pk, "undo_status": before, "version": task.version}
+        response["HX-Trigger"] = json.dumps({event: detail})
+    return response
 
 
 @login_required

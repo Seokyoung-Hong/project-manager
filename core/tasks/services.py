@@ -52,12 +52,12 @@ STATUS_FILTERS = (
     + [("done_today", "오늘 완료"), ("done_7d", "지난 7일 완료")]
 )
 PRIORITY_FILTERS = [("", "모든 중요도")] + Task.TIER_LABELS
-# "없음"을 명시적으로 둔다 — 눌린 버튼이 하나도 없는 상태를 "분류 안 함"으로 읽어내게 하지 않는다.
+# "묶지 않음"을 명시적으로 둔다 — 눌린 버튼이 하나도 없는 상태를 "분류 안 함"으로 읽어내게 하지 않는다.
 GROUP_OPTIONS = [
     ("due", "기한별"),
     ("project", "프로젝트별"),
     ("status", "상태별"),
-    ("none", "없음"),
+    ("none", "묶지 않음"),
 ]
 SORT_OPTIONS = [("due", "기한"), ("priority", "중요도"), ("updated", "최근 수정")]
 
@@ -1618,12 +1618,15 @@ def me_view(
         title = "조직 전체 태스크"
     else:
         title = f"{member.display_name}의 태스크"
-    hint = f"{'완료' if completion else '미완료'} {base.count()}건 · 결과 {len(tasks)}건"
+    total = base.count()
+    hint = f"{'완료' if completion else '미완료'} {total}건 · 결과 {len(tasks)}건"
     if member is not None:
         hint += " · 보기 전용"
     return {
         "title": title,
         "hint": hint,
+        # 필터를 걸기 전 전체 건수. 0이면 화면은 필터 줄 대신 빈 상태를 그린다(b-workspace 상-2).
+        "total": total,
         "groups": groups,
         "read_only": member is not None,
         "completion": completion,

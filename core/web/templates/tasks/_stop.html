@@ -8,20 +8,21 @@
   {% if stop_error %}<div class="error">{{ stop_error }}</div>{% endif %}
   <div class="row">
     <button class="btn sm primary">반려</button>
-    <button type="button" class="btn sm" hx-get="{% url 'task_panel' task.pk %}" hx-target="#panel" hx-swap="innerHTML">취소</button>
+    <button type="button" class="btn sm" hx-get="{% url 'task_panel' task.pk %}" hx-target="#panel" hx-swap="innerHTML">반려하지 않기</button>{# copy-draft #}
   </div>
 </form>
 {% else %}
 <form class="stop-box" hx-post="{% url 'task_stop_reason' task.pk %}" hx-target="#panel" hx-swap="innerHTML">
   <input type="hidden" name="version" value="{{ task.version }}">
   {% if block_pending %}<input type="hidden" name="confirm_block" value="1">{% endif %}
-  <label class="label" for="stop-reason-{{ task.pk }}">{% if block_pending %}막힘 사유{% elif task.is_blocked %}막힌 이유{% else %}멈춘 이유{% endif %}</label>
+  <label class="label" for="stop-reason-{{ task.pk }}">{% if block_pending or task.is_blocked %}막힘 사유{% else %}일시정지 사유{% endif %}</label>
+  <p class="t13">일시정지는 개인 사유나 다른 작업 때문에, 막힘은 외부 요인 때문에 진행할 수 없을 때 씁니다.</p>{# copy-draft #}
   <textarea id="stop-reason-{{ task.pk }}" class="textarea" name="reason" rows="2" data-md data-toolbar="bottom"{% if block_pending %} data-focus{% endif %}
             placeholder="{% if block_pending or task.is_blocked %}무엇 때문에 막혔나요? (필수){% else %}왜 잠시 멈췄나요? (선택){% endif %}">{{ stop_draft }}</textarea>
   {% if stop_error %}<div class="error">{{ stop_error }}</div>{% endif %}
   <div class="row">
     <button class="btn sm primary">{% if block_pending %}막힘으로 변경{% else %}사유 저장{% endif %}</button>
-    {% if block_pending %}<button type="button" class="btn sm" hx-get="{% url 'task_panel' task.pk %}" hx-target="#panel" hx-swap="innerHTML">취소</button>{% endif %}
+    {% if block_pending %}<button type="button" class="btn sm" hx-get="{% url 'task_panel' task.pk %}" hx-target="#panel" hx-swap="innerHTML">막힘으로 바꾸지 않기</button>{# copy-draft #}{% endif %}
   </div>
 </form>
 {% endif %}

@@ -1,0 +1,14 @@
+{% comment %}빈 상태 부품(DESIGN.md 3장 '빈 상태'). 무엇이 비었나 + 가치 한 줄 + 행동 하나.
+  what: 무엇이 비었나(필수)   why: 이걸 채우면 무엇이 좋은가(한 줄)
+  행동은 하나만 — href(링크) / hx_get(#dialog 대화상자) / toggle(숨긴 요소 펼치기, 선택자) 중 하나 + label
+  locked: 행동 권한이 없을 때 True — why·행동 대신 locked_text를 보인다
+  tag: 감싸는 태그(ul 안이면 "li"), compact: 화분 없는 작은 빈 상태, plain: 화면에 주 버튼이 따로 있으면 일반 버튼으로
+{% endcomment %}<{{ tag|default:"div" }} class="empty{% if compact %} compact{% endif %}">
+  <p class="empty-what">{{ what }}</p>
+  {% if locked %}{% if locked_text %}<p>{{ locked_text }}</p>{% endif %}{% else %}
+  {% if why %}<p>{{ why }}</p>{% endif %}
+  {% if href %}<a class="btn{% if not plain %} primary{% endif %}" href="{{ href }}">{{ label }}</a>
+  {% elif hx_get %}<button type="button" class="btn{% if not plain %} primary{% endif %}" hx-get="{{ hx_get }}" hx-target="#dialog" hx-swap="innerHTML">{{ label }}</button>
+  {% elif toggle %}<button type="button" class="btn{% if not plain %} primary{% endif %}" data-action="toggle" data-target="{{ toggle }}">{{ label }}</button>{% endif %}
+  {% endif %}
+</{{ tag|default:"div" }}>
