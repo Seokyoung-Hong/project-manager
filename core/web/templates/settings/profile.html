@@ -19,7 +19,7 @@
   {% endif %}
   {% if user.discord_user_id %}
   <div class="conn"><span class="conn-state on">연결됨</span> <span class="muted t13">{{ user.discord_linked_at|date:"Y-m-d H:i" }}</span>
-    <form method="post" action="{% url 'discord_unlink' %}">{% csrf_token %}<button class="btn sm danger">Discord 계정 연결 해제</button></form>
+    <form method="post" action="{% url 'discord_unlink' %}" onsubmit="return confirm('Discord 연결을 해제할까요? 마감 알림 DM과 봇 명령이 멈춥니다. 다시 쓰려면 연결 코드를 새로 받아야 합니다.')">{% csrf_token %}<button class="btn sm danger">Discord 계정 연결 해제</button></form>{# copy-draft #}
   </div>
   <p class="muted t13">해제하면 DM 알림이 멈춥니다. Discord에서 봇에게 <code>연결해제</code>를 보내도 됩니다.</p>
   {% else %}
@@ -31,19 +31,19 @@
 {% if github_enabled %}
 <div class="card">
   <h2>GitHub 연결</h2>
-  <p><a href="{% url 'integration_help' %}#oauth">연결·저장소 목록 문제 해결 및 질문 복사</a></p>
   {% if user.github %}
   <div class="conn"><span class="conn-state on">연결됨</span> <code>@{{ user.github.login }}</code>
-    <form method="post" action="{% url 'github_unlink' %}">{% csrf_token %}<button class="btn sm danger">GitHub 계정 연결 해제</button></form>
+    <form method="post" action="{% url 'github_unlink' %}" onsubmit="return confirm('GitHub 연결을 해제할까요? 태스크와 저장소를 잇는 기능을 내 계정으로 쓸 수 없게 됩니다. 다시 쓰려면 다시 연결해야 합니다.')">{% csrf_token %}<button class="btn sm danger">GitHub 계정 연결 해제</button></form>{# copy-draft #}
   </div>
   <p class="muted t13">접근 가능 저장소 {{ user.github.repos|length }}개
     {% if user.github.repos_checked_at %}· {{ user.github.repos_checked_at|date:"Y-m-d H:i" }} 확인{% endif %}</p>
   <form method="post" action="{% url 'github_refresh' %}">{% csrf_token %}<button class="btn sm">접근 가능한 저장소 다시 확인</button></form>
   {% else %}
   <p class="conn"><span class="conn-state off">미연결</span></p>
-  <a class="btn primary" href="{% url 'github_connect' %}">GitHub 연결</a>
   <p class="muted t13">연결하면 접근 가능한 저장소의 이슈·브랜치·PR을 태스크와 잇고, 자동 전환 규칙을 쓸 수 있습니다.</p>
+  <a class="btn primary" href="{% url 'github_connect' %}">GitHub 연결</a>
   {% endif %}
+  <p class="t13"><a href="{% url 'integration_help' %}#oauth">연결·저장소 목록 문제 해결 및 질문 복사</a></p>
 </div>
 {% endif %}
 </div>

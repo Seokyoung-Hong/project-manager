@@ -1,6 +1,21 @@
 {% extends "base.html" %}{% block title %}조직{% endblock %}
 {% block main %}
 {% include "orgs/_tabs.html" %}
+{% if getting_started %}
+<section class="card getting-started" aria-labelledby="getting-started-title">
+  <h2 id="getting-started-title">시작하기</h2>{# copy-draft #}
+  <p class="muted t13">아래 단계를 마치면 팀의 할 일이 한곳에 모이고, 진행 상황이 저절로 정리됩니다.</p>{# copy-draft #}
+  <ol class="git-steps">
+    {% for s in getting_started %}
+    <li class="{% if s.done %}done{% endif %}">
+      <span class="dot">{% if s.done %}&#10003;{% else %}{{ forloop.counter }}{% endif %}</span>
+      <span class="grow"><b>{{ s.label }}</b>{% if s.done %} <span class="muted">· 완료</span>{% endif %}<br><span class="muted">{{ s.value }}</span></span>
+      {% if not s.done %}{% if s.url %}<a class="btn sm" href="{{ s.url }}">{{ s.label }}</a>{% else %}<button type="button" class="btn sm" hx-get="{% url 'project_new' %}?org={{ org.pk }}" hx-target="#dialog" hx-swap="innerHTML">{{ s.label }}</button>{% endif %}{% endif %}
+    </li>
+    {% endfor %}
+  </ol>
+</section>
+{% endif %}
 <div class="card org-summary-card">
   <div class="tiles org-kpis" tabindex="0" role="region" aria-label="조직 태스크 요약">
     {% for label, value, url, danger in tiles %}<a class="tile{% if danger and value %} danger{% endif %}" href="{{ url }}"><b>{{ value }}</b><span>{{ label }}</span></a>{% endfor %}

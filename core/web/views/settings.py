@@ -16,6 +16,7 @@ from accounts.services import (
     give_consent,
     has_consent,
     issue_link_code,
+    last_admin_orgs,
     missing_consents,
     set_user_settings,
     unlink_discord,
@@ -52,7 +53,7 @@ def discord_link(request):
     try:
         request.session["discord_link_code"] = issue_link_code(request.user)
     except ServiceError:
-        return consent_redirect("discord", reverse("profile"))
+        return _consent_then(request, "discord", reverse("profile"))
     return redirect("profile")
 
 
@@ -71,7 +72,10 @@ def tokens(request):
         if form.is_valid():
             d = form.cleaned_data
             if d["purpose"] == "ai" and not has_consent(request.user, "ai"):
-                return consent_redirect("ai", reverse("tokens"))
+                # 동의하고 돌아오면 이름·범위를 다시 입력하지 않게 맡겨 두었다가 곧바로 발급한다
+                return _consent_then(
+                    request, "ai", reverse("tokens"), name=d["name"], scope=d["scope"]
+                )
             _, raw = ApiToken.issue(
                 request.user, d["name"], d["scope"], for_ai=d["purpose"] == "ai"
             )
@@ -98,6 +102,7 @@ def tokens(request):
 def token_revoke(request, token_id):
     token = get_object_or_404(ApiToken, pk=token_id, user=request.user)
     token.revoke()
+    messages.success(request, f"'{token.name}' 토큰을 폐기했습니다.")
     return redirect("tokens")
 
 
@@ -149,15 +154,38 @@ def account(request):
         else:
             logout(request)
             return render(request, "settings/withdrawn.html")
-    return render(request, "settings/account.html", {"error": error})
+    # 마지막 관리자인 조직이 있으면 입력받기 전에 알린다(탈퇴 시 서비스에서도 다시 막는다)
+    blocked = last_admin_orgs(request.user)
+    return render(request, "settings/account.html", {"error": error, "blocked": blocked})
 
 
 # ---------- 국외 이전 동의 ----------
 
 
+RESUME_KEY = "consent_resume"
+
+
 def consent_redirect(target: str, nxt: str):
     """동의가 없으면 동의 화면으로 보낸다. 동의하면 nxt로 돌아온다."""
     return redirect(f"{reverse('consent', args=[target])}?{urlencode({'next': nxt})}")
+
+
+def _consent_then(request, target: str, nxt: str, **resume):
+    """consent_redirect와 같되, 동의한 직후 하던 일(Discord 연결 코드, AI 토큰 발급)을 마저 한다 — _resume."""
+    request.session[RESUME_KEY] = {"target": target, "next": nxt, **resume}
+    return consent_redirect(target, nxt)
+
+
+def _resume(request, target: str, nxt: str) -> None:
+    """동의 화면으로 오기 전 하던 일을 끝낸다. 같은 대상·같은 돌아갈 곳일 때만(다른 길로 온 동의는 그냥 동의만)."""
+    pending = request.session.pop(RESUME_KEY, None)
+    if not pending or pending["target"] != target or pending["next"] != nxt:
+        return
+    if target == "discord":
+        request.session["discord_link_code"] = issue_link_code(request.user)
+    elif target == "ai":
+        _, raw = ApiToken.issue(request.user, pending["name"], pending["scope"], for_ai=True)
+        request.session["new_token"] = raw
 
 
 @login_required
@@ -169,6 +197,7 @@ def consent(request, target):
         nxt = ""
     if request.method == "POST":
         give_consent(request.user, target)
+        _resume(request, target, nxt)
         return redirect(nxt or "consents")
     return render(
         request,
@@ -181,8 +210,24 @@ def consent(request, target):
 def consents(request):
     active = {c.target: c for c in request.user.consents.filter(withdrawn_at__isnull=True)}
     missing = missing_consents(request.user)
+    ai_tokens = request.user.tokens.filter(for_ai=True, revoked_at__isnull=True).count()
+    # 철회하면 무엇이 끊기는지 확인 창에 구체적으로 적는다(A3)
+    confirm = {
+        "github": "GitHub 계정 연결이 끊기고 GitHub 로그인과 저장소 연동을 쓸 수 없게 됩니다.",
+        "discord": "Discord 개인 연결이 끊기고 DM 알림과 봇 명령이 멈춥니다.",
+        "ai": f"AI용 토큰(Claude 커넥터 포함) {ai_tokens}개가 폐기됩니다. "
+        "폐기한 토큰은 되살릴 수 없어, 다시 쓰려면 새로 발급해야 합니다.",
+    }
+    connect = {"github": reverse("profile"), "discord": reverse("profile"), "ai": reverse("tokens")}
     rows = [
-        {"target": t, "label": label, "consent": active.get(t), "missing": t in missing}
+        {
+            "target": t,
+            "label": label,
+            "consent": active.get(t),
+            "missing": t in missing,
+            "confirm": confirm[t],
+            "connect": connect[t],
+        }
         for t, label in TARGETS
     ]
     return render(request, "settings/consents.html", {"rows": rows})

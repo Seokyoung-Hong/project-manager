@@ -204,6 +204,20 @@ def set_user_settings(user, data: dict) -> User:
 DELETED_NAME = "탈퇴한 사용자"
 
 
+def last_admin_orgs(user, orgs=None) -> list:
+    """user가 유일한 관리자인 조직들. 이런 조직이 있으면 탈퇴할 수 없다(화면은 미리 알린다)."""
+    from orgs.models import Organization, OrgMembership
+
+    if orgs is None:
+        orgs = Organization.objects.filter(memberships__user=user).distinct().order_by("pk")
+    return [
+        org
+        for org in orgs
+        if OrgMembership.objects.filter(org=org, user=user, role="admin").exists()
+        and not OrgMembership.objects.filter(org=org, role="admin").exclude(user=user).exists()
+    ]
+
+
 @transaction.atomic
 def withdraw(user, confirm: str) -> None:
     """회원 탈퇴. 되돌릴 수 없다(개인정보 처리 결정 A).
@@ -226,17 +240,13 @@ def withdraw(user, confirm: str) -> None:
         .filter(pk__in=OrgMembership.objects.filter(user=user).values("org"))
         .order_by("pk")
     )
-    for org in my_orgs:
-        if (
-            not OrgMembership.objects.filter(org=org, role="admin").exclude(user=user).exists()
-            and OrgMembership.objects.filter(org=org, user=user, role="admin").exists()
-        ):
-            raise ServiceError(
-                {
-                    "org": f"'{org.name}' 조직의 마지막 관리자입니다. "
-                    "다른 구성원에게 관리자를 넘긴 뒤 탈퇴해 주세요."
-                }
-            )
+    if blocked := last_admin_orgs(user, my_orgs):
+        raise ServiceError(
+            {
+                "org": f"'{blocked[0].name}' 조직의 마지막 관리자입니다. "
+                "다른 구성원에게 관리자를 넘긴 뒤 탈퇴해 주세요."
+            }
+        )
 
     old_username = user.username
     _scrub_recordings(user, my_orgs)

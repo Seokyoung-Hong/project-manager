@@ -20,7 +20,7 @@ from accounts.auth import (
 )
 from accounts.models import User
 from common.errors import ServiceError
-from orgs.services import invite_org, join_by_token
+from orgs.services import invite_org, join_by_token, orgs_of
 
 from ..forms import LoginForm, SignupForm
 
@@ -48,13 +48,20 @@ def privacy(request):
     return render(request, "privacy.html", {"body": body})
 
 
+def landing(user) -> str:
+    """로그인한 사람이 처음 갈 화면. 조직이 없으면 오늘 화면은 할 일이 없으니 조직 목록([조직 만들기])으로."""
+    if not orgs_of(user).exists():
+        return "org_list"
+    return "me" if user.settings.get("user.start_page") == "me" else "today"
+
+
 def root(request):
-    return redirect("today" if request.user.is_authenticated else "login")
+    return redirect(landing(request.user) if request.user.is_authenticated else "login")
 
 
 def login_view(request):
     if request.user.is_authenticated:
-        return redirect(_safe_next(request, request.GET.get("next", "")) or "today")
+        return redirect(_safe_next(request, request.GET.get("next", "")) or landing(request.user))
     form = LoginForm(request.POST or None)
     if request.method == "POST" and form.is_valid():
         try:
@@ -68,8 +75,7 @@ def login_view(request):
                 form.add_error(None, "아이디 또는 비밀번호가 맞지 않습니다.")
             else:
                 login_user(request, user, "password")
-                start = "me" if user.settings.get("user.start_page") == "me" else "today"
-                return redirect(_safe_next(request, request.POST.get("next", "")) or start)
+                return redirect(_safe_next(request, request.POST.get("next", "")) or landing(user))
     return render(request, "auth/login.html", {"form": form})
 
 
