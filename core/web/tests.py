@@ -1904,7 +1904,12 @@ def test_privacy_page_is_public_and_linked_from_footer(client, db):
     assert '<div class="table-scroll"><table>' in body
     assert '<h2 id="제1조-개인정보-처리-목적과-근거">' in body
     assert '<a href="mailto:contact@quanect.kr">' in body
-    assert '<footer class="site-footer t13"><a href="/privacy"><strong>' in body
+    assert (
+        '<a href="/privacy"><strong>개인정보 처리방침</strong></a>'
+        in body.split('<footer class="site-footer')[1]
+    )
+    # 사업자 정보는 모든 화면 바닥글에 보인다
+    assert '<address class="biz">' in body and "537-16-02777" in body
 
 
 def test_privacy_placeholder_warns_only_in_production(settings, tmp_path, monkeypatch):
