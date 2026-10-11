@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from django.contrib import messages
 from django.contrib.auth.forms import SetPasswordForm
 from django.contrib.auth.tokens import default_token_generator
@@ -30,6 +32,14 @@ def _safe_next(request, nxt: str) -> str:
     # 외부 주소로 보내는 피싱 링크(/login?next=https://...)를 막는다
     ok = url_has_allowed_host_and_scheme(nxt, allowed_hosts={request.get_host()})
     return nxt if ok else ""
+
+
+PRIVACY_MD = Path(__file__).resolve().parent.parent / "content" / "privacy.md"
+
+
+def privacy(request):
+    """개인정보 처리방침. 로그인 없이 본다. 파일 내용 그대로, 앱의 Markdown 보기(.md-view)가 그린다."""
+    return render(request, "privacy.html", {"body": PRIVACY_MD.read_text(encoding="utf-8")})
 
 
 def root(request):

@@ -4,6 +4,7 @@
 <form method="post" class="stack">{% csrf_token %}
   {% for e in form.non_field_errors %}<div class="error">{{ e }}</div>{% endfor %}
   {% include "_fields.html" %}
+  <a class="t13" href="{% url 'privacy' %}"><strong>개인정보 처리방침</strong></a>
   <button class="btn primary">가입</button>
 </form>
 {% if github_enabled %}<a class="btn" href="{% url 'github_login' %}?next={{ request.GET.next|urlencode }}">GitHub로 가입</a>{% endif %}

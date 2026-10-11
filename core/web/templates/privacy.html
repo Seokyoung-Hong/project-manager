@@ -1,0 +1,4 @@
+{% extends "base.html" %}{% block title %}개인정보 처리방침{% endblock %}
+{# 본문은 web/content/privacy.md 그대로다. JS가 없으면 원문이 보인다. #}
+{% block main %}<div class="md-view md"><textarea class="md-src textarea" rows="12" readonly aria-label="개인정보 처리방침">{{ body }}</textarea></div>{% endblock %}
+{% block auth %}<div class="md-view md"><textarea class="md-src textarea" rows="12" readonly aria-label="개인정보 처리방침">{{ body }}</textarea></div>{% endblock %}

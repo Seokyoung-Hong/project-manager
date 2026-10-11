@@ -289,6 +289,7 @@ def test_signup_lands_on_org_list_with_create_button(client):
             "display_name": "새사람",
             "password1": "verysecret123",
             "password2": "verysecret123",
+            "age_ok": "on",
         },
     )
     assert r.status_code == 302
@@ -1870,6 +1871,26 @@ def test_logout_needs_post(logged):
     assert "_auth_user_id" not in logged.session
 
 
+def test_signup_without_age_check_is_refused(client, db):
+    r = client.post(
+        "/signup",
+        {
+            "username": "kid",
+            "password1": "verysecret123",
+            "password2": "verysecret123",
+        },
+    )
+    assert r.status_code == 200 and "만 14세 미만은 가입할 수 없습니다." in r.content.decode()
+    assert not User.objects.filter(username="kid").exists()
+    assert 'href="/privacy"' in client.get("/signup").content.decode()
+
+
+def test_privacy_page_is_public_and_linked_from_footer(client, db):
+    r = client.get("/privacy")
+    assert r.status_code == 200 and "준비 중입니다." in r.content.decode()
+    assert '<footer class="site-footer t13"><a href="/privacy"><strong>' in r.content.decode()
+
+
 def test_eleventh_signup_from_one_ip_is_refused(client, db):
     def signup(i):
         return client.post(
@@ -1879,6 +1900,7 @@ def test_eleventh_signup_from_one_ip_is_refused(client, db):
                 "display_name": "",
                 "password1": "verysecret123",
                 "password2": "verysecret123",
+                "age_ok": "on",
             },
         )
 
