@@ -214,18 +214,23 @@ def _finish_login(request, data: dict, info: dict):
 
 
 def github_login_confirm(request):
-    """같은 아이디·이메일의 기존 계정이 있을 때 신규 가입을 한 번 더 확인한다."""
+    """GitHub로 처음 가입할 때 만 14세 이상인지, (있으면) 기존 계정과 헷갈리지 않았는지 확인한다."""
     _gh_enabled_or_404()
     raw = request.session.get("gh_pending")
     if request.user.is_authenticated or not raw:
         return redirect("login")
+    ctx = {"lookalike": request.session.get("gh_lookalike", False)}
     if request.method == "POST":
+        if not request.POST.get("age_ok"):
+            ctx["age_error"] = "만 14세 미만은 가입할 수 없습니다."
+            return render(request, "auth/github_confirm.html", ctx)
+        request.session.pop("gh_lookalike", None)
         text = decrypt(request.session.pop("gh_pending"))
         if not text:  # 키를 갈아 복호화가 안 되면 처음부터 다시
             return redirect("login")
         pending = json.loads(text)
         return _finish_login(request, pending["data"], pending["info"])
-    return render(request, "auth/github_confirm.html")
+    return render(request, "auth/github_confirm.html", ctx)
 
 
 def github_callback(request):
@@ -256,10 +261,13 @@ def github_callback(request):
         return redirect(failed)
     if not request.user.is_authenticated:
         info["email"] = gh_services.github_email(info, data["access_token"])
-        new = not GitHubIdentity.objects.filter(github_id=info["id"]).exists()
-        if new and gh_services.lookalike_exists(info["login"], info["email"]):
-            # 기존 계정 주인이 실수로 새 계정을 만들지 않게 한 번 묻는다. 토큰이 있으니 암호화해 둔다.
+        if not GitHubIdentity.objects.filter(github_id=info["id"]).exists():
+            # 처음 가입하면 만 14세 이상인지 확인받는다. 같은 아이디·이메일의 기존 계정이 있으면
+            # 그 주인이 실수로 새 계정을 만들지 않게 함께 묻는다. 토큰이 있으니 암호화해 둔다.
             request.session["gh_pending"] = encrypt(json.dumps({"data": data, "info": info}))
+            request.session["gh_lookalike"] = gh_services.lookalike_exists(
+                info["login"], info["email"]
+            )
             return redirect("github_login_confirm")
         return _finish_login(request, data, info)
     if GitHubIdentity.objects.filter(github_id=info["id"]).exclude(user=request.user).exists():

@@ -56,6 +56,7 @@ urlpatterns = [
     path("oauth/authorize", oauth.authorize, name="oauth_authorize"),
     path("oauth/token", oauth.token, name="oauth_token"),
     path("signup", auth.signup, name="signup"),
+    path("privacy", auth.privacy, name="privacy"),
     path("join/<str:token>", auth.join, name="join"),
     path("today", today.today, name="today"),
     path("today/quick", today.quick_add, name="today_quick"),

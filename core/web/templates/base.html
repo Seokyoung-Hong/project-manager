@@ -129,8 +129,9 @@
   </div>
 </div>
 {% else %}
-<main id="main-content" class="layout auth-main" tabindex="-1"><div class="card auth-card">{% block auth %}{% endblock %}</div></main>
+<main id="main-content" class="layout auth-main" tabindex="-1"><div class="card {% block auth_card %}auth-card{% endblock %}">{% block auth %}{% endblock %}</div></main>
 {% endif %}
+<footer class="site-footer t13"><a href="{% url 'privacy' %}"><strong>개인정보 처리방침</strong></a></footer>
 <dialog id="dialog"></dialog>
 <script src="{% static 'app.js' %}"></script>
 <script type="module" src="{% static 'md-field.js' %}"></script>

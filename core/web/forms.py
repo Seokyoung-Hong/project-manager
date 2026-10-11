@@ -46,6 +46,12 @@ class LoginForm(forms.Form):
 
 
 class SignupForm(UserCreationForm):
+    # 가입 시각(date_joined)이 곧 확인 시각이다. 이 확인 없이는 계정이 만들어지지 않는다.
+    age_ok = forms.BooleanField(
+        label="만 14세 이상입니다",
+        error_messages={"required": "만 14세 미만은 가입할 수 없습니다."},
+    )
+
     class Meta:
         model = User
         fields = ("username", "display_name")

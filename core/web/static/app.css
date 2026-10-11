@@ -200,6 +200,7 @@ details[open] > summary .caret { transform: rotate(180deg); }
 }
 .layout { flex: 1; min-width: 0; display: flex; align-items: flex-start; gap: var(--sp-6); padding: var(--sp-8); }
 .layout > main { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; gap: var(--sp-6); }
+.site-footer { padding: var(--sp-6) var(--sp-4); text-align: center; }
 .auth-main { min-height: calc(100vh - var(--header-h)); align-items: center; justify-content: center; }
 aside#panel { flex: 1 1 380px; max-width: 480px; position: sticky; top: calc(var(--header-h) + var(--sp-6)); max-height: calc(100vh - var(--header-h) - 48px); overflow: auto; }
 aside#panel:empty { display: none; }

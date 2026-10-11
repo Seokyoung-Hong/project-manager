@@ -1,0 +1,5 @@
+{% extends "base.html" %}{% block title %}개인정보 처리방침{% endblock %}
+{# 본문은 web/content/privacy.html(privacy.md에서 만든 조각)이다. 로그인 전·후 모두 읽기 폭 760px 문서로 보인다. #}
+{% block main %}<article class="card form-card md">{{ body }}</article>{% endblock %}
+{% block auth_card %}form-card{% endblock %}
+{% block auth %}<article class="md">{{ body }}</article>{% endblock %}
