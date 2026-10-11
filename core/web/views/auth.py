@@ -5,6 +5,7 @@ from django.contrib.auth.forms import SetPasswordForm
 from django.contrib.auth.tokens import default_token_generator
 from django.shortcuts import redirect, render
 from django.utils.http import url_has_allowed_host_and_scheme, urlsafe_base64_decode
+from django.utils.safestring import mark_safe
 from django.views.decorators.http import require_POST
 
 from accounts.auth import (
@@ -34,12 +35,17 @@ def _safe_next(request, nxt: str) -> str:
     return nxt if ok else ""
 
 
-PRIVACY_MD = Path(__file__).resolve().parent.parent / "content" / "privacy.md"
+PRIVACY_HTML = Path(__file__).resolve().parent.parent / "content" / "privacy.html"
 
 
 def privacy(request):
-    """개인정보 처리방침. 로그인 없이 본다. 파일 내용 그대로, 앱의 Markdown 보기(.md-view)가 그린다."""
-    return render(request, "privacy.html", {"body": PRIVACY_MD.read_text(encoding="utf-8")})
+    """개인정보 처리방침. 로그인 없이, JS 없이 본다.
+
+    원문은 content/privacy.md이고, 개발 때 만든 HTML 조각(privacy.html)을 그대로 넣는다.
+    만드는 명령은 privacy.md 맨 위 주석에 있다. 저장소 파일이라 mark_safe 한다.
+    """
+    body = mark_safe(PRIVACY_HTML.read_text(encoding="utf-8"))
+    return render(request, "privacy.html", {"body": body})
 
 
 def root(request):

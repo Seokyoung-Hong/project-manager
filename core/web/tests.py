@@ -1887,8 +1887,10 @@ def test_signup_without_age_check_is_refused(client, db):
 
 def test_privacy_page_is_public_and_linked_from_footer(client, db):
     r = client.get("/privacy")
-    assert r.status_code == 200 and "준비 중입니다." in r.content.decode()
-    assert '<footer class="site-footer t13"><a href="/privacy"><strong>' in r.content.decode()
+    body = r.content.decode()
+    # JS 없이도 본문이 보여야 한다(법적 고지문): 서버가 넣은 HTML 문단, 원문 textarea가 아니다
+    assert r.status_code == 200 and "<p>준비 중입니다.</p>" in body and "<textarea" not in body
+    assert '<footer class="site-footer t13"><a href="/privacy"><strong>' in body
 
 
 def test_eleventh_signup_from_one_ip_is_refused(client, db):
