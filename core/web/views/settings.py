@@ -1,3 +1,5 @@
+import secrets
+import time
 from types import SimpleNamespace
 from urllib.parse import urlencode
 
@@ -5,6 +7,7 @@ from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth import logout
 from django.contrib.auth.decorators import login_required
+from django.db import IntegrityError, transaction
 from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
@@ -12,7 +15,7 @@ from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_POST
 
 from accounts.consents import NOTICES, TARGETS
-from accounts.models import ApiToken, User
+from accounts.models import ApiToken, IdempotencyKey, User
 from accounts.services import (
     give_consent,
     has_consent,
@@ -186,6 +189,7 @@ def account(request):
 
 
 RESUME_KEY = "consent_resume"
+RESUME_TTL = 30 * 60  # 동의 화면에서 이보다 오래 머물면 하던 일은 다시 시작한다
 
 
 def consent_redirect(target: str, nxt: str):
@@ -195,20 +199,56 @@ def consent_redirect(target: str, nxt: str):
 
 def _consent_then(request, target: str, nxt: str, **resume):
     """consent_redirect와 같되, 동의한 직후 하던 일(Discord 연결 코드, AI 토큰 발급)을 마저 한다 — _resume."""
-    request.session[RESUME_KEY] = {"target": target, "next": nxt, **resume}
+    request.session[RESUME_KEY] = {
+        "id": secrets.token_hex(16),
+        "at": int(time.time()),
+        "target": target,
+        "next": nxt,
+        **resume,
+    }
     return consent_redirect(target, nxt)
 
 
 def _resume(request, target: str, nxt: str) -> None:
-    """동의 화면으로 오기 전 하던 일을 끝낸다. 같은 대상·같은 돌아갈 곳일 때만(다른 길로 온 동의는 그냥 동의만)."""
-    pending = request.session.pop(RESUME_KEY, None)
-    if not pending or pending["target"] != target or pending["next"] != nxt:
+    """동의 화면으로 오기 전 하던 일을 끝낸다. 같은 대상·같은 돌아갈 곳일 때만(다른 길로 온 동의는 그냥 동의만).
+
+    같은 세션으로 POST가 동시에 두 번 와도 재개는 한 번만: 재개 id를 IdempotencyKey(user, key 유일)로
+    DB에서 먼저 차지한 요청만 발급한다. 진 요청은 세션을 건드리지 않아 이긴 요청이 담은 토큰을 덮지 않는다.
+    """
+    pending = request.session.get(RESUME_KEY)
+    if not pending:
         return
-    if target == "discord":
-        request.session["discord_link_code"] = issue_link_code(request.user)
-    elif target == "ai":
-        _, raw = ApiToken.issue(request.user, pending["name"], pending["scope"], for_ai=True)
-        request.session["new_token"] = raw
+    if (
+        pending.get("target") != target
+        or pending.get("next") != nxt
+        or "id" not in pending
+        or time.time() - pending.get("at", 0) > RESUME_TTL
+    ):
+        request.session.pop(RESUME_KEY, None)
+        return
+    try:
+        with transaction.atomic():
+            mark = IdempotencyKey.objects.create(
+                user=request.user,
+                key=f"consent:{pending['id']}",
+                target_type="consent",
+                target_id=0,
+            )
+            if target == "discord":
+                result = ("discord_link_code", issue_link_code(request.user))
+            elif target == "ai":
+                token, raw = ApiToken.issue(
+                    request.user, pending["name"], pending["scope"], for_ai=True
+                )
+                IdempotencyKey.objects.filter(pk=mark.pk).update(target_id=token.pk)
+                result = ("new_token", raw)
+            else:
+                result = None
+    except IntegrityError:
+        return
+    request.session.pop(RESUME_KEY, None)
+    if result:
+        request.session[result[0]] = result[1]
 
 
 @login_required

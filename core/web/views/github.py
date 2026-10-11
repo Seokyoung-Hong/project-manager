@@ -176,9 +176,11 @@ def github_installed(request):
 # ---------- 사용자: 계정 연결 ----------
 
 
-def _authorize(request):
+def _authorize(request, connect_next: str = ""):
+    """OAuth를 새로 시작한다. 연결 뒤 갈 곳은 state와 함께 매번 새로 적어, 취소한 이전 시도의 목적지가 남지 않게 한다."""
     state = secrets.token_urlsafe(16)
     request.session["gh_oauth_state"] = state
+    request.session["gh_connect_next"] = connect_next
     q = urlencode(
         {
             "client_id": settings.GITHUB_CLIENT_ID,
@@ -193,12 +195,21 @@ def _authorize(request):
 def github_connect(request):
     _gh_enabled_or_404()
     nxt = request.GET.get("next", "")
-    if url_has_allowed_host_and_scheme(nxt, allowed_hosts={request.get_host()}):
-        # 조직 GitHub 탭에서 왔으면 연결한 뒤 프로필이 아니라 앱 설치로 곧바로 이어 간다
-        request.session["gh_connect_next"] = nxt
+    if not url_has_allowed_host_and_scheme(nxt, allowed_hosts={request.get_host()}):
+        nxt = ""
     if not has_consent(request.user, "github"):
-        return consent_redirect("github", reverse("github_connect"))
-    return _authorize(request)
+        # 동의하고 돌아올 주소에 목적지를 실어 보낸다(세션에 남겨 두지 않는다)
+        return consent_redirect("github", _connect_url(nxt))
+    # 조직 GitHub 탭에서 왔으면 연결한 뒤 프로필이 아니라 앱 설치로 곧바로 이어 간다
+    return _authorize(request, nxt)
+
+
+def _connect_url(nxt: str) -> str:
+    return (
+        f"{reverse('github_connect')}?{urlencode({'next': nxt})}"
+        if nxt
+        else reverse("github_connect")
+    )
 
 
 def github_login(request):
@@ -262,6 +273,8 @@ def github_login_confirm(request):
 def github_callback(request):
     _gh_enabled_or_404()
     failed = "profile" if request.user.is_authenticated else "login"
+    # 성공·실패·취소 어느 쪽이든 이 시도의 목적지는 여기서 끝난다
+    connect_next = request.session.pop("gh_connect_next", "")
     if not _state_ok(request, "gh_oauth_state"):
         record_problem(request, "oauth", "콜백 상태 검증 실패")
         messages.error(
@@ -297,7 +310,7 @@ def github_callback(request):
             return redirect("github_login_confirm")
         return _finish_login(request, data, info)
     if not has_consent(request.user, "github"):
-        return consent_redirect("github", reverse("github_connect"))
+        return consent_redirect("github", _connect_url(connect_next))
     if GitHubIdentity.objects.filter(github_id=info["id"]).exclude(user=request.user).exists():
         messages.error(
             request,
@@ -322,7 +335,7 @@ def github_callback(request):
         clear_problem(request, "oauth")
     gh_services.backfill_actor(identity)
     messages.success(request, "GitHub를 연결했습니다.")
-    return redirect(request.session.pop("gh_connect_next", "") or "profile")
+    return redirect(connect_next or "profile")
 
 
 @login_required

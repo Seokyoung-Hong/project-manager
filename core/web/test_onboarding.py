@@ -94,6 +94,29 @@ def test_ai_token_is_issued_right_after_consent_with_same_name(client, admin):
     assert "새 토큰" in client.get("/settings/tokens").content.decode()
 
 
+def test_concurrent_consent_resume_issues_token_once(client, admin):
+    """같은 세션의 동의 POST 두 개가 재개 정보를 함께 읽어도 토큰은 하나만 나온다(코드 검토 중-1)."""
+    client.force_login(admin)
+    client.post("/settings/tokens", {"name": "내 Claude", "scope": "write", "purpose": "ai"})
+    stale = dict(client.session)  # 두 번째 요청이 먼저 읽어 둔 세션
+    client.post("/settings/consents/ai", {"next": "/settings/tokens"})
+    session = client.session
+    session.update({k: v for k, v in stale.items() if k == "consent_resume"})
+    session.save()
+    client.post("/settings/consents/ai", {"next": "/settings/tokens"})
+    assert admin.tokens.count() == 1
+
+
+def test_expired_consent_resume_does_not_issue(client, admin):
+    client.force_login(admin)
+    client.post("/settings/tokens", {"name": "x", "scope": "read", "purpose": "ai"})
+    session = client.session
+    session["consent_resume"] = {**session["consent_resume"], "at": 0}
+    session.save()
+    client.post("/settings/consents/ai", {"next": "/settings/tokens"})
+    assert not admin.tokens.exists()
+
+
 def test_consent_from_elsewhere_does_not_replay_old_action(client, admin):
     client.force_login(admin)
     client.post("/settings/tokens", {"name": "x", "scope": "read", "purpose": "ai"})
@@ -124,7 +147,32 @@ def test_github_connect_remembers_next(gh, client, admin):  # noqa: F811
     client.get("/settings/github?next=/orgs/1/github/install")
     assert client.session["gh_connect_next"] == "/orgs/1/github/install"
     client.get("/settings/github?next=https://evil.example/")
-    assert client.session["gh_connect_next"] == "/orgs/1/github/install"  # 외부 주소는 받지 않는다
+    assert (
+        client.session["gh_connect_next"] == ""
+    )  # 외부 주소는 받지 않고, 이전 목적지도 남기지 않는다
+
+
+def test_cancelled_github_connect_does_not_leak_next(gh, client, admin):  # noqa: F811
+    """조직 A에서 시작하고 취소한 뒤 프로필에서 새로 연결하면 프로필로 돌아온다(코드 검토 중-2)."""
+    client.force_login(admin)
+    give_consent(admin, "github")
+    client.get("/settings/github?next=/orgs/1/github/install")
+    client.get("/settings/github")  # 취소하고 프로필에서 다시 시작
+    assert client.session["gh_connect_next"] == ""
+    client.get("/settings/github?next=/orgs/1/github/install")
+    client.get("/settings/github/callback?error=access_denied&state=wrong")  # GitHub에서 취소
+    assert "gh_connect_next" not in client.session
+
+
+def test_github_connect_keeps_next_through_consent(gh, client, admin):  # noqa: F811
+    client.force_login(admin)
+    r = client.get("/settings/github?next=/orgs/1/github/install")
+    assert r["Location"].startswith("/settings/consents/github?")
+    back = client.post(
+        "/settings/consents/github", {"next": "/settings/github?next=/orgs/1/github/install"}
+    )["Location"]
+    client.get(back)
+    assert client.session["gh_connect_next"] == "/orgs/1/github/install"
 
 
 # ---------- B7: 앱이 없으면 GitHub 초대 체크박스를 숨긴다 ----------

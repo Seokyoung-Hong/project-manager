@@ -84,6 +84,12 @@
     confirmDlg.onclose = function () { if (confirmDlg.returnValue === "ok") then(); };
     confirmDlg.showModal();
   }
+  // 바깥(배경)을 누르면 [그대로 두기]와 같다. 창에 안쪽 여백이 있어 target만으로는 안쪽 클릭과 구별되지 않으므로 좌표로 본다.
+  if (confirmDlg) confirmDlg.addEventListener("click", function (e) {
+    if (e.target !== confirmDlg) return;
+    var r = confirmDlg.getBoundingClientRect();
+    if (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom) confirmDlg.close("cancel");
+  });
   // 일반 폼: 캡처 단계에서 먼저 막아 htmx·편집기 저장보다 앞선다. 확인 뒤 같은 제출 버튼으로 다시 보낸다.
   window.addEventListener("submit", function (e) {
     var form = e.target, sub = e.submitter;
