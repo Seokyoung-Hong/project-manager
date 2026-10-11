@@ -43,10 +43,14 @@ def gunicorn_config(monkeypatch):
     return importlib.import_module("gunicorn.config").Config
 
 
+def test_entrypoint_has_no_access_log():
+    assert "access-logfile" not in (CORE / "entrypoint.sh").read_text(encoding="utf-8")
+
+
 def test_gunicorn_access_log_masks_reset_token(capsys, gunicorn_config):
     """entrypoint.sh와 같은 설정(--access-logfile -, --logger-class)으로 실제 Gunicorn 로거를 만든다."""
     cfg = gunicorn_config()
-    cfg.set("accesslog", _entrypoint_flag("access-logfile"))
+    cfg.set("accesslog", "-")  # 운영은 접속 로그를 끈다(위 테스트). 여기서는 로거의 가림만 본다
     cfg.set("errorlog", _entrypoint_flag("error-logfile"))
     cfg.set("logger_class", _entrypoint_flag("logger-class"))
     log = cfg.logger_class(cfg)
