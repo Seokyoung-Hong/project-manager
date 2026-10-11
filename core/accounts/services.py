@@ -115,9 +115,17 @@ def withdraw(user, confirm: str) -> None:
     user = User.objects.select_for_update().get(pk=user.pk)
     _check_withdraw_confirm(user, confirm)
     # 마지막 관리자 검사는 orgs.services.change_role·remove_member와 같은 잠금으로 직렬화한다.
-    admin_orgs = OrgMembership.objects.filter(user=user, role="admin").values("org")
-    for org in Organization.objects.select_for_update().filter(pk__in=admin_orgs).order_by("pk"):
-        if not OrgMembership.objects.filter(org=org, role="admin").exclude(user=user).exists():
+    # 속한 조직을 모두 pk 순서로 잠근다 — 검사와 소속 삭제 사이에 역할이 바뀌는 틈을 없앤다.
+    my_orgs = list(
+        Organization.objects.select_for_update()
+        .filter(pk__in=OrgMembership.objects.filter(user=user).values("org"))
+        .order_by("pk")
+    )
+    for org in my_orgs:
+        if (
+            not OrgMembership.objects.filter(org=org, role="admin").exclude(user=user).exists()
+            and OrgMembership.objects.filter(org=org, user=user, role="admin").exists()
+        ):
             raise ServiceError(
                 {
                     "org": f"'{org.name}' 조직의 마지막 관리자입니다. "
@@ -126,6 +134,7 @@ def withdraw(user, confirm: str) -> None:
             )
 
     old_username = user.username
+    _scrub_recordings(user, my_orgs)
     ApiToken.objects.filter(user=user).delete()  # AI용·사람용·MCP OAuth로 받은 토큰 모두
     OAuthCode.objects.filter(user=user).delete()
     IdempotencyKey.objects.filter(user=user).delete()
@@ -157,6 +166,32 @@ def withdraw(user, confirm: str) -> None:
     uid = str(user.pk)
     stale = [s.pk for s in Session.objects.all() if s.get_decoded().get("_auth_user_id") == uid]
     Session.objects.filter(pk__in=stale).delete()
+
+
+def _scrub_recordings(user, orgs) -> None:
+    """회의 녹음 JSON의 탈퇴자 Discord ID·이름 스냅샷을 지운다. 회의록 자체는 업무 기록으로 남는다.
+
+    진행 중인 회의의 진행자면 봇이 진행자 퇴장을 보낸 것과 같은 경로로 끝낸다 — 진행자의 Discord ID가
+    사라진 채 회의가 이어지면 넘겨받기 요청 멘션이 깨진다.
+    """
+    from notes.models import VoiceRecording
+    from notes.services import update_recording
+
+    for rec in VoiceRecording.objects.filter(status="recording", host=user):
+        update_recording(rec, status="transcribing", end_reason="host_left", stopped_by=user)
+    # ponytail: 조직의 녹음을 다 훑는다(SQLite에 JSON contains가 없다). 녹음이 많아지면 참여자 표를 둔다.
+    for rec in VoiceRecording.objects.filter(note__org__in=orgs).select_for_update():
+        changed = False
+        for p in rec.participants:
+            if p.get("user_id") == user.pk:
+                p.update(discord_user_id="", display_name=DELETED_NAME, discord_name="")
+                changed = True
+        for r in rec.host_requests:
+            if r.get("requester_user_id") == user.pk:
+                r["requester_discord_user_id"] = ""
+                changed = True
+        if changed:
+            rec.save(update_fields=["participants", "host_requests"])
 
 
 def _check_withdraw_confirm(user, confirm: str) -> None:

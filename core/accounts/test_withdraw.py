@@ -183,3 +183,66 @@ def test_withdrawn_assignee_shows_as_deleted_and_leaves_picker(client, admin, me
     # 담당자로 다시 고를 수 없다
     r = client.post(f"/tasks/{t.pk}/meta", {"assignee": member.pk, "version": t.version})
     assert "맡길 수 없습니다" in r.content.decode()
+
+
+def test_recording_snapshots_scrubbed_and_hosted_meeting_ended(admin, member, org):
+    from notes.models import VoiceRecording
+    from notes.services import start_recording
+    from orgs.services import set_org_settings
+
+    set_org_settings(org, {"meeting.recording_enabled": True}, admin)
+    rec = start_recording(org=org, actor=member, guild_id="g1", voice_channel_id="v1")
+    past = start_recording(org=org, actor=admin, guild_id="g2", voice_channel_id="v2")
+    rows = [
+        {
+            "discord_user_id": "111",
+            "display_name": "팀원",
+            "discord_name": "닉",
+            "user_id": member.pk,
+        },
+        {
+            "discord_user_id": "222",
+            "display_name": "관리자",
+            "discord_name": "",
+            "user_id": admin.pk,
+        },
+    ]
+    reqs = [
+        {
+            "id": 1,
+            "requester_user_id": member.pk,
+            "requester_discord_user_id": "111",
+            "at": "2026-01-01T00:00:00+00:00",
+            "expires_at": "2026-01-01T00:02:00+00:00",
+            "status": "rejected",
+        }
+    ]
+    VoiceRecording.objects.filter(pk__in=[rec.pk, past.pk]).update(
+        participants=rows, host_requests=reqs
+    )
+
+    withdraw(member, "pw12345678")
+
+    rec.refresh_from_db()
+    past.refresh_from_db()
+    assert (rec.status, rec.end_reason) == ("transcribing", "host_left")
+    assert past.status == "recording"  # 남이 진행하는 회의는 그대로
+    for r in (rec, past):
+        mine, other = r.participants
+        assert mine["discord_user_id"] == mine["discord_name"] == ""
+        assert mine["display_name"] == DELETED_NAME
+        assert other["discord_user_id"] == "222" and other["display_name"] == "관리자"
+        assert r.host_requests[0]["requester_discord_user_id"] == ""
+
+
+def test_every_member_org_is_locked_in_pk_order(member, org):
+    """관리자가 아닌 조직도 잠근다(SQLite는 FOR UPDATE를 빼므로 잠그는 조회 자체를 확인한다)."""
+    from django.db import connection
+    from django.test.utils import CaptureQueriesContext
+
+    with CaptureQueriesContext(connection) as q:
+        withdraw(member, "pw12345678")
+    sqls = [x["sql"] for x in q.captured_queries]
+    lock = [s for s in sqls if s.startswith('SELECT "orgs_organization"')]
+    assert lock and "orgs_orgmembership" in lock[0] and '"role"' not in lock[0]
+    assert lock[0].rstrip().endswith('ORDER BY "orgs_organization"."id" ASC')
