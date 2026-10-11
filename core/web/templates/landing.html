@@ -73,13 +73,14 @@
     <div>
       <p class="hero-kicker" data-copy="hero.kicker">일은 차근차근, 우리는 무럭무럭.</p>
       <h1 id="hero-title" data-copy="hero.title"><span class="stroke">유달리</span> 편한 팀의 한 주</h1>
-      <p class="hero-name" data-copy="hero.name-note">유달리(U dally), 팀이 자랄 여유를 담은 이름</p>
       <p class="sub" data-copy="hero.subtitle">팀원 각자의 할 일을 관리하고 연결된 GitHub 활동에 맞춰 태스크 상태를 바꾸는 팀 운영관리 서비스입니다. AI에게 맡긴 일과 내가 내린 결정을 기록해 내 AI 활용 포트폴리오의 근거로 모아요.</p>
       <div class="ctas">
         <a class="btn primary lg" href="{% url 'signup' %}" data-copy="hero.cta-primary">무료로 시작하기</a>
         <a class="btn lg" href="#ch-3" data-copy="hero.cta-secondary">GitHub 자동화 살펴보기</a>
       </div>
       <p class="hero-trust" data-copy="hero.trust">가입 승인 없이 시작하며 AI 변경에는 내 권한과 조직 정책이 적용됩니다.</p>
+      <p class="hero-note" data-copy="teams.note">저장소 없는 팀도 태스크·검토·회의록·문서·요청 기능을 씁니다. GitHub 자동화는 저장소를 연결한 프로젝트에서 동작해요.</p>
+      <p class="hero-name" data-copy="hero.name-note">유달리(U dally), 팀이 자랄 여유를 담은 이름</p>
     </div>
 
     <nav class="week-map" aria-label="한 주 이야기 차례">
@@ -208,14 +209,14 @@
                 <li><p class="say" data-copy="ai-teammate.ask-3">“내 지시와 네 판단을 나눠 결정 기록으로 정리해 줘.”</p><p class="got"><svg viewBox="0 0 20 20" aria-hidden="true"><path class="art-stem" d="M10 18V8" stroke-width="2"/><path class="art-leaf" d="M10 10Q3 10 2 3Q9 2 10 10M10 8Q11 1 18 2Q18 8 10 8"/></svg><span data-copy="ai-teammate.result-3">기록할 요지 후보를 보여 주고 내가 확인한 내용을 구분해 남겨요.</span></p></li>
               </ol>
             </div>
-            <div class="guides">
-              <h5 class="mini-head" data-copy="ai-teammate.guide-title">유달리가 AI에게 주는 지침</h5>
+            <details class="guides fold-tech">
+              <summary><h5 class="mini-head" data-copy="ai-teammate.guide-title">유달리가 AI에게 주는 지침</h5></summary>
               <ol>
                 <li data-copy="ai-teammate.guide-1"><b>코딩 에이전트용 스킬:</b> <code>/pm-start</code>는 착수와 브랜치 이름을, <code>/pm-pr</code>은 태스크 번호를 담은 PR 설명 초안을 맡습니다.</li>
                 <li data-copy="ai-teammate.guide-2"><b>MCP 가이드:</b> 도구 사용법과 사용자 입력·AI 판단을 나누는 방법, 브랜치·PR 연결 규칙을 안내합니다.</li>
                 <li data-copy="ai-teammate.guide-3"><b>작업 전 질문:</b> 구현에 영향을 주는 미결정 사항을 맥락과 선택지로 모아 묻도록 안내해요.</li>
               </ol>
-            </div>
+            </details>
           </div>
         </div>
       </li>
@@ -288,7 +289,10 @@
               <p class="gh-desc" data-copy="github.step-5.body">검토 대기를 거친 태스크는 연결된 PR이 머지되면 완료로 넘어갑니다.</p>
             </li>
           </ol>
-          <p class="gh-note" data-copy="github.note">GitHub 자동 연결은 <code>TASK-n</code> 규칙을 따르며 기한이 있는 태스크는 해당 번호가 든 브랜치 생성으로도 진행 중이 돼요. 저장소 규칙이 켜져 있어야 하고 커밋 연결만으로는 상태가 바뀌지 않습니다.</p>
+          <details class="fold-tech fold-note">
+            <summary data-copy="shift.after-2">연결 규칙에 맞는 GitHub 활동이 태스크 상태를 바꿔요.</summary>
+            <p class="gh-note" data-copy="github.note">GitHub 자동 연결은 <code>TASK-n</code> 규칙을 따르며 기한이 있는 태스크는 해당 번호가 든 브랜치 생성으로도 진행 중이 돼요. 저장소 규칙이 켜져 있어야 하고 커밋 연결만으로는 상태가 바뀌지 않습니다.</p>
+          </details>
         </div>
       </li>
 

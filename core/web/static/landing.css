@@ -5,6 +5,8 @@
    ===================================================================== */
 
 /* ---- 기본: app.css 1절에 더하는 것 ---- */
+/* 단계 번호 글자: 세이지·노랑 원 위 고정 진한 색(5.7:1 이상, 다크도 같다) */
+:root { --c-on-step: #242921; }
 html { scroll-behavior: smooth; }
 body { overflow-x: clip; }
 h3, h4 { margin: 0; font-weight: 700; letter-spacing: -0.02em; text-wrap: balance; }
@@ -18,7 +20,7 @@ ul, ol { margin: 0; padding: 0; list-style: none; }
 .btn.lg { height: 48px; padding: 0 24px; font-size: var(--fs-lg); }
 .badge.violet { background: var(--c-violet-soft); color: var(--c-violet); }
 /* 상태 알약 (app.css .pill 색, 모양은 표시 전용) */
-.lp-pill { display: inline-flex; align-items: center; padding: 1px 10px; border-radius: var(--r-pill); font-size: var(--fs-xs); font-weight: 700; line-height: 20px; background: var(--c-soft); color: var(--c-ink); white-space: nowrap; }
+.lp-pill { display: inline-flex; align-items: center; padding: 1px 10px; border-radius: var(--r-xs); font-size: var(--fs-xs); font-weight: 700; line-height: 20px; background: var(--c-soft); color: var(--c-ink); white-space: nowrap; }
 .lp-pill.doing { background: var(--c-sage); }
 .lp-pill.review { background: var(--c-yellow); }
 .lp-pill.done { background: var(--c-success-soft); color: var(--c-success); }
@@ -230,8 +232,8 @@ ul, ol { margin: 0; padding: 0; list-style: none; }
 
 /* teams: ARIA 탭 */
 .tablist { display: inline-flex; flex-wrap: wrap; gap: var(--sp-1); padding: var(--sp-1); background: var(--c-soft); border-radius: var(--r-pill); }
-.tablist [role="tab"] { border: 0; background: transparent; color: var(--c-ink); font: inherit; font-weight: 600; padding: 0 var(--sp-5); min-height: 40px; border-radius: var(--r-pill); cursor: pointer; }
-.tablist [role="tab"][aria-selected="true"] { background: var(--c-surface); box-shadow: var(--sh-2); }
+.tablist [role="tab"] { border: 0; background: transparent; color: var(--c-ink); font: inherit; font-weight: 600; padding: 0 var(--sp-5); min-height: 44px; border-radius: var(--r-pill); cursor: pointer; }
+.tablist [role="tab"][aria-selected="true"] { background: var(--c-surface); box-shadow: var(--sh-2); text-decoration: underline 3px var(--c-accent); text-underline-offset: 6px; }
 .tabpanel { margin-top: var(--sp-6); display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr); gap: var(--sp-8); align-items: start; }
 .tabpanel[hidden] { display: none; }
 .team-name { font-family: var(--f-display); font-weight: 400; font-size: var(--fs-2xl); }
@@ -361,7 +363,7 @@ ul, ol { margin: 0; padding: 0; list-style: none; }
 .gh-flow { position: relative; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: var(--sp-3); counter-reset: st; }
 .gh-flow::before { content: ""; position: absolute; left: 14px; right: 14px; top: 13px; height: 3px; border-radius: 2px; background: linear-gradient(90deg, var(--c-sage-strong) 0 58%, var(--c-yellow-strong) 58% 80%, var(--c-success) 80%); }
 .gh-step { position: relative; display: grid; grid-template-rows: auto auto auto 1fr; gap: var(--sp-3); align-content: start; counter-increment: st; min-width: 0; }
-.gh-step::before { content: counter(st); position: relative; width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; font-family: var(--f-display); font-size: var(--fs-task); background: var(--c-sage-strong); color: var(--c-ink); box-shadow: 0 0 0 4px var(--c-bg); }
+.gh-step::before { content: counter(st); position: relative; width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; font-family: var(--f-display); font-size: var(--fs-task); background: var(--c-sage-strong); color: var(--c-on-step); box-shadow: 0 0 0 4px var(--c-bg); }
 .gh-step.s-review::before { background: var(--c-yellow-strong); }
 .gh-step.s-done::before { background: var(--c-success); color: var(--c-surface); }
 .gh-step h5 { margin: 0; font-size: var(--fs-task); line-height: 1.4; }
@@ -432,7 +434,18 @@ ul, ol { margin: 0; padding: 0; list-style: none; }
   html { scroll-behavior: auto; }
 }
 
-/* 모바일: 로고 링크도 터치 영역 44px */
-@media (max-width: 700px) {
-  .lp-logo { min-height: 44px; align-items: center; }
-}
+/* ---- 디자인 검토 1차 반영 ---- */
+/* 누르는 것은 모든 너비에서 44px 이상 */
+.lp-logo, .anchors a, .top-cta .login { min-height: 44px; display: inline-flex; align-items: center; }
+.btn, .week-map a, .faq-list summary { min-height: 44px; }
+.site-footer .foot-policy > a, .site-footer .biz-email > a { display: inline-flex; align-items: center; min-height: 44px; }
+/* 첫 화면 조건 안내 */
+.lp-hero .hero-note { margin-top: var(--sp-2); font-size: var(--fs-sm); color: var(--c-muted); }
+/* 기술 지침·연결 규칙 접기 */
+.fold-tech > summary { display: flex; align-items: center; gap: var(--sp-2); min-height: 44px; cursor: pointer; list-style: none; }
+.fold-tech > summary::-webkit-details-marker { display: none; }
+.fold-tech > summary::after { content: ""; flex: none; width: 8px; height: 8px; border-right: 2px solid var(--c-muted); border-bottom: 2px solid var(--c-muted); transform: rotate(45deg) translateY(-2px); transition: transform var(--dur-fast) var(--ease); }
+.fold-tech[open] > summary::after { transform: rotate(-135deg) translateY(-2px); }
+.fold-tech > summary .mini-head { margin: 0; }
+.fold-tech[open] > summary { margin-bottom: var(--sp-3); }
+.fold-note > summary { font-size: var(--fs-sm); color: var(--c-muted); font-weight: 600; }
