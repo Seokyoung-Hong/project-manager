@@ -1,0 +1,561 @@
+{% load static %}<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>유달리 · 일은 차근차근, 우리는 무럭무럭.</title>
+<meta name="description" content="팀원 각자의 할 일을 관리하고 연결된 GitHub 활동에 맞춰 태스크 상태를 바꾸는 팀 운영관리 서비스입니다. AI에게 맡긴 일과 내가 내린 결정을 기록해 내 AI 활용 포트폴리오의 근거로 모아요.">
+<meta property="og:type" content="website">
+<meta property="og:title" content="유달리 · 일은 차근차근, 우리는 무럭무럭.">
+<meta property="og:description" content="팀원 각자의 할 일을 관리하고 연결된 GitHub 활동에 맞춰 태스크 상태를 바꾸는 팀 운영관리 서비스입니다. AI에게 맡긴 일과 내가 내린 결정을 기록해 내 AI 활용 포트폴리오의 근거로 모아요.">
+<link rel="icon" type="image/svg+xml" href="{% static 'brand/udally-icon.svg' %}">
+<link rel="stylesheet" href="{% static 'fonts.css' %}">
+<link rel="stylesheet" href="{% static 'app.css' %}">
+<link rel="stylesheet" href="{% static 'landing.css' %}">
+<script src="{% static 'landing.js' %}" defer></script>
+</head>
+<body class="landing">
+<a class="skip-link" href="#main">본문으로 건너뛰기</a>
+
+<!-- 화분 공용 부품. 칠은 클래스로(다크에서 함께 바뀐다) -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <defs>
+    <symbol id="pot" viewBox="0 0 230 230">
+      <ellipse class="art-shadow" cx="125" cy="211" rx="77" ry="10"/>
+      <path class="art-pot" d="M87 138L99 200Q131 215 166 200L180 138Z"/>
+      <ellipse class="art-rim" cx="134" cy="138" rx="46" ry="12"/>
+      <ellipse class="art-soil" cx="134" cy="138" rx="33" ry="7"/>
+    </symbol>
+    <g id="face-awake">
+      <circle class="art-face" cx="124" cy="171" r="3"/><circle class="art-face" cx="148" cy="171" r="3"/>
+      <path class="art-face-line" d="M129 183Q137 189 144 181" stroke-width="2"/>
+    </g>
+    <g id="leaves-full">
+      <path class="art-stem" d="M134 139Q137 90 141 57" stroke-width="6"/>
+      <g class="leaf"><path class="art-leaf" d="M138 100Q72 104 61 49Q124 28 138 100"/><path class="art-vein" d="M138 100L77 61" stroke-width="2"/></g>
+      <g class="leaf-2"><path class="art-leaf-2" d="M140 78Q148 19 207 29Q214 78 140 78"/><path class="art-vein" d="M141 77L189 42" stroke-width="2"/></g>
+    </g>
+    <g id="flower">
+      <g transform="translate(141 46)">
+        <circle class="art-petal" cx="0" cy="-13" r="10"/><circle class="art-petal" cx="12.4" cy="-4" r="10"/>
+        <circle class="art-petal" cx="7.6" cy="10.5" r="10"/><circle class="art-petal" cx="-7.6" cy="10.5" r="10"/>
+        <circle class="art-petal" cx="-12.4" cy="-4" r="10"/><circle class="art-yellow" r="8"/>
+      </g>
+    </g>
+    <g id="ava-face"><circle cx="8.5" cy="10" r="2"/><circle cx="15.5" cy="10" r="2"/><path d="M8 15q4 3.5 8 0"/></g>
+  </defs>
+</svg>
+
+<header class="top">
+  <div class="wrap">
+    <a class="lp-logo" href="{% url 'root' %}" aria-label="유달리 처음 화면">
+      <img class="brand-logo" src="{% static 'brand/udally.svg' %}" alt="유달리" width="94" height="38">
+    </a>
+    <nav class="anchors" aria-label="페이지 안 이동">
+      <a href="#ch-3" data-copy="nav.anchor-1">GitHub 자동화</a>
+      <a href="#ch-2" data-copy="nav.anchor-2">AI와 일하기</a>
+      <a href="#ch-5" data-copy="nav.anchor-3">결정 기록</a>
+      <a href="#ch-6" data-copy="nav.anchor-4">내 포트폴리오</a>
+      <a href="#ch-4" data-copy="nav.anchor-5">팀 운영</a>
+    </nav>
+    <div class="top-cta">
+      <a class="login" href="{% url 'login' %}" data-copy="nav.login">로그인</a>
+      <a class="btn tint" href="{% url 'signup' %}" data-copy="nav.start">무료로 시작하기</a>
+    </div>
+  </div>
+</header>
+
+<main id="main">
+
+<!-- ===== hero ===== -->
+<section class="lp-hero" aria-labelledby="hero-title">
+  <div class="wrap">
+    <div>
+      <p class="hero-kicker" data-copy="hero.kicker">일은 차근차근, 우리는 무럭무럭.</p>
+      <h1 id="hero-title" data-copy="hero.title"><span class="stroke">유달리</span> 편한 팀의 한 주</h1>
+      <p class="hero-name" data-copy="hero.name-note">유달리(U dally), 팀이 자랄 여유를 담은 이름</p>
+      <p class="sub" data-copy="hero.subtitle">팀원 각자의 할 일을 관리하고 연결된 GitHub 활동에 맞춰 태스크 상태를 바꾸는 팀 운영관리 서비스입니다. AI에게 맡긴 일과 내가 내린 결정을 기록해 내 AI 활용 포트폴리오의 근거로 모아요.</p>
+      <div class="ctas">
+        <a class="btn primary lg" href="{% url 'signup' %}" data-copy="hero.cta-primary">무료로 시작하기</a>
+        <a class="btn lg" href="#ch-3" data-copy="hero.cta-secondary">GitHub 자동화 살펴보기</a>
+      </div>
+      <p class="hero-trust" data-copy="hero.trust">가입 승인 없이 시작하며 AI 변경에는 내 권한과 조직 정책이 적용됩니다.</p>
+    </div>
+
+    <nav class="week-map" aria-label="한 주 이야기 차례">
+      <svg class="seed" viewBox="0 0 230 230" aria-hidden="true" focusable="false">
+        <use href="#pot" width="230" height="230"/>
+        <ellipse class="art-rim" cx="134" cy="134" rx="8" ry="5" transform="rotate(-18 134 134)"/>
+        <path class="art-face-line" d="M119 172Q124 176 129 172M143 172Q148 176 153 172" stroke-width="2.4"/>
+        <path class="art-face-line" d="M132 184Q137 187 142 184" stroke-width="2"/>
+        <path class="art-spark spark" d="M60 96Q63 108 75 111Q63 114 60 126Q57 114 45 111Q57 108 60 96Z"/>
+      </svg>
+      <ol>
+        <li><a href="#ch-1"><span class="dot" aria-hidden="true"></span><span class="when" data-copy="story.time-1">월요일 아침</span><span class="what" data-copy="story.map-1">한 주 준비</span></a></li>
+        <li><a href="#ch-2"><span class="dot" aria-hidden="true"></span><span class="when" data-copy="story.time-2">월요일 오후</span><span class="what" data-copy="story.map-2">AI와 착수</span></a></li>
+        <li><a href="#ch-3"><span class="dot" aria-hidden="true"></span><span class="when" data-copy="story.time-3">화요일 오후</span><span class="what" data-copy="story.map-3">개발과 검토</span></a></li>
+        <li><a href="#ch-4"><span class="dot" aria-hidden="true"></span><span class="when" data-copy="story.time-4">수요일 아침</span><span class="what" data-copy="story.map-4">팀 현황</span></a></li>
+        <li><a href="#ch-5"><span class="dot" aria-hidden="true"></span><span class="when" data-copy="story.time-5">목요일 오후</span><span class="what" data-copy="story.map-5">결정 확인</span></a></li>
+        <li><a href="#ch-6"><span class="dot" aria-hidden="true"></span><span class="when" data-copy="story.time-6">금요일 오후</span><span class="what" data-copy="story.map-6">보고서 초안</span></a></li>
+      </ol>
+    </nav>
+  </div>
+</section>
+
+<!-- ===== shift ===== -->
+<section class="after shift" id="shift" aria-labelledby="shift-title">
+  <div class="wrap">
+    <header class="sec-head">
+      <h2 id="shift-title" data-copy="shift.title">AI와 함께한 일에도 담당자와 기록이 필요해요</h2>
+      <p data-copy="shift.desc">이제 AI 없이 프로젝트를 진행하기 어려워졌어요. 팀원처럼 함께 일하고 내 조수로 결과물을 만드는 AI에게 무엇을 맡겼는지, 내가 무엇을 정했는지 대화만으로는 찾기 어려워요. 유달리는 팀의 태스크에 진행 상황과 결정 요지를 모읍니다.</p>
+    </header>
+    <div class="ba">
+      <div class="ba-before">
+        <h3 data-copy="shift.before-label">정리 전</h3>
+        <ul class="scraps">
+          <li data-copy="shift.before-1">AI에게 맡긴 일이 대화에만 남아요.</li>
+          <li data-copy="shift.before-2">GitHub에서 개발이 진행돼도 업무 보드는 따로 고칩니다.</li>
+          <li data-copy="shift.before-3">결과물을 보며 내 지시와 AI의 판단을 다시 찾게 돼요.</li>
+        </ul>
+      </div>
+      <svg class="ba-arrow" viewBox="0 0 56 40" aria-hidden="true" focusable="false"><path class="art-stem" d="M4 20Q28 8 46 20" stroke-width="3"/><path class="art-stem" d="M38 12L48 20L38 28" stroke-width="3"/></svg>
+      <div class="ba-after">
+        <h3 data-copy="shift.after-label">정리 후</h3>
+        <ul class="ticks">
+          <li data-copy="shift.after-1">내 요청으로 AI가 만든 태스크에 담당자와 완료 조건을 둡니다.</li>
+          <li data-copy="shift.after-2">연결 규칙에 맞는 GitHub 활동이 태스크 상태를 바꿔요.</li>
+          <li data-copy="shift.after-3">내가 정한 내용과 AI가 판단한 내용을 나눠 확인합니다.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 이야기 축 ===== -->
+<section class="week" id="week" aria-labelledby="week-title">
+  <div class="wrap">
+    <header class="week-head">
+      <h2 id="week-title" data-copy="story.title">자라는 한 주</h2>
+      <p data-copy="story.lead">월요일에 고른 할 일이 개발과 검토를 거쳐 내 기록에 남는 한 주를 따라가요. 팀원과 AI가 함께한 과정에서 내가 정한 방향도 확인해 보세요.</p>
+    </header>
+
+    <ol class="story">
+
+      <!-- 1. 한 주 준비 (team-ops.today) — 씨앗 -->
+      <li class="ch" id="ch-1">
+        <div class="ch-axis">
+          <svg class="stage" viewBox="0 0 230 230" aria-hidden="true" focusable="false">
+            <use href="#pot" width="230" height="230"/>
+            <ellipse class="art-rim" cx="134" cy="134" rx="8" ry="5" transform="rotate(-18 134 134)"/>
+            <path class="art-face-line" d="M119 172Q124 176 129 172M143 172Q148 176 153 172" stroke-width="2.4"/>
+            <path class="art-face-line" d="M132 184Q137 187 142 184" stroke-width="2"/>
+          </svg>
+          <p class="ch-time" data-copy="story.time-1">월요일 아침</p>
+          <p class="ch-stage" data-copy="story.stage-1">씨앗</p>
+        </div>
+        <div class="ch-body">
+          <h3 data-copy="story.chapter-1">지난주를 읽고 이번 주 할 일을 골라요</h3>
+          <div class="ch-intro">
+            <h4 class="ch-sub" data-copy="team-ops.today.name">오늘</h4>
+            <p class="lead" data-copy="team-ops.today.desc">내가 맡은 일 가운데 지금 할 일을 고르세요.</p>
+          </div>
+          <div class="ch-row">
+            <ul class="ticks">
+              <li data-copy="team-ops.today.item-1">기한이 가까운 일과 기한을 넘긴 일이 오늘 목록에 자동으로 모여요.</li>
+              <li data-copy="team-ops.today.item-2">직접 담거나 오늘 하루만 빼서 목록을 조절합니다.</li>
+              <li data-copy="team-ops.today.item-3">맨 위의 미완료 태스크와 내 마감 달력을 살펴봐요.</li>
+            </ul>
+            <figure class="frag today" aria-label="오늘 목록 예시">
+              <div class="memo">
+                <small>지금 할 한 가지</small>
+                <p data-copy="ui-samples.task-1">TASK-12 초대 링크 만료 안내 문구 정리</p>
+              </div>
+              <ul class="today-list">
+                <li><span class="ring" aria-hidden="true"></span><span class="t" data-copy="ui-samples.task-1">TASK-12 초대 링크 만료 안내 문구 정리</span><span class="badge warn">오늘 마감</span></li>
+                <li><span class="ring" aria-hidden="true"></span><span class="t" data-copy="ui-samples.task-2">TASK-18 저장소 연결 오류 안내 개선</span><span class="badge danger num">10월 9일 초과</span></li>
+                <li><span class="ring" aria-hidden="true"></span><span class="t"><span data-copy="ui-samples.task-4">TASK-31 가입 화면 모바일 배치 점검</span><span class="auto">자동 추가</span></span><span class="badge num">10월 14일</span></li>
+              </ul>
+            </figure>
+          </div>
+        </div>
+      </li>
+
+      <!-- 2. AI와 착수 (ai-teammate) — 싹 -->
+      <li class="ch" id="ch-2">
+        <div class="ch-axis">
+          <svg class="stage" viewBox="0 0 230 230" aria-hidden="true" focusable="false">
+            <use href="#pot" width="230" height="230"/>
+            <path class="art-stem" d="M134 139Q135 126 136 116" stroke-width="5"/>
+            <path class="art-leaf" d="M136 119Q121 118 115 104Q131 99 136 119"/>
+            <path class="art-leaf-2" d="M136 119Q149 113 155 100Q139 96 136 119"/>
+            <use href="#face-awake"/>
+          </svg>
+          <p class="ch-time" data-copy="story.time-2">월요일 오후</p>
+          <p class="ch-stage" data-copy="story.stage-2">싹</p>
+        </div>
+        <div class="ch-body">
+          <h3 data-copy="story.chapter-2">고른 일을 AI에게 맡겨 착수해요</h3>
+          <div class="ch-intro">
+            <h4 class="ch-sub" data-copy="ai-teammate.title">AI 조수에게 맡길 일과 기록 방법</h4>
+            <p class="lead" data-copy="ai-teammate.desc">AI는 내 지시에 따라 태스크를 계획하고 설정하며 진행 메모와 결정 요지를 남깁니다. 생성 초안은 내가 확인하고 대화에 없는 기한과 담당자는 비워 둬요. 태스크 담당자는 사람이며 AI는 내 권한 안에서 일합니다.</p>
+          </div>
+          <div class="ch-row">
+            <div>
+              <h5 class="mini-head" data-copy="ai-teammate.talk-title">내가 하는 말</h5>
+              <ol class="ai-talk">
+                <li><p class="say" data-copy="ai-teammate.ask-1">“이 기능을 태스크로 나누고 첫 작업에 착수해 줘.”</p><p class="got"><svg viewBox="0 0 20 20" aria-hidden="true"><path class="art-stem" d="M10 18V8" stroke-width="2"/><path class="art-leaf" d="M10 10Q3 10 2 3Q9 2 10 10M10 8Q11 1 18 2Q18 8 10 8"/></svg><span data-copy="ai-teammate.result-1">분할안을 확인받아 태스크를 만들고 저장소가 연결돼 있으면 착수 스킬이 브랜치 이름을 정해 줘요.</span></p></li>
+                <li><p class="say" data-copy="ai-teammate.ask-2">“작업 중 발견한 오류는 후속 태스크로 남겨 줘.”</p><p class="got"><svg viewBox="0 0 20 20" aria-hidden="true"><path class="art-stem" d="M10 18V8" stroke-width="2"/><path class="art-leaf" d="M10 10Q3 10 2 3Q9 2 10 10M10 8Q11 1 18 2Q18 8 10 8"/></svg><span data-copy="ai-teammate.result-2">후속 태스크를 만들고 현재 작업의 진행 메모에 연결 번호를 남깁니다.</span></p></li>
+                <li><p class="say" data-copy="ai-teammate.ask-3">“내 지시와 네 판단을 나눠 결정 기록으로 정리해 줘.”</p><p class="got"><svg viewBox="0 0 20 20" aria-hidden="true"><path class="art-stem" d="M10 18V8" stroke-width="2"/><path class="art-leaf" d="M10 10Q3 10 2 3Q9 2 10 10M10 8Q11 1 18 2Q18 8 10 8"/></svg><span data-copy="ai-teammate.result-3">기록할 요지 후보를 보여 주고 내가 확인한 내용을 구분해 남겨요.</span></p></li>
+              </ol>
+            </div>
+            <div class="guides">
+              <h5 class="mini-head" data-copy="ai-teammate.guide-title">유달리가 AI에게 주는 지침</h5>
+              <ol>
+                <li data-copy="ai-teammate.guide-1"><b>코딩 에이전트용 스킬:</b> <code>/pm-start</code>는 착수와 브랜치 이름을, <code>/pm-pr</code>은 태스크 번호를 담은 PR 설명 초안을 맡습니다.</li>
+                <li data-copy="ai-teammate.guide-2"><b>MCP 가이드:</b> 도구 사용법과 사용자 입력·AI 판단을 나누는 방법, 브랜치·PR 연결 규칙을 안내합니다.</li>
+                <li data-copy="ai-teammate.guide-3"><b>작업 전 질문:</b> 구현에 영향을 주는 미결정 사항을 맥락과 선택지로 모아 묻도록 안내해요.</li>
+              </ol>
+            </div>
+          </div>
+        </div>
+      </li>
+
+      <!-- 3. 개발과 검토 (github) — 새싹 · 이 페이지의 핵심 시각물 -->
+      <li class="ch ch-gh" id="ch-3">
+        <div class="ch-axis">
+          <svg class="stage" viewBox="0 0 230 230" aria-hidden="true" focusable="false">
+            <use href="#pot" width="230" height="230"/>
+            <path class="art-stem" d="M134 139Q136 112 138 90" stroke-width="5.5"/>
+            <path class="art-leaf" d="M137 114Q102 116 93 86Q126 74 137 114"/>
+            <path class="art-vein" d="M137 114L103 90" stroke-width="2"/>
+            <path class="art-leaf-2" d="M138 98Q142 66 173 70Q176 96 138 98"/>
+            <use href="#face-awake"/>
+          </svg>
+          <p class="ch-time" data-copy="story.time-3">화요일 오후</p>
+          <p class="ch-stage" data-copy="story.stage-3">새싹</p>
+        </div>
+        <div class="ch-body">
+          <h3 data-copy="story.chapter-3">개발한 내용을 검토하고 반영해요</h3>
+          <div class="ch-intro">
+            <h4 class="ch-sub" data-copy="github.title">GitHub 활동과 태스크 상태 연결</h4>
+            <p class="lead" data-copy="github.desc">저장소가 연결된 프로젝트에서 AI에게 착수를 맡기면 태스크와 브랜치를 준비해요. AI 스킬이 태스크 번호를 담은 브랜치 이름과 PR 설명 초안을 정리하고 유달리는 연결된 활동에 맞춰 상태를 바꿉니다.</p>
+          </div>
+
+          <ol class="gh-flow" aria-label="태스크 하나가 GitHub 활동에 따라 바뀌는 흐름">
+            <li class="gh-step s-doing">
+              <h5 data-copy="github.step-1.title">AI에게 착수 맡기기</h5>
+              <div class="gh-card" aria-hidden="true">
+                <p class="gh-task" data-copy="ui-samples.task-1">TASK-12 초대 링크 만료 안내 문구 정리</p>
+                <p class="gh-status"><span class="lp-pill todo">시작 전</span><span class="arrow">→</span><span class="lp-pill doing">진행 중</span></p>
+                <p class="gh-line">브랜치 <code data-copy="ui-samples.branch-1">feat/초대-링크-안내-TASK-12</code></p>
+              </div>
+              <p class="gh-desc" data-copy="github.step-1.body"><code>/pm-start</code>가 기한과 담당자를 확인하고 태스크를 진행 중으로 바꾸며 번호를 담은 브랜치 이름을 정해 줘요.</p>
+            </li>
+            <li class="gh-step s-doing">
+              <h5 data-copy="github.step-2.title">커밋 기록</h5>
+              <div class="gh-card" aria-hidden="true">
+                <p class="gh-task" data-copy="ui-samples.task-1">TASK-12 초대 링크 만료 안내 문구 정리</p>
+                <p class="gh-status"><span class="lp-pill doing">진행 중</span></p>
+                <p class="gh-line num">연결된 PR 없음 · 커밋 2건</p>
+              </div>
+              <p class="gh-desc" data-copy="github.step-2.body">태스크 번호가 담긴 커밋 메시지를 통해 개발 기록이 해당 태스크에 붙습니다.</p>
+            </li>
+            <li class="gh-step s-doing">
+              <h5 data-copy="github.step-3.title">PR 초안 준비</h5>
+              <div class="gh-card" aria-hidden="true">
+                <p class="gh-task" data-copy="ui-samples.task-1">TASK-12 초대 링크 만료 안내 문구 정리</p>
+                <p class="gh-status"><span class="lp-pill doing">진행 중</span></p>
+                <p class="gh-draft" data-copy="ui-samples.pr-1">TASK-12 초대 링크 만료 안내 추가</p>
+              </div>
+              <p class="gh-desc" data-copy="github.step-3.body"><code>/pm-pr</code>이 결정 기록과 작업 내용을 읽고 태스크 번호를 포함한 PR 제목·설명 초안을 작성합니다.</p>
+            </li>
+            <li class="gh-step s-review">
+              <h5 data-copy="github.step-4.title">PR 열기</h5>
+              <div class="gh-card" aria-hidden="true">
+                <p class="gh-task" data-copy="ui-samples.task-1">TASK-12 초대 링크 만료 안내 문구 정리</p>
+                <p class="gh-status"><span class="lp-pill review">검토 대기</span></p>
+                <p class="gh-line num"><span class="badge pr-open"><code>#41</code> Open</span> · 커밋 2건</p>
+              </div>
+              <p class="gh-desc" data-copy="github.step-4.body">태스크 번호로 연결된 PR을 열면 검토 대기로 넘어가요.</p>
+            </li>
+            <li class="gh-step s-done">
+              <h5 data-copy="github.step-5.title">PR 머지</h5>
+              <div class="gh-card" aria-hidden="true">
+                <p class="gh-task" data-copy="ui-samples.task-1">TASK-12 초대 링크 만료 안내 문구 정리</p>
+                <p class="gh-status"><span class="lp-pill done">완료</span></p>
+                <p class="gh-line num"><span class="badge pr-merged"><code>#41</code> Merged</span> · 커밋 2건</p>
+              </div>
+              <p class="gh-desc" data-copy="github.step-5.body">검토 대기를 거친 태스크는 연결된 PR이 머지되면 완료로 넘어갑니다.</p>
+            </li>
+          </ol>
+          <p class="gh-note" data-copy="github.note">GitHub 자동 연결은 <code>TASK-n</code> 규칙을 따르며 기한이 있는 태스크는 해당 번호가 든 브랜치 생성으로도 진행 중이 돼요. 저장소 규칙이 켜져 있어야 하고 커밋 연결만으로는 상태가 바뀌지 않습니다.</p>
+        </div>
+      </li>
+
+      <!-- 4. 팀 현황 (team-ops.board · team-ops.discord) — 잎 -->
+      <li class="ch" id="ch-4">
+        <div class="ch-axis">
+          <svg class="stage" viewBox="0 0 230 230" aria-hidden="true" focusable="false">
+            <use href="#pot" width="230" height="230"/>
+            <use href="#leaves-full"/>
+            <use href="#face-awake"/>
+          </svg>
+          <p class="ch-time" data-copy="story.time-4">수요일 아침</p>
+          <p class="ch-stage" data-copy="story.stage-4">잎</p>
+        </div>
+        <div class="ch-body">
+          <h3 data-copy="story.chapter-4">동료의 진행 상황을 함께 살펴요</h3>
+          <div class="ch-row">
+            <div class="stack-col">
+              <div class="ch-intro">
+                <h4 class="ch-sub" data-copy="team-ops.board.name">보드·부하</h4>
+                <p class="lead" data-copy="team-ops.board.desc">누가 무엇을 맡았는지 팀이 함께 봐요.</p>
+              </div>
+              <figure class="frag" aria-label="팀 칸반 보드와 사람별 부하 예시">
+                <div class="lp-board">
+                  <div class="lp-col"><h5>시작 전</h5><ul>
+                    <li class="kc"><span data-copy="ui-samples.task-5">제품 소개 화면 초안 검토</span><span class="who"><span class="ini">서</span><span data-copy="ui-samples.person-3">서연</span></span></li>
+                  </ul></div>
+                  <div class="lp-col doing"><h5>진행 중</h5><ul>
+                    <li class="kc drag"><span data-copy="ui-samples.task-1">TASK-12 초대 링크 만료 안내 문구 정리</span><span class="who"><span class="ini">민</span><span data-copy="ui-samples.person-1">민지</span></span></li>
+                    <li class="kc"><span data-copy="ui-samples.task-7">사용자 인터뷰 질문 작성</span><span class="who"><span class="ini">하</span><span data-copy="ui-samples.person-5">하린</span></span></li>
+                  </ul></div>
+                  <div class="lp-col review"><h5>검토 대기</h5><ul>
+                    <li class="kc"><span data-copy="ui-samples.task-3">TASK-24 검토 대기 목록 정렬 수정</span><span class="who"><span class="ini">도</span><span data-copy="ui-samples.person-2">도윤</span></span></li>
+                  </ul></div>
+                </div>
+                <ul class="load" aria-label="사람별 부하">
+                  <li><span data-copy="ui-samples.person-1">민지</span><span class="lp-bar hot"><i style="width: 82%"></i></span><span class="num">5건</span></li>
+                  <li><span data-copy="ui-samples.person-2">도윤</span><span class="lp-bar"><i style="width: 46%"></i></span><span class="num">3건</span></li>
+                  <li><span data-copy="ui-samples.person-3">서연</span><span class="lp-bar"><i style="width: 30%"></i></span><span class="num">2건</span></li>
+                </ul>
+              </figure>
+              <ul class="ticks">
+                <li data-copy="team-ops.board.item-1">보드에서 태스크를 끌어 상태를 바꿉니다.</li>
+                <li data-copy="team-ops.board.item-2">사람별 부하를 보며 담당자와 기한을 조정합니다.</li>
+                <li data-copy="team-ops.board.item-3">로드맵에 마일스톤과 의존 관계를 정리해요.</li>
+              </ul>
+            </div>
+            <div class="stack-col">
+              <div class="ch-intro">
+                <h4 class="ch-sub" data-copy="team-ops.discord.name">Discord 알림</h4>
+                <p class="lead" data-copy="team-ops.discord.desc">마감과 기다리는 일을 Discord에서 확인해요.</p>
+              </div>
+              <figure class="frag" aria-label="Discord 알림 예시">
+                <div class="dm">
+                  <div class="dm-msg"><span class="dc-ava" aria-hidden="true"><svg viewBox="0 0 24 24"><use href="#ava-face"/></svg></span><div><p class="dm-meta"><b>유달리</b></p><p data-copy="ui-samples.dm-1">민지님, 초대 링크 만료 안내 문구 정리가 오늘 마감이에요.</p></div></div>
+                  <div class="dm-msg"><span class="dc-ava" aria-hidden="true"><svg viewBox="0 0 24 24"><use href="#ava-face"/></svg></span><div><p class="dm-meta"><b>유달리</b></p><p data-copy="ui-samples.dm-2">도윤님, 저장소 연결 오류 안내 개선의 기한이 지났습니다.</p></div></div>
+                  <div class="dm-msg"><span class="dc-ava" aria-hidden="true"><svg viewBox="0 0 24 24"><use href="#ava-face"/></svg></span><div><p class="dm-meta"><b>유달리</b></p><p data-copy="ui-samples.dm-3">검토 대기 목록 정렬 수정이 오래 검토를 기다리고 있어요.</p></div></div>
+                </div>
+              </figure>
+              <ul class="ticks">
+                <li data-copy="team-ops.discord.item-1">마감 전과 당일, 기한 초과 알림을 담당자 DM으로 받습니다.</li>
+                <li data-copy="team-ops.discord.item-2">조직 채널에 올라오는 주간 보고를 함께 읽습니다.</li>
+                <li data-copy="team-ops.discord.item-3">오래 막힌 일과 검토를 기다리는 일을 관리자에게 알려요.</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </li>
+
+      <!-- 5. 결정 확인 (decisions) — 봉오리 -->
+      <li class="ch" id="ch-5">
+        <div class="ch-axis">
+          <svg class="stage" viewBox="0 0 230 230" aria-hidden="true" focusable="false">
+            <use href="#pot" width="230" height="230"/>
+            <path class="art-leaf" d="M136 120Q172 128 192 104Q168 86 136 120"/>
+            <use href="#leaves-full"/>
+            <ellipse class="art-petal" cx="141" cy="50" rx="8" ry="11"/>
+            <use href="#face-awake"/>
+          </svg>
+          <p class="ch-time" data-copy="story.time-5">목요일 오후</p>
+          <p class="ch-stage" data-copy="story.stage-5">봉오리</p>
+        </div>
+        <div class="ch-body">
+          <h3 data-copy="story.chapter-5">내가 정한 방향을 확인해요</h3>
+          <div class="ch-intro">
+            <h4 class="ch-sub" data-copy="decisions.title">내 지시와 AI 판단을 나눈 결정 기록</h4>
+            <p class="lead" data-copy="decisions.desc">결과물만 보면 누가 어떤 방향을 정했는지 알기 어려워요. 태스크마다 선택의 요지와 근거를 남겨 내 역할을 확인합니다.</p>
+          </div>
+          <div class="ch-row">
+            <figure class="frag" aria-label="의사결정 기록 예시">
+              <div class="dec">
+                <div class="dec-head"><b data-copy="ui-samples.task-1">TASK-12 초대 링크 만료 안내 문구 정리</b></div>
+                <p class="dec-title">의사결정 기록</p>
+                <div class="dec-cols">
+                  <div><h5>사용자 입력</h5><p data-copy="ui-samples.decision-1.user">만료된 초대 링크에서 새 초대 요청 방법을 안내하도록 지시</p><span class="badge warn">확인 대기</span><span class="fake-btn" aria-hidden="true">내 의사결정으로 확인</span></div>
+                  <div><h5>AI 작업 판단</h5><p data-copy="ui-samples.decision-1.ai">오류 안내 문구와 요청 버튼을 같은 영역에 배치하기로 판단</p><span class="badge">기록됨</span></div>
+                </div>
+              </div>
+              <div class="dec dec-2">
+                <div class="dec-head"><b data-copy="ui-samples.task-3">TASK-24 검토 대기 목록 정렬 수정</b></div>
+                <div class="dec-cols">
+                  <div><h5>사용자 입력</h5><p data-copy="ui-samples.decision-2.user">오래 기다린 태스크부터 검토 대기 목록에 표시하도록 지시</p><span class="badge ok">사용자 확인</span></div>
+                  <div><h5>AI 작업 판단</h5><p data-copy="ui-samples.decision-2.ai">검토 대기 전환 시각을 정렬 기준으로 선택</p><span class="badge">기록됨</span></div>
+                </div>
+              </div>
+            </figure>
+            <ul class="ticks">
+              <li data-copy="decisions.item-1"><b>사용자 입력:</b> 내가 정한 요구사항과 방향 수정, AI에게 준 협업 방식 지시를 요약해요.</li>
+              <li data-copy="decisions.item-2"><b>AI 작업 판단:</b> 작업 중 AI가 선택한 방법은 별도로 남겨 내 결정과 구분합니다.</li>
+              <li data-copy="decisions.item-3"><b>본인 확인:</b> AI가 추론한 내 결정은 확인 대기로 남으며 본인이 웹에서 확인해야 확정됩니다.</li>
+            </ul>
+          </div>
+        </div>
+      </li>
+
+      <!-- 6. 보고서 초안 (portfolio) — 꽃 -->
+      <li class="ch" id="ch-6">
+        <div class="ch-axis">
+          <svg class="stage" viewBox="0 0 230 230" aria-hidden="true" focusable="false">
+            <use href="#pot" width="230" height="230"/>
+            <path class="art-leaf" d="M136 120Q172 128 192 104Q168 86 136 120"/>
+            <use href="#leaves-full"/>
+            <use href="#flower"/>
+            <path class="art-spark" d="M40 112Q44 128 60 132Q44 136 40 152Q36 136 20 132Q36 128 40 112Z"/>
+            <use href="#face-awake"/>
+          </svg>
+          <p class="ch-time" data-copy="story.time-6">금요일 오후</p>
+          <p class="ch-stage" data-copy="story.stage-6">꽃</p>
+        </div>
+        <div class="ch-body">
+          <h3 data-copy="story.chapter-6">한 주의 근거로 내 역할을 정리해요</h3>
+          <div class="ch-intro">
+            <h4 class="ch-sub" data-copy="portfolio.title">기록을 골라 내 AI 활용 포트폴리오를 써요</h4>
+            <p class="lead" data-copy="portfolio.desc">내 결정 기록을 근거로 내가 정한 방향과 AI에게 맡긴 일을 보고서 형식으로 정리해요. 유달리가 외부 AI용 프롬프트를 만들고 내가 쓰는 AI가 글을 작성합니다.</p>
+          </div>
+          <ol class="pf-flow">
+            <li>
+              <h5 data-copy="portfolio.step-1.title">기록 고르기</h5>
+              <p class="pf-desc" data-copy="portfolio.step-1.body">내게 귀속되거나 내가 확인한 기록을 고르고 AI 판단은 작업 맥락으로 참고합니다.</p>
+              <div class="pf-card" aria-hidden="true">
+                <p class="pf-label">포트폴리오 출처</p>
+                <p class="pf-src on"><span class="lp-box"></span><span><span class="badge ok">내 결정</span> <span data-copy="ui-samples.decision-1.user">만료된 초대 링크에서 새 초대 요청 방법을 안내하도록 지시</span></span></p>
+                <p class="pf-src on"><span class="lp-box"></span><span><span class="badge ok">내 결정</span> <span data-copy="ui-samples.decision-3.user">구현 전 미결정 사항을 모아 질문하고 답을 기록하도록 지시</span></span></p>
+                <p class="pf-src"><span class="lp-box"></span><span><span class="badge">AI 판단 · 프로젝트 맥락</span> <span data-copy="ui-samples.decision-2.ai">검토 대기 전환 시각을 정렬 기준으로 선택</span></span></p>
+                <span class="fake-btn">선택한 출처로 AI 프롬프트 만들기</span>
+              </div>
+            </li>
+            <li>
+              <h5 data-copy="portfolio.step-2.title">프롬프트</h5>
+              <p class="pf-desc" data-copy="portfolio.step-2.body">고른 출처로 만든 프롬프트를 외부 AI에 붙여 넣어 초안을 받아요.</p>
+              <div class="pf-card" aria-hidden="true">
+                <p class="pf-label">AI에게 전달할 프롬프트</p>
+                <span class="skel mono"><i></i><i></i><i></i><i></i></span>
+                <span class="fake-btn ghost">프롬프트 복사</span>
+              </div>
+            </li>
+            <li>
+              <h5 data-copy="portfolio.step-3.title">초안 저장</h5>
+              <p class="pf-desc" data-copy="portfolio.step-3.body">AI가 쓴 마크다운을 유달리에 붙여 저장하고 편집한 뒤 파일로 내려받아요.</p>
+              <div class="pf-card" aria-hidden="true">
+                <p class="pf-label">AI가 작성한 Markdown</p>
+                <span class="skel"><i class="h"></i><i></i><i></i></span>
+                <span class="pf-btns"><span class="fake-btn">비공개 초안 저장</span><span class="fake-btn ghost">Markdown 다운로드</span></span>
+              </div>
+            </li>
+          </ol>
+          <p class="gh-note" data-copy="portfolio.note">초안은 소유자만 열람하는 비공개 문서입니다. AI 판단을 내 성과로 서술하지 않도록 프롬프트에서 안내해요.</p>
+        </div>
+      </li>
+    </ol>
+  </div>
+</section>
+
+<!-- ===== trust ===== -->
+<section class="after" id="trust" aria-labelledby="trust-title">
+  <div class="wrap">
+    <div class="trust">
+      <h2 id="trust-title" data-copy="trust.title">AI에게 맡기는 범위는 사람이 정합니다</h2>
+      <ol>
+        <li><h3 data-copy="trust.item-1.title">내 권한 안에서</h3><p data-copy="trust.item-1.body">AI는 토큰을 발급한 사람의 권한을 넘지 못하며 조직의 AI 정책이 허용한 작업만 수행합니다.</p></li>
+        <li><h3 data-copy="trust.item-2.title">변경 경로 기록</h3><p data-copy="trust.item-2.body">변경 이력에는 누가 웹·API·AI·Discord·GitHub 중 어떤 경로로 바꿨는지 남습니다.</p></li>
+        <li><h3 data-copy="trust.item-3.title">본인 확인</h3><p data-copy="trust.item-3.body">AI가 추론한 내 결정은 본인이 웹에서 확인해야 확정되며 API나 MCP 토큰으로는 확인하지 못해요.</p></li>
+        <li><h3 data-copy="trust.item-4.title">관리자 허용</h3><p data-copy="trust.item-4.body">AI의 조직 설정 변경은 요청으로 올라가며 관리자가 웹에서 허용해야 적용됩니다.</p></li>
+      </ol>
+    </div>
+  </div>
+</section>
+
+<!-- ===== teams ===== -->
+<section class="after" id="teams" aria-label="팀 유형">
+  <div class="wrap">
+    <div class="tablist" role="tablist" aria-label="팀 유형">
+      <button role="tab" id="tab-dev" aria-controls="panel-dev" aria-selected="true" data-copy="teams.dev.name">개발 팀</button>
+      <button role="tab" id="tab-prod" aria-controls="panel-prod" aria-selected="false" tabindex="-1" data-copy="teams.product.name">기획·디자인이 함께하는 제품 팀</button>
+      <button role="tab" id="tab-club" aria-controls="panel-club" aria-selected="false" tabindex="-1" data-copy="teams.club.name">동아리·스터디</button>
+    </div>
+    <div class="tabpanel" role="tabpanel" id="panel-dev" aria-labelledby="tab-dev" tabindex="0">
+      <p class="situ" data-copy="teams.dev.situation">개발은 GitHub에서 진행하고 팀의 할 일과 검토 상태도 함께 관리하고 싶어요.</p>
+      <ol class="steps">
+        <li data-copy="teams.dev.way-1">저장소를 연결하고 AI 스킬로 착수해 브랜치와 PR 초안을 준비해요.</li>
+        <li data-copy="teams.dev.way-2">PR 열림과 머지에 맞춰 검토 대기와 완료 상태를 반영합니다.</li>
+        <li data-copy="teams.dev.way-3">코딩 에이전트에게 태스크 계획과 결정 기록을 요청합니다.</li>
+      </ol>
+    </div>
+    <div class="tabpanel" role="tabpanel" id="panel-prod" aria-labelledby="tab-prod" tabindex="0" hidden>
+      <p class="situ" data-copy="teams.product.situation">개발 활동과 기획·디자인의 할 일을 같은 프로젝트에서 보고 싶어요.</p>
+      <ol class="steps">
+        <li data-copy="teams.product.way-1">담당자와 완료 조건을 적어 기획·디자인 태스크도 보드에서 관리합니다.</li>
+        <li data-copy="teams.product.way-2">로드맵과 의존 관계로 함께 맞춰야 할 일정을 정리해요.</li>
+        <li data-copy="teams.product.way-3">요청을 보내고 수락한 일을 태스크로 이어 관리합니다.</li>
+      </ol>
+    </div>
+    <div class="tabpanel" role="tabpanel" id="panel-club" aria-labelledby="tab-club" tabindex="0" hidden>
+      <p class="situ" data-copy="teams.club.situation">팀원마다 맡은 일과 AI의 도움을 받은 과정을 남기고 싶어요.</p>
+      <ol class="steps">
+        <li data-copy="teams.club.way-1">오늘 목록과 마감 달력으로 각자 맡은 일을 챙깁니다.</li>
+        <li data-copy="teams.club.way-2">회의록과 프로젝트 문서에 함께 확인할 내용을 적어요.</li>
+        <li data-copy="teams.club.way-3">내 결정 기록을 골라 개인 포트폴리오 초안의 근거로 써요.</li>
+      </ol>
+    </div>
+    <p class="teams-note" data-copy="teams.note">저장소 없는 팀도 태스크·검토·회의록·문서·요청 기능을 씁니다. GitHub 자동화는 저장소를 연결한 프로젝트에서 동작해요.</p>
+  </div>
+</section>
+
+<!-- ===== faq ===== -->
+<section class="after" id="faq" aria-label="자주 묻는 질문">
+  <div class="wrap">
+    <div class="faq-list">
+      <details><summary data-copy="faq.q1">GitHub 없이도 쓸 수 있나요?</summary><p data-copy="faq.a1">네, 저장소 없이도 팀원 할 일과 검토, 회의록, 문서, 요청, 로드맵을 관리해요. GitHub 활동 연결과 상태 자동화는 저장소 연결이 필요합니다.</p></details>
+      <details><summary data-copy="faq.q2">AI가 어디까지 일을 처리하나요?</summary><p data-copy="faq.a2">내 지시에 따라 생성 초안을 확인받고 태스크를 만들거나 허용된 항목을 바꿔요. AI의 상태 변경은 검토 대기까지이며 완료는 사람이 처리합니다. 연결된 PR의 머지는 GitHub 규칙에 따라 완료로 반영돼요.</p></details>
+      <details><summary data-copy="faq.q3">AI와 나눈 대화는 전부 기록되나요?</summary><p data-copy="faq.a3">대화 원문을 수집하지 않으며 진행 메모와 결정 요지를 남깁니다. AI가 스킬·MCP 가이드를 따라 기록 도구를 호출하는 방식이에요. 요지 후보는 기록 전에 확인받고 비밀값처럼 보이는 내용은 거절합니다.</p></details>
+      <details><summary data-copy="faq.q4">포트폴리오는 어떻게 만들고 누가 보나요?</summary><p data-copy="faq.a4">기록을 골라 만든 프롬프트를 외부 AI에 보내고 받은 초안을 붙여 저장해요. 개인 경력 정리용 비공개 초안이며 소유자만 열람합니다. 유달리의 공개 페이지나 링크 공유 기능은 없어요.</p></details>
+      <details><summary data-copy="faq.q5">무료인가요?</summary><p data-copy="faq.a5">현재 무료로 이용하며 별도 요금제는 없습니다.</p></details>
+      <details><summary data-copy="faq.q6">팀원은 어떻게 초대하나요?</summary><p data-copy="faq.a6">가입 후 조직을 만들고 초대 링크로 팀원을 불러요. 가입에는 승인 절차가 없습니다.</p></details>
+      <details><summary data-copy="faq.q7">GitHub 이슈도 자동으로 가져오나요?</summary><p data-copy="faq.a7">이슈를 골라 태스크로 가져오는 방식부터 쓸 수 있어요. 자동 가져오기는 GitHub 조직에 앱을 설치하고 해당 설정을 켠 경우에만 적용됩니다. 라벨 조건에 맞고 GitHub 계정을 연결한 조직 멤버에게 배정된 새 이슈를 가져와요. 개인 계정 설치에는 적용되지 않습니다.</p></details>
+      <details><summary data-copy="faq.q8">Discord를 꼭 연결해야 하나요?</summary><p data-copy="faq.a8">연결 없이도 웹에서 팀의 일을 관리해요. DM 마감 알림과 조직 채널 주간 보고는 Discord 연동이 필요합니다.</p></details>
+    </div>
+  </div>
+</section>
+
+<!-- ===== closing ===== -->
+<section class="closing" aria-labelledby="closing-title">
+  <div class="wrap">
+    <div class="closing-box">
+      <svg class="bloom" viewBox="0 0 230 230" aria-hidden="true" focusable="false">
+        <use href="#pot" width="230" height="230"/>
+        <path class="art-leaf" d="M136 120Q172 128 192 104Q168 86 136 120"/>
+        <path class="art-stem" d="M134 139Q137 90 141 57" stroke-width="6"/>
+        <g class="leaf"><path class="art-leaf" d="M138 100Q72 104 61 49Q124 28 138 100"/><path class="art-vein" d="M138 100L77 61" stroke-width="2"/></g>
+        <g class="leaf-2"><path class="art-leaf-2" d="M140 78Q148 19 207 29Q214 78 140 78"/><path class="art-vein" d="M141 77L189 42" stroke-width="2"/></g>
+        <use href="#flower"/>
+        <use href="#face-awake"/>
+      </svg>
+      <div>
+        <h2 id="closing-title" data-copy="closing.title">팀의 다음 한 주를 준비해요</h2>
+        <p data-copy="closing.body">GitHub로 개발 진행을 반영하고 내가 정한 방향을 기록해 두세요.</p>
+        <div class="ctas">
+          <a class="btn primary lg" href="{% url 'signup' %}" data-copy="closing.cta">무료로 시작하기</a>
+        </div>
+        <p class="closing-note" data-copy="closing.note">가입 후 조직을 만들고 초대 링크로 팀원을 부르면 돼요.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+</main>
+
+{% include "_site_footer.html" with footer_line="팀의 할 일과 AI 협업 기록을 함께 관리합니다." %}
+</body>
+</html>

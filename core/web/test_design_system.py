@@ -153,6 +153,8 @@ def test_user_copy_uses_standard_terms_and_tone():
     """DESIGN.md 용어표. 식별자·주석은 검사하지 않는다."""
     hits = []
     for path in TEMPLATES:
+        if path.name == "landing.html":
+            continue  # 랜딩 홍보 문구는 해요체를 섞는 예외(DESIGN.md 랜딩 절)
         source = path.read_text(encoding="utf-8")
         copy = re.sub(
             r"\{#.*?#\}|\{%\s*comment\s*%\}.*?\{%\s*endcomment\s*%\}|<!--.*?-->",

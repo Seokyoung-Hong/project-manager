@@ -20,10 +20,31 @@ def logged(client, member):
     return client
 
 
-def test_root_redirects(client, member, org):
-    assert client.get("/").headers["Location"] == "/login"
+def test_root_shows_landing_to_anonymous(client, member, org):
+    r = client.get("/")
+    assert r.status_code == 200
+    body = r.content.decode()
+    assert "편한 팀의 한 주" in body and "무료로 시작하기" in body
+    assert 'href="/signup"' in body and 'href="/login"' in body and 'href="/privacy"' in body
+    assert 'role="tablist"' in body and "<details>" in body
+    assert "팀의 할 일과 AI 협업 기록을 함께 관리합니다." in body  # 공용 바닥글, 랜딩용 소개 문장
+    assert '<header class="header">' not in body and 'id="panel"' not in body  # 앱 셸 없음
+
+
+def test_root_redirects_logged_in(client, member, org):
     client.login(username="member1", password="pw12345678")
     assert client.get("/").headers["Location"] == "/today"
+
+
+def test_landing_has_no_external_resources(client):
+    body = client.get("/").content.decode()
+    # 외부로 나가는 건 mailto뿐이다. 글꼴·스크립트·이미지는 모두 자체 호스팅.
+    external = re.findall(r'(?:src|href)="((?:https?:)?//[^"]*)"', body)
+    assert external == []
+    assert "fonts.googleapis" not in body and "fonts.gstatic" not in body
+    static = Path(settings.BASE_DIR) / "web/static"
+    for name in ("landing.css", "landing.js"):
+        assert "http" not in (static / name).read_text(encoding="utf8")
 
 
 def test_today_page_renders(logged, org, project, task):

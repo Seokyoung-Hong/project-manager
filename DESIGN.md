@@ -196,6 +196,10 @@ animation·transition을 끈다(파일 맨 끝 규칙).
 
 `/ops` 아래 화면은 조직 셸이 아니라 `ops/base.html`을 상속한다. 헤더 메뉴는 운영 콘솔 메뉴(개요·시스템·감사 기록·디자인 시스템)만 그리고, 본문은 제목 줄 아래 `.card` 여러 장을 세로로 쌓는다. 표가 주인이라 카드가 본문 폭을 채우며, 표는 `.table-scroll`로 감싼다. 변경은 `ops/_confirm.html` 대화상자(사유 필수, 위험 작업은 확인값 재입력)로만 하고, 감사 기록처럼 읽기 전용 화면의 행에는 버튼을 두지 않는다. 견본은 `/ops/design`의 "운영 콘솔 부품".
 
+### 3.3 랜딩 화면
+
+로그인 전 `/`는 앱 셸 없이 `landing.html` 한 장이다(원본 시안 `design-concepts/landing/concept-b-v6.html`). `app.css` 위에 `landing.css`·`landing.js`(팀 유형 ARIA 탭)를 얹는다. app.css와 이름이 겹치는 랜딩 부품은 `lp-` 접두어(`.lp-hero`·`.lp-board`·`.lp-pill` 등)를 쓴다. 바닥글은 `_site_footer.html`을 앱과 공유하고 소개 문장만 `footer_line`으로 바꾼다. 홍보 문구는 해요체를 섞는 예외라 12절 용어 검사에서 빠지며, 문구는 시안 원본(copy-v6.md)을 고치지 않는다. 외부 글꼴·스크립트 요청은 두지 않는다.
+
 ## 4. 업무 부품
 
 - **상태 알약 7종** `.pill.{todo|doing|review|blocked|paused|done|cancelled}` — select와 읽기 전용(`.pill.static`) 공용, 글자 앞에 상태 기호
