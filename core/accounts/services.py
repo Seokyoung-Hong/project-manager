@@ -12,16 +12,21 @@ from django.db import transaction
 from django.utils import timezone
 
 from common.errors import ServiceError
+from github.models import GitHubIdentity
 from orgs.settings import clean
 
+from .consents import NOTICES, POLICY_VERSION
 from .identity import resolve
-from .models import ApiToken, IdempotencyKey, LoginLock, OAuthCode, User
+from .models import ApiToken, Consent, IdempotencyKey, LoginLock, OAuthCode, User
 
 CODE_TTL = timedelta(minutes=10)
 
 
 def issue_link_code(user) -> str:
-    """1회용 연결 코드. 다시 발급하면 이전 코드는 그 순간 무효다."""
+    """1회용 연결 코드. 다시 발급하면 이전 코드는 그 순간 무효다.
+
+    연결은 이 코드로만 이뤄지므로 국외 이전 동의는 여기서 확인하면 봇 경로까지 막힌다."""
+    require_consent(user, "discord")
     code = secrets.token_hex(4).upper()
     User.objects.filter(pk=user.pk).update(
         discord_link_code=code, discord_link_expires_at=timezone.now() + CODE_TTL
@@ -83,6 +88,67 @@ def user_by_discord_id(discord_user_id: str):
     return resolve("discord", discord_user_id)
 
 
+# ---------- 국외 이전 동의 ----------
+
+
+GITHUB_ONLY_MSG = (
+    "GitHub로만 로그인하는 계정입니다. 비밀번호를 먼저 설정하거나(운영자에게 비밀번호 재설정 "
+    "링크를 요청해 주세요) 회원 탈퇴를 해 주세요."
+)
+
+
+def has_consent(user, target: str) -> bool:
+    return Consent.objects.filter(user=user, target=target, withdrawn_at__isnull=True).exists()
+
+
+def require_consent(user, target: str) -> None:
+    if not has_consent(user, target):
+        raise ServiceError({"consent": "국외 이전에 동의해야 연결할 수 있습니다."})
+
+
+def give_consent(user, target: str) -> Consent:
+    """이미 동의했으면 그 기록을 그대로 둔다(처음 동의한 시각과 판이 남는다)."""
+    if target not in NOTICES:
+        raise ServiceError({"target": "알 수 없는 동의 대상입니다."})
+    consent, _ = Consent.objects.get_or_create(
+        user=user, target=target, withdrawn_at__isnull=True, defaults={"version": POLICY_VERSION}
+    )
+    return consent
+
+
+def missing_consents(user) -> list[str]:
+    """연결은 있는데 동의 기록이 없는 대상. 이 기능 전에 연결한 사용자다."""
+    connected = {
+        "github": GitHubIdentity.objects.filter(user=user).exists(),
+        "discord": bool(user.discord_user_id),
+        "ai": user.tokens.filter(for_ai=True, revoked_at__isnull=True).exists(),
+    }
+    return [t for t, on in connected.items() if on and not has_consent(user, t)]
+
+
+@transaction.atomic
+def withdraw_consent(user, target: str) -> bool:
+    """동의를 철회하고 그 연결을 끊는다. 철회할 동의가 없었으면 False."""
+    if target == "github" and not user.has_usable_password():
+        # GitHub로만 가입한 사람은 연결을 끊으면 로그인할 길이 없다.
+        raise ServiceError({"github": GITHUB_ONLY_MSG})
+    now = timezone.now()
+    if not Consent.objects.filter(user=user, target=target, withdrawn_at__isnull=True).update(
+        withdrawn_at=now
+    ):
+        return False
+    if target == "github":
+        GitHubIdentity.objects.filter(user=user).delete()
+    elif target == "discord":
+        unlink_discord(user)
+    elif target == "ai":
+        # 사람용 토큰은 사용자 자신의 스크립트로 가므로 국외 이전이 아니다. 봇 토큰도 남긴다.
+        for token in user.tokens.filter(for_ai=True, revoked_at__isnull=True):
+            token.revoke()
+        user.oauth_codes.filter(used_at__isnull=True).update(used_at=now)
+    return True
+
+
 # ---------- 개인 설정 ----------
 
 
@@ -107,7 +173,6 @@ def withdraw(user, confirm: str) -> None:
     """
     from django.contrib.sessions.models import Session
 
-    from github.models import GitHubIdentity
     from orgs.models import DiscordMemberPermission, Organization, OrgMembership, TeamMembership
     from portfolio.models import PortfolioDraft
     from tasks.models import Notice, TodayItem
@@ -137,6 +202,8 @@ def withdraw(user, confirm: str) -> None:
     _scrub_recordings(user, my_orgs)
     ApiToken.objects.filter(user=user).delete()  # AI용·사람용·MCP OAuth로 받은 토큰 모두
     OAuthCode.objects.filter(user=user).delete()
+    # 동의 기록은 분쟁 대비로 1년 남긴다(purge_expired가 지운다). 탈퇴 시각을 철회 시각으로 둔다.
+    Consent.objects.filter(user=user, withdrawn_at__isnull=True).update(withdrawn_at=timezone.now())
     IdempotencyKey.objects.filter(user=user).delete()
     GitHubIdentity.objects.filter(user=user).delete()
     TodayItem.objects.filter(user=user).delete()

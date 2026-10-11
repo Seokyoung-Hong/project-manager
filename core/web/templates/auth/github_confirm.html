@@ -8,6 +8,10 @@
 <form method="post" class="stack">{% csrf_token %}
   <label class="check"><input type="checkbox" name="age_ok" value="1" required> 만 14세 이상입니다</label>
   {% if age_error %}<div class="error">{{ age_error }}</div>{% endif %}
+  <h2 class="t16">개인정보 국외 이전(제3자 제공) 동의</h2>
+  {% include "settings/_consent_notice.html" %}
+  <label class="check"><input type="checkbox" name="consent_ok" value="1" required> 위 국외 이전에 동의합니다</label>
+  {% if consent_error %}<div class="error">{{ consent_error }}</div>{% endif %}
   <a class="t13" href="{% url 'privacy' %}"><strong>개인정보 처리방침</strong></a>
   <button class="btn primary">신규로 가입</button>
   <a class="btn" href="{% url 'login' %}">기존 계정으로 로그인</a>

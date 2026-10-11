@@ -5,7 +5,7 @@ from django.core.management.base import BaseCommand
 from django.db.models import Q
 from django.utils import timezone
 
-from accounts.models import ApiToken, LoginLock, OAuthCode
+from accounts.models import ApiToken, Consent, LoginLock, OAuthCode
 
 
 def purge_tokens():
@@ -28,6 +28,18 @@ def purge_login_locks():
     )
 
 
+def purge_withdrawn_consents():
+    """탈퇴자의 국외 이전 동의 기록은 분쟁 대비로 1년 보관한다(DECISIONS 2차 1번).
+
+    탈퇴 시각 칸이 없어 탈퇴 때 찍은 철회 시각으로 센다. 탈퇴 전에 철회한 행은 더 일찍 지워진다.
+    """
+    return Consent.objects.filter(
+        user__is_active=False,
+        user__username__startswith="deleted-",
+        withdrawn_at__lt=timezone.now() - timedelta(days=365),
+    ).delete()[0]
+
+
 class Command(BaseCommand):
     help = "기한이 지난 개인정보 행을 지운다(compose의 purge 서비스가 하루 한 번 부른다). 한 작업이 실패해도 나머지는 돈다."
 
@@ -38,6 +50,7 @@ class Command(BaseCommand):
             ("만료 토큰", purge_tokens),
             ("인가 코드", purge_oauth_codes),
             ("로그인 잠금 기록", purge_login_locks),
+            ("탈퇴자 동의 기록", purge_withdrawn_consents),
         ]
         failed = []
         for name, job in jobs:

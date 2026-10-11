@@ -27,7 +27,7 @@ def _signup(client, monkeypatch, gh_user: dict, nxt: str = "", emails=()):
     """처음 보는 GitHub 계정은 만 14세 확인을 거쳐야 가입된다."""
     r = _callback(client, monkeypatch, gh_user, nxt, emails)
     assert r["Location"] == "/login/github/confirm"
-    return client.post("/login/github/confirm", {"age_ok": "1"})
+    return client.post("/login/github/confirm", {"age_ok": "1", "consent_ok": "1"})
 
 
 def test_new_github_account_signs_up(gh, client, monkeypatch):
@@ -48,7 +48,10 @@ def test_new_github_account_needs_age_check(gh, client, monkeypatch):
     r = client.post("/login/github/confirm")
     assert r.status_code == 200 and "만 14세 미만은 가입할 수 없습니다." in r.content.decode()
     assert not GitHubIdentity.objects.exists() and "_auth_user_id" not in client.session
-    assert client.post("/login/github/confirm", {"age_ok": "1"})["Location"] == "/orgs"
+    assert (
+        client.post("/login/github/confirm", {"age_ok": "1", "consent_ok": "1"})["Location"]
+        == "/orgs"
+    )
     assert GitHubIdentity.objects.filter(github_id=900).exists()
 
 
@@ -59,11 +62,12 @@ def test_same_username_asks_before_signup(gh, client, monkeypatch):
     assert not GitHubIdentity.objects.exists() and "_auth_user_id" not in client.session
     page = client.get("/login/github/confirm").content.decode()
     assert "GitHub와 연결되지 않은 계정이 존재합니다" in page
-    r = client.post("/login/github/confirm", {"age_ok": "1"})
+    r = client.post("/login/github/confirm", {"age_ok": "1", "consent_ok": "1"})
     assert r["Location"] == "/orgs"
     assert GitHubIdentity.objects.get(github_id=900).user.username == "octo-gh"
     assert (
-        client.post("/login/github/confirm", {"age_ok": "1"})["Location"] == "/login"
+        client.post("/login/github/confirm", {"age_ok": "1", "consent_ok": "1"})["Location"]
+        == "/login"
     )  # 한 번만 쓴다
 
 

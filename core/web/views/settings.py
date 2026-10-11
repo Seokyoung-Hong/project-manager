@@ -1,12 +1,27 @@
+from urllib.parse import urlencode
+
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth import logout
 from django.contrib.auth.decorators import login_required
+from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
+from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_POST
 
+from accounts.consents import NOTICES, TARGETS
 from accounts.models import ApiToken
-from accounts.services import issue_link_code, set_user_settings, unlink_discord, withdraw
+from accounts.services import (
+    give_consent,
+    has_consent,
+    issue_link_code,
+    missing_consents,
+    set_user_settings,
+    unlink_discord,
+    withdraw,
+    withdraw_consent,
+)
 from common.errors import ServiceError
 from orgs.settings import effective, specs_for
 
@@ -34,7 +49,10 @@ def profile(request):
 @require_POST
 def discord_link(request):
     """연결 코드 발급. 실제 연결은 Discord에서 봇에게 DM으로 코드를 보낼 때 이뤄진다."""
-    request.session["discord_link_code"] = issue_link_code(request.user)
+    try:
+        request.session["discord_link_code"] = issue_link_code(request.user)
+    except ServiceError:
+        return consent_redirect("discord", reverse("profile"))
     return redirect("profile")
 
 
@@ -52,6 +70,8 @@ def tokens(request):
         form = TokenForm(request.POST)
         if form.is_valid():
             d = form.cleaned_data
+            if d["purpose"] == "ai" and not has_consent(request.user, "ai"):
+                return consent_redirect("ai", reverse("tokens"))
             _, raw = ApiToken.issue(
                 request.user, d["name"], d["scope"], for_ai=d["purpose"] == "ai"
             )
@@ -130,3 +150,50 @@ def account(request):
             logout(request)
             return render(request, "settings/withdrawn.html")
     return render(request, "settings/account.html", {"error": error})
+
+
+# ---------- 국외 이전 동의 ----------
+
+
+def consent_redirect(target: str, nxt: str):
+    """동의가 없으면 동의 화면으로 보낸다. 동의하면 nxt로 돌아온다."""
+    return redirect(f"{reverse('consent', args=[target])}?{urlencode({'next': nxt})}")
+
+
+@login_required
+def consent(request, target):
+    if target not in NOTICES:
+        raise Http404
+    nxt = request.POST.get("next") or request.GET.get("next", "")
+    if not url_has_allowed_host_and_scheme(nxt, allowed_hosts={request.get_host()}):
+        nxt = ""
+    if request.method == "POST":
+        give_consent(request.user, target)
+        return redirect(nxt or "consents")
+    return render(
+        request,
+        "settings/consent.html",
+        {"target": target, "label": dict(TARGETS)[target], "notice": NOTICES[target], "next": nxt},
+    )
+
+
+@login_required
+def consents(request):
+    active = {c.target: c for c in request.user.consents.filter(withdrawn_at__isnull=True)}
+    missing = missing_consents(request.user)
+    rows = [
+        {"target": t, "label": label, "consent": active.get(t), "missing": t in missing}
+        for t, label in TARGETS
+    ]
+    return render(request, "settings/consents.html", {"rows": rows})
+
+
+@login_required
+@require_POST
+def consent_withdraw(request, target):
+    try:
+        if withdraw_consent(request.user, target):
+            messages.success(request, "동의를 철회하고 연결을 끊었습니다.")
+    except ServiceError as e:
+        messages.error(request, " ".join(e.errors.values()))
+    return redirect("consents")

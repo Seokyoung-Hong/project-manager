@@ -3,6 +3,7 @@
 import pytest
 from django.test import Client
 
+from accounts.services import give_consent
 from github.client import GitHubError
 from github.models import GitHubIdentity, GitHubInstallation, GitHubTeamLink, RepoConnection
 from github.test_writes import _identity
@@ -35,6 +36,7 @@ def test_oauth_missing_state_does_not_exchange_code(client, gh, admin, monkeypat
 
 
 def test_oauth_connected_but_repo_sync_failed(client, gh, admin, monkeypatch):
+    give_consent(admin, "github")
     client.force_login(admin)
     session = client.session
     session["gh_oauth_state"] = "valid-state"

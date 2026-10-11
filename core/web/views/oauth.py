@@ -21,7 +21,9 @@ from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 
+from accounts.consents import NOTICES
 from accounts.models import ApiToken, OAuthClient, OAuthCode
+from accounts.services import give_consent, has_consent
 
 # 커넥터 토큰 수명. 만료되면 커넥터에서 다시 '연결'한다(refresh_token은 두지 않는다).
 TOKEN_TTL = timedelta(days=90)
@@ -139,6 +141,11 @@ def authorize(request):
     if request.method == "POST":
         if request.POST.get("decision") != "allow":
             return _back(redirect_uri, state, error="access_denied")
+        # 처음 연결이면 이 화면이 국외 이전 동의 화면을 겸한다. 허용 = 고지를 보고 동의한 것.
+        if not has_consent(request.user, "ai"):
+            if request.POST.get("consent") != "1":
+                return _back(redirect_uri, state, error="access_denied")
+            give_consent(request.user, "ai")
         # 범위는 클라이언트가 요구하는 대로가 아니라 사람이 화면에서 고른 대로 준다.
         scope = "write" if request.POST.get("scope") == "write" else "read"
         _, raw = OAuthCode.issue(
@@ -156,6 +163,7 @@ def authorize(request):
         {
             "client": client,
             "redirect_host": urlparse(redirect_uri).netloc or redirect_uri,
+            "notice": None if has_consent(request.user, "ai") else NOTICES["ai"],
             "params": {
                 "client_id": client.client_id,
                 "redirect_uri": redirect_uri,

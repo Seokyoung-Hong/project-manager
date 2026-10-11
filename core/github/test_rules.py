@@ -9,6 +9,7 @@ from pathlib import Path
 import pytest
 from django.utils import timezone
 
+from accounts.services import give_consent
 from github import client as gh_client
 from github import services as ghs
 from github.conftest import signed
@@ -734,6 +735,7 @@ def test_oauth_callback_without_state_rejects_and_explains(gh, client, admin):
 
 def test_callback_rejects_github_account_of_another_user(gh, client, admin, member, monkeypatch):
     GitHubIdentity.objects.create(user=member, github_id=500, login="taken")
+    give_consent(admin, "github")
     monkeypatch.setattr(gh_client, "exchange_code", lambda code: {"access_token": "t"})
     monkeypatch.setattr(gh_client, "request", lambda *a, **k: {"id": 500, "login": "taken"})
     client.force_login(admin)
