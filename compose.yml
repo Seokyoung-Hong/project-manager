@@ -1,3 +1,11 @@
+# 컨테이너 로그 회전 = 개인정보 처리방침의 "서버 접속 로그 90일"을 지키는 근사치.
+# ponytail: json-file은 날짜 회전이 없고 크기·개수로만 돈다. 2m x 3 = 서비스당 최대 약 6MB(gunicorn 접속 줄 약 200B면 약 3만 건).
+#   90일 평균이 하루 330건 이상이면 90일 안에 밀려난다. 그보다 한산하면 90일을 넘겨 남을 수 있다 -> 매월 `docker compose up -d --force-recreate`
+#   (컨테이너를 새로 만들면 이전 로그 파일이 지워진다, docs/OPERATIONS-DEPLOYMENT.md). 많이 몰리면 90일보다 일찍 사라진다(장애 추적은 그 한도).
+x-logging: &logging
+  driver: json-file
+  options: {max-size: "2m", max-file: "3"}
+
 services:
   db:
     image: postgres:16-alpine
@@ -13,6 +21,7 @@ services:
       timeout: 3s
       retries: 20
     restart: unless-stopped     # 없으면 호스트 재부팅 뒤 db만 내려가 web이 migrate에서 크래시 루프한다.
+    logging: *logging
     ports:
       - "127.0.0.1:5432:5432"   # 로컬 개발·테스트용. 서버에서는 이 두 줄을 지운다.
 
@@ -28,6 +37,7 @@ services:
       db:
         condition: service_healthy
     restart: unless-stopped
+    logging: *logging
     ports:
       # 0.0.0.0의 WEB_PORT(.env, 기본 8000). 다른 장비의 리버스 프록시(NginxProxyManager)가 여기로 붙는다.
       # 방화벽에서 프록시 장비 IP만 그 포트를 열어 둔다 — 직접 오는 요청은 평문 HTTP다.
@@ -56,6 +66,7 @@ services:
       web:
         condition: service_healthy
     restart: unless-stopped
+    logging: *logging
 
   discord-bot:                   # 수신(게이트웨이): DM 평문 명령. 같은 이미지, 리스너만 돈다
     profiles: ["discord"]
@@ -74,6 +85,7 @@ services:
     expose:
       - "8081"                    # MCP 내부 채널 관리 브리지. 호스트 포트로 공개하지 않는다.
     restart: unless-stopped
+    logging: *logging
 
   mcp:                           # 선택 확장: claude.ai 웹·모바일용 원격 커넥터. Claude Code는 skills/로 core API를 직접 부른다
     profiles: ["mcp"]            # 켜려면 --profile mcp 또는 .env의 COMPOSE_PROFILES=mcp
@@ -90,6 +102,7 @@ services:
       web:
         condition: service_healthy
     restart: unless-stopped
+    logging: *logging
     ports:
       - "${MCP_PORT:-127.0.0.1:8080}:8080"   # 기본은 루프백만. 밖에 공개하려면 .env에서 포트만 쓴다
 
@@ -103,6 +116,7 @@ services:
       - web
       - mcp
     restart: unless-stopped
+    logging: *logging
 
 volumes:
   pgdata:
