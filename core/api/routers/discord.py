@@ -13,7 +13,14 @@ from ninja import Router, Schema
 from ninja.errors import HttpError
 
 from accounts.models import User
-from accounts.services import link_discord, unlink_discord_by_id, user_by_discord_id
+from accounts.services import (
+    consent_active,
+    discord_dm_id,
+    link_discord,
+    paused_message,
+    unlink_discord_by_id,
+    user_by_discord_id,
+)
 from github import hooks as gh_hooks
 from notes import services as notes_svc
 from notes.models import VoiceRecording
@@ -78,6 +85,8 @@ def _actor(discord_user_id: str):
     user = user_by_discord_id(discord_user_id)
     if user is None:
         raise HttpError(404, UNLINKED)
+    if not consent_active(user, "discord"):
+        raise HttpError(403, paused_message("discord"))
     return user
 
 
@@ -208,7 +217,7 @@ def org_members(request, org_id: int):
             {
                 "id": u.pk,
                 "display_name": u.display_name,
-                "discord_user_id": u.discord_user_id,
+                "discord_user_id": discord_dm_id(u),
                 "role": m.role,
                 "notify_dm": org_settings.effective("user.notify_dm", user=u),
                 "notify_kinds": list(org_settings.effective("user.notify_kinds", user=u)),
@@ -220,7 +229,7 @@ def org_members(request, org_id: int):
 
 def _people(users) -> list[dict]:
     return [
-        {"id": u.pk, "display_name": u.display_name, "discord_user_id": u.discord_user_id}
+        {"id": u.pk, "display_name": u.display_name, "discord_user_id": discord_dm_id(u)}
         for u in users
     ]
 
@@ -604,7 +613,7 @@ def notices(request):
     return [
         {
             "id": n.pk,
-            "discord_user_id": n.user.discord_user_id if n.user_id else None,
+            "discord_user_id": discord_dm_id(n.user) if n.user_id else None,
             "channel_id": n.channel_id,
             "text": n.text,
         }

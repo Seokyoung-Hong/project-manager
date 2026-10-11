@@ -8,14 +8,16 @@
 import secrets
 from datetime import timedelta
 
+from django.conf import settings
 from django.db import transaction
+from django.urls import reverse
 from django.utils import timezone
 
 from common.errors import ServiceError
 from github.models import GitHubIdentity
 from orgs.settings import clean
 
-from .consents import NOTICES, POLICY_VERSION
+from .consents import NOTICES, POLICY_VERSION, TARGETS
 from .identity import resolve
 from .models import ApiToken, Consent, IdempotencyKey, LoginLock, OAuthCode, User
 
@@ -99,6 +101,44 @@ GITHUB_ONLY_MSG = (
 
 def has_consent(user, target: str) -> bool:
     return Consent.objects.filter(user=user, target=target, withdrawn_at__isnull=True).exists()
+
+
+CONSENT_GRACE = timedelta(days=30)
+
+
+def consent_deadline():
+    """동의 없는 기존 연결이 멈추는 날. 유예 시작일(settings.CONSENT_GRACE_START)이 없으면 None."""
+    start = settings.CONSENT_GRACE_START
+    return start + CONSENT_GRACE if start else None
+
+
+def consent_active(user, target: str) -> bool:
+    """이 사용자의 이 연결을 지금 써도 되는가. 연결을 쓰는 모든 경로가 이 함수 하나로 판정한다.
+
+    유예 시작일이 없거나 유예 중이면 동의가 없어도 쓴다. 유예가 끝나면 동의가 있어야 쓴다.
+    연결 정보는 지우지 않는다 — 동의하면 그 순간부터 다시 쓴다.
+    """
+    deadline = consent_deadline()
+    if deadline is None or timezone.localdate() < deadline:
+        return True
+    return has_consent(user, target)
+
+
+def paused_message(target: str) -> str:
+    """유예가 끝나 멈춘 연결의 오류 문구. 동의 화면 주소를 함께 안내한다."""
+    url = f"{settings.SITE_URL}{reverse('consent', args=[target])}"
+    return (
+        f"국외 이전 동의가 없어 {dict(TARGETS)[target]} 연결을 멈췄습니다. "
+        f"{url} 에서 동의해 주세요."
+    )
+
+
+def discord_dm_id(user):
+    """봇에게 넘기는 DM 수신자 ID. 동의 없이 멈춘 사람은 None — 봇은 미연결로 보고 보내지 않는다."""
+    if user is None or not user.discord_user_id:
+        return None
+    # ponytail: 사람마다 동의를 한 번씩 묻는다(유예 뒤에만). 목록이 커서 느리면 요청 단위로 모아 묻는다.
+    return user.discord_user_id if consent_active(user, "discord") else None
 
 
 def require_consent(user, target: str) -> None:

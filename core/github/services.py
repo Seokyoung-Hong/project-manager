@@ -19,6 +19,7 @@ from django.db import transaction
 from django.db.models import Q
 from django.utils import timezone
 
+from accounts.services import consent_active, paused_message
 from common.errors import ConflictError, ServiceError
 from orgs.models import TeamMembership
 from orgs.services import ai_denied, is_member, orgs_of
@@ -242,7 +243,11 @@ def _store_tokens(identity, data: dict):
 
 
 def user_token(identity) -> str:
-    """살아 있는 사용자 토큰. 만료됐으면 refresh 토큰으로 갱신한다."""
+    """살아 있는 사용자 토큰. 만료됐으면 refresh 토큰으로 갱신한다.
+
+    사용자 이름으로 하는 GitHub 호출은 모두 여기를 지난다 — 동의 없이 멈춘 연결은 여기서 막는다."""
+    if not consent_active(identity.user, "github"):
+        raise ServiceError({"github": paused_message("github")})
     now = timezone.now()
     if identity.token_expires_at and identity.token_expires_at > now + timedelta(minutes=2):
         return decrypt(identity.token_enc)
