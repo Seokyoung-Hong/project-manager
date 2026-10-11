@@ -2,6 +2,7 @@ from ninja.errors import HttpError
 from ninja.security import HttpBearer, SessionAuth
 
 from accounts.models import ApiToken
+from accounts.services import consent_active, paused_message
 
 WRITE_EXEMPT_PREFIX = "/api/integrations/"
 
@@ -33,6 +34,9 @@ class TokenAuth(HttpBearer):
             and not request.path.startswith(WRITE_EXEMPT_PREFIX)
         ):
             raise HttpError(403, "읽기 전용 토큰입니다.")
+        # AI용 토큰(MCP OAuth로 받은 것 포함)은 국외 이전 동의가 있어야 쓴다. 유예 뒤에만 걸린다.
+        if t.for_ai and not consent_active(t.user, "ai"):
+            raise HttpError(403, paused_message("ai"))
         request.api_token = t
         return t.user
 

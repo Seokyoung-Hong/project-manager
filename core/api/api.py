@@ -1,5 +1,7 @@
 from django.contrib.auth.decorators import login_required
+from django.http import HttpResponse
 from ninja import NinjaAPI
+from ninja.errors import HttpError
 from ninja.throttling import AuthRateThrottle
 
 from common.errors import ConflictError, Forbidden, ServiceError
@@ -33,8 +35,11 @@ def _docs_auth(view):
     session_view = login_required(view)
 
     def wrapped(request, *args, **kwargs):
-        if TokenAuth()(request) is not None:
-            return view(request, *args, **kwargs)
+        try:
+            if TokenAuth()(request) is not None:
+                return view(request, *args, **kwargs)
+        except HttpError as e:  # ninja 밖이라 직접 응답으로 바꾼다
+            return HttpResponse(str(e), status=e.status_code)
         return session_view(request, *args, **kwargs)
 
     return wrapped

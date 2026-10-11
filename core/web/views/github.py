@@ -17,7 +17,7 @@ from django.views.decorators.http import require_POST
 
 from accounts.auth import login_user
 from accounts.consents import NOTICES
-from accounts.services import give_consent, has_consent
+from accounts.services import consent_active, give_consent, has_consent
 from common.errors import ConflictError, ServiceError
 from github import client
 from github import hooks as gh_hooks
@@ -217,7 +217,11 @@ def _finish_login(request, data: dict, info: dict, consented: bool = False):
     if created:
         messages.info(request, "가입되었습니다. 조직을 만들거나 초대 링크로 참여하세요.")
     # 갓 가입한 사람은 조직이 없다 — signup과 같이 조직 목록으로 보낸다.
-    return redirect(nxt or ("org_list" if created else "today"))
+    dest = nxt or reverse("org_list" if created else "today")
+    if not consent_active(identity.user, "github"):
+        # 유예가 끝났는데 동의가 없다. GitHub로만 가입한 사람이 갇히지 않게 로그인은 시키고 동의 화면으로 보낸다.
+        return consent_redirect("github", dest)
+    return redirect(dest)
 
 
 def github_login_confirm(request):

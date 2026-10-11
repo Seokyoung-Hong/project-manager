@@ -1,10 +1,13 @@
 from django.conf import settings
 
+from accounts.services import discord_dm_id
+
 
 def user_brief(u) -> dict | None:
     if u is None:
         return None
-    return {"id": u.pk, "display_name": u.display_name, "discord_user_id": u.discord_user_id}
+    # 마감·검토 DM의 수신자가 여기서 나간다. 동의 없이 멈춘 사람은 None(봇은 미연결로 본다).
+    return {"id": u.pk, "display_name": u.display_name, "discord_user_id": discord_dm_id(u)}
 
 
 def _iso(value):
