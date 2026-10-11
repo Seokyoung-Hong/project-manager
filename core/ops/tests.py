@@ -213,3 +213,30 @@ def test_admin_switch_off_is_404(client, root):
 
 def test_admin_cannot_change_token_owner_or_scope():
     assert {"user", "scope", "expires_at"} <= set(ApiTokenAdmin.readonly_fields)
+
+
+def test_purge_audit_log_deletes_only_past_one_year():
+    from datetime import timedelta
+
+    from django.core.management import call_command
+    from django.utils import timezone
+
+    old, edge, new = (services.audit(None, "backup.record", target_type="backup") for _ in range(3))
+    now = timezone.now()
+    for row, d in ((old, 366), (edge, 364), (new, 0)):
+        # auto_now_add라 save가 못 바꾼다. UPDATE 트리거(SQLite)를 잠시 내리고 직접 옮긴다.
+        with connection.cursor() as c:
+            c.execute("DROP TRIGGER ops_audit_no_update")
+            c.execute(
+                "UPDATE ops_opsauditlog SET created_at=%s WHERE id=%s",
+                [now - timedelta(days=d), row.pk],
+            )
+            c.execute(
+                "CREATE TRIGGER ops_audit_no_update BEFORE UPDATE ON ops_opsauditlog "
+                "BEGIN SELECT RAISE(ABORT, 'ops_opsauditlog is append-only'); END"
+            )
+    call_command("purge_audit_log")
+    assert set(OpsAuditLog.objects.values_list("pk", flat=True)) == {edge.pk, new.pk}
+    # 정리 뒤에도 삭제 차단은 다시 켜져 있다.
+    with pytest.raises(DatabaseError), transaction.atomic():
+        OpsAuditLog.objects.all().delete()

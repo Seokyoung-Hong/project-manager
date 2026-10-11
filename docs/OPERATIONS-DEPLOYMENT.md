@@ -91,3 +91,9 @@ DDL을 하면 지연 FK 트리거 때문에 `pending trigger events`로 실패�
   `DocRevision` 수 = 템플릿이 아닌 `Doc` 수 / 조직마다 템플릿 2개 / `VoiceRecording.objects.filter(note__isnull=True)` 0.
 - **역방향 `migrate`는 쓰지 않는다.** `migrate projects 0011` 같은 명령은 거부되기 전에 다른 앱의 이번 라운드 마이그레이션
   (예: `Task.group`)을 먼저 되돌린다. **되돌리기 = 백업 복구**(`docs/BACKUP.md`).
+
+## 개인정보 보관 기간 정리 (접속 로그 90일 · 감사 기록 1년)
+
+- **컨테이너 로그**: `compose.yml`의 `x-logging`(json-file, 2m x 3)이 모든 서비스에 걸려 있다. 날짜 회전이 아니라 크기 회전이라 한산하면 90일을 넘겨 남을 수 있다. 그래서 매월 1회 `docker compose up -d --force-recreate`로 컨테이너를 새로 만든다(이전 로그 파일이 함께 지워진다). 적용은 `docker compose up -d`로 다시 만들어야 반영된다.
+- **운영자 감사 기록 1년**: `docker compose exec -T web python manage.py purge_audit_log`(`--days 365` 기본). 호스트 cron에 매일 1회로 등록한다. 예: `30 4 * * * cd /opt/project-manager && docker compose exec -T web python manage.py purge_audit_log >> /var/log/pm-purge.log 2>&1`. 이 명령만 감사 기록을 지울 수 있다(Postgres는 트랜잭션 안에서만 `ops.purge`를 켜고, `ops 0002` 마이그레이션이 필요하다).
+- **NPM(이 저장소 밖)**: Nginx Proxy Manager의 접속 로그도 90일 안에 지워지도록 운영자가 NPM 호스트의 logrotate를 따로 맞춘다.
