@@ -1,4 +1,6 @@
 {% extends "base.html" %}{% block title %}{{ task.number }} {{ task.title }}{% endblock %}
-{% block page_url %}{% url 'today' %}{% endblock %}
-{% block layout_class %} has-panel wide{% endblock %}
+{% block page_url %}{% url 'project_detail' task.project_id %}{% endblock %}
+{% block layout_class %} has-panel{% endblock %}
+{# 주소로 바로 연 태스크도 뒤에 그 프로젝트 보드를 그린다 — 빈 바탕을 두지 않는다(b-workspace 하-6) #}
+{% block main %}{% if columns %}<section class="card project-task-surface">{% include "projects/_board.html" %}</section>{% endif %}{% endblock %}
 {% block panel %}{% include "tasks/_panel.html" %}{% endblock %}

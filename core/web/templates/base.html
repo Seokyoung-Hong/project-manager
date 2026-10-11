@@ -50,7 +50,8 @@
   {% if nav == "today" %}
   <button type="button" class="btn sm tint" data-action="toggle" data-target="#quick" data-alt="닫기">빠른 추가</button>
   {% else %}
-  <a class="btn sm tint" href="{% url 'today' %}?quick=1">빠른 추가</a>
+  {# 보던 화면을 떠나지 않게 대화상자로 연다. 프로젝트 화면이면 그 프로젝트가 기본값이다(b-workspace 상-1). #}
+  <button type="button" class="btn sm tint" hx-get="{% url 'today_quick' %}{% if nav == 'project' and project.pk %}?project={{ project.pk }}{% endif %}" hx-target="#dialog" hx-swap="innerHTML">빠른 추가</button>
   {% endif %}
   {% endblock %}
   <details class="menu">
@@ -89,8 +90,8 @@
         <span class="count t12 muted">미완료 {{ p.open_count }}</span>
       </a>
       {% empty %}<span class="muted t13 project-picker-empty">프로젝트가 없습니다.</span>{% endfor %}
-      <button type="button" class="btn link project-picker-new"
-              hx-get="{% url 'project_new' %}?org={{ current_org.pk }}" hx-target="#dialog" hx-swap="innerHTML">＋ 새 프로젝트</button>
+      {% if nav_projects %}{# 프로젝트가 없으면 본문 빈 상태의 버튼 하나만 둔다 #}<button type="button" class="btn link project-picker-new"
+              hx-get="{% url 'project_new' %}?org={{ current_org.pk }}" hx-target="#dialog" hx-swap="innerHTML">＋ 새 프로젝트</button>{% endif %}
     </div>
   </details>
   <nav class="rail" aria-label="프로젝트" data-rail>
@@ -110,8 +111,8 @@
       </a>
       {% empty %}<span class="muted t13 rail-only rail-empty">프로젝트 없음</span>{% endfor %}
     </div>
-    <button type="button" class="btn link rail-only rail-new"
-            hx-get="{% url 'project_new' %}?org={{ current_org.pk }}" hx-target="#dialog" hx-swap="innerHTML">＋ 새 프로젝트</button>
+    {% if nav_projects %}<button type="button" class="btn link rail-only rail-new"
+            hx-get="{% url 'project_new' %}?org={{ current_org.pk }}" hx-target="#dialog" hx-swap="innerHTML">＋ 새 프로젝트</button>{% endif %}
   </nav>
   {% endif %}
   <div class="layout{% block layout_class %}{% endblock %}">

@@ -14,6 +14,7 @@ from orgs.settings import effective
 from tasks import services as ts
 from tasks.models import Task
 
+from ..forms import suggested_due_date
 from .common import CONFLICT_MSG, task_or_404, trigger, version_of
 
 
@@ -40,6 +41,12 @@ def panel_ctx(user, task) -> dict:
             .exclude(Exists(Task.objects.filter(group_id=OuterRef("pk"))))
             .order_by("title")[:50]
         )
+        # 하위 기한 기본값: 상위 기한, 없으면 설정의 제안 기한(시스템화 D).
+        view["suggested_due"] = (
+            task.due_date.isoformat()
+            if task.due_date
+            else suggested_due_date(org=task.project.org, project=task.project)
+        )
         view["need_done_when"] = effective(
             "task.require_done_when", org=task.project.org, project=task.project
         )
@@ -60,7 +67,7 @@ def _error(e) -> str:
 @login_required
 @require_POST
 def create(request, task_id):
-    """상위 패널의 '하위 만들기'. 담당자 기본값은 상위 담당자(폼이 미리 고른다)."""
+    """상위 패널의 '하위 만들기'. 담당자 기본값은 나(폼이 미리 고른다)."""
     group = task_or_404(request.user, task_id)
     p = request.POST
     assignee = group.project.org.members.filter(pk=p.get("assignee") or 0, is_active=True).first()
@@ -90,6 +97,8 @@ def create(request, task_id):
 def put(request, task_id):
     """기존 태스크 넣기 — 고른 태스크를 이 태스크의 하위로."""
     group = task_or_404(request.user, task_id)
+    if not request.POST.get("task"):
+        return _panel(request, group, error="하위로 넣을 태스크를 골라 주세요.")  # copy-draft
     child = ts.get_visible_task(request.user, int(request.POST.get("task") or 0))
     if child is None:
         return _panel(request, group, error="그 태스크를 넣을 수 없습니다.")

@@ -5,13 +5,13 @@
   <section class="card list note-list" id="note-list">
     <div class="card-head">
       <h1 class="t24">회의록</h1>
+      <form method="post" action="{% url 'note_new' org.pk %}">{% csrf_token %}<button class="btn sm primary">새 회의록</button></form>
       <form class="file-upload" method="post" action="{% url 'note_upload' org.pk %}" enctype="multipart/form-data">
           {% csrf_token %}
           <input type="hidden" name="project" value="{% if scope != 'all' and scope != 'team' %}{{ scope }}{% endif %}">
           <input id="note-upload-file" class="file-upload-input" type="file" name="file" accept=".md,.markdown" onchange="this.form.requestSubmit()">
           <label class="btn sm file-upload-button" for="note-upload-file">Markdown 회의록 올리기</label>
       </form>
-      <form method="post" action="{% url 'note_new' org.pk %}">{% csrf_token %}<button class="btn sm primary">새 회의록</button></form>
     </div>
     {# 범위는 프로젝트 수만큼 늘어난다. 칩을 늘어놓으면 줄이 끝없이 길어지므로 목록에서 고른다. #}
     <form class="row gap" method="get">
@@ -47,8 +47,11 @@
       </a>
       {% endfor %}
     </div>
-    {% empty %}<p class="empty">회의록이 없습니다.</p>{% endfor %}
-    <p class="muted t13">회의록은 프로젝트에 붙일 수도 있고 조직 공통(프로젝트 미지정)으로 남길 수도 있습니다. 파일을 선택하면 바로 등록합니다. UTF-8 Markdown(.md 또는 .markdown), 최대 256KB를 지원합니다. 본문 텍스트만 읽어 저장합니다. 파일 자체와 이미지 첨부는 저장되지 않습니다.</p>
+    {% empty %}{% include "_empty.html" with what="회의록이 없습니다." why="회의에서 정한 일을 남겨 두면 태스크와 연결해 다시 찾을 수 있습니다. 위의 [새 회의록]으로 시작해 주세요." %}{# copy-draft #}{% endfor %}
+    {# 기술 설명은 늘 보이지 않게 접는다(b-workspace 하-3) #}
+    <details class="muted t13"><summary>Markdown 회의록 올리기 안내</summary>{# copy-draft #}
+      <p>회의록은 프로젝트에 붙일 수도 있고 조직 공통(프로젝트 미지정)으로 남길 수도 있습니다. 파일을 선택하면 바로 등록합니다. UTF-8 Markdown(.md 또는 .markdown), 최대 256KB를 지원합니다. 본문 텍스트만 읽어 저장합니다. 파일 자체와 이미지 첨부는 저장되지 않습니다.</p>
+    </details>
   </section>
 
   {% if note %}

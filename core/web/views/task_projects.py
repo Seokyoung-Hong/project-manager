@@ -56,6 +56,8 @@ def _approvers_text(task) -> str:
 @require_POST
 def link(request, task_id):
     task = task_or_404(request.user, task_id)
+    if not request.POST.get("project"):
+        return _panel(request, task, error="연결할 프로젝트를 골라 주세요.")  # copy-draft
     project = (
         visible_projects(request.user, task.project.org)
         .filter(pk=request.POST.get("project") or 0)

@@ -4,7 +4,7 @@
     {% for a in attachments %}{% if a.kind != "file" %}<li class="row"><span class="badge primary">{{ a.get_kind_display }}</span><a href="{% url 'attachment_download' a.pk a.name %}" target="_blank" rel="noopener">{{ a.name }}</a><span class="muted t13">파일 v{{ a.version }}</span></li>{% endif %}{% endfor %}
     {% for l in links %}{% if l.kind == "out" %}<li class="row"><span class="badge primary">산출물</span><a href="{{ l.url }}" target="_blank" rel="noopener">{{ l.title }}</a><span class="muted t13">링크</span></li>{% endif %}{% endfor %}
   </ul>
-  <p class="muted t13">산출물은 파일(종류 "산출물"·"증빙"), 내부 문서(아래 [문서 연결]에서 "산출물로" 체크), 링크(종류 "산출물") 중 무엇이든 됩니다.</p>
+  <p class="muted t13">이 태스크로 만든 결과물입니다. 파일·문서·링크를 올릴 때 '산출물'로 표시하면 여기에 모입니다.</p>{# copy-draft #}
 </div>
 <div class="section">
   <span class="label">참고 자료</span>

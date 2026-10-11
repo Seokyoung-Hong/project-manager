@@ -6,17 +6,17 @@
     <div class="stack project-summary-copy">
       {% if project.purpose %}<p class="muted">{{ project.purpose }}</p>{% endif %}
       <div class="row t13 project-meta">
-        <span>관리자 {% for u in owners %}{{ u.display_name }}{% if not forloop.last %}, {% endif %}{% empty %}<span class="warning">미지정</span>{% endfor %}</span>
-        <span class="badge">{{ project.status_label }}</span>
+        <span>관리자 {% for u in owners %}{{ u.display_name }}{% if not forloop.last %}, {% endif %}{% empty %}<span class="warning">미지정</span> <button type="button" class="btn link" hx-get="{% url 'project_edit' project.pk %}" hx-target="#dialog" hx-swap="innerHTML">관리자 정하기</button>{# copy-draft #}{% endfor %}</span>
+        <span class="badge" title="{{ project.status_desc }}">{{ project.status_label }}</span>
         {% for l in links %}<a href="{{ l.url }}" target="_blank" rel="noopener">{{ l.get_kind_display }}: {{ l.title }}</a>{% endfor %}
         {% if project.is_archived %}<span class="badge">보관됨</span>{% endif %}
         {% if project.discord_channel_id %}<span class="muted">Discord 채널 <code>{{ project.discord_channel_id }}</code></span>{% endif %}
       </div>
-      <p class="muted t13">{{ project.status_desc }}</p>
     </div>
     <div class="row project-actions">
       <button type="button" class="btn" hx-get="{% url 'project_edit' project.pk %}" hx-target="#dialog" hx-swap="innerHTML">프로젝트 수정</button>
-      <button type="button" class="btn primary" data-action="toggle" data-target="#task-form" data-alt="닫기">{% if form_open %}닫기{% else %}태스크 만들기{% endif %}</button>
+      {# 폼이 열리면 이 버튼은 숨는다. 폼 안의 [태스크 만들기]가 화면의 주 버튼 하나다(b-workspace 중-2). #}
+      <button type="button" class="btn primary" data-action="toggle" data-target="#task-form" data-hide-open{% if form_open %} hidden{% endif %}>태스크 만들기</button>
     </div>
   </div>
   {% include "projects/_task_form.html" %}
@@ -52,7 +52,7 @@
   {% elif view == 'board' %}
   {% include "projects/_board.html" %}
   {% else %}
-  <ul class="tasks">{% for r in rows %}{% task_row r %}{% empty %}<li class="empty">태스크가 없습니다.</li>{% endfor %}</ul>
+  <ul class="tasks">{% for r in rows %}{% task_row r %}{% empty %}{% if include_closed %}{% include "_empty.html" with tag="li" compact=True what="이 프로젝트에는 아직 태스크가 없습니다." %}{% else %}{% include "_empty.html" with tag="li" what="남은 태스크가 없습니다." why="할 일을 태스크로 만들면 담당과 기한이 보이고 오늘 목록으로 가져올 수 있습니다." toggle="#task-form" label="태스크 만들기" plain=True %}{% endif %}{# copy-draft #}{% endfor %}</ul>
   {% endif %}
 </section>
 <section class="card">

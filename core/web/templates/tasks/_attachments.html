@@ -16,7 +16,8 @@
       <details><summary class="t13">새 버전 올리기</summary>
         <form class="row" method="post" enctype="multipart/form-data" action="{{ upload_url }}"{% if hx %} hx-post="{{ upload_url }}" hx-encoding="multipart/form-data" hx-target="#refs" hx-swap="innerHTML"{% endif %}>{% csrf_token %}
           <input type="hidden" name="replaces" value="{{ a.pk }}"><input type="hidden" name="kind" value="{{ a.kind }}">
-          <input type="file" name="file" required aria-label="새 버전 파일">
+          <span class="file-upload"><input id="attach-ver-{{ a.pk }}" class="file-upload-input" type="file" name="file" required data-file-name><label class="btn sm file-upload-button" for="attach-ver-{{ a.pk }}">새 버전 파일 고르기</label></span>{# copy-draft #}
+          <span class="muted t13" data-file-name-label>고른 파일 없음</span>{# copy-draft #}
           <input class="input" name="note" maxlength="200" placeholder="무엇이 바뀌었나요? (예: 색 수정)" aria-label="버전 메모">
           <button class="btn sm">v{{ a.version|add:1 }} 올리기</button>
         </form>
@@ -26,9 +27,11 @@
   </ul>
   <form class="row" method="post" enctype="multipart/form-data" action="{{ upload_url }}"{% if hx %} hx-post="{{ upload_url }}" hx-encoding="multipart/form-data" hx-target="#refs" hx-swap="innerHTML"{% endif %}>{% csrf_token %}
     <select name="kind" class="select auto" aria-label="첨부 종류"><option value="file">파일</option><option value="out">산출물</option><option value="proof">증빙</option></select>
-    <input type="file" name="file" required aria-label="올릴 파일">
+    {# 브라우저 기본 파일 입력('Choose File')은 숨기고 회의록 화면과 같은 버튼 모양을 쓴다(b-workspace 하-2) #}
+    <span class="file-upload"><input id="attach-file-{{ upload_url|slugify }}" class="file-upload-input" type="file" name="file" required data-file-name><label class="btn sm file-upload-button" for="attach-file-{{ upload_url|slugify }}">파일 고르기</label></span>{# copy-draft #}
+    <span class="muted t13" data-file-name-label>고른 파일 없음</span>{# copy-draft #}
     <input class="input" name="note" maxlength="200" placeholder="메모(선택)" aria-label="메모">
-    <button class="btn sm primary">파일 올리기</button>
+    <button class="btn sm">파일 올리기</button>
   </form>
   <p class="muted t13">25MB까지. 이미지·PDF·문서·한글·압축·디자인 원본(.ai·.psd)을 올릴 수 있습니다. 비밀번호·API 키가 든 파일은 올리지 않습니다.</p>
 </div>

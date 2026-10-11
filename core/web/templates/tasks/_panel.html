@@ -18,7 +18,8 @@
     </form>
     {% if can_reject %}<button type="button" class="btn sm" hx-get="{% url 'task_panel' task.pk %}?reject=1" hx-target="#panel" hx-swap="innerHTML">반려</button>{% endif %}
     {% endif %}
-    <span id="save-status" class="status" aria-live="polite"></span>
+    {# 저장 안내는 이 한 곳에만 둔다(b-workspace 중-12). app.js가 저장 뒤 "저장됨"으로 바꾼다. #}
+    <span id="save-status" class="status" aria-live="polite" data-idle="입력하면 자동 저장됩니다">입력하면 자동 저장됩니다</span>{# copy-draft #}
     <button type="button" class="btn sm icon" data-copy="{{ task.pk }}" aria-label="태스크 링크 복사" title="태스크 링크 복사"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M6.5 9.5l3-3M7 4.5l1.2-1.2a2.8 2.8 0 014 4L11 8.5M9 11.5l-1.2 1.2a2.8 2.8 0 01-4-4L5 7.5"></path></svg></button>
     {% if not full_page %}
     <button type="button" class="btn sm" data-action="toggle-wide">패널 넓히기</button>
@@ -26,6 +27,8 @@
     {% endif %}
   </div>
   {% if error %}<p class="error">{{ error }}</p>{% endif %}
+  {% comment %}1단(펼침): 매일 쓰는 칸 — 제목·담당·기한·다음 행동·진행 메모·완료 조건.
+     2단(접힘, 개수): 설명·체크리스트·하위 태스크·연결 프로젝트. 3단(접힘): 자료·이력·결정 기록·더보기(b-workspace 상-3).{% endcomment %}
   <div class="panel-body">
     <div class="stack">
       <div class="section">
@@ -38,95 +41,106 @@
         </form>
         {% if sub.due_warn %}<div class="notice warn" role="status"><span>⚠ 목표일이 상위 {{ sub.group.number }}({{ sub.group.due_date|date:"n월 j일" }})보다 늦습니다.</span></div>{% endif %}
         {% endif %}
-        <p class="muted t13">텍스트는 입력 후 다른 칸으로 이동하면 자동 저장됩니다. 선택 항목은 변경 즉시 저장됩니다. 저장 완료 표시를 확인하세요.</p>
         <input class="title-input" name="value" value="{{ task.title }}" aria-label="제목" data-autosave
                hx-post="{% url 'task_text' task.pk 'title' %}" hx-trigger="change" hx-swap="none">
-        <div class="meta">
-          {# hx-post는 셀렉트 자신에 둔다. 폼에 두면 submit에만 반응해 change로는 나가지 않는다. #}
-          <form>
+        <p class="muted t13">{{ task.status_hint }}</p>
+        {# 보이는 라벨이 붙은 2열 목록(b-workspace 중-1). hx-post는 셀렉트 자신에 둔다. 폼에 두면 submit에만 반응한다. #}
+        <div class="meta panel-meta">
+          <form class="meta-item">
             <input type="hidden" name="version" value="{{ task.version }}">
-            <select name="project" class="select" aria-label="프로젝트"
+            <label class="meta-label" for="tp-project-{{ task.pk }}">프로젝트</label>
+            <div class="meta-value"><select id="tp-project-{{ task.pk }}" name="project" class="select"
                     hx-post="{% url 'task_meta' task.pk %}" hx-target="#panel" hx-swap="innerHTML" hx-trigger="change">
               {% for p in org_projects %}<option value="{{ p.pk }}"{% if p.pk == task.project_id %} selected{% endif %}>{{ p.name }}</option>{% endfor %}
-            </select>
+            </select></div>
           </form>
-          <form>
+          <form class="meta-item">
             <input type="hidden" name="version" value="{{ task.version }}">
-            <select name="assignee" class="select" aria-label="담당자"
+            <label class="meta-label" for="tp-assignee-{{ task.pk }}">담당</label>
+            <div class="meta-value"><select id="tp-assignee-{{ task.pk }}" name="assignee" class="select"
                     hx-post="{% url 'task_meta' task.pk %}" hx-target="#panel" hx-swap="innerHTML" hx-trigger="change">
               {% if not task.assignee.is_active %}<option selected disabled>{{ task.assignee.display_name }}</option>{% endif %}
               {% for u in org_members %}<option value="{{ u.pk }}"{% if u.pk == task.assignee_id %} selected{% endif %}>{{ u.display_name }}</option>{% endfor %}
             </select>
+            {% if pending_assignee %}<span class="badge">{{ pending_assignee.display_name }}님 수락 대기</span>{% endif %}
+            {% if task.is_open and not task.is_template and not task.group_id %}<button type="button" class="btn sm" hx-get="{% url 'task_split' task.pk %}" hx-target="#dialog" hx-swap="innerHTML">담당자별 태스크로 나누기</button>{% endif %}</div>
           </form>
-          {% if pending_assignee %}<span class="badge">{{ pending_assignee.display_name }}님 수락 대기</span>{% endif %}
-          {% if task.is_open and not task.is_template and not task.group_id %}<button type="button" class="btn sm" hx-get="{% url 'task_split' task.pk %}" hx-target="#dialog" hx-swap="innerHTML">사람별로 나누기</button>{% endif %}
-          <form>
+          <form class="meta-item">
             <input type="hidden" name="version" value="{{ task.version }}">
-            <select name="reviewer" class="select" aria-label="검토자"
+            <label class="meta-label" for="tp-reviewer-{{ task.pk }}">검토자</label>
+            <div class="meta-value"><select id="tp-reviewer-{{ task.pk }}" name="reviewer" class="select"
                     hx-post="{% url 'task_meta' task.pk %}" hx-target="#panel" hx-swap="innerHTML" hx-trigger="change">
-              <option value="">검토자 지정 안 함</option>
-              {% if task.reviewer and not task.reviewer.is_active %}<option selected disabled>검토자 {{ task.reviewer.display_name }}</option>{% endif %}
-              {% for u in org_members %}<option value="{{ u.pk }}"{% if u.pk == task.reviewer_id %} selected{% endif %}>검토자 {{ u.display_name }}</option>{% endfor %}
-            </select>
+              <option value="">지정 안 함</option>
+              {% if task.reviewer and not task.reviewer.is_active %}<option selected disabled>{{ task.reviewer.display_name }}</option>{% endif %}
+              {% for u in org_members %}<option value="{{ u.pk }}"{% if u.pk == task.reviewer_id %} selected{% endif %}>{{ u.display_name }}</option>{% endfor %}
+            </select></div>
           </form>
-          {% if task.is_template %}<span class="badge primary">템플릿</span>{% endif %}
-          <span class="badge{% if due_class == "overdue" %} danger{% endif %}">{{ due_label }}</span>
-          <form class="row gap-1">
+          {# 기한은 여기 한 곳에만 보인다(배지와 아래 칸으로 두 번 나오던 것을 합쳤다). #}
+          <div class="meta-item task-due-row">
+            <span class="meta-label">기한</span>
+            <div class="meta-value">
+              <span class="due-value{% if due_class == "overdue" %} danger{% endif %}">{{ due_full }}</span>
+              {% if task.is_template %}<span class="badge primary">템플릿</span>{% endif %}
+              {% if task.is_open %}
+              <button type="button" class="btn link" data-action="toggle" data-target="#extend-form"
+                      data-alt="{% if extend_open %}{% if task.due_date %}목표일 연장하기{% else %}목표일 정하기{% endif %}{% else %}입력 닫기{% endif %}">{% if extend_open %}입력 닫기{% elif task.due_date %}목표일 연장하기{% else %}목표일 정하기{% endif %}</button>
+              {% endif %}
+            </div>
+            {% if task.is_open %}
+            <div id="extend-form" class="meta-wide"{% if not extend_open %} hidden{% endif %}>{% include "tasks/_extend.html" %}</div>
+            {% if not task.due_date %}
+            <form class="meta-wide">
+              <input type="hidden" name="version" value="{{ task.version }}">
+              <label class="field">목표일 미정 사유
+                <input class="input" name="no_due_reason" value="{{ task.no_due_reason }}" placeholder="목표일을 정하지 못한 이유"
+                       hx-post="{% url 'task_meta' task.pk %}" hx-target="#panel" hx-swap="innerHTML" hx-trigger="change">
+              </label>
+            </form>
+            {% endif %}
+            {% endif %}
+          </div>
+          <form class="meta-item">
             <input type="hidden" name="version" value="{{ task.version }}">
-            <span>중요도</span>
-            <select name="priority" class="select" aria-label="중요도"
+            <label class="meta-label" for="tp-priority-{{ task.pk }}">중요도</label>
+            <div class="meta-value"><select id="tp-priority-{{ task.pk }}" name="priority" class="select"
                     hx-post="{% url 'task_priority' task.pk %}" hx-target="#panel" hx-swap="innerHTML" hx-trigger="change">
               {% for n in priorities %}<option value="{{ n }}"{% if n == task.priority %} selected{% endif %}>{{ n }}</option>{% endfor %}
-            </select><span>/10</span>
+            </select><span>/10</span></div>
           </form>
         </div>
-        <p class="muted t13">{{ task.status_hint }}</p>
         {% if not task.is_template and not task.group_id %}{% split_hint task %}{% endif %}
       </div>
-      {% include "tasks/_projects.html" %}
       {% if task.is_stopped or block_pending or reject_pending %}{% include "tasks/_stop.html" %}{% endif %}
-      {% if series %}{% include "tasks/_series.html" %}{% endif %}
-      {% include "tasks/_subtasks.html" %}
-      <div class="md-field"><label for="task-desc-{{ task.pk }}">설명</label>
-        <textarea id="task-desc-{{ task.pk }}" class="textarea" name="value" rows="{{ desc_rows }}" data-md data-toolbar="bottom" data-autosave placeholder="무엇을 하는 태스크인지 적습니다." hx-post="{% url 'task_text' task.pk 'description' %}" hx-trigger="change" hx-swap="none">{{ task.description }}</textarea>
-      </div>
-      <div class="section due-block task-due-row">
-        <div class="label">목표일</div>
-        <div class="value{% if due_class == "overdue" %} danger{% endif %}">{{ due_full }}</div>
-        {% if task.is_open %}
-        <button type="button" class="btn link" data-action="toggle" data-target="#extend-form"
-                data-alt="{% if extend_open %}{% if task.due_date %}목표일 연장하기{% else %}목표일 정하기{% endif %}{% else %}취소{% endif %}">{% if extend_open %}취소{% elif task.due_date %}목표일 연장하기{% else %}목표일 정하기{% endif %}</button>
-        <div id="extend-form"{% if not extend_open %} hidden{% endif %}>{% include "tasks/_extend.html" %}</div>
-        {% if not task.due_date %}
-        <form>
-          <input type="hidden" name="version" value="{{ task.version }}">
-          <label class="field">목표일 미정 사유
-            <input class="input" name="no_due_reason" value="{{ task.no_due_reason }}" placeholder="목표일을 정하지 못한 이유"
-                   hx-post="{% url 'task_meta' task.pk %}" hx-target="#panel" hx-swap="innerHTML" hx-trigger="change">
-          </label>
-        </form>
-        {% endif %}
-        {% endif %}
-      </div>
-    </div>
-    <div class="stack">
-      <div class="md-field"><label for="task-done-{{ task.pk }}">완료 조건</label>
-        <textarea id="task-done-{{ task.pk }}" class="textarea" name="value" rows="2" data-md data-toolbar="bottom" data-autosave placeholder="끝났다고 볼 조건을 적습니다." hx-post="{% url 'task_text' task.pk 'done_when' %}" hx-trigger="change" hx-swap="none">{{ task.done_when }}</textarea>
-      </div>
       <label class="field">다음 행동
         <input class="input" name="value" value="{{ task.next_action }}" placeholder="다음에 할 일을 한 문장으로 적으세요." data-autosave hx-post="{% url 'task_text' task.pk 'next_action' %}" hx-trigger="change" hx-swap="none">
       </label>
-      <div id="checklist">{% include "tasks/_checklist.html" %}</div>
       <div class="md-field"><label for="task-notes-{{ task.pk }}">진행 메모</label>
         <textarea id="task-notes-{{ task.pk }}" class="textarea notes" name="value" data-md data-toolbar="bottom" data-autosave{% if focus_notes %} data-focus{% endif %} placeholder="지금까지 한 일, 막힌 점, 다음에 할 일"
                   hx-post="{% url 'task_text' task.pk 'notes' %}" hx-trigger="change, keyup changed delay:600ms" hx-swap="none">{{ task.notes }}</textarea>
-        <span class="muted t13">설명·완료 조건·진행 메모는 입력을 멈추면 곧 또는 다른 칸으로 이동할 때 자동 저장됩니다. 저장 완료 표시를 확인하세요.</span>
       </div>
+      <div class="md-field"><label for="task-done-{{ task.pk }}">완료 조건</label>
+        <textarea id="task-done-{{ task.pk }}" class="textarea" name="value" rows="2" data-md data-toolbar="bottom" data-autosave placeholder="끝났다고 볼 조건을 적습니다." hx-post="{% url 'task_text' task.pk 'done_when' %}" hx-trigger="change" hx-swap="none">{{ task.done_when }}</textarea>
+      </div>
+      {% if series %}{% include "tasks/_series.html" %}{% endif %}
+    </div>
+    <div class="stack panel-folds">
+      <details class="fold"><summary>설명{% if not task.description %} <span class="muted">비어 있음</span>{% endif %}</summary>{# copy-draft #}
+        <div class="md-field"><label for="task-desc-{{ task.pk }}" class="sr-only">설명</label>
+          <textarea id="task-desc-{{ task.pk }}" class="textarea" name="value" rows="{{ desc_rows }}" data-md data-toolbar="bottom" data-autosave placeholder="무엇을 하는 태스크인지 적습니다." hx-post="{% url 'task_text' task.pk 'description' %}" hx-trigger="change" hx-swap="none">{{ task.description }}</textarea>
+        </div>
+      </details>
+      <details class="fold"><summary>체크리스트 <span class="muted">{{ checklist_done }}/{{ checklist|length }}</span></summary>
+        <div id="checklist">{% include "tasks/_checklist.html" %}</div>
+      </details>
+      {% include "tasks/_subtasks.html" %}
+      {% include "tasks/_projects.html" %}
       {% if github_enabled and task.project.dev_tools %}<details class="git-fold"><summary>GitHub · {{ gh_summary }}</summary>{% include "tasks/_git.html" %}</details>{% endif %}
-      <div id="refs">{% include "tasks/_refs.html" %}</div>
-      <details><summary>변경 이력 {{ history|length }}</summary>{% include "tasks/_history.html" %}</details>
-      <details><summary>더보기</summary>
-        <p class="muted t13">일시정지: 개인 사유 또는 다른 작업 · 막힘: 외부 요인으로 진행 불가</p>
+      <details class="fold"{% if link_open %} open{% endif %}><summary>참고 자료·첨부·산출물 <span class="muted">{{ refs_count }}</span></summary>{# copy-draft #}
+        <div id="refs">{% include "tasks/_refs.html" %}</div>
+      </details>
+      <details class="fold"><summary>변경 이력 <span class="muted">{{ history|length }}</span></summary>{% include "tasks/_history.html" %}</details>
+      <div hx-get="{% url 'task_decisions' task.pk %}" hx-trigger="load" hx-target="this" hx-swap="outerHTML" aria-label="의사결정 기록"></div>
+      <details class="fold"><summary>더보기</summary>
         <div class="row">
           <button type="button" class="btn sm" hx-get="{% url 'task_duplicate' task.pk %}" hx-target="#dialog" hx-swap="innerHTML">{% if task.is_template %}회차 만들기{% elif task.status == "done" and task.parent_id %}다음 회차 만들기{% else %}복제{% endif %}</button>
           {% if task.is_template or task.status == "todo" %}
@@ -142,7 +156,6 @@
         <form method="post" action="{% url 'task_delete' task.pk %}" onsubmit="return confirm('태스크를 삭제할까요? 체크리스트·링크도 함께 사라지고 되돌릴 수 없습니다.{% if sub_count %} 하위 {{ sub_count }}건은 남고 상위 연결만 풀립니다.{% endif %}')">{% csrf_token %}<button class="btn link danger">태스크 삭제</button></form>
         {% endif %}
       </details>
-      <div hx-get="{% url 'task_decisions' task.pk %}" hx-trigger="load" hx-target="this" hx-swap="outerHTML" aria-label="의사결정 기록"></div>
     </div>
   </div>
 </div>

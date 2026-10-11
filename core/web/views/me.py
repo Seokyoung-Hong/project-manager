@@ -54,6 +54,14 @@ def me(request):
         status=f["status"],
         priority=f["priority"],
     )
+    # 걸린 필터만 칩으로 보인다(b-workspace 중-7). 필터 칸은 [필터] 하나로 접는다.
+    labels = (
+        dict(ts.DUE_FILTERS).get(f["due"]),
+        project.name if project else "",
+        dict(ts.STATUS_FILTERS).get(f["status"]),
+        dict(ts.PRIORITY_FILTERS).get(f["priority"]),
+    )
+    active = [x for x in labels if x and x not in ("모든 기한", "모든 상태", "모든 중요도")]
     opts = "ro,notoday" if member is not None else "noassignee"
     # 같은 태스크가 묶음과 하위 묶음에 두 번 나온다. 행 정보는 태스크마다 한 번만 만든다.
     tasks = {t.pk: t for grp in view["groups"] for t in grp["tasks"]}
@@ -73,6 +81,7 @@ def me(request):
             "sort": sort,
             "f": f,
             "has_filter": any(f.values()),
+            "active_filters": active,
             "member_id": member_id,
             "members": User.objects.filter(
                 is_active=True, org_memberships__org__in=orgs_of(request.user)
