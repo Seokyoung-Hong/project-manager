@@ -15,7 +15,7 @@ from common.errors import ServiceError
 from orgs.settings import clean
 
 from .identity import resolve
-from .models import User
+from .models import ApiToken, IdempotencyKey, LoginLock, OAuthCode, User
 
 CODE_TTL = timedelta(minutes=10)
 
@@ -91,3 +91,78 @@ def set_user_settings(user, data: dict) -> User:
     user.settings = clean("user", data)
     user.save(update_fields=["settings"])
     return user
+
+
+# ---------- 회원 탈퇴 ----------
+
+DELETED_NAME = "탈퇴한 사용자"
+
+
+@transaction.atomic
+def withdraw(user, confirm: str) -> None:
+    """회원 탈퇴. 되돌릴 수 없다(개인정보 처리 결정 A).
+
+    User 행은 지우지 않고 익명화한다 — 태스크·문서·이력이 PROTECT로 이 행을 가리키고, 그 기록은
+    조직의 업무 기록으로 남아야 하기 때문이다. 화면은 display_name을 쓰므로 "탈퇴한 사용자"로 보인다.
+    """
+    from django.contrib.sessions.models import Session
+
+    from github.models import GitHubIdentity
+    from orgs.models import DiscordMemberPermission, Organization, OrgMembership, TeamMembership
+    from portfolio.models import PortfolioDraft
+    from tasks.models import Notice, TodayItem
+
+    user = User.objects.select_for_update().get(pk=user.pk)
+    _check_withdraw_confirm(user, confirm)
+    # 마지막 관리자 검사는 orgs.services.change_role·remove_member와 같은 잠금으로 직렬화한다.
+    admin_orgs = OrgMembership.objects.filter(user=user, role="admin").values("org")
+    for org in Organization.objects.select_for_update().filter(pk__in=admin_orgs).order_by("pk"):
+        if not OrgMembership.objects.filter(org=org, role="admin").exclude(user=user).exists():
+            raise ServiceError(
+                {
+                    "org": f"'{org.name}' 조직의 마지막 관리자입니다. "
+                    "다른 구성원에게 관리자를 넘긴 뒤 탈퇴해 주세요."
+                }
+            )
+
+    old_username = user.username
+    ApiToken.objects.filter(user=user).delete()  # AI용·사람용·MCP OAuth로 받은 토큰 모두
+    OAuthCode.objects.filter(user=user).delete()
+    IdempotencyKey.objects.filter(user=user).delete()
+    GitHubIdentity.objects.filter(user=user).delete()
+    TodayItem.objects.filter(user=user).delete()
+    PortfolioDraft.objects.filter(owner=user).delete()  # 출처 스냅샷은 CASCADE
+    Notice.objects.filter(user=user).delete()
+    DiscordMemberPermission.objects.filter(user=user).delete()
+    TeamMembership.objects.filter(user=user).delete()
+    OrgMembership.objects.filter(user=user).delete()
+    user.owned_projects.clear()
+    LoginLock.objects.filter(kind="user", key=old_username.lower()[:150]).delete()
+
+    username = f"deleted-{user.pk}"
+    if User.objects.filter(username=username).exclude(pk=user.pk).exists():
+        # 누군가 이 아이디로 먼저 가입했다. 탈퇴를 막지 않도록 뒤에 난수를 붙인다.
+        username = f"{username}-{secrets.token_hex(4)}"
+    user.username = username
+    user.display_name = DELETED_NAME
+    user.email = user.first_name = user.last_name = ""
+    user.set_unusable_password()
+    user.is_active = user.is_staff = user.is_superuser = False
+    user.discord_user_id = user.discord_link_code = None
+    user.discord_link_expires_at = user.discord_linked_at = None
+    user.settings = {}
+    user.save()
+
+    # ponytail: 세션 전체를 풀어 본다(O(세션 수)). 탈퇴는 드물다. 느려지면 세션에 user 색인을 둔다.
+    uid = str(user.pk)
+    stale = [s.pk for s in Session.objects.all() if s.get_decoded().get("_auth_user_id") == uid]
+    Session.objects.filter(pk__in=stale).delete()
+
+
+def _check_withdraw_confirm(user, confirm: str) -> None:
+    """비밀번호가 있으면 비밀번호를, GitHub로만 가입했으면(비밀번호 없음) 아이디를 다시 받는다."""
+    if user.has_usable_password():
+        if not user.check_password(confirm or ""):
+            raise ServiceError({"confirm": "비밀번호가 맞지 않습니다."})
+    elif (confirm or "").strip() != user.username:
+        raise ServiceError({"confirm": "아이디가 맞지 않습니다."})

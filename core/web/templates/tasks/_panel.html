@@ -54,6 +54,7 @@
             <input type="hidden" name="version" value="{{ task.version }}">
             <select name="assignee" class="select" aria-label="담당자"
                     hx-post="{% url 'task_meta' task.pk %}" hx-target="#panel" hx-swap="innerHTML" hx-trigger="change">
+              {% if not task.assignee.is_active %}<option selected disabled>{{ task.assignee.display_name }}</option>{% endif %}
               {% for u in org_members %}<option value="{{ u.pk }}"{% if u.pk == task.assignee_id %} selected{% endif %}>{{ u.display_name }}</option>{% endfor %}
             </select>
           </form>
@@ -64,6 +65,7 @@
             <select name="reviewer" class="select" aria-label="검토자"
                     hx-post="{% url 'task_meta' task.pk %}" hx-target="#panel" hx-swap="innerHTML" hx-trigger="change">
               <option value="">검토자 지정 안 함</option>
+              {% if task.reviewer and not task.reviewer.is_active %}<option selected disabled>검토자 {{ task.reviewer.display_name }}</option>{% endif %}
               {% for u in org_members %}<option value="{{ u.pk }}"{% if u.pk == task.reviewer_id %} selected{% endif %}>검토자 {{ u.display_name }}</option>{% endfor %}
             </select>
           </form>

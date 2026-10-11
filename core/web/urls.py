@@ -204,6 +204,7 @@ urlpatterns = [
     path("settings/profile/discord/unlink", settings.discord_unlink, name="discord_unlink"),
     path("settings/tokens", settings.tokens, name="tokens"),
     path("settings/tokens/<int:token_id>/revoke", settings.token_revoke, name="token_revoke"),
+    path("settings/account", settings.account, name="account"),
     path("ops", ops.ops, name="ops"),
     path("ops/system", ops.system, name="ops_system"),
     path("ops/unlock", ops.unlock_login, name="ops_unlock"),

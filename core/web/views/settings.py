@@ -1,11 +1,12 @@
 from django.conf import settings
 from django.contrib import messages
+from django.contrib.auth import logout
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
 
 from accounts.models import ApiToken
-from accounts.services import issue_link_code, set_user_settings, unlink_discord
+from accounts.services import issue_link_code, set_user_settings, unlink_discord, withdraw
 from common.errors import ServiceError
 from orgs.settings import effective, specs_for
 
@@ -114,3 +115,18 @@ def preferences(request):
         ("화면 기본값", [row for row in rows if not row["spec"].key.startswith("user.notify_")]),
     ]
     return render(request, "settings/preferences.html", {"rows": rows, "groups": groups})
+
+
+@login_required
+def account(request):
+    """개인 설정 > 계정 > 회원 탈퇴(개인정보 처리 결정 A)."""
+    error = None
+    if request.method == "POST":
+        try:
+            withdraw(request.user, request.POST.get("confirm", ""))
+        except ServiceError as e:
+            error = " ".join(e.errors.values())
+        else:
+            logout(request)
+            return render(request, "settings/withdrawn.html")
+    return render(request, "settings/account.html", {"error": error})
