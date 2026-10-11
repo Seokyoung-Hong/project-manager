@@ -4,4 +4,5 @@
   <a href="{% url 'profile' %}" {% if settings_tab == "profile" %}aria-current="page"{% endif %}>프로필</a>
   <a href="{% url 'preferences' %}" {% if settings_tab == "preferences" %}aria-current="page"{% endif %}>환경설정</a>
   <a href="{% url 'tokens' %}" {% if settings_tab == "tokens" %}aria-current="page"{% endif %}>API 토큰</a>
+  <a href="{% url 'account' %}" {% if settings_tab == "account" %}aria-current="page"{% endif %}>계정</a>
 </nav>
