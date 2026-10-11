@@ -24,7 +24,7 @@ class User(AbstractUser):
     discord_link_expires_at = models.DateTimeField(null=True, blank=True)
     discord_linked_at = models.DateTimeField("Discord 연결 시각", null=True, blank=True)
     auto_pull_days = models.PositiveSmallIntegerField(
-        "마감 기준 자동 담기(일)", choices=AUTO_PULL_CHOICES, default=5
+        "기한 기준 자동 담기(일)", choices=AUTO_PULL_CHOICES, default=5
     )
     settings = models.JSONField("설정", default=dict, blank=True)
 

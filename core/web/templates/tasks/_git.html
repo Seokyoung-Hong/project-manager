@@ -13,7 +13,7 @@
       <option value="">선택 안 함(자동 연동 끔)</option>
       {% for p in gh.choices %}<option value="{{ p.pk }}"{% if p.pk == task.git_project_id %} selected{% endif %}>{{ p.name }} · {{ p.repo.full_name }}</option>{% endfor %}
     </select>
-    <button class="btn sm">연동 프로젝트 바꾸기</button>
+    <button class="btn sm">연동 프로젝트 지정</button>
   </form>
   {% endif %}
   {% if gh.state == "unselected" %}

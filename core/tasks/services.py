@@ -208,7 +208,7 @@ def _validate(
         errors["stop_reason"] = "막힘 사유를 입력해 주세요."
     if status not in Task.STOPPED and reason:
         errors["stop_reason"] = (
-            "현재 상태에는 중단 사유를 저장할 수 없습니다. 사유를 지우거나 일시정지·막힘으로 변경해 주세요."
+            "현재 상태에는 사유를 저장할 수 없습니다. 사유를 지우거나 일시정지·막힘으로 변경해 주세요."
         )
     if reviewer is not None:
         if check_reviewer and (not reviewer.is_active or not is_member(reviewer, project.org)):
@@ -426,11 +426,7 @@ def _require_task(actor, task):
     if actor is None:
         return
     if not is_member(actor, task.project.org):
-        raise ServiceError(
-            {
-                "project": "이 조직에 속해 있지 않아 작업할 수 없습니다. 조직 관리자에게 초대를 요청해 주세요."
-            }
-        )
+        raise ServiceError({"project": "이 조직에 속해 있지 않아 작업할 수 없습니다."})
     if task.project.visibility != "org" and not can_view_task(actor, task):
         raise ServiceError(
             {
@@ -1216,7 +1212,7 @@ def set_template(task, on: bool, *, actor, source="web", token=None) -> Task:
     if on and task.status != "todo":
         raise ServiceError(
             {
-                "is_template": "진행 중인 태스크는 템플릿으로 바꿀 수 없습니다. 시작 전 상태로 바꾼 뒤 다시 요청해 주세요."
+                "is_template": "시작 전 태스크만 템플릿으로 바꿀 수 있습니다. 시작 전 상태로 바꾼 뒤 다시 요청해 주세요."
             }
         )
     if on and (task.group_id or task.subtasks.exists()):

@@ -131,7 +131,7 @@ def save_installation(org, installation_id: int, *, actor) -> GitHubInstallation
     if other:
         raise ServiceError(
             {
-                "installation": "이 GitHub 앱 설치는 다른 조직에 연결되어 있습니다. 기존 조직의 연결을 해제하거나 다른 서버를 선택해 주세요. 기존 조직의 연결을 해제하거나 다른 설치를 선택해 주세요."
+                "installation": "이 GitHub 앱 설치는 다른 조직에 연결되어 있습니다. 기존 조직의 연결을 해제하거나 다른 설치를 선택해 주세요."
             }
         )
     data = client.request("GET", f"/app/installations/{installation_id}", client.app_jwt())
@@ -489,11 +489,7 @@ def connect_repo(
     require_level(actor, project, effective("project.settings_by", org=project.org), "url")
     _check_ai_manage_repo(project.org, source)
     if not is_member(actor, project.org):
-        raise ServiceError(
-            {
-                "org": "이 조직에 속해 있지 않아 작업할 수 없습니다. 조직 관리자에게 초대를 요청해 주세요."
-            }
-        )
+        raise ServiceError({"org": "이 조직에 속해 있지 않아 작업할 수 없습니다."})
     full_name = parse_repo_url(url)
     if not can_view_repo(actor, full_name):
         raise ServiceError(
@@ -1136,7 +1132,7 @@ def _pr_reviewer(task, payload, number, *, adding: bool) -> str:
     identity = GitHubIdentity.objects.filter(github_id=gid).select_related("user").first()
     user = identity.user if identity and identity.user.is_active else None
     if user is None:
-        return "PM 사용자 아님"
+        return "유달리 사용자 아님"
     if (task.reviewer_id == user.pk) == adding:
         return "변경 없음"
     try:

@@ -36,7 +36,7 @@
         <b>{{ d.title }}</b>
         <span class="muted t13">{% if d.project %}{{ d.project.name }}{% elif d.team %}{{ d.team.name }}{% else %}조직 전체{% endif %} · v{{ d.version }} · {{ d.updated_at|date:"n/j" }}</span>
       </a>
-      {% empty %}<p class="empty compact">찾는 문서가 없습니다. 다른 낱말로 찾아확인해 주세요.</p>{% endfor %}
+      {% empty %}<p class="empty compact">찾는 문서가 없습니다. 다른 낱말로 찾아 주세요.</p>{% endfor %}
     </div>
     {% elif tree %}
     {% include "docs/_tree.html" with nodes=tree %}

@@ -172,16 +172,10 @@ def create_request(
     ts._ai_check(org, "ai.create_request", "요청 보내기", source, "request")
     if kind not in ("work", "general"):
         raise ServiceError(
-            {
-                "kind": "검토 요청은 직접 만들 수 없습니다. 태스크를 검토 대기로 변경해 요청해 주세요."
-            }
+            {"kind": "담당 요청은 직접 만들 수 없습니다. 태스크의 담당자를 바꿔 요청해 주세요."}
         )
     if not is_member(actor, org):
-        raise ServiceError(
-            {
-                "org": "이 조직에 속해 있지 않아 작업할 수 없습니다. 조직 관리자에게 초대를 요청해 주세요."
-            }
-        )
+        raise ServiceError({"org": "이 조직에 속해 있지 않아 작업할 수 없습니다."})
     title = (title or "").strip()[:200]
     if not title:
         raise ServiceError({"title": "제목을 입력해 주세요."})

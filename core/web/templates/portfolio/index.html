@@ -87,7 +87,7 @@
             <span class="grow">
               <span class="row"><strong>{{ record.project_name }}</strong><span class="muted">{{ record.task_number }} · {{ record.created_at|slice:":10" }}</span>
               {% if record.portfolio_role == "context" %}<span class="tag">AI 판단 · 프로젝트 맥락</span>
-              {% else %}<span class="tag">내 결정</span>{% if record.status == "captured" %}<span class="tag">세션에서 요약 수집</span>{% else %}<span class="tag">PM에서 확인</span>{% endif %}{% endif %}</span>
+              {% else %}<span class="tag">내 결정</span>{% if record.status == "captured" %}<span class="tag">세션에서 요약 수집</span>{% else %}<span class="tag">유달리에서 확인</span>{% endif %}{% endif %}</span>
               <span class="block">{{ record.summary }}</span>
               {% if record.reason_summary %}<span class="muted t13 block">이유: {{ record.reason_summary }}</span>{% endif %}
               {% if record.impact_summary %}<span class="muted t13 block">영향: {{ record.impact_summary }}</span>{% endif %}
@@ -109,7 +109,7 @@
         {% csrf_token %}<input type="hidden" name="org" value="{{ filters.org }}"><input type="hidden" name="project" value="{{ filters.project }}"><input type="hidden" name="from" value="{{ filters.from }}"><input type="hidden" name="to" value="{{ filters.to }}"><input type="hidden" name="input_type" value="{{ filters.input_type }}">
         {% for record in records %}{% if record.id|stringformat:"s" in selected_ids %}<input type="hidden" name="source_ids" value="{{ record.id }}">{% endif %}{% endfor %}
         <label class="field"><span>초안 제목</span><input class="input" type="text" name="title" value="프로젝트 포트폴리오 초안" maxlength="200" required></label>
-        <label class="field"><span>AI가 작성한 Markdown</span><textarea class="input" name="body_md" rows="18" placeholder="AI가 생성한 Markdown 초안을 여기에 붙여 입력해 주세요."></textarea></label>
+        <label class="field"><span>AI가 작성한 Markdown</span><textarea class="input" name="body_md" rows="18" placeholder="AI가 생성한 Markdown 초안을 여기에 붙여 넣어 주세요."></textarea></label>
         <button class="btn primary" type="submit">비공개 초안 저장</button>
       </form>
     </section>

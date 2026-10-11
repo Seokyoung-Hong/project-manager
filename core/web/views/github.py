@@ -407,8 +407,10 @@ def project_repo(request, project_id):
     }
     if state["state"] == "none":
         if getattr(project.org, "github", None) is None:
-            ctx["repo_choices_status"] = (
-                "이 조직에 GitHub 앱이 설치되지 않았습니다. 조직 설정의 GitHub 화면에서 앱을 설치해 주세요. 조직 관리자에게 설치를 요청해 주세요."
+            ctx["repo_choices_status"] = "이 조직에 GitHub 앱이 설치되지 않았습니다. " + (
+                "조직 설정의 GitHub 화면에서 앱을 설치해 주세요."
+                if ctx["is_admin"]
+                else "조직 관리자에게 설치를 요청해 주세요."
             )
             ctx["org_repos"] = []
         else:
@@ -445,7 +447,7 @@ def project_repo(request, project_id):
             ctx["repo_teams_prompt"] = (
                 f"ProjectManager의 GitHub 접근 팀 조회를 확인해 주세요. 저장소: {conn.full_name}. "
                 f"조회 결과: {team_result['status']}. "
-                "GET /repos/{owner}/{repo}/teams는 Repository Administration 읽기 권한이 필요합니다. Discord 서버 관리자에게 봇 권한을 요청해 주세요. "
+                "GET /repos/{owner}/{repo}/teams는 Repository Administration 읽기 권한이 필요합니다. "
                 "현재 앱의 권한, 설치 승인 상태, 저장소 선택 범위와 조직 정책을 확인하고, "
                 "권한을 유지할 때의 대안과 읽기 권한을 추가할 때의 절차를 설명해 주세요. "
                 "HTTP 상태만으로 원인을 단정하지 말아 주세요. 토큰이나 개인키는 공유하지 않겠습니다."

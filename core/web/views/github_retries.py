@@ -106,7 +106,7 @@ def _apply(request, row, org):
             or not invite.is_usable
             or (invite.max_uses and invite.use_count >= invite.max_uses)
         ):
-            _stale("PM 초대가 만료되거나 폐기됐습니다.")
+            _stale("유달리 초대가 만료되거나 폐기됐습니다.")
         # 이미 가입했거나 초대가 대기 중이면 역할을 member로 덮어쓰지 않는다.
         try:
             client.request(
@@ -127,7 +127,7 @@ def _apply(request, row, org):
             or writes._login_of(user) != row["login"]
             or OrgMembership.objects.filter(org=org, user=user).exists()
         ):
-            _stale("대상 계정이 바뀌었거나 PM 조직에 다시 가입했습니다.")
+            _stale("대상 계정이 바뀌었거나 유달리 조직에 다시 가입했습니다.")
         writes.remove_from_org(org, row["login"], actor=actor)
         return
     team = Team.objects.filter(pk=row["team_id"], org=org).first()
@@ -141,7 +141,7 @@ def _apply(request, row, org):
             or writes._login_of(user) != row["login"]
             or team.members.filter(pk=user.pk).exists() != row["add"]
         ):
-            _stale("대상 계정 또는 PM 팀 멤버 상태가 바뀌었습니다.")
+            _stale("대상 계정 또는 유달리 팀 멤버 상태가 바뀌었습니다.")
     # 이름 변경으로 slug가 바뀌어도 변하지 않는 GitHub 팀 ID로 다시 찾는다.
     teams = list(
         client.paginate(f"/orgs/{writes._org_login(org)}/teams", writes._actor_token(actor))
@@ -190,14 +190,14 @@ def retry_write(request, retry_id):
     try:
         _apply(request, row, org)
         completed = True
-        messages.success(request, "GitHub 반영을 완료했습니다. PM 작업은 반복하지 않았습니다.")
+        messages.success(request, "GitHub 반영을 완료했습니다. 유달리 작업은 반복하지 않았습니다.")
     except (ServiceError, GitHubError) as error:
         completed = isinstance(error, ServiceError) and "retry" in error.errors
         record_problem(request, "writes", row["label"], error, target=row["target"])
         text = (
             " ".join(error.errors.values())
             if completed
-            else "GitHub 재시도에 실패했습니다. PM 변경은 유지됩니다. 해결 절차에서 조회 상태를 확인해 주세요."
+            else "GitHub 재시도에 실패했습니다. 유달리 변경은 유지됩니다. 해결 절차에서 조회 상태를 확인해 주세요."
         )
         messages.warning(request, text, extra_tags="integration-help")
     if completed:

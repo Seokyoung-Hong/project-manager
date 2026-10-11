@@ -31,11 +31,7 @@ def _member_org(user, org_id):
         or not getattr(user, "is_active", False)
         or not is_member(user, org)
     ):
-        raise ServiceError(
-            {
-                "org": "이 조직에 속해 있지 않아 작업할 수 없습니다. 조직 관리자에게 초대를 요청해 주세요."
-            }
-        )
+        raise ServiceError({"org": "이 조직에 속해 있지 않아 작업할 수 없습니다."})
     return org
 
 
@@ -53,11 +49,7 @@ def _owned_draft(user, draft_id):
             }
         )
     if not getattr(user, "is_active", False) or not is_member(user, draft.org):
-        raise ServiceError(
-            {
-                "org": "이 조직에 속해 있지 않아 작업할 수 없습니다. 조직 관리자에게 초대를 요청해 주세요."
-            }
-        )
+        raise ServiceError({"org": "이 조직에 속해 있지 않아 작업할 수 없습니다."})
     return draft
 
 
@@ -358,11 +350,7 @@ def update_draft(
             }
         )
     if not getattr(user, "is_active", False) or not is_member(user, draft.org):
-        raise ServiceError(
-            {
-                "org": "이 조직에 속해 있지 않아 작업할 수 없습니다. 조직 관리자에게 초대를 요청해 주세요."
-            }
-        )
+        raise ServiceError({"org": "이 조직에 속해 있지 않아 작업할 수 없습니다."})
     # Even edits must fail closed if an existing source was withdrawn.
     _check_sources(user, draft)
     try:

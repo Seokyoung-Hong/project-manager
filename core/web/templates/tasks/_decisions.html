@@ -28,7 +28,7 @@
         {% if record.kind == "user_input" %}
           {% if record.subject_user %}입력 주체: {{ record.subject_user.display_name }}{% else %}입력 주체 미확인{% endif %}
           · 근거: {{ record.get_evidence_basis_display }}
-          {% if record.confirmed_by %} · PM에서 확인: {{ record.confirmed_by.display_name }}{% endif %}
+          {% if record.confirmed_by %} · 유달리에서 확인: {{ record.confirmed_by.display_name }}{% endif %}
           {% if record.confirmed_at %} ({{ record.confirmed_at|localtime|date:"Y-m-d H:i" }}){% endif %}
         {% else %}사용자의 결정으로 귀속하지 않은 AI 판단{% endif %}
         {% if record.client_name %} · 세션: {{ record.client_name }}{% endif %}

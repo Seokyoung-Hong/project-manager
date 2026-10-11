@@ -11,7 +11,7 @@
   <a class="btn" href="{% url 'login' %}?next={{ request.path }}">이미 계정이 있습니다 · 로그인</a>
 </div>
 {% else %}
-<div class="notice bad">초대 링크가 만료되었거나 폐기되었습니다. 조직 관리자에게 새 초대 링크를 요청해 주세요. 초대한 사람에게 새 링크를 받아 주세요.</div>
+<div class="notice bad">초대 링크가 유효하지 않거나 만료되었습니다. 초대한 사람에게 새 링크를 받아 주세요.</div>
 {% endif %}
 {% endblock %}
 

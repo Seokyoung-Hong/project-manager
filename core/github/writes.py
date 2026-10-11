@@ -71,7 +71,7 @@ def try_write(fn, *args, **kwargs) -> str:
         logging.getLogger(__name__).warning("GitHub 쓰기 요청 실패: %s", e.status, exc_info=True)
         return "GitHub에 반영하지 못했습니다. 유달리에는 적용되었습니다. 연동 문제 해결 화면에서 연결 상태와 재시도 방법을 확인해 주세요."
     except ServiceError as e:
-        return " ".join(str(v) for v in e.errors.values()) + " PM에만 적용됐습니다."
+        return " ".join(str(v) for v in e.errors.values()) + " 유달리에만 적용됐습니다."
 
 
 # ---------- 조직과 팀 ----------

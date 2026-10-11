@@ -175,11 +175,7 @@ def create_project(
     visibility: str = "org",
 ):
     if not is_member(actor, org):
-        raise ServiceError(
-            {
-                "org": "이 조직에 속해 있지 않아 작업할 수 없습니다. 조직 관리자에게 초대를 요청해 주세요."
-            }
-        )
+        raise ServiceError({"org": "이 조직에 속해 있지 않아 작업할 수 없습니다."})
     if visibility not in dict(Project.VISIBILITIES):
         raise ServiceError(
             {
@@ -236,11 +232,7 @@ def update_project(
     project, changes: dict, *, actor, source="web", token=None, expected_version: int
 ):
     if not is_member(actor, project.org):
-        raise ServiceError(
-            {
-                "org": "이 조직에 속해 있지 않아 작업할 수 없습니다. 조직 관리자에게 초대를 요청해 주세요."
-            }
-        )
+        raise ServiceError({"org": "이 조직에 속해 있지 않아 작업할 수 없습니다."})
     require_ai_enabled(project.org, source, "프로젝트 고치기")
     unknown = set(changes) - EDITABLE
     if unknown:
@@ -401,7 +393,9 @@ def delete_project(project, *, actor, source: str = "web"):
     _check_ai_delete(project.org, source)
     if not project.is_archived:
         raise ServiceError(
-            {"project": "진행 중인 프로젝트는 삭제할 수 없습니다. 프로젝트를 먼저 보관해 주세요."}
+            {
+                "project": "보관하지 않은 프로젝트는 삭제할 수 없습니다. 프로젝트를 먼저 보관해 주세요."
+            }
         )
     from tasks.models import ChangeLog, Task, TaskDecisionRecord
 
@@ -619,11 +613,7 @@ def _validate_milestone(name, target_date, start_date, status) -> dict:
 
 def create_milestone(*, project, name, target_date, actor, start_date=None, status="planned"):
     if not can_view_project(actor, project):
-        raise ServiceError(
-            {
-                "org": "이 조직에 속해 있지 않아 작업할 수 없습니다. 조직 관리자에게 초대를 요청해 주세요."
-            }
-        )
+        raise ServiceError({"org": "이 조직에 속해 있지 않아 작업할 수 없습니다."})
     require_level(actor, project, effective("project.roadmap_by", org=project.org), "roadmap")
     errors = _validate_milestone(name, target_date, start_date, status)
     if errors:
@@ -641,11 +631,7 @@ def create_milestone(*, project, name, target_date, actor, start_date=None, stat
 def update_milestone(ms, changes: dict, *, actor):
     """마일스톤에는 version이 없다(동시 편집이 문제가 될 만큼 자주 고치지 않는다)."""
     if not can_view_project(actor, ms.project):
-        raise ServiceError(
-            {
-                "org": "이 조직에 속해 있지 않아 작업할 수 없습니다. 조직 관리자에게 초대를 요청해 주세요."
-            }
-        )
+        raise ServiceError({"org": "이 조직에 속해 있지 않아 작업할 수 없습니다."})
     require_level(actor, ms.project, effective("project.roadmap_by", org=ms.project.org), "roadmap")
     name = changes.get("name", ms.name)
     target_date = changes.get("target_date", ms.target_date)
@@ -716,22 +702,14 @@ def sync_milestone(
 
 def delete_milestone(ms, actor):
     if not can_view_project(actor, ms.project):
-        raise ServiceError(
-            {
-                "org": "이 조직에 속해 있지 않아 작업할 수 없습니다. 조직 관리자에게 초대를 요청해 주세요."
-            }
-        )
+        raise ServiceError({"org": "이 조직에 속해 있지 않아 작업할 수 없습니다."})
     require_level(actor, ms.project, effective("project.roadmap_by", org=ms.project.org), "roadmap")
     ms.delete()
 
 
 def create_dependency(*, from_project, to_project, actor, note="", is_blocking=False):
     if not (can_view_project(actor, from_project) and can_view_project(actor, to_project)):
-        raise ServiceError(
-            {
-                "org": "이 조직에 속해 있지 않아 작업할 수 없습니다. 조직 관리자에게 초대를 요청해 주세요."
-            }
-        )
+        raise ServiceError({"org": "이 조직에 속해 있지 않아 작업할 수 없습니다."})
     require_level(
         actor, from_project, effective("project.roadmap_by", org=from_project.org), "roadmap"
     )
@@ -764,11 +742,7 @@ def create_dependency(*, from_project, to_project, actor, note="", is_blocking=F
 
 def delete_dependency(dep, actor):
     if not (can_view_project(actor, dep.from_project) and can_view_project(actor, dep.to_project)):
-        raise ServiceError(
-            {
-                "org": "이 조직에 속해 있지 않아 작업할 수 없습니다. 조직 관리자에게 초대를 요청해 주세요."
-            }
-        )
+        raise ServiceError({"org": "이 조직에 속해 있지 않아 작업할 수 없습니다."})
     require_level(
         actor,
         dep.from_project,
@@ -837,7 +811,7 @@ def roadmap(org, today=None, *, viewer=None) -> dict:
 def parse_spec(raw: bytes, *, source: str) -> dict:
     if len(raw) > SPEC_MAX:
         raise ServiceError(
-            {"spec": "API 명세가 용량 한도 5MB를 넘었습니다. 명세를 나눠 올려 주세요."}
+            {"spec": "API 명세가 용량 한도 5MB를 넘었습니다. 명세 용량을 줄여 올려 주세요."}
         )
     try:
         spec = json.loads(raw.decode("utf-8"))
@@ -920,11 +894,7 @@ def fetch_spec(url: str) -> dict:
 
 def set_api_spec(project, spec: dict, *, source_url: str, actor, source: str = "web") -> ApiSpec:
     if not is_member(actor, project.org):
-        raise ServiceError(
-            {
-                "org": "이 조직에 속해 있지 않아 작업할 수 없습니다. 조직 관리자에게 초대를 요청해 주세요."
-            }
-        )
+        raise ServiceError({"org": "이 조직에 속해 있지 않아 작업할 수 없습니다."})
     require_ai_enabled(project.org, source, "API 문서 등록")
     obj, _ = ApiSpec.objects.update_or_create(
         project=project,

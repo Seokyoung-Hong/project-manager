@@ -576,7 +576,7 @@ def register(tree: app_commands.CommandTree, guild, cfg, core: CoreClient, seen:
 
     @tree.command(
         name="알림채널",
-        description="이 채널을 이 서버 조직의 알림 채널로 지정합니다 (PM 조직 관리자)",
+        description="이 채널을 이 서버 조직의 알림 채널로 지정합니다 (유달리 조직 관리자)",
         guild=guild,
     )
     @app_commands.guild_only()

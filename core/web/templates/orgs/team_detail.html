@@ -24,7 +24,7 @@
     <form method="post" action="{% url 'team_github_reconcile' team.pk %}">{% csrf_token %}<button class="btn sm">GitHub에 멤버 추가</button></form>
     <form method="post" action="{% url 'team_github_unlink' team.pk %}">{% csrf_token %}<button class="btn sm danger">GitHub 팀 연결 해제</button></form>
   </div>
-  <p class="muted t13">연결을 해제해도 GitHub 팀은 유지됩니다. 멤버 추가는 활성 PM 팀 멤버만 GitHub에 추가를 요청하며, GitHub에만 있는 멤버는 제거하지 않습니다.</p>
+  <p class="muted t13">연결을 해제해도 GitHub 팀은 유지됩니다. 멤버 추가는 활성 유달리 팀 멤버만 GitHub에 추가를 요청하며, GitHub에만 있는 멤버는 제거하지 않습니다.</p>
   {% else %}
   <form method="post" action="{% url 'team_github_link' team.pk %}" class="row">{% csrf_token %}
     <select name="gh_team" class="select auto" aria-label="연결할 GitHub 팀">

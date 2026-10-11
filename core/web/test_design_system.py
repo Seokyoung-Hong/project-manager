@@ -106,16 +106,19 @@ def test_no_bare_ok_cancel_button_labels():
     assert hits == []
 
 
+# 짧은 패턴은 낱말 경계로 좁힌다: "마감"은 낱말 첫머리, 종결 어미는 낱말 끝, PM은 영문 낱말 하나일 때만.
 COPY_BANNED = re.compile(
-    r"목표일|목표 기한|마감|부하 현황|거버넌스|백링크|결과 선반|"
-    r"업로드|비활성화된 계정|비활성 사용자|막힌 이유|멈춘 이유|"
-    r"하세요|올리세요|고르세요|넣으세요|적으세요|받으세요|쓰세요|보세요|"
-    r"나누세요|떼어내세요|바꾸세요|가져오세요|해요|했어요"
+    r"목표일|목표 기한|(?<![가-힣])마감|부하 현황|거버넌스|백링크|결과 선반|"
+    r"업로드|비활성화된 계정|비활성 사용자|막힌 이유|멈춘 이유|사람별로 나누|"
+    r"(?<![A-Za-z])PM(?![A-Za-z])|"
+    r"(?:하세요|올리세요|고르세요|넣으세요|적으세요|받으세요|쓰세요|보세요|"
+    r"나누세요|떼어내세요|바꾸세요|가져오세요|마세요|해요|했어요)(?![가-힣])"
 )
+JS_STRING = re.compile(r"""(["'`])((?:\\.|(?!\1).)*)\1""", re.S)
 
 
 def _python_copy_literals(path):
-    """모델 필드·주석·docstring·로그·테스트를 제외한 사용자 문구 리터럴."""
+    """주석·docstring·로그를 제외한 사용자 문구 리터럴. 모델 verbose_name·choices 라벨도 화면에 보이므로 넣는다."""
     tree = ast.parse(path.read_text(encoding="utf-8-sig"))
     excluded = set()
     for node in ast.walk(tree):
@@ -123,9 +126,7 @@ def _python_copy_literals(path):
             excluded.add(id(node.value))  # docstring
         if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute):
             owner = node.func.value
-            if (
-                isinstance(owner, ast.Name) and owner.id in {"log", "logger", "logging", "models"}
-            ) or (
+            if (isinstance(owner, ast.Name) and owner.id in {"log", "logger", "logging"}) or (
                 isinstance(owner, ast.Call)
                 and isinstance(owner.func, ast.Attribute)
                 and owner.func.attr == "getLogger"
@@ -141,8 +142,15 @@ def _python_copy_literals(path):
     ]
 
 
+def _js_copy_literals(path):
+    """static/*.js에서 주석을 뺀 한글 문자열 리터럴."""
+    source = re.sub(r"/\*.*?\*/", "", path.read_text(encoding="utf-8"), flags=re.S)
+    source = re.sub(r"(?m)(^|[\s;{}(),])//.*$", r"\1", source)
+    return [m.group(2) for m in JS_STRING.finditer(source) if re.search(r"[가-힣]", m.group(2))]
+
+
 def test_user_copy_uses_standard_terms_and_tone():
-    """DESIGN.md 용어표. 식별자·모델 필드명·주석은 검사하지 않는다."""
+    """DESIGN.md 용어표. 식별자·주석은 검사하지 않는다."""
     hits = []
     for path in TEMPLATES:
         source = path.read_text(encoding="utf-8")
@@ -161,17 +169,34 @@ def test_user_copy_uses_standard_terms_and_tone():
             for part in path.parts
         ):
             continue
-        if path.name == "models.py" or path.name == "tests.py" or path.name.startswith("test_"):
+        if path.name == "tests.py" or path.name.startswith("test_"):
             continue
         for line, copy in _python_copy_literals(path):
             hits.extend(
                 f"{path.relative_to(WEB.parent)}:{line}:{match.group()}"
                 for match in COPY_BANNED.finditer(copy)
             )
+    for path in SCRIPTS:
+        for copy in _js_copy_literals(path):
+            hits.extend(
+                f"static/{path.name}:{m.group()}:{copy[:40]}" for m in COPY_BANNED.finditer(copy)
+            )
     assert hits == []
 
 
-def test_copy_scan_ignores_code_comments_and_model_fields(tmp_path):
+def test_copy_banned_short_patterns_respect_word_boundaries(tmp_path):
+    assert not COPY_BANNED.search("PMS·APM 설정, 반마감")
+    for bad in ("오늘 마감", "넣지 마세요.", "PM에만", "사람별로 나누면", "확인했어요"):
+        assert COPY_BANNED.search(bad), bad
+    sample = tmp_path / "copy.js"
+    sample.write_text(
+        '// 업로드 주석\n/* 마감 */\nconst u = "https://x"; alert("파일 업로드"); // 하세요\n',
+        encoding="utf-8",
+    )
+    assert _js_copy_literals(sample) == ["파일 업로드"]
+
+
+def test_copy_scan_ignores_code_comments_but_reads_model_labels(tmp_path):
     sample = tmp_path / "copy.py"
     sample.write_text(
         "# 목표일을 바꾸세요\n"
@@ -181,7 +206,7 @@ def test_copy_scan_ignores_code_comments_and_model_fields(tmp_path):
         'message = f"{task_id} 목표일을 선택하세요."\n',
         encoding="utf-8",
     )
-    assert _python_copy_literals(sample) == [(5, " 목표일을 선택하세요.")]
+    assert sorted(_python_copy_literals(sample)) == [(3, "목표일"), (5, " 목표일을 선택하세요.")]
 
 
 def test_inputs_have_labels_not_just_placeholders():

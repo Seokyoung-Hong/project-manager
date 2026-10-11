@@ -41,11 +41,7 @@ _SOURCES = {value for value, _label in TaskDecisionRecord.SOURCES}
 
 def _require_member(task, actor):
     if actor is None or not is_member(actor, task.project.org):
-        raise ServiceError(
-            {
-                "org": "이 조직에 속해 있지 않아 작업할 수 없습니다. 조직 관리자에게 초대를 요청해 주세요."
-            }
-        )
+        raise ServiceError({"org": "이 조직에 속해 있지 않아 작업할 수 없습니다."})
 
 
 def _require_mcp_write(task, actor, token):

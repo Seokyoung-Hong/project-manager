@@ -9,11 +9,11 @@ from .services import ONE_LEVEL, _log, _require_task, duplicate_task
 
 MIN_PEOPLE, MAX_PEOPLE = 2, 10
 ONE_ASSIGNEE = (
-    "담당자는 한 명입니다. 사람별로 나누려면 만든 뒤 POST /api/tasks/{id}/split 으로 "
+    "담당자는 한 명입니다. 담당자별로 나누려면 만든 뒤 POST /api/tasks/{id}/split 으로 "
     "하위 태스크를 만들어 주세요."
 )
 SPLIT_NOTE = (
-    "담당자는 한 명입니다. 사람별로 나누려면 웹에서 [담당자별 태스크로 나누기]를 눌러 주세요."
+    "담당자는 한 명입니다. 담당자별로 나누려면 웹에서 [담당자별 태스크로 나누기]를 눌러 주세요."
 )
 
 

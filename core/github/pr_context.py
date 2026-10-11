@@ -69,11 +69,7 @@ def build_pr_context(task, *, actor):
     linked issue; no issue number is inferred from the task ID or title.
     """
     if actor is None or not is_member(actor, task.project.org):
-        raise ServiceError(
-            {
-                "org": "이 조직에 속해 있지 않아 작업할 수 없습니다. 조직 관리자에게 초대를 요청해 주세요."
-            }
-        )
+        raise ServiceError({"org": "이 조직에 속해 있지 않아 작업할 수 없습니다."})
 
     git_link = getattr(task, "git", None)
     from .services import task_repo

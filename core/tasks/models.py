@@ -47,7 +47,7 @@ class Task(models.Model):
     )
     priority = models.PositiveSmallIntegerField("중요도", default=5)
     status = models.CharField("상태", max_length=9, choices=STATUSES, default="todo")
-    due_date = models.DateField("목표 기한", null=True, blank=True)
+    due_date = models.DateField("기한", null=True, blank=True)
     no_due_reason = models.CharField("기한 미정 사유", max_length=200, blank=True)
     stop_reason = models.CharField("멈춘 사유", max_length=300, blank=True)
     stopped_at = models.DateTimeField(null=True, blank=True)

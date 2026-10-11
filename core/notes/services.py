@@ -1,3 +1,4 @@
+import logging
 import re
 from collections import Counter
 from datetime import timedelta
@@ -15,6 +16,8 @@ from projects import docs
 from projects.services import can_view_project, visible_projects
 
 from .models import MeetingNote, VoiceRecording
+
+log = logging.getLogger(__name__)
 
 MAX_BODY = 256 * 1024  # 256KB. 회의록 한 편이 이보다 클 이유가 없다.
 
@@ -57,11 +60,7 @@ def create_note(
 ):
     """웹·API에서 만든 회의록은 처음부터 확정(final)이다. 만들기는 문서 서비스가 한다."""
     if not is_member(actor, org):
-        raise ServiceError(
-            {
-                "org": "이 조직에 속해 있지 않아 작업할 수 없습니다. 조직 관리자에게 초대를 요청해 주세요."
-            }
-        )
+        raise ServiceError({"org": "이 조직에 속해 있지 않아 작업할 수 없습니다."})
     return docs.create_doc(
         org=org,
         actor=actor,
@@ -83,11 +82,7 @@ def _is_owner(note, user) -> bool:
 
 def _check_edit(note, actor, source: str):
     if not is_member(actor, note.org):
-        raise ServiceError(
-            {
-                "org": "이 조직에 속해 있지 않아 작업할 수 없습니다. 조직 관리자에게 초대를 요청해 주세요."
-            }
-        )
+        raise ServiceError({"org": "이 조직에 속해 있지 않아 작업할 수 없습니다."})
     if note.status == "draft" and not _is_owner(note, actor):
         raise Forbidden({"note": "초안은 진행자나 조직 관리자만 고칠 수 있습니다."})
     # AI 편집은 태스크 본문과 같은 정책(ai.edit_text)을 탄다. 새 키를 만들지 않는다.
@@ -109,11 +104,7 @@ def update_note(note, field: str, value, *, actor, expected_version: int, source
 def upload_note(*, org, actor, filename: str, raw: bytes, project=None):
     """.md 본문 텍스트만 읽어 새 회의록을 만든다. 파일은 저장하지 않는다."""
     if not is_member(actor, org):
-        raise ServiceError(
-            {
-                "org": "이 조직에 속해 있지 않아 작업할 수 없습니다. 조직 관리자에게 초대를 요청해 주세요."
-            }
-        )
+        raise ServiceError({"org": "이 조직에 속해 있지 않아 작업할 수 없습니다."})
     return docs.upload_doc(
         org=org, actor=actor, filename=filename, raw=raw, kind="meeting", project=project
     )
@@ -148,11 +139,7 @@ def link_task(note, task, actor, source: str = "web"):
 
 def unlink_task(note, task, actor):
     if not is_member(actor, note.org):
-        raise ServiceError(
-            {
-                "org": "이 조직에 속해 있지 않아 작업할 수 없습니다. 조직 관리자에게 초대를 요청해 주세요."
-            }
-        )
+        raise ServiceError({"org": "이 조직에 속해 있지 않아 작업할 수 없습니다."})
     note.tasks.remove(task)
 
 
@@ -220,11 +207,7 @@ def _check_team(org, team, actor):
 def meeting_scope(*, org, actor, project=None, team=None) -> dict:
     """녹음을 시작해도 되는가. 되면 봇이 쓸 실효 설정을 돌려준다(아니면 ServiceError/Forbidden)."""
     if not is_member(actor, org):
-        raise Forbidden(
-            {
-                "org": "이 조직에 속해 있지 않아 작업할 수 없습니다. 조직 관리자에게 초대를 요청해 주세요."
-            }
-        )
+        raise Forbidden({"org": "이 조직에 속해 있지 않아 작업할 수 없습니다."})
     if project is not None and team is not None:
         raise ServiceError(
             {"scope": "프로젝트와 팀을 함께 선택할 수 없습니다. 공개 범위를 하나만 선택해 주세요."}
@@ -441,6 +424,7 @@ def update_recording(
     if status is not None and status != rec.status:
         _close_pending(rec, "cancelled")  # 회의가 끝나면 대기 중인 넘겨받기 요청은 취소
         if status not in _NEXT.get(rec.status, set()):
+            log.warning("녹음 %s 상태 전이 거절: %s → %s", rec.pk, rec.status, status)
             raise ServiceError(
                 {
                     "status": "현재 녹음 상태에서는 요청한 상태로 바꿀 수 없습니다. 녹음 상태를 다시 확인해 주세요."
@@ -567,7 +551,7 @@ def _present_linked(rec, discord_user_id: str, verb: str) -> dict:
         )
     if not row.get("user_id"):
         raise ServiceError(
-            {"meeting": f"PM 계정을 연결한 {verb} 수 있습니다. 웹 설정에서 연결해 주세요."}
+            {"meeting": f"유달리 계정을 연결한 {verb} 수 있습니다. 웹 설정에서 연결해 주세요."}
         )
     return row
 

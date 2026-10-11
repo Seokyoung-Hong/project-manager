@@ -281,7 +281,7 @@ def require_discord(user, org, feature: str):
         names = ", ".join(n for bit, n in NEED_NAMES.items() if need & bit)
         raise ServiceError(
             {
-                "discord": f"Discord 서버에서 {names} 권한이 필요합니다. Discord 서버 관리자에게 봇 권한을 요청해 주세요."
+                "discord": f"Discord 서버에서 {names} 권한이 필요합니다. 서버 관리자에게 {names} 권한을 받아 주세요."
             }
         )
 

@@ -273,7 +273,7 @@ def update_events(project, events, *, actor, source="web") -> dict:
     hook = dict(conn.discord_hook or {})
     if hook.get("state") not in ("pending", "active"):
         raise ServiceError(
-            {"hook": "해제할 웹훅이 없거나 처리 중입니다. 처리 상태를 새로고침해 확인해 주세요."}
+            {"hook": "변경할 웹훅이 없거나 처리 중입니다. 처리 상태를 새로고침해 확인해 주세요."}
         )
     events = _events(events)
     if hook["state"] == "active":
