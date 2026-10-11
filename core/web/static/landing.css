@@ -437,6 +437,7 @@ ul, ol { margin: 0; padding: 0; list-style: none; }
 /* ---- 디자인 검토 1차 반영 ---- */
 /* 누르는 것은 모든 너비에서 44px 이상 */
 .lp-logo, .anchors a, .top-cta .login { min-height: 44px; display: inline-flex; align-items: center; }
+.anchors a { min-width: 44px; justify-content: center; }
 .btn, .week-map a, .faq-list summary { min-height: 44px; }
 .site-footer .foot-policy > a, .site-footer .biz-email > a { display: inline-flex; align-items: center; min-height: 44px; }
 /* 첫 화면 조건 안내 */
@@ -449,3 +450,8 @@ ul, ol { margin: 0; padding: 0; list-style: none; }
 .fold-tech > summary .mini-head { margin: 0; }
 .fold-tech[open] > summary { margin-bottom: var(--sp-3); }
 .fold-note > summary { font-size: var(--fs-sm); color: var(--c-muted); font-weight: 600; }
+.fold-note .gh-note + .gh-note { margin-top: var(--sp-2); }
+/* 건너뛰기 링크로 온 본문이 고정 머리줄(1줄 65px, 1150px 이하 2줄 117px)에 가리지 않게. 700px 이하는 머리줄이 고정되지 않는다 */
+#main { scroll-margin-top: 72px; }
+@media (max-width: 1150px) { #main { scroll-margin-top: 124px; } }
+@media (max-width: 700px) { #main { scroll-margin-top: 0; } }

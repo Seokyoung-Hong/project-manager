@@ -250,7 +250,6 @@
                 <p class="gh-status"><span class="lp-pill todo">시작 전</span><span class="arrow">→</span><span class="lp-pill doing">진행 중</span></p>
                 <p class="gh-line">브랜치 <code data-copy="ui-samples.branch-1">feat/초대-링크-안내-TASK-12</code></p>
               </div>
-              <p class="gh-desc" data-copy="github.step-1.body"><code>/pm-start</code>가 기한과 담당자를 확인하고 태스크를 진행 중으로 바꾸며 번호를 담은 브랜치 이름을 정해 줘요.</p>
             </li>
             <li class="gh-step s-doing">
               <h5 data-copy="github.step-2.title">커밋 기록</h5>
@@ -268,7 +267,6 @@
                 <p class="gh-status"><span class="lp-pill doing">진행 중</span></p>
                 <p class="gh-draft" data-copy="ui-samples.pr-1">TASK-12 초대 링크 만료 안내 추가</p>
               </div>
-              <p class="gh-desc" data-copy="github.step-3.body"><code>/pm-pr</code>이 결정 기록과 작업 내용을 읽고 태스크 번호를 포함한 PR 제목·설명 초안을 작성합니다.</p>
             </li>
             <li class="gh-step s-review">
               <h5 data-copy="github.step-4.title">PR 열기</h5>
@@ -291,6 +289,8 @@
           </ol>
           <details class="fold-tech fold-note">
             <summary data-copy="shift.after-2">연결 규칙에 맞는 GitHub 활동이 태스크 상태를 바꿔요.</summary>
+            <p class="gh-note" data-copy="github.step-1.body"><code>/pm-start</code>가 기한과 담당자를 확인하고 태스크를 진행 중으로 바꾸며 번호를 담은 브랜치 이름을 정해 줘요.</p>
+            <p class="gh-note" data-copy="github.step-3.body"><code>/pm-pr</code>이 결정 기록과 작업 내용을 읽고 태스크 번호를 포함한 PR 제목·설명 초안을 작성합니다.</p>
             <p class="gh-note" data-copy="github.note">GitHub 자동 연결은 <code>TASK-n</code> 규칙을 따르며 기한이 있는 태스크는 해당 번호가 든 브랜치 생성으로도 진행 중이 돼요. 저장소 규칙이 켜져 있어야 하고 커밋 연결만으로는 상태가 바뀌지 않습니다.</p>
           </details>
         </div>
@@ -474,7 +474,7 @@
       <ol>
         <li><h3 data-copy="trust.item-1.title">내 권한 안에서</h3><p data-copy="trust.item-1.body">AI는 토큰을 발급한 사람의 권한을 넘지 못하며 조직의 AI 정책이 허용한 작업만 수행합니다.</p></li>
         <li><h3 data-copy="trust.item-2.title">변경 경로 기록</h3><p data-copy="trust.item-2.body">변경 이력에는 누가 웹·API·AI·Discord·GitHub 중 어떤 경로로 바꿨는지 남습니다.</p></li>
-        <li><h3 data-copy="trust.item-3.title">본인 확인</h3><p data-copy="trust.item-3.body">AI가 추론한 내 결정은 본인이 웹에서 확인해야 확정되며 API나 MCP 토큰으로는 확인하지 못해요.</p></li>
+        <li><details class="fold-tech fold-trust"><summary><h3 data-copy="trust.item-3.title">본인 확인</h3></summary><p data-copy="trust.item-3.body">AI가 추론한 내 결정은 본인이 웹에서 확인해야 확정되며 API나 MCP 토큰으로는 확인하지 못해요.</p></details></li>
         <li><h3 data-copy="trust.item-4.title">관리자 허용</h3><p data-copy="trust.item-4.body">AI의 조직 설정 변경은 요청으로 올라가며 관리자가 웹에서 허용해야 적용됩니다.</p></li>
       </ol>
     </div>
