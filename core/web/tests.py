@@ -2170,3 +2170,12 @@ def test_admin_login_and_logout_use_our_session_path(client, admin):
     r = client.post("/admin/logout/")
     assert r.status_code == 302 and r.headers["Location"] == "/login"
     assert "_auth_user_id" not in client.session
+
+
+def test_no_external_font_requests(client, logged):
+    """글꼴은 자체 호스팅이다. 방문자 IP가 Google·jsDelivr로 나가면 안 된다."""
+    for page in (client.get("/login"), logged.get("/today")):
+        body = page.content.decode()
+        assert "fonts.googleapis" not in body and "jsdelivr" not in body
+    css = (Path(settings.BASE_DIR) / "web/static/fonts.css").read_text(encoding="utf8")
+    assert "url(http" not in css
