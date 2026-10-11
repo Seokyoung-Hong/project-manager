@@ -115,6 +115,8 @@
             hx-get="{% url 'project_new' %}?org={{ current_org.pk }}" hx-target="#dialog" hx-swap="innerHTML">＋ 새 프로젝트</button>{% endif %}
   </nav>
   {% endif %}
+  {# 바닥글은 레일을 뺀 본문 열 안에 둔다 — 좌우 끝선이 본문과 같다 #}
+  <div class="frame-main">
   <div class="layout{% block layout_class %}{% endblock %}">
     <main id="main-content" tabindex="-1">
       {% for m in messages %}<div class="notice{% if m.level_tag == 'error' %} bad{% elif m.level_tag == 'warning' %} warn{% endif %}" role="{% if m.level_tag == 'error' %}alert{% else %}status{% endif %}">
@@ -127,11 +129,13 @@
     </main>
     <aside id="panel">{% block panel %}{% endblock %}</aside>
   </div>
+  {% include "_site_footer.html" %}
+  </div>
 </div>
 {% else %}
 <main id="main-content" class="layout auth-main" tabindex="-1"><div class="card {% block auth_card %}auth-card{% endblock %}">{% block auth %}{% endblock %}</div></main>
-{% endif %}
 {% include "_site_footer.html" %}
+{% endif %}
 <dialog id="dialog"></dialog>
 {# 공용 확인 창: data-confirm="결과 문장" data-confirm-ok="버튼 문구"를 단 폼·버튼을 app.js가 여기로 묻는다(DESIGN.md 3절) #}
 <dialog id="confirm" aria-labelledby="confirm-text">

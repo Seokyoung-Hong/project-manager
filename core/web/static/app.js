@@ -2,7 +2,8 @@
 (function () {
   var body = document.body;
   var t1, t2;
-  var panelReturnScroll = 0;
+  // 패널은 흐름 밖(고정)에 뜬다. 연 요소를 기억해 닫을 때 초점만 돌려준다 — 스크롤은 건드리지 않는다.
+  var panelOpener = null, panelOpening = false;
 
   function flash(text, after) {
     var el = document.getElementById("save-status");
@@ -178,8 +179,11 @@
 
   // 자동 저장 상태 표시
   body.addEventListener("htmx:beforeRequest", function (e) {
-    if (e.detail && e.detail.target && e.detail.target.id === "panel" && !e.detail.target.children.length) {
-      panelReturnScroll = window.scrollY;
+    // 패널 밖에서 연 요청(행·버튼)만 연 요소로 기억한다. 패널 안 저장·상태 변경은 제외.
+    var t = e.detail && e.detail.target, a = document.activeElement;
+    if (t && t.id === "panel" && !(a && t.contains(a))) {
+      panelOpener = a && a !== body ? a : null;
+      panelOpening = true;
     }
     if (e.target.hasAttribute && e.target.hasAttribute("data-autosave")) flash("저장 중…");
   });
@@ -309,8 +313,9 @@
       var w = e.target.querySelector("[data-action='toggle-wide']");
       if (w) w.textContent = layout.classList.contains("wide") ? "패널 좁히기" : "패널 넓히기";
       var f = e.target.querySelector("[data-focus]");
-      if (f) f.focus();
-      else if (open && window.matchMedia("(max-width: 1150px)").matches) window.scrollTo(0, 0);
+      if (!f && open && panelOpening) f = e.target.querySelector("select, button, input:not([type=hidden]), textarea, a[href]");
+      if (f) f.focus({ preventScroll: true });
+      panelOpening = false;
     }
     if (e.target.id === "dialog" && e.target.children.length) e.target.showModal();
     requestAnimationFrame(syncAllBoardNavigation);
@@ -325,10 +330,12 @@
     if (a === "close-panel") {
       panel.innerHTML = ""; layout.classList.remove("has-panel", "wide");
       history.replaceState(null, "", body.dataset.pageUrl || "/today");
-      requestAnimationFrame(function () {
-        window.scrollTo(0, panelReturnScroll);
-        syncAllBoardNavigation();
-      });
+      // 목록이 다시 그려졌으면 같은 번호의 행을 찾는다
+      var back = panelOpener && (panelOpener.isConnected ? panelOpener
+        : panelOpener.id && document.getElementById(panelOpener.id));
+      if (back) back.focus({ preventScroll: true });
+      panelOpener = null;
+      requestAnimationFrame(syncAllBoardNavigation);
     } else if (a === "toggle-wide") {
       var on = !layout.classList.contains("wide");
       layout.classList.toggle("wide", on); localStorage.setItem("panel-wide", on ? "1" : "0");

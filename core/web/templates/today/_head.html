@@ -1,23 +1,9 @@
 <div id="today-head" class="today-head-card" hx-get="{% url 'today' %}?part=head" hx-trigger="task-changed from:body, task-updated from:body, today-changed from:body" hx-swap="outerHTML">
-  <section class="hero" aria-labelledby="today-greeting">
-    <div class="hero-copy">
-      {# h1은 화면 이름(오늘)이다. 슬로건은 장식이라 p로 둔다(b-workspace 중-4). #}
-      <h1 id="today-greeting" class="eyebrow">오늘 · {{ date_label }} · {{ user.display_name }}님</h1>
-      <p class="hero-title">일은 차근차근,<br>우리는 무럭무럭.</p>
-      <button type="button" class="btn" data-action="toggle" data-target="#quick" aria-controls="quick">＋ 오늘 할 일 담기</button>
-    </div>
-    {% include "art/_plant.html" %}
-  </section>
-  <section class="tally" aria-label="전체 조직 내 담당 태스크 지표">
-    <h2>오늘도 차곡차곡</h2>
-    <a class="tally-main" href="{% url 'me' %}?status=done_today"><b>{{ counts.done_today }}</b><span>오늘 완료</span></a>
-    <span class="tally-badge" aria-hidden="true"><svg viewBox="0 0 40 40"><path class="art-ink-soft" d="M20 2Q23 17 38 20Q23 23 20 38Q17 23 2 20Q17 17 20 2Z"/></svg></span>
-    <p class="tally-scope">전체 조직 · 내 담당 태스크</p>
-    <div class="stats">
-      <a class="stat" href="{% url 'me' %}?status=done_7d"><b>{{ counts.done_7d }}</b><span>최근 7일 완료</span></a>
-      <a class="stat" href="{% url 'me' %}"><b>{{ counts.my_open }}</b><span>미완료</span></a>
-    </div>
-  </section>
+  {# 맨 위는 '지금 할 한 가지'다. 화면 제목과 날짜는 작은 한 줄로만 둔다(슬로건·화분은 로그인·랜딩에 있다). #}
+  <div class="today-line">
+    <h1 id="today-greeting">오늘</h1>
+    <p>{{ date_label }} · {{ user.display_name }}님</p>
+  </div>
   {% if error %}<p class="error today-head-error" role="alert">{{ error }}</p>{% endif %}
   {% if focus %}
   <section class="memo focus-memo" aria-label="지금 할 일">
@@ -46,4 +32,14 @@
     <p>오늘 목록에서 가장 위에 있는 태스크입니다.</p>
   </section>
   {% endif %}
+  <section class="tally" aria-label="전체 조직 내 담당 태스크 지표">
+    <h2>오늘도 차곡차곡</h2>
+    <a class="tally-main" href="{% url 'me' %}?status=done_today"><b>{{ counts.done_today }}</b><span>오늘 완료</span></a>
+    <span class="tally-badge" aria-hidden="true"><svg viewBox="0 0 40 40"><path class="art-ink-soft" d="M20 2Q23 17 38 20Q23 23 20 38Q17 23 2 20Q17 17 20 2Z"/></svg></span>
+    <p class="tally-scope">전체 조직 · 내 담당 태스크</p>
+    <div class="stats">
+      <a class="stat" href="{% url 'me' %}?status=done_7d"><b>{{ counts.done_7d }}</b><span>최근 7일 완료</span></a>
+      <a class="stat" href="{% url 'me' %}"><b>{{ counts.my_open }}</b><span>미완료</span></a>
+    </div>
+  </section>
 </div>

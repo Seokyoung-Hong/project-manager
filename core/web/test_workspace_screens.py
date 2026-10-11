@@ -42,8 +42,10 @@ def _with_due_days(org, days=3):
 def test_today_h1_is_the_screen_not_the_slogan(logged, task):
     body = logged.get("/today").content.decode()
     h1 = re.search(r"<h1[^>]*>(.*?)</h1>", body, re.S).group(1)
-    assert h1.startswith("오늘 · ")
-    assert '<p class="hero-title">일은 차근차근' in body
+    assert h1 == "오늘"
+    # 맨 위는 '지금 할 한 가지'다 — 환영 슬로건·화분은 오늘 화면에 두지 않는다
+    assert "hero-title" not in body and "hero-art" not in body
+    assert body.index("지금 할 한 가지") < body.index("오늘도 차곡차곡")
     assert "직접 추가한 순서" not in body  # 정렬 설명은 지웠다
 
 

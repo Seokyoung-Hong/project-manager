@@ -440,6 +440,10 @@ ul, ol { margin: 0; padding: 0; list-style: none; }
 .anchors a { min-width: 44px; justify-content: center; }
 .btn, .week-map a, .faq-list summary { min-height: 44px; }
 .site-footer .foot-policy > a, .site-footer .biz-email > a { display: inline-flex; align-items: center; min-height: 44px; }
+/* 바닥글 끝선 = .wrap 콘텐츠 폭(1180 - 좌우 24, 700px 이하 16) */
+.site-footer { padding-inline: var(--sp-6); }
+.site-footer .foot-in { max-width: calc(1180px - var(--sp-6) * 2); }
+@media (max-width: 700px) { .site-footer { padding-inline: var(--sp-4); } }
 /* 첫 화면 조건 안내 */
 .lp-hero .hero-note { margin-top: var(--sp-2); font-size: var(--fs-sm); color: var(--c-muted); }
 /* 기술 지침·연결 규칙 접기 */
