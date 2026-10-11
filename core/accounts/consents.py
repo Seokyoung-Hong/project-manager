@@ -3,6 +3,7 @@
 개인정보 보호법 제17조, 제28조의8①1호에 따른 별도 동의다. 고지 항목은 제28조의8②를 따른다.
 처리방침 제4조·제6조와 대조하기 쉽게 대상별 문구를 이 파일 한 곳에 둔다. 문구를 바꾸면
 POLICY_VERSION을 올린다 — 동의 기록은 어느 판에 동의했는지를 이 값으로 남긴다.
+`value`는 법정 고지가 아니라 동의 화면 맨 위에 두는 "연결하면 얻는 것" 한 줄이다. 바꿔도 판을 올리지 않는다.
 """
 
 # 처리방침 판. 시행일이 정해지면 그 날짜로 바꾼다.
@@ -12,6 +13,7 @@ TARGETS = [("github", "GitHub"), ("discord", "Discord"), ("ai", "AI 도구")]
 
 NOTICES = {
     "github": {
+        "value": "GitHub를 연결하면 이슈·브랜치·PR이 태스크와 이어지고, PR이 병합되면 태스크 상태가 저절로 바뀝니다.",
         "rows": [
             {
                 "recipient": "GitHub, Inc.",
@@ -27,6 +29,7 @@ NOTICES = {
         "아이디로 가입하면 다른 기능은 그대로 쓸 수 있습니다.",
     },
     "discord": {
+        "value": "Discord를 연결하면 마감 알림을 개인 DM으로 받고, 봇에게 DM으로 태스크를 처리할 수 있습니다.",
         "rows": [
             {
                 "recipient": "Discord Inc.",
@@ -41,6 +44,7 @@ NOTICES = {
         "refusal": "동의하지 않으면 Discord 개인 연결(DM 알림·봇 명령)만 쓸 수 없습니다.",
     },
     "ai": {
+        "value": "AI 도구를 연결하면 Claude·Codex에서 내 태스크를 묻고 상태를 바꿀 수 있습니다.",
         "rows": [
             {
                 "recipient": "OpenAI, L.L.C.",  # 확인 필요: 계약 법인(OpenAI OpCo, LLC 등)

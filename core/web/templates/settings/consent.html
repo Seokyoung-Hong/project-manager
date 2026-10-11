@@ -1,13 +1,15 @@
-{% extends "base.html" %}{% block title %}국외 이전 동의{% endblock %}
+{% extends "base.html" %}{% block title %}{{ label }} 연결 동의{% endblock %}
 {% block main %}
 <section class="card">
-  <h2>{{ label }} 연결: 개인정보 국외 이전(제3자 제공) 동의</h2>
-  <p class="t13 muted">{{ label }}에 연결하면 아래 정보가 국외 사업자에게 전송됩니다.</p>
+  <h2>{{ label }}를 연결하려면 동의가 필요합니다</h2>{# copy-draft #}
+  <p>{{ notice.value }}</p>
+  <h3 class="t15">개인정보 국외 이전(제3자 제공) 동의</h3>
+  <p class="t13 muted">연결하면 아래 정보가 국외 사업자에게 전송됩니다.</p>
   {% include "settings/_consent_notice.html" %}
   <form method="post" class="row">{% csrf_token %}
     <input type="hidden" name="next" value="{{ next }}">
-    <button class="btn primary">동의</button>
-    <a class="btn" href="{% url 'consents' %}">동의하지 않음</a>
+    <button class="btn primary">동의하고 {{ label }} 연결 계속</button>{# copy-draft #}
+    <a class="btn" href="{% if next %}{{ next }}{% else %}{% url 'consents' %}{% endif %}">연결하지 않고 돌아가기</a>{# copy-draft #}
   </form>
 </section>
 {% endblock %}

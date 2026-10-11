@@ -731,8 +731,9 @@ def test_installed_callback_rejects_install_the_user_does_not_own(
 def test_install_button_needs_github_identity(gh, client, org, admin):
     _login(client)
     body = client.get(f"/orgs/{org.pk}/github").content.decode()
-    assert "먼저 GitHub 계정을 연결하세요" in body
-    assert f"/orgs/{org.pk}/github/install" not in body
+    # 계정 연결로 먼저 보내고, 연결이 끝나면 설치로 이어 간다(next)
+    assert f'href="/settings/github?next=/orgs/{org.pk}/github/install"' in body
+    assert f'href="/orgs/{org.pk}/github/install"' not in body
     r = client.get(f"/orgs/{org.pk}/github/install")
     assert r.status_code == 302 and "github.com" not in r["Location"]
 

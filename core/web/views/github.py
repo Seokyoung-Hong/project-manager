@@ -30,6 +30,7 @@ from projects.services import visible_projects
 from tasks import services as ts
 from tasks.models import Task
 
+from .auth import landing
 from .common import (
     CONFLICT_MSG,
     can_admin,
@@ -184,6 +185,10 @@ def _authorize(request):
 @login_required
 def github_connect(request):
     _gh_enabled_or_404()
+    nxt = request.GET.get("next", "")
+    if url_has_allowed_host_and_scheme(nxt, allowed_hosts={request.get_host()}):
+        # 조직 GitHub 탭에서 왔으면 연결한 뒤 프로필이 아니라 앱 설치로 곧바로 이어 간다
+        request.session["gh_connect_next"] = nxt
     if not has_consent(request.user, "github"):
         return consent_redirect("github", reverse("github_connect"))
     return _authorize(request)
@@ -217,7 +222,7 @@ def _finish_login(request, data: dict, info: dict, consented: bool = False):
     if created:
         messages.info(request, "가입되었습니다. 조직을 만들거나 초대 링크로 참여하세요.")
     # 갓 가입한 사람은 조직이 없다 — signup과 같이 조직 목록으로 보낸다.
-    dest = nxt or reverse("org_list" if created else "today")
+    dest = nxt or reverse("org_list" if created else landing(identity.user))
     if not consent_active(identity.user, "github"):
         # 유예가 끝났는데 동의가 없다. GitHub로만 가입한 사람이 갇히지 않게 로그인은 시키고 동의 화면으로 보낸다.
         return consent_redirect("github", dest)
@@ -307,7 +312,7 @@ def github_callback(request):
         clear_problem(request, "oauth")
     gh_services.backfill_actor(identity)
     messages.success(request, "GitHub를 연결했습니다.")
-    return redirect("profile")
+    return redirect(request.session.pop("gh_connect_next", "") or "profile")
 
 
 @login_required

@@ -8,23 +8,57 @@
   <p class="warning">지금 복사하세요. 다시 볼 수 없습니다.</p>
 </div>
 {% endif %}
+<section class="card ai-connect">
+  <h2>AI 도구 연결하기</h2>{# copy-draft #}
+  <p class="muted t13">쓰는 도구를 골라 주세요. claude.ai는 주소만 복사하면 연결할 때 토큰이 저절로 발급됩니다.</p>{# copy-draft #}
+  <details name="ai-tool" open>
+    <summary>Claude 앱 / claude.ai <span class="badge">추천 · 주소만 복사</span></summary>{# copy-draft #}
+    <p>설정 → 커넥터 → 커스텀 커넥터 추가 → URL <code>{{ mcp_url }}/mcp</code>
+      <button type="button" class="btn sm" data-copy-text="{{ mcp_url }}/mcp" data-copy-label="주소 복사됨">서버 주소 복사</button></p>
+    <p class="muted t13">'연결'을 누르면 이 사이트의 로그인·허용 화면이 뜹니다. 허용하면 토큰이 자동으로 발급돼 아래 토큰 목록에 추가됩니다. 따로 발급하지 않아도 됩니다.</p>
+  </details>
+  <details name="ai-tool">
+    <summary>Claude Code <span class="badge">스킬 · 이 기기만</span></summary>
+    <p>저장소의 <code>skills/</code> 폴더(<code>pm</code>, <code>pm-*</code>)를 <code>~/.claude/skills/</code>에 복사하고 <code>pm.py login</code>으로 로그인합니다(브라우저에서 허용 — 토큰을 손으로 옮기지 않습니다).
+      <code>/pm-start</code>, <code>/pm-new</code> 같은 명령이 생깁니다. 자세한 방법은 <code>skills/README.md</code>를 보세요.</p>
+  </details>
+  <details name="ai-tool">
+    <summary>Claude Code <span class="badge">MCP · 헤더</span></summary>
+    <p><code>claude mcp add --transport http udally {{ mcp_url }}/mcp --header "Authorization: Bearer &lt;TOKEN&gt;"</code>
+      <button type="button" class="btn sm" data-copy-text='claude mcp add --transport http udally {{ mcp_url }}/mcp --header "Authorization: Bearer &lt;TOKEN&gt;"' data-copy-label="명령 복사됨">설정 명령 복사</button></p>
+    <p class="muted t13">&lt;TOKEN&gt;은 아래 &lsquo;직접 발급&rsquo;에서 만든 AI용 토큰입니다.</p>{# copy-draft #}
+  </details>
+  <details name="ai-tool">
+    <summary>Codex CLI <span class="badge">헤더</span></summary>
+    <p><code>~/.codex/config.toml</code>에 <code>[mcp_servers.udally]</code> <code>url = "{{ mcp_url }}/mcp"</code> <code>bearer_token_env_var = "UDALLY_TOKEN"</code> 추가, 환경 변수 <code>UDALLY_TOKEN=&lt;TOKEN&gt;</code></p>
+    <p class="muted t13">&lt;TOKEN&gt;은 아래 &lsquo;직접 발급&rsquo;에서 만든 AI용 토큰입니다.</p>{# copy-draft #}
+  </details>
+  <details name="ai-tool">
+    <summary>그 밖의 클라이언트 <span class="badge">개인 비밀 URL</span></summary>
+    <p>OAuth도 헤더도 못 넣는 곳이면 URL에 토큰을 넣습니다: <code>{{ mcp_url }}/u/&lt;TOKEN&gt;/mcp</code> — 클라이언트의 별도 인증 설정은 필요하지 않습니다. URL에 포함된 토큰으로 인증합니다.</p>
+    <p class="warning t13">개인 비밀 URL은 비밀번호와 같습니다. 주소창과 프록시 기록에 남으니, 넣을 곳이 있으면 헤더나 OAuth를 쓰세요. 유출되면 이 화면에서 폐기하세요.</p>
+  </details>
+</section>
 <section class="card">
   <h2>API 토큰</h2>
+  <p class="table-scroll-hint" id="token-table-hint">표를 좌우로 밀어 전체 항목을 확인하세요.</p>
+  <div class="table-scroll" tabindex="0" role="region" aria-label="API 토큰 표, 좌우로 스크롤 가능" aria-describedby="token-table-hint">
   <table class="grid">
     <thead><tr><th>이름</th><th>앞자리</th><th>범위</th><th>용도</th><th>만료</th><th></th></tr></thead>
     <tbody>
     {% for t in tokens %}
-    <tr{% if t.revoked_at %} class="muted"{% endif %}>
-      <td>{{ t.name }}{% if t.revoked_at %} <span class="badge">폐기됨</span>{% endif %}</td>
+    <tr>
+      <td>{{ t.name }}</td>
       <td><code>{{ t.prefix|slice:"3:" }}…</code></td>
       <td>{{ t.get_scope_display }}</td>
       <td>{% if t.for_ai %}AI{% else %}사람{% endif %}</td>
       <td>{{ t.expires_at|date:"Y-m-d"|default:"없음" }}</td>
-      <td>{% if not t.revoked_at %}<form method="post" action="{% url 'token_revoke' t.pk %}">{% csrf_token %}<button class="btn sm danger">토큰 폐기</button></form>{% endif %}</td>
+      <td><form method="post" action="{% url 'token_revoke' t.pk %}" onsubmit="return confirm('&lsquo;{{ t.name|escapejs }}&rsquo; 토큰을 폐기할까요? 이 토큰을 쓰는 도구는 바로 연결이 끊기고, 폐기한 토큰은 되살릴 수 없습니다.')">{% csrf_token %}<button class="btn sm danger">토큰 폐기</button></form></td>{# copy-draft #}
     </tr>
     {% empty %}<tr><td colspan="6" class="empty-cell">토큰이 없습니다.</td></tr>{% endfor %}
     </tbody>
   </table>
+  </div>
   {% if revoked_tokens %}
   <details>
     <summary>폐기된 토큰 {{ revoked_tokens|length }}개</summary>
@@ -37,67 +71,46 @@
     </table>
   </details>
   {% endif %}
-  <h3>용도에 따른 차이</h3>
-  <table class="grid">
-    <thead><tr><th></th><th>AI 도구용</th><th>사람용</th></tr></thead>
-    <tbody>
-      <tr><td>조직의 AI 정책</td><td>적용됩니다. 조직이 AI에게 막아 둔 일(삭제, 요청 수락, 담당자·기한 변경 등)은 거절됩니다.</td><td><b>적용되지 않습니다.</b> 사람인 나와 똑같은 권한으로 모든 일을 합니다.</td></tr>
-      <tr><td>변경 이력</td><td>"AI"가 한 일로 남습니다.</td><td>내가 직접 한 일로 남습니다.</td></tr>
-      <tr><td>쓰는 곳</td><td>Claude·Codex·MCP 커넥터 등 AI 도구</td><td>내가 직접 짜고 내용을 아는 스크립트·자동화</td></tr>
-    </tbody>
-  </table>
-  <div class="card alert" role="alert">
-    <p class="danger"><b>⚠ 사람용 토큰을 AI 도구에 절대 넣지 마세요.</b></p>
-    <ul class="t13">
-      <li>조직 관리자가 AI에게 막아 둔 일을 AI가 그대로 할 수 있게 됩니다. 태스크 삭제, 요청 수락·거절, 담당자·기한·중요도 변경, 완료 처리가 모두 포함됩니다.</li>
-      <li>AI가 한 일이 <b>내가 직접 한 일로 기록</b>됩니다. 나중에 사람이 한 일과 AI가 한 일을 구분할 수 없고, 그 책임은 나에게 남습니다.</li>
-      <li>AI가 잘못 이해하거나 외부 글(이슈·메모)의 지시에 속으면, 막을 장치 없이 내 권한으로 실행됩니다.</li>
-      <li>발급 뒤에는 용도를 바꿀 수 없습니다. 잘못 발급했다면 바로 폐기하고 새로 발급해 주세요.</li>
-    </ul>
-  </div>
-  <form method="post" class="row">{% csrf_token %}
-    <label class="field">{{ form.name.label }}{{ form.name }}</label>
-    <label class="field">{{ form.scope.label }}{{ form.scope }}</label>
-    <label class="field">{{ form.purpose.label }}{{ form.purpose }}</label>
-    <label class="row t13">{{ form.person_ack }} {{ form.person_ack.label }} <span class="muted">(사람용일 때 필수)</span></label>
-    <button class="btn primary">토큰 발급</button>
-  </form>
-  <p class="muted t13">AI 도구에는 AI용 토큰을 사용하세요. AI용 토큰에는 조직의 AI 정책이 적용됩니다.</p>
-  {% if form.errors %}<p class="danger t13">{% for f in form %}{% for e in f.errors %}{{ e }} {% endfor %}{% endfor %}{{ form.non_field_errors|join:" " }}</p>{% endif %}
 </section>
 <section class="card">
-  <h2>AI 클라이언트 연결</h2>
-  <p class="muted t13">셸이 있는 Claude Code에서는 <b>스킬</b>이 가장 가볍습니다. claude.ai 웹·모바일처럼 셸이 없는 곳은 <b>OAuth</b> 커넥터로 붙습니다.</p>
-  <table class="grid">
-    <thead><tr><th>클라이언트</th><th>설정</th></tr></thead>
-    <tbody>
-      <tr>
-        <td>Claude Code<br><span class="muted t13">스킬 · 이 기기만</span></td>
-        <td>저장소의 <code>skills/</code> 폴더(<code>pm</code>, <code>pm-*</code>)를 <code>~/.claude/skills/</code>에 복사하고 <code>pm.py login</code>으로 로그인합니다(브라우저에서 허용 — 토큰을 손으로 옮기지 않습니다).
-          <code>/pm-start</code>, <code>/pm-new</code> 같은 명령이 생깁니다. 자세한 방법은 <code>skills/README.md</code>를 보세요.</td>
-      </tr>
-      <tr>
-        <td>Claude 앱 / claude.ai<br><span class="muted t13">OAuth</span></td>
-        <td>설정 → 커넥터 → 커스텀 커넥터 추가 → URL <code>{{ mcp_url }}/mcp</code>
-          <button type="button" class="btn sm" data-copy-text="{{ mcp_url }}/mcp" data-copy-label="주소 복사됨">서버 주소 복사</button><br>
-          <span class="muted t13">'연결'을 누르면 이 사이트의 로그인·허용 화면이 뜹니다. 허용하면 토큰이 자동으로 발급돼 API 토큰 목록에 추가됩니다 — 위에서 따로 발급하지 않아도 됩니다.</span></td>
-      </tr>
-      <tr>
-        <td>Claude Code<br><span class="muted t13">MCP · 헤더</span></td>
-        <td><code>claude mcp add --transport http udally {{ mcp_url }}/mcp --header "Authorization: Bearer &lt;TOKEN&gt;"</code>
-          <button type="button" class="btn sm" data-copy-text='claude mcp add --transport http udally {{ mcp_url }}/mcp --header "Authorization: Bearer &lt;TOKEN&gt;"' data-copy-label="명령 복사됨">설정 명령 복사</button></td>
-      </tr>
-      <tr>
-        <td>Codex CLI<br><span class="muted t13">헤더</span></td>
-        <td><code>~/.codex/config.toml</code>에 <code>[mcp_servers.udally]</code> <code>url = "{{ mcp_url }}/mcp"</code> <code>bearer_token_env_var = "UDALLY_TOKEN"</code> 추가, 환경 변수 <code>UDALLY_TOKEN=&lt;TOKEN&gt;</code></td>
-      </tr>
-      <tr>
-        <td>그 밖의 클라이언트<br><span class="muted t13">개인 비밀 URL</span></td>
-        <td>OAuth도 헤더도 못 넣는 곳이면 URL에 토큰을 넣습니다: <code>{{ mcp_url }}/u/&lt;TOKEN&gt;/mcp</code> — 클라이언트의 별도 인증 설정은 필요하지 않습니다. URL에 포함된 토큰으로 인증합니다.</td>
-      </tr>
-    </tbody>
-  </table>
-  <p class="muted t13">&lt;TOKEN&gt;은 위에서 발급한 값입니다.</p>
-  <p class="warning t13">개인 비밀 URL은 비밀번호와 같습니다. 주소창과 프록시 기록에 남으니, 넣을 곳이 있으면 헤더나 OAuth를 쓰세요. 유출되면 이 화면에서 폐기하세요.</p>
+  <details class="token-issue"{% if form.errors %} open{% endif %}>
+    <summary>직접 발급(스크립트·고급)</summary>{# copy-draft #}
+    <p class="muted t13">AI 도구에는 AI용 토큰을 사용하세요. AI용 토큰에는 조직의 AI 정책이 적용됩니다.</p>
+    <form method="post" class="stack">{% csrf_token %}
+      <div class="row">
+        <label class="field">{{ form.name.label }}{{ form.name }}</label>
+        <label class="field">{{ form.scope.label }}{{ form.scope }}</label>
+        <label class="field">{{ form.purpose.label }}{{ form.purpose }}</label>
+      </div>
+      {# 사람용을 골랐을 때만 경고와 확인을 펼친다(CSS :has, app.css .person-only) #}
+      <div class="person-only stack">
+        <div class="card alert" role="note">
+          <p class="danger"><b>⚠ 사람용 토큰을 AI 도구에 절대 넣지 마세요.</b></p>
+          <ul class="t13">
+            <li>조직 관리자가 AI에게 막아 둔 일을 AI가 그대로 할 수 있게 됩니다. 태스크 삭제, 요청 수락·거절, 담당자·기한·중요도 변경, 완료 처리가 모두 포함됩니다.</li>
+            <li>AI가 한 일이 <b>내가 직접 한 일로 기록</b>됩니다. 나중에 사람이 한 일과 AI가 한 일을 구분할 수 없고, 그 책임은 나에게 남습니다.</li>
+            <li>AI가 잘못 이해하거나 외부 글(이슈·메모)의 지시에 속으면, 막을 장치 없이 내 권한으로 실행됩니다.</li>
+            <li>발급 뒤에는 용도를 바꿀 수 없습니다. 잘못 발급했다면 바로 폐기하고 새로 발급해 주세요.</li>
+          </ul>
+        </div>
+        <label class="check t13">{{ form.person_ack }} {{ form.person_ack.label }}</label>
+      </div>
+      {% if form.errors %}<p class="danger t13">{% for f in form %}{% for e in f.errors %}{{ e }} {% endfor %}{% endfor %}{{ form.non_field_errors|join:" " }}</p>{% endif %}
+      <div><button class="btn primary">토큰 발급</button></div>
+    </form>
+    <details>
+      <summary>용도에 따른 차이</summary>
+      <div class="table-scroll" tabindex="0" role="region" aria-label="용도에 따른 차이 표, 좌우로 스크롤 가능">
+      <table class="grid mt-2">
+        <thead><tr><th></th><th>AI 도구용</th><th>사람용</th></tr></thead>
+        <tbody>
+          <tr><td>조직의 AI 정책</td><td>적용됩니다. 조직이 AI에게 막아 둔 일(삭제, 요청 수락, 담당자·기한 변경 등)은 거절됩니다.</td><td><b>적용되지 않습니다.</b> 사람인 나와 똑같은 권한으로 모든 일을 합니다.</td></tr>
+          <tr><td>변경 이력</td><td>"AI"가 한 일로 남습니다.</td><td>내가 직접 한 일로 남습니다.</td></tr>
+          <tr><td>쓰는 곳</td><td>Claude·Codex·MCP 커넥터 등 AI 도구</td><td>내가 직접 짜고 내용을 아는 스크립트·자동화</td></tr>
+        </tbody>
+      </table>
+      </div>
+    </details>
+  </details>
 </section>
 {% endblock %}

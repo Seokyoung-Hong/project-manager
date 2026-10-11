@@ -20,7 +20,7 @@ def logged(client, member):
     return client
 
 
-def test_root_redirects(client, member):
+def test_root_redirects(client, member, org):
     assert client.get("/").headers["Location"] == "/login"
     client.login(username="member1", password="pw12345678")
     assert client.get("/").headers["Location"] == "/today"
@@ -1839,7 +1839,7 @@ def _login(client, username="member1", password="pw12345678"):
     return client.post("/login", {"username": username, "password": password})
 
 
-def test_password_login_sets_auth_method_and_start_page(client, member):
+def test_password_login_sets_auth_method_and_start_page(client, member, org):
     member.settings = {"user.start_page": "me"}
     member.save(update_fields=["settings"])
     r = _login(client)
@@ -1847,7 +1847,7 @@ def test_password_login_sets_auth_method_and_start_page(client, member):
     assert client.session["auth_method"] == "password"
 
 
-def test_login_follows_safe_next_only(client, member):
+def test_login_follows_safe_next_only(client, member, org):
     r = client.post(
         "/login?next=/orgs", {"username": "member1", "password": "pw12345678", "next": "/orgs"}
     )

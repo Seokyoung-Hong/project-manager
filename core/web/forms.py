@@ -56,16 +56,24 @@ class SignupForm(UserCreationForm):
         model = User
         fields = ("username", "display_name")
         labels = {"username": "아이디", "display_name": "표시 이름"}
-        help_texts = {"username": "영문·숫자와 @ . + - _ 만, 150자 이하"}
+        help_texts = {
+            "username": "영문·숫자와 @ . + - _ 만, 150자 이하",
+            "display_name": "팀원과 알림에 보이는 이름입니다.",  # copy-draft
+        }
 
 
 class OrgForm(forms.Form):
     name = forms.CharField(label="조직 이름", max_length=100)
-    purpose = forms.CharField(label="목적 한 줄", max_length=200, required=False)
+    purpose = forms.CharField(
+        label="목적 한 줄",
+        max_length=200,
+        required=False,
+        help_text="조직 목록과 개요에 보입니다. 비워 둬도 됩니다.",  # copy-draft
+    )
 
 
 class InviteForm(forms.Form):
-    days = forms.IntegerField(label="만료(일)", min_value=1, max_value=90, initial=7)
+    days = forms.IntegerField(label="링크 유효 기간(일)", min_value=1, max_value=90, initial=7)
     gh_invite = forms.BooleanField(label="GitHub 조직에도 초대", required=False)
     gh_login = forms.CharField(label="GitHub 로그인", max_length=100, required=False)
 

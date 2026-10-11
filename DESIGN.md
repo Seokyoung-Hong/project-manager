@@ -165,7 +165,7 @@ animation·transition을 끈다(파일 맨 끝 규칙).
 | 탭 | `nav.tabs a[aria-current="page"]`, `.view-switch` | 화면 안 이동. 현재 탭은 표면색 + 그림자 | 탭으로 동작 실행 |
 | 대화상자 | 네이티브 `dialog` + `#dialog` HTMX 대상 | 생성·수정 폼. 긴 폼은 하단 버튼 줄이 붙는다 | 확인 한 번이면 될 일을 대화상자로 |
 | 패널 | `aside#panel .panel`, `.panel-bar`(상태 메뉴·저장 표시·복사·닫기) | 상태는 고정 막대에서 바꾼다. 저장 표시 `#save-status`는 숨기지 않는다 | 상태 폼 복제 |
-| 표 | `table.grid`, `.num`, `.table-scroll`(+`.table-scroll-hint`), `td.empty-cell` | 모바일은 카드 안에서 가로 스크롤 | 페이지 전체가 가로로 흔들리게 두기 |
+| 표 | `table.grid`, `.num`, `.table-scroll`(+`.table-scroll-hint`), `td.empty-cell` | 모바일은 카드 안에서 가로 스크롤. `.table-scroll`에는 항상 `role="region"`·aria-label("좌우로 스크롤 가능")과 힌트를 붙인다. 폭 440px 이하 카드(인증 카드, `w-sm`)에는 표 대신 정의 목록 카드(`dl.consent-recipient`) | 페이지 전체가 가로로 흔들리게 두기, 좁은 카드에 6열 표 |
 | 빈 상태 | `.empty`(화분 76px), `.empty.compact`(글자만), `td.empty-cell` | 다음 행동을 한 문장으로. 큰 화분은 화면당 하나 | 모든 빈 곳에 화분 |
 | 알림 | `.notice`(세이지) `.notice.warn` `.notice.bad`, `.toast` | 경고·실패는 ⚠ 글리프를 앞에 둔다(색 외 단서). 일반 알림엔 글리프 없음. 토스트는 3초 | ⓘ 같은 장식 글리프, 감탄부호 |
 | 지표 | `.tiles .tile`, `.stats .stat`, `.bar` | 첫 칸(대표)만 세이지, 위험 수치(`b.danger`)는 코랄, 나머지 바탕색 | 의미 없는 색 돌림 |
@@ -242,6 +242,9 @@ SVG 칠은 `fill="#…"`이 아니라 `.art-pot` `.art-leaf` 같은 클래스로
 - **GitHub**: 설치 카드(`.conn-state` + `<code>`계정 + 배지 "개인 계정"/"GitHub 조직" + "전체/선택된 저장소") · 내 계정 카드 ·
   저장소 연결 현황 표 · 프로젝트 저장소(연결 상태, 접근 팀 표, 이슈 가져오기 규칙 체크박스, 이슈 표, 이벤트 타임라인 표 시각/이벤트/태스크/결과).
   - 태스크 흐름은 `ol.git-steps`: 이슈 → 브랜치 → PR → 머지. 점 `.dot`은 완료 `li.done`(세이지 채움), 진행 `li.progress`(노랑).
+  - 같은 `ol.git-steps`를 조직 개요의 "시작하기" 카드에도 쓴다(관리자, 태스크 0개일 때만): 첫 프로젝트 → 팀원 초대 → 저장소 연결 → Discord 알림. 단계마다 얻는 가치 한 줄과 버튼, 다 끝나면 카드를 숨긴다.
+- **동의·연결 흐름**: 동의 화면은 가치 한 줄 → 법정 고지(`dl.consent-recipient`) → [동의하고 ○○ 연결 계속]/[연결하지 않고 돌아가기](`next`). 동의 직후 하던 일(연결 코드, 토큰 발급)을 마저 끝낸다.
+  철회·연결 해제·토큰 폐기는 끊기는 것을 적은 확인을 먼저 받는다.
   - 배지 색: PR 열림 `.badge.pr-open`(info) · 병합 `.badge.pr-merged`(violet, GitHub 관례) · 닫힘 `.badge.pr-closed`(soft) · 가져온 이슈 `.badge.ok`.
   - 개인 계정 설치는 팀·조직 멤버 관리·이슈 자동 가져오기가 없음을 `.notice`로 밝힌다(조직 설치와 같은 화면에 섞지 않는다).
   - PR 부가 정보(라운드 8): draft는 테두리만 있는 `.badge.pr-draft`, CI는 `a.ci.ci-{success|failure|pending}`(점 + "CI 통과/실패/진행 중",

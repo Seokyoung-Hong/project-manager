@@ -1187,6 +1187,20 @@ details.card.settings-section { padding: 0; gap: 0; }
 .filter-chevron { font-size: var(--fs-lg); transition: transform var(--dur-fast) var(--ease); }
 .me-filter-details[open] .filter-chevron { transform: rotate(180deg); }
 
+/* 국외 이전 고지: 좁은 카드에서도 잘리지 않게 받는 자마다 정의 목록 한 장 */
+.consent-recipient { display: grid; grid-template-columns: max-content 1fr; gap: 6px var(--sp-4); margin: 0; padding: var(--sp-3) var(--sp-4); border: 1px solid var(--c-line); border-radius: var(--r-md); font-size: var(--fs-sm); }
+.consent-recipient dt { color: var(--c-muted); font-weight: 600; }
+.consent-recipient dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+@media (max-width: 480px) { .consent-recipient { grid-template-columns: 1fr; gap: 2px; } .consent-recipient dd + dt { margin-top: var(--sp-2); } }
+/* API 토큰: 도구를 하나 고르면 그 설정만 펼친다(details name) */
+.ai-connect > details { padding: var(--sp-3) 0; border-top: 1px solid var(--c-line); }
+.ai-connect > details > summary { min-height: 32px; display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2); }
+.ai-connect > details > p { margin: var(--sp-2) 0 0; }
+/* 사람용 토큰 경고·확인은 용도에서 "사람"을 골랐을 때만 */
+.person-only { display: none; }
+form:has(option[value="person"]:checked) .person-only { display: flex; }
+.token-issue > summary { min-height: 32px; }
+.token-issue[open] > summary { margin-bottom: var(--sp-3); }
 /* ---- 23. 그림: 인라인 SVG 칠은 토큰 클래스로(다크에서 같이 바뀐다). 외부 이미지 없음 ---- */
 .art-shadow { fill: var(--plant-shadow); } .art-pot { fill: var(--plant-pot); } .art-rim { fill: var(--plant-rim); }
 .art-soil { fill: var(--plant-soil); } .art-leaf { fill: var(--plant-leaf); } .art-leaf-2 { fill: var(--plant-leaf-2); }
