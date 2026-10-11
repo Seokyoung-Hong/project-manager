@@ -95,5 +95,6 @@ DDL을 하면 지연 FK 트리거 때문에 `pending trigger events`로 실패�
 ## 개인정보 보관 기간 정리 (접속 로그 90일 · 감사 기록 1년)
 
 - **컨테이너 로그**: `compose.yml`의 `x-logging`(json-file, 2m x 3)이 모든 서비스에 걸려 있다. 날짜 회전이 아니라 크기 회전이라 한산하면 90일을 넘겨 남을 수 있다. 그래서 매월 1회 `docker compose up -d --force-recreate`로 컨테이너를 새로 만든다(이전 로그 파일이 함께 지워진다). 적용은 `docker compose up -d`로 다시 만들어야 반영된다.
-- **운영자 감사 기록 1년**: `docker compose exec -T web python manage.py purge_audit_log`(`--days 365` 기본). 호스트 cron에 매일 1회로 등록한다. 예: `30 4 * * * cd /opt/project-manager && docker compose exec -T web python manage.py purge_audit_log >> /var/log/pm-purge.log 2>&1`. 이 명령만 감사 기록을 지울 수 있다(Postgres는 트랜잭션 안에서만 `ops.purge`를 켜고, `ops 0002` 마이그레이션이 필요하다).
-- **NPM(이 저장소 밖)**: Nginx Proxy Manager의 접속 로그도 90일 안에 지워지도록 운영자가 NPM 호스트의 logrotate를 따로 맞춘다.
+- **앱 접속 로그**: gunicorn `--access-logfile`을 뺐다(IP가 남지 않는다). 오류 로그만 남는다. 접속 로그는 NPM만 가진다.
+- **정리 서비스 `purge`**: `docker compose up -d`가 web과 함께 띄운다(같은 이미지, cron 불필요). 하루 한 번 `python manage.py purge_expired`를 돈다: 운영자 감사 기록 365일, 만료 세션(`clearsessions`, 세션 쿠키 14일), 만료 AI용 토큰, 인가 코드(1일), 로그인 잠금 기록(1일). 한 작업이 실패해도 나머지는 돈다. 결과는 `docker compose logs purge`. 기동 시각 기준이라 정시가 아니고 실패 알림은 없다. 호스트 cron은 더 이상 필요 없다(이미 등록했다면 지운다). 감사 기록은 `purge_audit_log`만 지울 수 있다(Postgres는 트랜잭션 안에서만 `ops.purge`를 켜고, `ops 0002` 마이그레이션이 필요하다).
+- **NPM(이 저장소 밖, 운영자 할 일)**: Nginx Proxy Manager의 접속 로그가 90일 안에 지워지도록 NPM 호스트의 logrotate를 따로 맞춘다.
