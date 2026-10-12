@@ -299,23 +299,32 @@ def refresh_github_access(request):
     # ponytail: 요청 경로에서 GitHub를 한 번 부른다(6시간에 한 번). 느껴지면
     # GitHub 화면 첫 진입으로 미룬다.
     """
-    if not settings.GITHUB_ENABLED or not request.user.is_authenticated:
+    if not github_access_due(request):
         return
-    identity = getattr(request.user, "github", None)
-    if identity is None:
-        return
-    last = identity.repos_checked_at
-    if last and timezone.now() - last < REPO_TTL:
-        return
-    # 실패해도 매 요청 다시 묻지 않는다. GitHub 장애가 모든 화면을 시간 초과만큼 붙잡기 때문이다.
-    # ponytail: 프로세스별 캐시라 워커마다 한 번씩은 다시 묻는다. 거슬리면 DB에 시각을 둔다.
-    retry_key = f"gh-repos-retry:{identity.pk}"
-    if cache.get(retry_key):
-        return
+    identity = request.user.github
     try:
         sync_repos(identity)
     except (GitHubError, ServiceError):
-        cache.set(retry_key, 1, REPO_RETRY_SECONDS)
+        cache.set(_repo_retry_key(identity), 1, REPO_RETRY_SECONDS)
+
+
+def _repo_retry_key(identity) -> str:
+    return f"gh-repos-retry:{identity.pk}"
+
+
+def github_access_due(request) -> bool:
+    """refresh_github_access가 지금 GitHub에 다시 물을 차례인가(6시간, 실패 뒤 5분은 쉼)."""
+    if not settings.GITHUB_ENABLED or not request.user.is_authenticated:
+        return False
+    identity = getattr(request.user, "github", None)
+    if identity is None:
+        return False
+    last = identity.repos_checked_at
+    if last and timezone.now() - last < REPO_TTL:
+        return False
+    # 실패해도 매 요청 다시 묻지 않는다. GitHub 장애가 모든 화면을 시간 초과만큼 붙잡기 때문이다.
+    # ponytail: 프로세스별 캐시라 워커마다 한 번씩은 다시 묻는다. 거슬리면 DB에 시각을 둔다.
+    return not cache.get(_repo_retry_key(identity))
 
 
 def _free_username(login: str) -> str:
@@ -1585,9 +1594,14 @@ def _mark_issues_synced(conn):
     conn.save(update_fields=["issues_synced_at"])
 
 
+def issues_stale(conn) -> bool:
+    """이슈 동기화가 10분이 지났는가. 웹훅이 오면 그 시각으로 갱신된다."""
+    return not (conn.issues_synced_at and timezone.now() - conn.issues_synced_at < ISSUE_TTL)
+
+
 def sync_issues_if_stale(conn):
     """Refresh issue data at most every ten minutes; webhook deliveries reset the clock."""
-    if conn.issues_synced_at and timezone.now() - conn.issues_synced_at < ISSUE_TTL:
+    if not issues_stale(conn):
         return
     try:
         sync_issues(conn)
