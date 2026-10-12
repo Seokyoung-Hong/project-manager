@@ -67,7 +67,7 @@ function setup({ handler, discord, env = {}, minuteMs = 60000, ffmpeg } = {}) {
   const { core, calls } = fakeCore(handler);
   const d = discord ?? fakeDiscord();
   const m = new Meetings({ core, discord: d, dataDir, env, minuteMs, debounceMs: 10, retryDelayMs: 1, convert: async () => Buffer.from('a'),
-    backoff: () => 5, ...(ffmpeg ? { ffmpeg } : {}), log: process.env.DBG ? (...a) => console.log(...a) : undefined });
+    backoff: () => 5, hostBackoff: () => 10, ...(ffmpeg ? { ffmpeg } : {}), log: process.env.DBG ? (...a) => console.log(...a) : undefined });
   return { m, d, calls, dataDir };
 }
 const startBody = { guild_id: '1', discord_user_id: 'h', project_id: 5, team_id: null, title: '주간' };
@@ -458,4 +458,42 @@ test('Sol 4: /host 알림이 빠져도 새 진행자의 퇴장을 잡는다 — 
   assert.equal(m.count, 0);
   const ends = patches(calls).filter((b) => b.status === 'transcribing').map((b) => [b.end_reason, b.discord_user_id]);
   assert.deepEqual(ends, [['host_left', 'a']]);
+});
+
+test('Sol 재검증: host_left가 5xx·연결 실패면 백오프로 다시 보내 종료, 돌아오면 재시도 취소', async () => {
+  let fails = 2;
+  const { m, calls } = setup({ handler: (me, p, b) => (b?.end_reason === 'host_left' && fails-- > 0 ? [503, {}] : undefined) });
+  await m.start(startBody);
+  m.onVoiceState({ guildId: '1', userId: 'h', from: 'vc', to: null }); // a는 남아 있다
+  await sleep(150);
+  await m.idle();
+  assert.equal(m.count, 0);
+  assert.deepEqual(patches(calls).filter((b) => b.status === 'transcribing').map((b) => [b.end_reason, b.discord_user_id]),
+    [['host_left', 'h'], ['host_left', 'h'], ['host_left', 'h']]);
+  // 실패 뒤 돌아오면 다시 보내지 않는다
+  const s2 = setup({ handler: (me, p, b) => (b?.end_reason === 'host_left' ? [503, {}] : undefined) });
+  await s2.m.start(startBody);
+  s2.m.onVoiceState({ guildId: '1', userId: 'h', from: 'vc', to: null });
+  await sleep(60); // 유예(50ms) → 503
+  s2.m.onVoiceState({ guildId: '1', userId: 'h', from: null, to: 'vc' });
+  await sleep(50);
+  assert.equal(patches(s2.calls).filter((b) => b.end_reason === 'host_left').length, 1);
+  assert.equal(s2.m.byGuild.get('1').graces.size, 0);
+  s2.m.end(s2.m.byGuild.get('1'), 'empty');
+  await s2.m.idle();
+});
+
+test('Sol 재검증: empty·max_length의 5xx는 로컬 종료 뒤 재시도 큐로 같은 PATCH를 다시 보낸다', async () => {
+  let fails = 1;
+  const { m, calls } = setup({ minuteMs: 10, ffmpeg: fakeFfmpeg(), handler: (me, p, b) => {
+    if (p === '/meetings' && me === 'POST') return [200, { id: 7, note_id: 3, host: { discord_user_id: 'h' }, max_minutes: 1, leave_grace_s: 10 }];
+    if (b?.end_reason === 'max_length' && fails-- > 0) return [503, {}];
+  } });
+  await m.start(startBody);
+  await sleep(20);
+  assert.equal(m.count, 0); // 최대 길이에서 로컬 종료
+  await sleep(30);
+  await m.idle();
+  const ps = patches(calls).filter((b) => b.status);
+  assert.deepEqual(ps.map((b) => [b.status, b.end_reason]), [['transcribing', 'max_length'], ['transcribing', 'max_length'], ['draft', undefined]]);
 });

@@ -18,8 +18,9 @@ const readJsonl = (p) => (existsSync(p) ? readFileSync(p, 'utf8').split('\n').fi
 export class Meetings {
   constructor({ core, discord, dataDir, siteUrl = '', env = process.env, fetch = globalThis.fetch,
     convert, ffmpeg = runFfmpeg, backoff = (n) => Math.min(60000 * 2 ** (n - 1), 3600000),
+    hostBackoff = (n) => Math.min(15000 * 2 ** (n - 1), 300000),
     now = Date.now, minuteMs = 60000, debounceMs = DEBOUNCE_MS, retryDelayMs, log = () => {} }) {
-    Object.assign(this, { core, discord, siteUrl, env, fetch, convert, ffmpeg, backoff, now, minuteMs, debounceMs, retryDelayMs, log });
+    Object.assign(this, { core, discord, siteUrl, env, fetch, convert, ffmpeg, backoff, hostBackoff, now, minuteMs, debounceMs, retryDelayMs, log });
     this.root = join(dataDir, 'meetings');
     mkdirSync(this.root, { recursive: true });
     this.byGuild = new Map(); // guild_id -> 진행 중인 회의(phase=recording)
@@ -50,7 +51,7 @@ export class Meetings {
     const channel = this.discord.voiceChannelOf(guild_id, discord_user_id);
     if (!channel) throw new HttpErr(409, texts.notInVoice());
     // core 호출 전에 길드 자리를 잡는다: 동시에 온 두 번째 시작은 위 409로 돌아간다
-    const m = { state: null, timers: {}, graces: new Map(), deferred: [], ending: false, joining: true };
+    const m = { state: null, timers: {}, graces: new Map(), hostTries: new Map(), deferred: [], ending: false, joining: true };
     this.byGuild.set(guild_id, m);
     let rec;
     try {
@@ -127,7 +128,7 @@ export class Meetings {
       if (p) { p.left_at = null; if (name) p.discord_name = name; }
       else s.participants.push((p = { discord_user_id: userId, discord_name: name || userId, joined_at: new Date(this.now()).toISOString(), left_at: null }));
       if (!s.noticed.includes(userId)) { s.noticed.push(userId); this.send(s, texts.joined({ userId })); }
-      clearTimeout(m.graces.get(userId)); m.graces.delete(userId);
+      clearTimeout(m.graces.get(userId)); m.graces.delete(userId); m.hostTries.delete(userId); // 유예·재시도 모두 취소
       this.save(s); this.scheduleParticipants(m);
     } else if (from === ch && to !== ch) {
       const p = s.participants.find((x) => x.discord_user_id === userId);
@@ -158,6 +159,19 @@ export class Meetings {
       if (d.reason === 'host_left' && !m.state.participants.find((p) => p.discord_user_id === d.by)?.left_at) continue; // 돌아왔다
       return void this.tryEnd(m, d.reason, d.by, d.notice); // 이것도 거절되면 남은 것으로 다시 reevaluate
     }
+  }
+
+  // 사람이 돌아오면 onVoiceState가 이 타이머를 지운다. 보낼 때도 아직 없을 때만 보낸다
+  retryHostLeft(m, userId) {
+    const n = (m.hostTries.get(userId) ?? 0) + 1;
+    m.hostTries.set(userId, n);
+    const ms = this.hostBackoff(n);
+    this.log('진행자 퇴장 판정 재시도 예약', { recording_id: m.state.recording_id, tries: n, in_ms: ms });
+    clearTimeout(m.graces.get(userId));
+    m.graces.set(userId, setTimeout(() => {
+      m.graces.delete(userId);
+      if (m.state.participants.find((p) => p.discord_user_id === userId)?.left_at) this.tryEnd(m, 'host_left', userId);
+    }, ms));
   }
 
   async stop(recordingId, discordUserId) {
@@ -191,6 +205,8 @@ export class Meetings {
       if (reason === 'command' || reason === 'host_left') {
         m.ending = false;
         this.log('회의 계속', { recording_id: s.recording_id, reason, error: e.message });
+        // 진행자 퇴장 판정을 core가 못 받았으면(5xx·연결 실패) 백오프로 같은 판정을 다시 보낸다. 4xx(진행자 아님)만 계속
+        if (reason === 'host_left' && retryable(e)) this.retryHostLeft(m, by);
         queueMicrotask(() => this.reevaluate(m)); // 기다리는 동안 들어온 퇴장·최대 길이
         throw toHttp(e);
       }

@@ -504,43 +504,52 @@ def audio_expired(rec) -> bool:
     return rec.audio_expires_at is not None and rec.audio_expires_at <= timezone.now()
 
 
-def _ogg_page_len(buf: bytes, at: int) -> int | None:
-    """buf[at:]의 Ogg 페이지 길이(머리 27바이트 + 세그먼트 표 + 본문). 머리가 잘렸으면 None."""
-    if buf[at : at + 4] != b"OggS" or len(buf) < at + 27 or buf[at + 4] != 0:
-        return None
-    n = buf[at + 26]
-    table = buf[at + 27 : at + 27 + n]
-    if len(table) != n:
-        return None
-    return 27 + n + sum(table)
-
-
 def _is_ogg_opus(upload) -> bool:
-    """Ogg Opus인가(stdlib만, RFC 3533·7845). 첫 페이지: 버전 0·BOS·세그먼트 표가 파일 안에 있고
-    첫 패킷이 OpusHead. 끝: 마지막 페이지가 파일 끝에서 정확히 끝난다(잘린 파일 거르기).
+    """Ogg Opus인가(stdlib만, RFC 3533·7845). 페이지를 처음부터 끝까지 걸어가며 본다.
+
+    모든 페이지: `OggS`·버전 0, 세그먼트 표로 잰 길이가 빈틈·쓰레기 없이 파일 끝에 정확히 닿는다.
+    BOS는 첫 페이지에만, EOS는 마지막 페이지에. 첫 페이지 = OpusHead 패킷 하나(19바이트 이상·
+    버전 1·채널 1 이상), 둘째 페이지는 OpusTags로 시작. 본문은 첫 두 페이지만 읽고 나머지는 건너뛴다.
     ponytail: CRC는 보지 않는다. 손상된 본문까지 잡아야 하면 페이지 CRC32를 더한다."""
+    size, pos, page, flags = upload.size, 0, 0, 0
     upload.seek(0)
-    head = upload.read(27 + 255 + 19)
-    size = upload.size
-    first = _ogg_page_len(head, 0)
-    ok = (
-        first is not None
-        and head[5] & 0x02  # BOS
-        and first <= size
-        and head[27 + head[26] : 27 + head[26] + 8] == b"OpusHead"
-    )
-    if ok:
-        # 페이지 최대 길이 27 + 255 + 255*255 = 65307. 끝 64KB 안에서 마지막 페이지를 찾는다.
-        start = max(0, size - 65307)
-        upload.seek(start)
-        tail = upload.read()
-        at = tail.rfind(b"OggS")
-        ok = False
-        while at >= 0 and not ok:  # 본문에 우연히 낀 "OggS"는 길이가 맞지 않아 넘어간다
-            ok = _ogg_page_len(tail, at) == len(tail) - at
-            at = tail.rfind(b"OggS", 0, at)
-    upload.seek(0)
-    return bool(ok)
+    try:
+        while pos < size:
+            head = upload.read(27)
+            if len(head) < 27 or head[:4] != b"OggS" or head[4] != 0:
+                return False
+            flags = head[5]
+            if bool(flags & 0x02) != (page == 0):  # BOS
+                return False
+            table = upload.read(head[26])
+            if len(table) != head[26]:
+                return False
+            body_len = sum(table)
+            pos += 27 + len(table) + body_len
+            if pos > size:
+                return False
+            if page == 0:
+                body = upload.read(body_len)
+                # OpusHead는 첫 페이지에 혼자, 그 페이지에서 끝난다(마지막 세그먼트 < 255)
+                if not (
+                    table
+                    and table[-1] < 255
+                    and len(body) >= 19
+                    and body[:8] == b"OpusHead"
+                    and body[8] == 1
+                    and body[9] >= 1
+                ):
+                    return False
+            elif page == 1:
+                if upload.read(8) != b"OpusTags":
+                    return False
+                upload.seek(pos)
+            else:
+                upload.seek(pos)
+            page += 1
+        return page >= 2 and bool(flags & 0x04)  # EOS
+    finally:
+        upload.seek(0)
 
 
 @transaction.atomic

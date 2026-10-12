@@ -809,6 +809,14 @@ def test_audio_upload_rejects_format_size_and_expired(client, enabled, member, m
         _page(OPUS_HEAD, flags=0x02, version=1) + OGG[47:],  # 버전 1
         _page(b"OpusTagsXXXXXXXXXXX", flags=0x02) + _page(b"x" * 30),  # 첫 패킷이 OpusHead 아님
         OGG[:30],  # 세그먼트 표가 파일 밖
+        _page(OPUS_HEAD, flags=0x02)[:36],  # Sol: 36바이트짜리 불완전한 OpusHead 페이지
+        OGG[:47] + b"junk" + OGG[47:],  # Sol: 중간에 쓰레기
+        _page(b"OpusHead" + bytes([2, 1]) + bytes(9), flags=0x02) + OGG[47:],  # Sol: 버전 2
+        _page(b"OpusHead" + bytes([1, 0]) + bytes(9), flags=0x02) + OGG[47:],  # Sol: 채널 0
+        _page(b"OpusHead" + bytes([1, 1]), flags=0x02) + OGG[47:],  # OpusHead 19바이트 미만
+        OGG[:47] + _page(b"NotTags!" + bytes(8)) + OGG[47 + 44 :],  # 둘째 패킷이 OpusTags 아님
+        OGG[:91] + _page(b"OggS-in-body" + bytes(600)),  # EOS 없음
+        OGG[:47] + _page(b"OpusTags", flags=0x02) + OGG[47 + 44 :],  # BOS가 둘째 페이지에도
     ):
         assert _put_audio(client, rec, bad).status_code == 400, bad[:40]
     monkeypatch.setattr(services, "AUDIO_MAX_BYTES", 10)
