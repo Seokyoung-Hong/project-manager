@@ -89,13 +89,20 @@ def org_notes(request, org_id):
             editable = False
         extras["can_upload_audio"] = editable and (rec is None or rec.source == "upload")
         extras["upload_accept"] = ts_notes.UPLOAD_AUDIO_ACCEPT
+        # [전사 시작]: 회의록을 볼 수 있는 사람이 고른 수단으로(권한·한도는 전사 서비스가 본다, IMPL-PLAN-11-local-stt-link §8)
         extras["can_transcribe_upload"] = (
-            editable
-            and rec is not None
+            rec is not None
             and rec.source == "upload"
             and not tx.retry_block(rec)
             and not rec.jobs.filter(status__in=tx.TranscriptionJob.ACTIVE).exists()
         )
+        if extras["can_transcribe_upload"]:
+            from .transcribe import options
+
+            opts, _, org_reason = options(org, rec, request.user)
+            extras["transcribe_options"] = opts
+            extras["transcribe_org_reason"] = org_reason
+            extras["can_transcribe_upload"] = any(not o["disabled"] for o in opts)
         if rec is not None:
             # 전사 진행(전사문 쪽 상태). 회의록 본문과 별개다.
             from notes.models import TranscriptionJob
@@ -108,7 +115,7 @@ def org_notes(request, org_id):
                     if active[0].status == "queued"
                     else f"전사 중 · {tx.eta_text(left)}"
                 )
-            extras["transcribe_admin"] = can_admin(request.user, org)
+            extras["transcribe_admin"] = True  # 전사 메뉴는 구성원 누구나 연다
         extras["can_finalize"] = note.status == "draft" and ts_notes._is_owner(note, request.user)
         extras["teams"] = visible_teams(request.user, org).order_by("name")
     return render(
@@ -192,15 +199,19 @@ def note_audio_upload(request, note_id):
 @login_required
 @require_POST
 def note_transcribe(request, note_id):
-    """올린 녹음을 전사 대기열에 넣는다. 실행은 Node 음성 서비스가 한다."""
+    """올린 녹음을 전사 대기열에 넣는다. 실행은 Node 음성 서비스나 고른 내 PC가 한다."""
     from notes import transcription as tx
+
+    from .transcribe import parse_choice
 
     note = _note_or_404(request.user, note_id)
     rec = getattr(note, "recording", None)
     if rec is None:
         raise Http404
+    choice = request.POST.get("choice", "")
+    picked = parse_choice(note.org, request.user, choice) if choice else {}
     try:
-        tx.request_upload(rec, actor=request.user)
+        tx.request_upload(rec, actor=request.user, **picked)
         messages.success(request, "전사를 대기열에 넣었습니다. 끝나면 아래에 전사문이 보입니다.")
     except (ServiceError, Forbidden) as e:
         messages.error(request, " ".join(e.errors.values()))

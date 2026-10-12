@@ -195,7 +195,8 @@ def test_retry_blocked_without_segments_or_after_expiry(enabled, admin, member, 
     rec.audio_expires_at = timezone.now() - timedelta(days=1)
     rec.save()
     assert tx.retry_block(rec) == tx.EXPIRED
-    with pytest.raises(Exception, match="조직 관리자"):
+    # 멤버도 조직 수단으로 지시할 수 있다(IMPL-PLAN-11-local-stt-link §8) — 막는 것은 보관 기간
+    with pytest.raises(Exception, match="보관 기간"):
         tx.request_retry(rec, engine="openai", model="", actor=member)
 
 
@@ -253,12 +254,19 @@ def test_model_label_uses_server_fields_only():
     assert tx.model_label("openai", "whisper-1") == "OpenAI Whisper(whisper-1) · OpenAI API"
 
 
-def test_transcribe_menu_admin_only_and_server_save_keeps_other_settings(
+def test_transcribe_menu_server_view_admin_only_and_save_keeps_other_settings(
     client, enabled, admin, member, bot
 ):
     _drafted(enabled, member, bot)
+    # 구성원도 전사 메뉴를 연다(IMPL-PLAN-11-local-stt-link §6.2). 전사 서버 보기는 관리자만
     client.force_login(member)
-    assert client.get(f"/orgs/{enabled.pk}/transcribe").status_code == 302
+    page = client.get(f"/orgs/{enabled.pk}/transcribe").content.decode()
+    assert "large-v3 · 로컬 서버" in page and "?view=server" not in page
+    server = client.get(f"/orgs/{enabled.pk}/transcribe?view=server").content.decode()
+    assert "setting-meeting.stt_model" not in server
+    assert client.post(f"/orgs/{enabled.pk}/transcribe/server", {}).status_code == 302
+    enabled.refresh_from_db()
+    assert enabled.settings["meeting.stt_url"] == "http://172.30.1.50:8000"
     client.force_login(admin)
     page = client.get(f"/orgs/{enabled.pk}/transcribe").content.decode()
     assert "끝남 · 최근 7일" in page and "large-v3 · 로컬 서버" in page
@@ -273,11 +281,14 @@ def test_transcribe_menu_admin_only_and_server_save_keeps_other_settings(
             "meeting.stt_url": "http://172.30.1.51:8000",
             "meeting.stt_model": "small",
             "meeting.stt_timeout_s": "60",
+            "meeting.member_pc": "on",
+            "meeting.transcribe_level": "admin",
         },
     )
     assert r.status_code == 302
     enabled.refresh_from_db()
     s = enabled.settings
+    assert s.get("meeting.member_pc", True) is True and s["meeting.transcribe_level"] == "admin"
     assert s["meeting.stt_url"] == "http://172.30.1.51:8000" and s["meeting.stt_model"] == "small"
     assert s["meeting.recording_enabled"] is True and s["meeting.openai_api_key"]  # 그대로
     # 조직 설정 저장은 전사 서버 값을 지우지 않는다

@@ -26,6 +26,7 @@ from .views import (
     search,
     settings,
     split,
+    stt_link,
     subtasks,
     task_projects,
     tasks,
@@ -242,6 +243,13 @@ urlpatterns = [
     path("settings/profile/discord", settings.discord_link, name="discord_link"),
     path("settings/profile/discord/unlink", settings.discord_unlink, name="discord_unlink"),
     path("settings/tokens", settings.tokens, name="tokens"),
+    # 내 PC 전사 서버(IMPL-PLAN-11-local-stt-link)
+    path("link", stt_link.link, name="stt_link"),
+    path("settings/stt", stt_link.settings_stt, name="settings_stt"),
+    path("settings/stt/<int:server_id>", stt_link.stt_server_row, name="stt_server_row"),
+    path("settings/stt/<int:server_id>/pull", stt_link.stt_pull, name="stt_pull"),
+    path("settings/stt/<int:server_id>/unlink", stt_link.stt_unlink, name="stt_unlink"),
+    path("stt/<str:name>", stt_link.stt_script, name="stt_script"),
     path("settings/consents", settings.consents, name="consents"),
     path("settings/consents/<str:target>", settings.consent, name="consent"),
     path(

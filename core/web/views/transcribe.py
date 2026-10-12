@@ -1,6 +1,8 @@
 """조직 전사 메뉴(IMPL-PLAN-10-transcribe-menu, 시안 B): 전사 작업 목록 + 패널, 전사 서버 보기.
 
 전사문(녹음을 글로 옮긴 원문)만 다룬다. 회의록 본문은 바꾸지 않는다.
+구성원 누구나 연다(IMPL-PLAN-11-local-stt-link §6.2) — 작업은 그 사람이 볼 수 있는 회의록의 녹음만,
+"전사 서버" 보기(조직 서버 주소·키·정책)는 관리자만. 지시·취소 권한은 notes.transcription(§8).
 """
 
 from datetime import timedelta
@@ -16,7 +18,8 @@ from django.views.decorators.http import require_POST
 
 from common.errors import ServiceError
 from notes import transcription as tx
-from notes.models import TranscriptionJob, VoiceRecording
+from notes.models import SttServer, TranscriptionJob, VoiceRecording
+from notes.services import visible_notes
 from orgs import services as osv
 from orgs.settings import SPECS, STT_KEYS, display, effective, secret_value
 
@@ -25,34 +28,47 @@ from .notes import audio_ctx
 from .orgs import _settings_from_post, stt_models
 
 RECENT = timedelta(days=7)
+POLICY_KEYS = ("meeting.member_pc", "meeting.transcribe_level")
 
 
 def _admin_org(request, org_id):
     org = org_or_404(request.user, org_id)
-    return org, not_admin(request, org, "전사")
+    return org, not_admin(request, org, "전사 서버")
 
 
-def _job_row(job, eta):
+def _job_row(job, eta, user=None):
     left, wait = eta.get(job.pk, (None, 0.0))
     pct = round(100 * min(job.done_ms, job.audio_ms) / job.audio_ms) if job.audio_ms else 0
+    runner = ""
+    if job.engine == "pc":
+        server = job.server
+        runner = (
+            f"{server.owner.display_name}님의 PC({server.name})"  # COPY:job_runner_pc
+            if server
+            else "연결이 끊긴 PC"  # COPY:job_runner_pc_gone
+        )
     return {
         "job": job,
         "label": job.stats.get("label") or tx.model_label(job.engine, job.model),
+        "runner": runner,
+        "waiting_pc": job.engine == "pc" and job.status == "queued" and not tx.online(job.server),
         "eta": tx.eta_text(left),
         "wait": tx.eta_text(wait) if job.status == "queued" and wait else "",
         "pct": pct,
         "done_min": round(min(job.done_ms, job.audio_ms) / 60000),
         "audio_min": round(job.audio_ms / 60000),
         "stale": tx.is_stale(job),
+        "can_cancel": bool(user) and tx.can_cancel(job, user),
     }
 
 
-def _jobs_ctx(org):
+def _jobs_ctx(org, user):
     since = timezone.now() - RECENT
     jobs = list(
         TranscriptionJob.objects.filter(recording__note__org=org)
+        .filter(recording__note__in=visible_notes(user).filter(org=org).values("pk"))
         .filter(Q(status__in=TranscriptionJob.ACTIVE) | Q(created_at__gte=since))
-        .select_related("recording__note")
+        .select_related("recording__note", "server__owner")
         .order_by("-created_at")[:50]
     )
     eta = tx.queue_eta([j for j in jobs if j.status in TranscriptionJob.ACTIVE])
@@ -70,7 +86,7 @@ def _jobs_ctx(org):
     }
 
 
-def _server_rows(org):
+def _server_rows(org, keys):
     return [
         {
             "spec": SPECS[k],
@@ -79,19 +95,33 @@ def _server_rows(org):
             "can_edit": True,
             "show_override": False,
         }
-        for k in STT_KEYS
+        for k in keys
     ]
 
 
 @login_required
 def org_transcribe(request, org_id):
-    org, deny = _admin_org(request, org_id)
-    if deny:
-        return deny
-    view = "server" if request.GET.get("view") == "server" else "jobs"
-    ctx = {"org": org, "tab": "transcribe", "is_admin": True, "view": view, **_jobs_ctx(org)}
+    org = org_or_404(request.user, org_id)
+    admin = osv.is_admin(request.user, org)
+    view = "server" if admin and request.GET.get("view") == "server" else "jobs"
+    ctx = {
+        "org": org,
+        "tab": "transcribe",
+        "is_admin": admin,
+        "view": view,
+        **_jobs_ctx(org, request.user),
+    }
     if view == "server":
-        ctx["rows"] = _server_rows(org)
+        ctx["policy_rows"] = _server_rows(org, POLICY_KEYS)
+        ctx["rows"] = _server_rows(org, [k for k in STT_KEYS if k not in POLICY_KEYS])
+        ctx["pc_online"] = (
+            SttServer.objects.filter(
+                owner__org_memberships__org=org,
+                last_seen_at__gt=timezone.now() - tx.ONLINE_FOR,
+            )
+            .distinct()
+            .count()
+        )
     return render(request, "orgs/transcribe.html", ctx)
 
 
@@ -117,22 +147,59 @@ def org_transcribe_server(request, org_id):
 
 @login_required
 def org_transcribe_jobs(request, org_id):
-    org, deny = _admin_org(request, org_id)
-    if deny:
-        return deny
-    return render(request, "orgs/_transcribe_jobs.html", _jobs_ctx(org))
+    org = org_or_404(request.user, org_id)
+    return render(request, "orgs/_transcribe_jobs.html", _jobs_ctx(org, request.user))
 
 
-def _recording(org, rec_id):
+def _recording(org, rec_id, user):
+    """이 사람이 볼 수 있는 회의록의 녹음만. 아니면 404(존재를 숨긴다)."""
     return get_object_or_404(
-        VoiceRecording.objects.select_related("note"), pk=rec_id, note__org=org
+        VoiceRecording.objects.select_related("note__org"),
+        pk=rec_id,
+        note__org=org,
+        note__in=visible_notes(user).values("pk"),
     )
 
 
-def _options(org, rec):
-    """다시 전사 선택지: 로컬 서버의 준비된 모델(맞지 않는 모델 제외) + 조직 OpenAI 키."""
+def options(org, rec, user):
+    """전사 선택지(§9.1): 내 PC의 준비된 모델(꺼진 PC는 고를 수 없는 한 줄) + 조직 수단.
+
+    → (선택지 [{value, label, eta, disabled}], 오류 문구, 조직 수단을 못 쓰는 이유).
+    """
     a, n = tx.speech_ms(rec.segments)
     out, error = [], ""
+    servers = list(SttServer.objects.filter(owner=user))
+    if servers and not tx.member_pc(org):
+        out.append({"value": "", "label": tx.PC_DISABLED_BY_ORG, "eta": "", "disabled": True})
+    elif servers:
+        many = len(servers) > 1
+        for s in servers:
+            if not tx.online(s):
+                out.append(
+                    {
+                        "value": "",
+                        "label": f"{'내 PC(' + s.name + ')' if many else '내 PC'} · 꺼져 있음",  # COPY:pc_offline_option
+                        "eta": "",
+                        "disabled": True,
+                    }
+                )
+                continue
+            for m in tx.parse_models(s.models):
+                if m["status"] != "ready" or not m["fits"]:
+                    continue
+                info = {**m["info"], "concurrency": m["info"].get("concurrency", s.concurrency)}
+                rtf = tx.prior_rtf(org, "pc", m["id"], info)
+                out.append(
+                    {
+                        "value": f"pc|{s.pk}|{m['id']}",
+                        "label": tx.pc_label(s, m["id"], m["info"], many=many),
+                        "eta": tx.eta_text(tx.estimate_s(a, n, rtf, tx.parallel("pc", info))),
+                        "disabled": False,
+                    }
+                )
+    org_reason = tx.org_block(rec, user)
+    if org_reason:
+        return out, error, org_reason
     url = effective("meeting.stt_url", org=org)
     if url:
         models, error, _ = stt_models(org, url)
@@ -146,6 +213,7 @@ def _options(org, rec):
                     "value": f"local|{m['id']}",
                     "label": tx.model_label("local", m["id"], info),
                     "eta": tx.eta_text(tx.estimate_s(a, n, rtf, tx.parallel("local", info))),
+                    "disabled": False,
                 }
             )
     if secret_value("meeting.openai_api_key", org):
@@ -155,21 +223,38 @@ def _options(org, rec):
                 "value": f"openai|{tx.OPENAI_MODEL}",
                 "label": tx.model_label("openai", tx.OPENAI_MODEL),
                 "eta": tx.eta_text(tx.estimate_s(a, n, rtf, tx.parallel("openai"))),
+                "disabled": False,
             }
         )
     if error:
         error = f"로컬 전사 서버 모델 목록을 불러오지 못했습니다. {error}"
-    return out, error
+    return out, error, ""
+
+
+def parse_choice(org, user, choice: str) -> dict:
+    """선택지 값 → request_retry/request_upload 인자. `pc|<server_id>|<model>` · `local|<model>` · `openai|<model>`."""
+    engine, _, rest = (choice or "").partition("|")
+    if engine == "pc":
+        sid, _, model = rest.partition("|")
+        server = SttServer.objects.filter(pk=sid if sid.isdecimal() else 0, owner=user).first()
+        info = (tx.ready_model(server, model) or {}).get("info") if server else None
+        return {"engine": "pc", "model": model, "server": server, "info": info}
+    info = None
+    if engine == "local":
+        models, _, _ = stt_models(org, effective("meeting.stt_url", org=org))
+        info = next((m["info"] for m in models if m["id"] == rest), None)
+    return {"engine": engine, "model": rest, "server": None, "info": info}
 
 
 def _panel(request, org, rec, *, error=""):
-    jobs = list(rec.jobs.all())
+    jobs = list(rec.jobs.select_related("server__owner"))
     active = [j for j in jobs if j.status in TranscriptionJob.ACTIVE]
     eta = tx.queue_eta(active)
     latest = active[0] if active else (jobs[0] if jobs else None)
     block = tx.retry_block(rec)
-    opts, opts_error = _options(org, rec) if not block else ([], "")
+    opts, opts_error, org_reason = options(org, rec, request.user) if not block else ([], "", "")
     a, _ = tx.speech_ms(rec.segments)
+    can_use = bool(jobs) and tx.can_use(jobs[0], request.user)
     return render(
         request,
         "orgs/_transcribe_panel.html",
@@ -177,15 +262,18 @@ def _panel(request, org, rec, *, error=""):
             "org": org,
             "rec": rec,
             "note": rec.note,
-            "row": _job_row(latest, eta) if latest else None,
-            "active_row": _job_row(active[0], eta) if active else None,
+            "row": _job_row(latest, eta, request.user) if latest else None,
+            "active_row": _job_row(active[0], eta, request.user) if active else None,
             "history": [
                 {**_job_row(j, eta), "current": j.pk == rec.transcript_job_id} for j in jobs
             ],
+            "can_use": can_use,
             "speech_min": round(a / 60000),
             "block": block,
             "options": opts,
+            "can_pick": any(not o["disabled"] for o in opts),
             "options_error": opts_error,
+            "org_reason": org_reason,
             "running": any(j.status in TranscriptionJob.RUNNING for j in active),
             "error": error,
             "recording": rec,
@@ -196,21 +284,17 @@ def _panel(request, org, rec, *, error=""):
 
 @login_required
 def transcribe_panel(request, org_id, rec_id):
-    org, deny = _admin_org(request, org_id)
-    if deny:
-        return deny
-    return _panel(request, org, _recording(org, rec_id))
+    org = org_or_404(request.user, org_id)
+    return _panel(request, org, _recording(org, rec_id, request.user))
 
 
 @login_required
 def transcribe_progress(request, org_id, rec_id):
     """패널의 진행 칸만(5초 폴링). 고른 선택지를 잃지 않게 패널 전체를 다시 그리지 않는다."""
-    org, deny = _admin_org(request, org_id)
-    if deny:
-        return deny
-    rec = _recording(org, rec_id)
-    active = list(rec.jobs.filter(status__in=TranscriptionJob.ACTIVE))
-    row = _job_row(active[0], tx.queue_eta(active)) if active else None
+    org = org_or_404(request.user, org_id)
+    rec = _recording(org, rec_id, request.user)
+    active = list(rec.jobs.filter(status__in=TranscriptionJob.ACTIVE).select_related("server"))
+    row = _job_row(active[0], tx.queue_eta(active), request.user) if active else None
     r = render(request, "orgs/_transcribe_progress.html", {"org": org, "rec": rec, "row": row})
     if row is None:
         r["HX-Trigger"] = "transcribe-changed"  # 끝났으면 목록·패널을 새로 그린다
@@ -226,24 +310,23 @@ def _after(request, org, rec, error=""):
 @require_POST
 @login_required
 def transcribe_retry(request, org_id, rec_id):
-    org, deny = _admin_org(request, org_id)
-    if deny:
-        return deny
-    rec = _recording(org, rec_id)
-    engine, _, model = request.POST.get("choice", "").partition("|")
-    info = None
-    if engine == "local":
-        models, _, _ = stt_models(org, effective("meeting.stt_url", org=org))
-        info = next((m["info"] for m in models if m["id"] == model), None)
+    org = org_or_404(request.user, org_id)
+    rec = _recording(org, rec_id, request.user)
     try:
-        tx.request_retry(rec, engine=engine, model=model, actor=request.user, info=info)
+        tx.request_retry(
+            rec, actor=request.user, **parse_choice(org, request.user, request.POST.get("choice"))
+        )
     except ServiceError as e:
         return _after(request, org, rec, " ".join(e.errors.values()))
     return _after(request, org, rec)
 
 
-def _job(org, job_id):
-    job = TranscriptionJob.objects.select_related("recording__note").filter(pk=job_id).first()
+def _job(request, org, job_id):
+    job = (
+        TranscriptionJob.objects.select_related("recording__note", "server")
+        .filter(pk=job_id, recording__note__in=visible_notes(request.user).values("pk"))
+        .first()
+    )
     if job is None or job.recording.note.org_id != org.pk:
         raise Http404
     return job
@@ -252,20 +335,20 @@ def _job(org, job_id):
 @require_POST
 @login_required
 def transcribe_cancel(request, org_id, job_id):
-    org, deny = _admin_org(request, org_id)
-    if deny:
-        return deny
-    job = tx.cancel(_job(org, job_id), request.user)
+    org = org_or_404(request.user, org_id)
+    job = _job(request, org, job_id)
+    try:
+        job = tx.cancel(job, request.user)
+    except ServiceError as e:
+        return _after(request, org, job.recording, " ".join(e.errors.values()))
     return _after(request, org, job.recording)
 
 
 @require_POST
 @login_required
 def transcribe_use(request, org_id, job_id):
-    org, deny = _admin_org(request, org_id)
-    if deny:
-        return deny
-    job = _job(org, job_id)
+    org = org_or_404(request.user, org_id)
+    job = _job(request, org, job_id)
     try:
         tx.use(job, request.user)
     except ServiceError as e:

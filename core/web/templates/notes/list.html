@@ -135,7 +135,15 @@
     </form>
     {% endif %}
     {% if can_transcribe_upload %}
-    <form method="post" action="{% url 'note_transcribe' note.pk %}">{% csrf_token %}<button class="btn sm tint">전사 시작</button></form>
+    <form class="row" method="post" action="{% url 'note_transcribe' note.pk %}">{% csrf_token %}
+      <label class="field"><span class="label">전사 수단</span>
+        <select class="select" name="choice" required>
+          <option value="">전사 수단 고르기</option>
+          {% for o in transcribe_options %}<option value="{{ o.value }}"{% if o.disabled %} disabled{% endif %}>{{ o.label }}{% if o.eta %} · {{ o.eta }}{% endif %}</option>{% endfor %}
+        </select></label>
+      <button class="btn sm tint">전사 시작</button>
+    </form>
+    {% elif transcribe_org_reason and recording and recording.source == "upload" %}<p class="t13 muted">{{ transcribe_org_reason }} <a href="{% url 'settings_stt' %}">내 PC 연결</a></p>
     {% endif %}
     {% if transcribe_line %}<p class="t13 muted" role="status">{{ transcribe_line }}{% if transcribe_admin %} · <a href="{% url 'org_transcribe' note.org_id %}">전사 메뉴에서 보기</a>{% endif %}</p>{% endif %}
     {% if recording and recording.transcript_md %}

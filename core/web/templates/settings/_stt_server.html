@@ -1,0 +1,28 @@
+<div id="stt-server-{{ server.pk }}" class="stack"{% if polling %} hx-get="{% url 'stt_server_row' server.pk %}" hx-trigger="every 3s" hx-swap="outerHTML"{% endif %}>
+  <div class="conn">
+    <b>{{ server.name }}</b>
+    {% if on %}<span class="conn-state on">켜짐</span>{% else %}<span class="conn-state off">꺼져 있음</span>{% endif %}
+    <span class="muted t13">{% if server.last_seen_at %}마지막 응답 {{ server.last_seen_at|timesince }} 전{% else %}아직 응답 없음{% endif %} · 준비된 모델 {{ ready_count }}개</span>
+  </div>
+  {% if error %}<p class="error" role="alert">{{ error }}</p>{% endif %}
+  {% if pull_error %}<p class="error" role="alert">모델을 받지 못했습니다. {{ pull_error }}</p>{% endif %}{# COPY:pull_failed #}
+  <form class="row" hx-post="{% url 'stt_pull' server.pk %}" hx-target="#stt-server-{{ server.pk }}" hx-swap="outerHTML">
+    <label class="field"><span class="label">전사 모델</span>
+      <select class="select" name="model" required aria-describedby="stt-model-help-{{ server.pk }}">
+        <option value="">모델 고르기</option>
+        {% for m in models %}<option value="{{ m.id }}"{% if server.pull_model and m.id == server.pull_model %} selected{% elif not server.pull_model and m.id == server.default_model %} selected{% endif %}{% if not m.fits %} disabled{% endif %}>{{ m.name }}{% if m.label %} · {{ m.label }}{% endif %}</option>{% endfor %}
+      </select></label>
+    <button class="btn sm">모델 적용</button>
+  </form>
+  <p id="stt-model-help-{{ server.pk }}" class="muted t12">{% if server.pull_model %}모델을 받는 중입니다. 다 받으면 회의 자동 전사에 이 모델을 씁니다.{% elif applied %}모델을 적용했습니다.{% elif server.default_model %}회의 자동 전사 모델: {{ default_name }}{% else %}모델을 적용하면 내가 진행한 회의를 이 PC로 자동 전사합니다.{% endif %}</p>{# COPY:pull_started #}
+  <details class="fold"><summary>세부 정보</summary>
+    <dl class="panel-meta">
+      {% if server.version %}<dt>버전</dt><dd>{{ server.version }}</dd>{% endif %}
+      <dt>동시 처리</dt><dd>{{ server.concurrency }}</dd>
+      {% for k, v in device %}<dt>{{ k }}</dt><dd>{{ v }}</dd>{% endfor %}
+      {% for m in models %}{% if m.info.device or m.info.compute_type %}<dt>{{ m.name }}</dt><dd>{{ m.info.device }}{% if m.info.compute_type %} · {{ m.info.compute_type }}{% endif %}</dd>{% endif %}{% endfor %}
+      <dt>연결한 날</dt><dd>{{ server.created_at|date:"Y-m-d" }}</dd>
+    </dl>
+  </details>
+  <form method="post" action="{% url 'stt_unlink' server.pk %}" data-confirm="'{{ server.name }}' 연결을 끊습니다. 이 PC는 더 이상 전사하지 않고, 진행 중인 전사는 조직 수단으로 넘기거나 취소합니다. 다시 쓰려면 PC에서 연결 명령을 다시 실행해야 합니다." data-confirm-ok="연결 끊기">{% csrf_token %}<button class="btn sm danger">연결 끊기</button></form>{# COPY:unlink_confirm #}
+</div>
