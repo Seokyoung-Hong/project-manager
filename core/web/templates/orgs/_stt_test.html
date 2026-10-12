@@ -1,0 +1,4 @@
+{% if error %}<div class="error">{{ error }}</div>
+{% else %}<p class="muted t12">연결되었습니다({{ ms }}ms). 모델을 누르면 로컬 전사 모델 칸에 채웁니다.</p>
+<div class="setting-options">{% for m in models %}<button type="button" class="btn sm" data-id="{{ m }}" onclick="document.getElementById('setting-meeting.stt_model').value=this.dataset.id">{{ m }}</button>{% empty %}<span class="muted t12">서버가 알려 준 모델이 없습니다.</span>{% endfor %}</div>
+{% endif %}

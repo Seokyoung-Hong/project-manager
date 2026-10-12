@@ -27,4 +27,6 @@
 {% if row.display == "설정됨" %}<label class="setting-option"><input type="checkbox" name="clear__{{ row.spec.key }}"><span>지우기</span></label>{% endif %}
 {% else %}
 <input id="setting-{{ row.spec.key }}" class="input setting-text" name="{{ row.spec.key }}" value="{{ row.value }}"{% if row.spec.help %} aria-describedby="setting-help-{{ row.spec.key }}"{% endif %}>
+{% if row.spec.key == "meeting.stt_url" and org %}<button type="button" class="btn sm" hx-post="{% url 'org_stt_test' org.pk %}" hx-include="#setting-meeting\.stt_url" hx-target="#stt-test-result">연결 시험</button>
+<div id="stt-test-result" aria-live="polite"></div>{% endif %}
 {% endif %}

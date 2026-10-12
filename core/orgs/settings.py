@@ -1054,7 +1054,7 @@ def merge_secrets(data: dict, old: dict) -> dict:
 
 
 def secret_value(key: str, org) -> str:
-    """비밀값 평문. 봇 API(BotTokenAuth)에서만 부른다. 복호화에 실패하면 빈 문자열."""
+    """비밀값 평문. 봇 API(BotTokenAuth)와 조직 설정 [연결 시험](요청 헤더에만)에서 부른다. 복호화 실패면 빈 문자열."""
     from github.crypto import decrypt
 
     raw = (getattr(org, "settings", None) or {}).get(key) or ""
