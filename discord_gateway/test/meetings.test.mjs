@@ -21,7 +21,7 @@ function fakeReceiver() {
   return { speaking: new EventEmitter(), subscribe: () => new Readable({ objectMode: true, read() {} }) };
 }
 
-function fakeDiscord({ voice = { h: 'vc', a: 'vc' }, members = [{ id: 'h', name: '진행', bot: false }, { id: 'a', name: '참여', bot: false }, { id: 'bot', name: '유달리', bot: true }], joinFails = false } = {}) {
+function fakeDiscord({ voice = { h: 'vc', a: 'vc' }, members = [{ id: 'h', name: '진행', bot: false }, { id: 'a', name: '참여', bot: false }, { id: 'bot', name: '유달리', bot: true }], joinFails = false, joinHangs = false } = {}) {
   const d = {
     sent: [], nicks: [], destroyed: 0, lost: null,
     voiceChannelOf: (_g, u) => voice[u] ?? null,
@@ -31,6 +31,7 @@ function fakeDiscord({ voice = { h: 'vc', a: 'vc' }, members = [{ id: 'h', name:
     send: async (ch, text) => { d.sent.push([ch, text]); },
     join: async (_g, _ch, { onLost }) => {
       if (joinFails) throw new Error('timeout');
+      if (joinHangs) return new Promise(() => {});
       d.lost = onLost;
       return { receiver: fakeReceiver(), destroy: () => { d.destroyed++; } };
     },
@@ -45,7 +46,7 @@ function fakeCore(handler = () => undefined) {
     const path = new URL(url).pathname.replace('/api/integrations/discord', '');
     const body = typeof opts.body === 'string' ? JSON.parse(opts.body) : opts.body;
     calls.push({ method: opts.method, path, body, auth: opts.headers.Authorization });
-    const r = handler(opts.method, path, body);
+    const r = await handler(opts.method, path, body);
     if (r) return json(r[1], r[0]);
     if (opts.method === 'POST' && path === '/meetings') {
       return json({ id: 7, note_id: 3, status: 'recording', host: { id: 1, discord_user_id: 'h' }, max_minutes: 180, leave_grace_s: 0.05, audio_expires_at: null, stt: {}, glossary: '' });
@@ -95,7 +96,8 @@ test('시작 실패: core 거절 detail을 펼쳐 그대로, 음성 접속 실�
   await assert.rejects(m.start(startBody), (e) => e.status === 403 && e.detail === '이 조직(프로젝트)은 회의 녹음을 켜지 않았습니다.');
   const s2 = setup({ discord: fakeDiscord({ joinFails: true }) });
   await assert.rejects(s2.m.start(startBody), (e) => e.status === 502 && e.detail === texts.joinFailed());
-  assert.deepEqual(patches(s2.calls), [{ status: 'failed', end_reason: 'failed' }]);
+  await s2.m.idle();
+  assert.deepEqual(patches(s2.calls).map((b) => [b.status, b.end_reason]), [['failed', 'failed']]);
   assert.equal(s2.m.count, 0);
 });
 
@@ -147,17 +149,18 @@ test('진행자 퇴장 유예가 지나 200이면 종료: channel_notice·종료
   assert.equal(ps[1].transcript_md, '');
 });
 
-test('진행자를 넘기면 이전 진행자의 퇴장은 유예를 걸지 않고, 모두 나가면 empty(discord_user_id 비움)', async () => {
-  const { m, calls } = setup();
+test('모두 나가면 empty(discord_user_id 비움), /host 알림은 진행자 표시만 바꾼다', async () => {
+  const { m, calls } = setup({ handler: (me, p, b) => (b?.end_reason === 'host_left' ? [400, { detail: { meeting: '진행자 아님' } }] : undefined) });
   await m.start(startBody);
   assert.deepEqual(m.setHost(7, 'a'), { ok: true });
+  assert.equal(m.view('1').host_discord_user_id, 'a');
   m.onVoiceState({ guildId: '1', userId: 'h', from: 'vc', to: null });
   await sleep(100);
   assert.equal(m.count, 1);
   m.onVoiceState({ guildId: '1', userId: 'a', from: 'vc', to: 'other' });
   await m.idle();
   const ps = patches(calls).filter((b) => b.status);
-  assert.deepEqual([ps[0].end_reason, ps[0].discord_user_id], ['empty', '']);
+  assert.deepEqual(ps.filter((b) => b.status === 'transcribing').map((b) => [b.end_reason, b.discord_user_id]), [['host_left', 'h'], ['empty', '']]);
   assert.throws(() => m.setHost(99, 'a'), (e) => e instanceof HttpErr && e.status === 404);
 });
 
@@ -369,4 +372,90 @@ test('자동 종료 PATCH가 실패하면 재시도 큐로 다시 보내 recordi
   assert.ok(ps.length >= 3); // 실패 1회 이상 뒤 재전송 성공, 그다음 draft
   assert.ok(ps.slice(0, -1).every((b) => b.status === 'transcribing' && b.end_reason === 'empty'));
   assert.equal(ps.at(-1).status, 'draft');
+});
+
+// ---- Sol 교차 검토(2026-10-12) 재현 ----
+const gate = () => { let open; const p = new Promise((r) => { open = r; }); return { p, open }; };
+
+test('Sol 1: 종료 PATCH가 지연·거절되는 동안의 퇴장을 버리지 않고 거절 뒤 실제 상태로 다시 판단한다', async () => {
+  const g = gate();
+  const { m, calls } = setup({ handler: async (me, p, b) => {
+    if (b?.end_reason === 'command') { await g.p; return [403, { detail: { meeting: '진행자나 조직 관리자만 회의를 종료할 수 있습니다.' } }]; }
+  } });
+  await m.start(startBody);
+  const stop = m.stop(7, 'a');
+  await sleep(5);
+  m.onVoiceState({ guildId: '1', userId: 'h', from: 'vc', to: null });
+  m.onVoiceState({ guildId: '1', userId: 'a', from: 'vc', to: null });
+  assert.equal(m.present(m.byGuild.get('1').state).length, 0); // 기다리는 중에도 퇴장 반영
+  g.open();
+  await assert.rejects(stop, (e) => e.status === 403);
+  await sleep(5);
+  await m.idle();
+  assert.equal(m.count, 0);
+  assert.deepEqual(patches(calls).filter((b) => b.status === 'transcribing').map((b) => b.end_reason), ['command', 'empty']);
+});
+
+test('Sol 1: 기다리는 중 유예가 끝난 진행자 퇴장·최대 길이도 거절 뒤 처리한다', async () => {
+  const g = gate();
+  const { m, calls } = setup({ minuteMs: 10, handler: async (me, p, b) => {
+    if (p === '/meetings' && me === 'POST') return [200, { id: 7, note_id: 3, host: { discord_user_id: 'h' }, max_minutes: 6, leave_grace_s: 0.01 }];
+    if (b?.end_reason === 'command') { await g.p; return [403, { detail: '거절' }]; }
+  } });
+  await m.start(startBody);
+  const stop = m.stop(7, 'a');
+  m.onVoiceState({ guildId: '1', userId: 'h', from: 'vc', to: null }); // a는 남아 있다
+  await sleep(30); // 유예(10ms) 지남 — PATCH 대기 중
+  g.open();
+  await assert.rejects(stop);
+  await sleep(5);
+  await m.idle();
+  assert.deepEqual(patches(calls).filter((b) => b.status === 'transcribing').map((b) => [b.end_reason, b.discord_user_id]), [['command', 'a'], ['host_left', 'h']]);
+});
+
+test('Sol 2: 같은 길드 동시 시작은 core 호출 전에 자리를 잡아 두 번째를 409로 돌려보낸다', async () => {
+  const g = gate();
+  const { m, calls } = setup({ handler: async (me, p) => { if (me === 'POST' && p === '/meetings') await g.p; } });
+  const first = m.start(startBody);
+  await assert.rejects(m.start(startBody), (e) => e.status === 409 && e.detail === texts.alreadyRunning());
+  assert.equal(m.view('1'), null); // 시작 중에는 회의 없음으로 보인다
+  g.open();
+  await first;
+  assert.equal(calls.filter((c) => c.method === 'POST' && c.path === '/meetings').length, 1);
+  // core가 거절하면 자리를 비운다
+  const s2 = setup({ handler: (me, p) => (me === 'POST' && p === '/meetings' ? [403, { detail: '꺼짐' }] : undefined) });
+  await assert.rejects(s2.m.start(startBody), (e) => e.status === 403);
+  assert.equal(s2.m.count, 0);
+  m.end(m.byGuild.get('1'), 'empty');
+  await m.idle();
+});
+
+test('Sol 3: 음성 접속 대기 중에 멈추면 state.json이 이미 있어 재시작 복구가 failed로 마감한다', async () => {
+  const { m, dataDir } = setup({ discord: fakeDiscord({ joinHangs: true }) });
+  m.start(startBody);
+  await sleep(5);
+  const st = JSON.parse(readFileSync(join(dataDir, 'meetings', '7', 'state.json')));
+  assert.deepEqual([st.phase, st.started_at], ['recording', null]);
+  // 프로세스 재시작
+  const { core, calls } = fakeCore();
+  const m2 = new Meetings({ core, discord: fakeDiscord(), dataDir, backoff: () => 5, ffmpeg: fakeFfmpeg() });
+  await m2.recover();
+  await m2.idle();
+  assert.deepEqual(patches(calls).map((b) => [b.status, b.end_reason]), [['failed', 'failed']]);
+  assert.equal(JSON.parse(readFileSync(join(dataDir, 'meetings', '7', 'state.json'))).phase, 'failed');
+});
+
+test('Sol 4: /host 알림이 빠져도 새 진행자의 퇴장을 잡는다 — 사람마다 유예, 진행자 아니면 400으로 계속', async () => {
+  // core만 진행자가 a로 바뀐 것을 안다(Python→Node 알림 유실)
+  const { m, calls } = setup({ handler: (me, p, b) => (b?.end_reason === 'host_left' && b.discord_user_id !== 'a' ? [400, { detail: { meeting: '진행자 아님' } }] : undefined) });
+  await m.start(startBody);
+  m.onVoiceState({ guildId: '1', userId: 'n', name: '새', from: null, to: 'vc' });
+  m.onVoiceState({ guildId: '1', userId: 'h', from: 'vc', to: null }); // Node가 아는 진행자 h
+  m.onVoiceState({ guildId: '1', userId: 'a', from: 'vc', to: null }); // 실제 진행자 a
+  m.onVoiceState({ guildId: '1', userId: 'h', from: null, to: 'vc' }); // h는 유예 안에 복귀 → h 타이머만 취소
+  await sleep(100);
+  await m.idle();
+  assert.equal(m.count, 0);
+  const ends = patches(calls).filter((b) => b.status === 'transcribing').map((b) => [b.end_reason, b.discord_user_id]);
+  assert.deepEqual(ends, [['host_left', 'a']]);
 });

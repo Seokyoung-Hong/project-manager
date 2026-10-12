@@ -9,7 +9,7 @@ from accounts.identity import resolve
 from common.dates import now_kst
 from common.errors import Forbidden, ServiceError
 from orgs import settings as org_settings
-from orgs.models import OrgMembership
+from orgs.models import Organization, OrgMembership
 from orgs.services import ai_denied, is_admin, is_member, visible_teams
 from projects import docs
 from projects.services import can_view_project, visible_projects
@@ -195,7 +195,8 @@ def start_recording(
     *, org, actor, guild_id: str, voice_channel_id: str, project=None, team=None, title=""
 ) -> VoiceRecording:
     meeting_scope(org=org, actor=actor, project=project, team=team)
-    # 봇은 길드당 음성 연결 하나다.
+    # 봇은 길드당 음성 연결 하나다. 동시에 온 시작 요청은 조직 행 잠금으로 줄 세운다(길드 ↔ 조직 1:1).
+    Organization.objects.select_for_update().filter(pk=org.pk).first()
     if VoiceRecording.objects.filter(guild_id=guild_id, status="recording").exists():
         raise ServiceError({"meeting": "이 Discord 서버에서는 이미 회의가 진행 중입니다."})
     now = now_kst()
@@ -455,14 +456,51 @@ def audio_expired(rec) -> bool:
     return rec.audio_expires_at is not None and rec.audio_expires_at <= timezone.now()
 
 
+def _ogg_page_len(buf: bytes, at: int) -> int | None:
+    """buf[at:]의 Ogg 페이지 길이(머리 27바이트 + 세그먼트 표 + 본문). 머리가 잘렸으면 None."""
+    if buf[at : at + 4] != b"OggS" or len(buf) < at + 27 or buf[at + 4] != 0:
+        return None
+    n = buf[at + 26]
+    table = buf[at + 27 : at + 27 + n]
+    if len(table) != n:
+        return None
+    return 27 + n + sum(table)
+
+
+def _is_ogg_opus(upload) -> bool:
+    """Ogg Opus인가(stdlib만, RFC 3533·7845). 첫 페이지: 버전 0·BOS·세그먼트 표가 파일 안에 있고
+    첫 패킷이 OpusHead. 끝: 마지막 페이지가 파일 끝에서 정확히 끝난다(잘린 파일 거르기).
+    ponytail: CRC는 보지 않는다. 손상된 본문까지 잡아야 하면 페이지 CRC32를 더한다."""
+    upload.seek(0)
+    head = upload.read(27 + 255 + 19)
+    size = upload.size
+    first = _ogg_page_len(head, 0)
+    ok = (
+        first is not None
+        and head[5] & 0x02  # BOS
+        and first <= size
+        and head[27 + head[26] : 27 + head[26] + 8] == b"OpusHead"
+    )
+    if ok:
+        # 페이지 최대 길이 27 + 255 + 255*255 = 65307. 끝 64KB 안에서 마지막 페이지를 찾는다.
+        start = max(0, size - 65307)
+        upload.seek(start)
+        tail = upload.read()
+        at = tail.rfind(b"OggS")
+        ok = False
+        while at >= 0 and not ok:  # 본문에 우연히 낀 "OggS"는 길이가 맞지 않아 넘어간다
+            ok = _ogg_page_len(tail, at) == len(tail) - at
+            at = tail.rfind(b"OggS", 0, at)
+    upload.seek(0)
+    return bool(ok)
+
+
 @transaction.atomic
 def save_audio(rec, upload) -> VoiceRecording:
     """봇이 올린 혼합 녹음(Ogg). 같은 회의에 다시 올리면 바꾼다. 옛 파일은 커밋 뒤에 지운다."""
     if upload.size > AUDIO_MAX_BYTES:
         raise ServiceError({"file": "녹음 파일의 크기 제한은 300MB입니다."})
-    head = upload.read(4)
-    upload.seek(0)
-    if head != b"OggS":
+    if not _is_ogg_opus(upload):
         raise ServiceError({"file": "올릴 수 있는 녹음 파일 형식은 Ogg입니다."})
     rec = VoiceRecording.objects.select_for_update().select_related("note").get(pk=rec.pk)
     old = rec.audio.name

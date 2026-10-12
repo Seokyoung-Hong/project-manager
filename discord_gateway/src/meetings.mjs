@@ -27,11 +27,11 @@ export class Meetings {
   }
 
   get count() { return this.byGuild.size; }
-  byId(id) { return [...this.byGuild.values()].find((m) => String(m.state.recording_id) === String(id)); }
+  byId(id) { return [...this.byGuild.values()].find((m) => m.state && String(m.state.recording_id) === String(id)); }
 
   view(guildId) {
     const m = this.byGuild.get(String(guildId));
-    if (!m) return null;
+    if (!m?.state) return null; // core 응답 전(시작 중)
     const { recording_id, note_id, voice_channel_id, host_discord_user_id, started_at, participants } = m.state;
     return { recording_id, note_id, voice_channel_id, host_discord_user_id, started_at, participants };
   }
@@ -49,27 +49,34 @@ export class Meetings {
     if (this.byGuild.has(guild_id)) throw new HttpErr(409, texts.alreadyRunning());
     const channel = this.discord.voiceChannelOf(guild_id, discord_user_id);
     if (!channel) throw new HttpErr(409, texts.notInVoice());
-    const rec = await this.core.startMeeting({ guild_id, discord_user_id, project_id, team_id, title, voice_channel_id: channel })
-      .catch((e) => { throw toHttp(e); });
-    const state = {
+    // core 호출 전에 길드 자리를 잡는다: 동시에 온 두 번째 시작은 위 409로 돌아간다
+    const m = { state: null, timers: {}, graces: new Map(), deferred: [], ending: false, joining: true };
+    this.byGuild.set(guild_id, m);
+    let rec;
+    try {
+      rec = await this.core.startMeeting({ guild_id, discord_user_id, project_id, team_id, title, voice_channel_id: channel });
+    } catch (e) {
+      this.byGuild.delete(guild_id);
+      throw toHttp(e);
+    }
+    const state = m.state = {
       recording_id: rec.id, note_id: rec.note_id, guild_id, voice_channel_id: channel,
       host_discord_user_id: rec.host?.discord_user_id || discord_user_id,
       started_at: null, ended_at: null, end_reason: '', phase: 'recording', audio_expires_at: null,
       max_minutes: rec.max_minutes ?? 180, leave_grace_s: rec.leave_grace_s ?? 10, prev_nick: null,
       participants: [], noticed: [],
     };
-    const m = { state, timers: {}, ending: false, joining: true };
-    this.byGuild.set(guild_id, m); // 접속 중 같은 길드 중복 시작을 막는다
+    this.save(state); // 접속 대기 중 재시작돼도 recover()가 이 회의를 마감한다(started_at 없음 → failed)
     const dir = join(this.root, String(rec.id));
     try {
-      m.conn = await this.discord.join(guild_id, channel, { onLost: () => this.end(m, 'failed', '', texts.lost()) });
+      m.conn = await this.discord.join(guild_id, channel, { onLost: () => this.tryEnd(m, 'failed', '', texts.lost()) });
     } catch (e) {
       this.log('음성 접속 실패', { recording_id: rec.id, error: e.message });
       this.byGuild.delete(guild_id);
-      state.phase = 'failed'; state.ended_at = new Date(this.now()).toISOString();
+      const endedAt = new Date(this.now()).toISOString();
+      Object.assign(state, { phase: 'failed', ended_at: endedAt, end_reason: 'failed', end_pending: { status: 'failed', end_reason: 'failed', ended_at: endedAt } });
       this.save(state);
-      await this.core.patchMeeting(rec.id, { status: 'failed', end_reason: 'failed' })
-        .catch((err) => this.log('failed 보고 실패', { error: err.message }));
+      this.enqueue(state); // core PATCH(failed), 실패하면 재시도 큐(다른 회의 전사를 기다리지 않고 바로 응답)
       throw new HttpErr(502, texts.joinFailed());
     }
     const startedAt = this.now();
@@ -88,7 +95,7 @@ export class Meetings {
     await this.flushParticipants(m);
     const max = state.max_minutes * this.minuteMs;
     if (state.max_minutes > 5) m.timers.warn = setTimeout(() => this.send(state, texts.maxWarning({ maxMinutes: state.max_minutes })), max - 5 * this.minuteMs);
-    m.timers.max = setTimeout(() => this.end(m, 'max_length'), max);
+    m.timers.max = setTimeout(() => this.tryEnd(m, 'max_length'), max);
     return { meeting: this.view(guild_id), recording: rec };
   }
 
@@ -110,28 +117,46 @@ export class Meetings {
       .catch((e) => this.log('참여자 PATCH 실패', { error: e.message }));
   }
 
-  // gateway가 voiceStateUpdate를 이 모양으로 넘긴다
+  // gateway가 voiceStateUpdate를 이 모양으로 넘긴다. 종료 PATCH를 기다리는 중(ending)에도 참여자 상태는 반영한다
   onVoiceState({ guildId, userId, name, bot, from, to }) {
     const m = this.byGuild.get(String(guildId));
-    if (!m || m.ending || m.joining || bot) return;
+    if (!m || m.joining || bot) return;
     const s = m.state, ch = s.voice_channel_id;
     if (to === ch && from !== ch) {
       let p = s.participants.find((x) => x.discord_user_id === userId);
       if (p) { p.left_at = null; if (name) p.discord_name = name; }
       else s.participants.push((p = { discord_user_id: userId, discord_name: name || userId, joined_at: new Date(this.now()).toISOString(), left_at: null }));
       if (!s.noticed.includes(userId)) { s.noticed.push(userId); this.send(s, texts.joined({ userId })); }
-      if (userId === s.host_discord_user_id && m.timers.grace) { clearTimeout(m.timers.grace); m.timers.grace = null; }
+      clearTimeout(m.graces.get(userId)); m.graces.delete(userId);
       this.save(s); this.scheduleParticipants(m);
     } else if (from === ch && to !== ch) {
       const p = s.participants.find((x) => x.discord_user_id === userId);
       if (p) p.left_at = new Date(this.now()).toISOString();
       this.save(s);
-      if (!this.present(s).length) return void this.end(m, 'empty');
+      if (!this.present(s).length) return void this.tryEnd(m, 'empty');
       this.scheduleParticipants(m);
-      if (userId === s.host_discord_user_id) {
-        clearTimeout(m.timers.grace);
-        m.timers.grace = setTimeout(() => { m.timers.grace = null; this.end(m, 'host_left', userId).catch(() => {}); }, s.leave_grace_s * 1000);
-      }
+      // 누가 진행자인지는 core가 판정한다(Python→Node /host 알림이 빠져도 새 진행자의 퇴장을 놓치지 않게).
+      // ponytail: 계정 연결 여부를 몰라 모든 참여자에게 유예를 건다. 진행자가 아닌 사람은 core가 400 → 회의 계속
+      clearTimeout(m.graces.get(userId));
+      m.graces.set(userId, setTimeout(() => { m.graces.delete(userId); this.tryEnd(m, 'host_left', userId); }, s.leave_grace_s * 1000));
+    }
+  }
+
+  /** 타이머·이벤트에서 부르는 자동 종료. 다른 종료 PATCH를 기다리는 중이면 미뤄 두고, 그 PATCH가 거절되면 다시 판단한다. */
+  tryEnd(m, reason, by = '', notice = null) {
+    if (m.ending) { m.deferred.push({ reason, by, notice }); return; }
+    this.end(m, reason, by, notice).catch(() => {}); // command·host_left 거절은 end()가 로그·재판단한다
+  }
+
+  // 종료가 거절·실패된 뒤: 그 시점의 실제 채널 상태로 다시 판단한다
+  reevaluate(m) {
+    if (m.ending || !this.byGuild.has(m.state.guild_id)) return;
+    if (!this.present(m.state).length) { m.deferred = []; return void this.tryEnd(m, 'empty'); }
+    while (m.deferred.length) {
+      const d = m.deferred.shift();
+      if (d.reason === 'empty') continue; // 사람이 남아 있다
+      if (d.reason === 'host_left' && !m.state.participants.find((p) => p.discord_user_id === d.by)?.left_at) continue; // 돌아왔다
+      return void this.tryEnd(m, d.reason, d.by, d.notice); // 이것도 거절되면 남은 것으로 다시 reevaluate
     }
   }
 
@@ -141,11 +166,11 @@ export class Meetings {
     return { recording: await this.end(m, 'command', String(discordUserId ?? '')) };
   }
 
+  // Python의 /host 알림. 최적화일 뿐이다(퇴장 판정은 core가 한다) — 화면용 진행자만 바꾼다
   setHost(recordingId, discordUserId) {
     const m = this.byId(recordingId);
     if (!m) throw new HttpErr(404, texts.noMeeting());
     m.state.host_discord_user_id = String(discordUserId);
-    clearTimeout(m.timers.grace); m.timers.grace = null; // 이전 진행자의 퇴장 유예는 더 보지 않는다
     this.save(m.state);
     return { ok: true };
   }
@@ -166,12 +191,13 @@ export class Meetings {
       if (reason === 'command' || reason === 'host_left') {
         m.ending = false;
         this.log('회의 계속', { recording_id: s.recording_id, reason, error: e.message });
+        queueMicrotask(() => this.reevaluate(m)); // 기다리는 동안 들어온 퇴장·최대 길이
         throw toHttp(e);
       }
       this.log('종료 PATCH 실패, 재시도 큐에 넣음', { recording_id: s.recording_id, reason, error: e.message });
       s.end_pending = body;
     }
-    for (const t of Object.values(m.timers)) clearTimeout(t);
+    for (const t of [...Object.values(m.timers), ...m.graces.values()]) clearTimeout(t);
     m.recorder?.stop();
     try { m.conn?.destroy(); } catch { /* 이미 끊김 */ }
     await this.discord.setNick(s.guild_id, s.prev_nick).catch(() => {});
@@ -280,10 +306,16 @@ export class Meetings {
    * 남은 후처리(종료 PATCH·올리기·전사)를 이어 간다. */
   async recover() {
     for (const st of this.states()) {
-      if (st.phase === 'recording') {
+      if (st.phase === 'recording' && !st.started_at) {
+        // 음성 접속 대기 중에 멈춤: 녹음 구간이 없으니 failed로 마감(core에 recording이 남아 다음 시작을 막지 않게)
+        const endedAt = new Date(this.now()).toISOString();
+        Object.assign(st, { phase: 'failed', ended_at: endedAt, end_reason: 'failed', end_pending: { status: 'failed', end_reason: 'failed', ended_at: endedAt } });
+        this.save(st);
+        this.enqueue(st);
+      } else if (st.phase === 'recording') {
         const endedAt = new Date(this.now()).toISOString();
         st.participants = st.participants.map((p) => ({ ...p, left_at: p.left_at ?? endedAt }));
-        Object.assign(st, { phase: 'transcribing', ended_at: endedAt, end_reason: 'restart', started_at: st.started_at ?? endedAt,
+        Object.assign(st, { phase: 'transcribing', ended_at: endedAt, end_reason: 'restart',
           end_pending: { status: 'transcribing', end_reason: 'restart', ended_at: endedAt, participants: st.participants } });
         this.save(st);
         await this.discord.setNick(st.guild_id, st.prev_nick).catch(() => {});

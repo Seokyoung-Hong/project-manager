@@ -725,7 +725,26 @@ def test_host_request_cancelled_on_host_change_and_end(enabled, member, other, l
 
 # ---------- 녹음 파일 (IMPL-PLAN-9-parallel §7) ----------
 
-OGG = b"OggS" + bytes(60)
+
+def _page(body: bytes, flags: int = 0, version: int = 0) -> bytes:
+    """Ogg 페이지 하나(RFC 3533). CRC는 core가 보지 않으므로 0으로 둔다."""
+    segs = [255] * (len(body) // 255) + [len(body) % 255]
+    return (
+        b"OggS"
+        + bytes([version, flags])
+        + bytes(8 + 4 + 4 + 4)
+        + bytes([len(segs)])
+        + bytes(segs)
+        + body
+    )
+
+
+OPUS_HEAD = b"OpusHead" + bytes([1, 1]) + bytes(9)  # 19바이트
+OGG = (
+    _page(OPUS_HEAD, flags=0x02)
+    + _page(b"OpusTags" + bytes(8))
+    + _page(b"OggS-in-body" + bytes(600), flags=0x04)  # 본문에 OggS가 껴도 통과
+)
 
 
 @pytest.fixture
@@ -772,9 +791,9 @@ def test_audio_upload_bot_only_and_replaces(
     first = rec.audio.name
     assert first.startswith(f"meeting/{enabled.pk}/") and (media / first).exists()
     with django_capture_on_commit_callbacks(execute=True):
-        r = _put_audio(client, rec, OGG + b"more")
+        r = _put_audio(client, rec, OGG + _page(b"more", flags=0x04))
     rec.refresh_from_db()
-    assert r.json()["size"] == len(OGG) + 4 and rec.audio.name != first
+    assert r.json()["size"] == len(OGG) + 32 and rec.audio.name != first
     assert not (media / first).exists()
 
 
@@ -783,6 +802,15 @@ def test_audio_upload_rejects_format_size_and_expired(client, enabled, member, m
 
     rec = _ended(enabled, member)
     assert _put_audio(client, rec, b"RIFF....WAVE", name="a.ogg").status_code == 400
+    for bad in (
+        b"OggS" + bytes(60),  # 페이지 머리만 흉내
+        OGG[:-5],  # 끝이 잘림
+        _page(OPUS_HEAD, flags=0) + OGG[len(_page(OPUS_HEAD, flags=0x02)) :],  # BOS 없음
+        _page(OPUS_HEAD, flags=0x02, version=1) + OGG[47:],  # 버전 1
+        _page(b"OpusTagsXXXXXXXXXXX", flags=0x02) + _page(b"x" * 30),  # 첫 패킷이 OpusHead 아님
+        OGG[:30],  # 세그먼트 표가 파일 밖
+    ):
+        assert _put_audio(client, rec, bad).status_code == 400, bad[:40]
     monkeypatch.setattr(services, "AUDIO_MAX_BYTES", 10)
     assert _put_audio(client, rec).status_code == 400
     monkeypatch.undo()
