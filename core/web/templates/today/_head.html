@@ -26,11 +26,6 @@
       <button type="button" class="btn" hx-get="{% url 'task_panel' focus.pk %}" hx-target="#panel" hx-swap="innerHTML" hx-push-url="{% url 'task_detail' focus.pk %}">자세히 보기</button>
     </div>
   </section>
-  {% elif not setup %}
-  <section class="memo focus-memo is-empty" aria-label="지금 할 일">
-    <p class="eyebrow">지금 할 한 가지</p>
-    <p>오늘 목록에서 가장 위에 있는 태스크입니다.</p>
-  </section>
   {% endif %}
   <section class="tally" aria-label="전체 조직 내 담당 태스크 지표">
     <h2>오늘도 차곡차곡</h2>
