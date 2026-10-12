@@ -9,6 +9,9 @@ POLICY_VERSION을 올린다 — 동의 기록은 어느 판에 동의했는지�
 # 처리방침 판. 시행일이 정해지면 그 날짜로 바꾼다.
 POLICY_VERSION = "v1"
 
+# 이용약관·처리방침 시행일. 바꾸면 다음 로그인 때 새 판으로 동의 기록을 남긴다(로그인 화면 고지).
+TERMS_VERSION = "2026-10-13"
+
 TARGETS = [("github", "GitHub"), ("discord", "Discord"), ("ai", "AI 도구")]
 
 NOTICES = {

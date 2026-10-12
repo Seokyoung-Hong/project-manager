@@ -7,6 +7,7 @@
   {% include "_fields.html" %}
   <input type="hidden" name="next" value="{{ request.GET.next }}">
   <button class="btn primary">로그인</button>
+  <p class="t13 muted">로그인하면 <a href="{% url 'terms' %}">이용약관</a>과 <a href="{% url 'privacy' %}">개인정보 처리방침</a>(2026-10-13 시행)에 동의하는 것으로 봅니다.</p>
 </form>
 {% if github_enabled %}<a class="btn" href="{% url 'github_login' %}?next={{ request.GET.next|urlencode }}">GitHub로 로그인</a>{% endif %}
 <p class="t13">계정이 없으면 <a href="{% url 'signup' %}?next={{ request.GET.next }}">가입</a>해 주세요.</p>

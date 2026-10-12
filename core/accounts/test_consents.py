@@ -175,3 +175,19 @@ def test_github_only_account_cannot_withdraw_github_consent(logged, admin):
     r = logged.post("/settings/consents/github/withdraw", follow=True)
     assert "비밀번호를 먼저 설정하거나" in r.content.decode()
     assert GitHubIdentity.objects.filter(user=admin).exists() and _active(admin, "github")
+
+
+def test_login_records_terms_consent_once_per_version(client, member, monkeypatch):
+    """로그인 화면 고지대로 로그인 = 시행 중인 약관에 동의. 같은 판은 한 행, 판이 바뀌면 새 행."""
+    assert "동의하는 것으로 봅니다" in client.get("/login").content.decode()
+    login = {"username": "member1", "password": "pw12345678"}
+    client.post("/login", login)
+    client.logout()
+    client.post("/login", login)
+    rows = Consent.objects.filter(user=member, target="terms")
+    assert [(c.version, c.withdrawn_at) for c in rows] == [("2026-10-13", None)]
+    monkeypatch.setattr("accounts.services.TERMS_VERSION", "2027-01-01")
+    client.logout()
+    client.post("/login", login)
+    assert rows.filter(withdrawn_at__isnull=True).get().version == "2027-01-01"
+    assert rows.all().count() == 2  # 위 목록 비교가 rows를 캐시했다

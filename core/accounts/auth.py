@@ -26,7 +26,7 @@ from django.db import transaction
 from django.utils import timezone
 
 from .models import LoginLock
-from .services import consent_deadline, missing_consents
+from .services import agree_terms, consent_deadline, missing_consents
 
 LOCK_POLICY = {  # kind: (실패 횟수, 창(분), 잠금(분))
     "user": (
@@ -107,6 +107,7 @@ def login_user(request, user, method: str) -> None:
     """
     login(request, user, backend="django.contrib.auth.backends.ModelBackend")
     request.session["auth_method"] = method
+    agree_terms(user)
     # 동의 화면 전에 연결한 사람. 유예 중에는 알리기만 하고, 유예가 끝나면 그 연결은 멈춘다.
     if missing_consents(user):
         text = "연결된 외부 서비스의 국외 이전 동의가 필요합니다."
