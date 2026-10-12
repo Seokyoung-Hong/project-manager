@@ -56,11 +56,12 @@ class MemberInfoGate:
 
     def process_view(self, request, view_func, view_args, view_kwargs):
         match = request.resolver_match
+        # 경로부터 본다: request.user는 DB를 읽는다. /rt/(SSE)에서 읽으면 스트림 내내 연결 하나를 붙잡는다.
         if (
-            not request.user.is_authenticated
-            or match is None
+            match is None
             or match.url_name in _OPEN_VIEWS
             or request.path.strip("/").split("/")[0] not in _ORG_PREFIXES
+            or not request.user.is_authenticated
         ):
             return None
         from orgs.member_info import blocked_org, request_org_id, url

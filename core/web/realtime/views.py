@@ -23,9 +23,17 @@ from .hub import Conn, hub
 HEARTBEAT = 15
 
 
+def _auth(request):
+    # 인증 조회와 연결 닫기를 한 스레드에서 한다. SSE는 응답이 끝나지 않아 요청 끝의 정리가 오지 않는다 —
+    # 열어 두면 스트림마다 DB 연결 하나를 붙잡아 Postgres max_connections(web과 공유)가 바닥난다.
+    try:
+        return request.user if request.user.is_authenticated else None
+    finally:
+        connections.close_all()
+
+
 async def _user(request):
-    user = await request.auser()
-    return user if user.is_authenticated else None
+    return await sync_to_async(_auth)(request)
 
 
 def _stream(request, user, kind: str) -> Conn | None:
@@ -85,9 +93,6 @@ async def sse(request):
             c.live = False
             c.seen = time.monotonic()
 
-    # 인증에 쓴 DB 연결을 지금 닫는다. 안 닫으면 스트림이 끝날 때까지 연결 하나를 붙잡아 수백 개가 열리면
-    # Postgres max_connections(web과 공유)가 바닥난다(리허설 300연결에서 "too many clients" 재현).
-    await sync_to_async(connections.close_all)()
     resp = StreamingHttpResponse(gen(), content_type="text/event-stream")
     resp["Cache-Control"] = "no-cache"
     resp["X-Accel-Buffering"] = "no"
