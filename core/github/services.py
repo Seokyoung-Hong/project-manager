@@ -54,7 +54,6 @@ from .models import (
 log = logging.getLogger(__name__)
 
 REPO_TTL = timedelta(hours=6)
-REPO_RETRY_SECONDS = 300
 ISSUE_TTL = timedelta(minutes=10)
 EVENT_KEEP = 50
 
@@ -293,38 +292,67 @@ def sync_repos(identity) -> list[str]:
     return identity.repos
 
 
-def refresh_github_access(request):
-    """마지막 확인이 오래됐으면 다시 물어본다. 실패는 조용히 넘긴다.
+def reconcile() -> dict:
+    """5분 보정(manage.py github_reconcile). 화면은 GitHub를 부르지 않고 DB만 읽으므로 여기서 맞춘다.
 
-    # ponytail: 요청 경로에서 GitHub를 한 번 부른다(6시간에 한 번). 느껴지면
-    # GitHub 화면 첫 진입으로 미룬다.
+    1. 이슈: 동기화가 10분 지난 연결(웹훅이 오면 시각이 갱신돼 건너뛴다).
+    2. 권한: 저장소 목록 확인이 6시간 지났거나 웹훅이 비워 둔(None) identity.
+    하나가 실패해도 다음 대상은 계속한다. 실패한 대상은 시각이 그대로라 다음 회차에 다시 잡힌다.
     """
-    if not github_access_due(request):
+    done = {"issues": 0, "repos": 0, "failed": 0}
+    if not settings.GITHUB_ENABLED:
+        return done
+    now = timezone.now()
+    conns = RepoConnection.objects.filter(
+        Q(issues_synced_at__isnull=True) | Q(issues_synced_at__lt=now - ISSUE_TTL),
+        project__org__github__isnull=False,
+        project__org__github__suspended_at__isnull=True,
+    ).select_related("project__org__github")
+    for conn in conns:
+        try:
+            sync_issues(conn)
+            done["issues"] += 1
+        except Exception:
+            done["failed"] += 1
+            log.exception("이슈 보정 실패: %s", conn.full_name)
+    identities = GitHubIdentity.objects.filter(
+        Q(repos_checked_at__isnull=True) | Q(repos_checked_at__lt=now - REPO_TTL),
+        user__is_active=True,
+    ).select_related("user")
+    for identity in identities:
+        try:
+            sync_repos(identity)
+            done["repos"] += 1
+        except Exception:
+            done["failed"] += 1
+            log.exception("권한 보정 실패: %s", identity.login)
+    return done
+
+
+def _recheck_access(inst_id=None):
+    """설치 조직 멤버의 저장소 권한을 다음 보정(5분 안)에 다시 묻게 한다. 조직을 모르면 모두.
+
+    웹훅 응답 안에서 멤버 전원을 GitHub에 다시 물으면 10초 제한을 넘길 수 있어 표시만 한다.
+    """
+    qs = GitHubIdentity.objects.all()
+    inst = GitHubInstallation.objects.filter(installation_id=inst_id).first() if inst_id else None
+    if inst is not None:
+        qs = qs.filter(user__org_memberships__org=inst.org_id)
+    qs.update(repos_checked_at=None)
+
+
+def _resync_member(payload: dict):
+    """membership 웹훅: 팀이 바뀐 그 사람의 저장소 권한을 그 자리에서 다시 맞춘다."""
+    gh_id = (payload.get("member") or {}).get("id")
+    identity = GitHubIdentity.objects.filter(github_id=gh_id).first() if gh_id else None
+    if identity is None:
         return
-    identity = request.user.github
     try:
         sync_repos(identity)
     except (GitHubError, ServiceError):
-        cache.set(_repo_retry_key(identity), 1, REPO_RETRY_SECONDS)
-
-
-def _repo_retry_key(identity) -> str:
-    return f"gh-repos-retry:{identity.pk}"
-
-
-def github_access_due(request) -> bool:
-    """refresh_github_access가 지금 GitHub에 다시 물을 차례인가(6시간, 실패 뒤 5분은 쉼)."""
-    if not settings.GITHUB_ENABLED or not request.user.is_authenticated:
-        return False
-    identity = getattr(request.user, "github", None)
-    if identity is None:
-        return False
-    last = identity.repos_checked_at
-    if last and timezone.now() - last < REPO_TTL:
-        return False
-    # 실패해도 매 요청 다시 묻지 않는다. GitHub 장애가 모든 화면을 시간 초과만큼 붙잡기 때문이다.
-    # ponytail: 프로세스별 캐시라 워커마다 한 번씩은 다시 묻는다. 거슬리면 DB에 시각을 둔다.
-    return not cache.get(_repo_retry_key(identity))
+        GitHubIdentity.objects.filter(pk=identity.pk).update(
+            repos_checked_at=None
+        )  # 보정이 다시 묻는다
 
 
 def _free_username(login: str) -> str:
@@ -699,8 +727,10 @@ def handle_event(event: str, delivery: str, payload: dict) -> tuple[int, dict]:
         return 200, {"ok": True}
     if event == "membership":
         _on_membership(payload)
+        _resync_member(payload)
     elif event == "team":
         _on_team(payload)
+        _recheck_access((payload.get("installation") or {}).get("id"))
     full_name = ((payload.get("repository") or {}).get("full_name")) or ""
     conns = list(
         RepoConnection.objects.filter(full_name__iexact=full_name).select_related(
@@ -816,10 +846,11 @@ def _installation_event(event: str, payload: dict):
     inst_id = ((payload.get("installation") or {}).get("id")) or 0
     if not inst_id:
         return
+    # 설치·저장소 범위·권한이 바뀌었다. 그 조직 멤버의 저장소 권한을 다음 보정에 다시 묻는다.
+    # 설치 삭제 전에 표시해야 조직을 안다.
+    _recheck_access(inst_id)
     inst = GitHubInstallation.objects.filter(installation_id=inst_id).first()
     if event == "installation_repositories":
-        # 저장소 범위가 바뀌었다. 모두의 캐시를 비워 다음 접속에 다시 묻게 한다.
-        GitHubIdentity.objects.update(repos_checked_at=None)
         return
     action = payload.get("action") or ""
     if action == "new_permissions_accepted":

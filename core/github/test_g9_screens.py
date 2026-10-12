@@ -85,7 +85,6 @@ def test_repo_settings_saves_review_and_milestone_rules(as_admin, conn, project,
 
 
 def test_panel_shows_draft_ci_reviews_and_continuation(as_admin, conn, project, admin, monkeypatch):
-    monkeypatch.setattr("web.views.tasks.sync_issues_if_stale", lambda c: None)
     old = create_task(
         project=project, title="원 작업", actor=admin, source="web", no_due_reason="테스트"
     )

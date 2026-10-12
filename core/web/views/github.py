@@ -445,7 +445,6 @@ def project_repo(request, project_id):
                 )
     if state["state"] == "ok":
         conn = state["conn"]
-        gh_services.sync_issues_if_stale(conn)
         ctx["issues"] = conn.issues.filter(state="open")[:50]
         ctx["events"] = conn.events.select_related("task")[:50]
         ctx["open_tasks"] = project.tasks.filter(status__in=Task.OPEN).order_by("-id")[:50]

@@ -18,10 +18,7 @@ from common.dates import today_kst
 from common.errors import ConflictError, ServiceError
 from github.services import (
     continuation,
-    github_access_due,
-    issues_stale,
     pr_compare_url,
-    sync_issues_if_stale,
     task_repo_state,
 )
 from github.writes import default_branch_name
@@ -55,18 +52,8 @@ from .common import (
 
 
 def _wants_issues(rs, link) -> bool:
-    """패널이 저장소의 열린 이슈 목록을 보여 주는가(그러면 그릴 때 이슈를 동기화한다)."""
+    """패널이 저장소의 열린 이슈 목록을 보여 주는가. 이슈는 DB 값이다(웹훅·5분 보정 github_reconcile이 맞춘다)."""
     return rs["state"] == "ok" and not (link and link.issue_number)
-
-
-def _github_due(request, task) -> bool:
-    """패널을 그리면 GitHub 동기화가 돌 차례인가. 그러면 304로 건너뛰지 않고 그린다."""
-    if github_access_due(request):  # 셸 문맥(web.context.shell)이 그릴 때 부른다
-        return True
-    if not task.project.dev_tools:
-        return False
-    rs = task_repo_state(request.user, task)
-    return _wants_issues(rs, getattr(task, "git", None)) and issues_stale(rs["conn"])
 
 
 def _git_ctx(request, task) -> dict:
@@ -76,7 +63,6 @@ def _git_ctx(request, task) -> dict:
     link = getattr(task, "git", None)
     issues = []
     if _wants_issues(rs, link):
-        sync_issues_if_stale(rs["conn"])
         issues = rs["conn"].issues.filter(state="open", task__isnull=True)[:50]
     reviews = list(link.review_states.values()) if link else []
     return {
@@ -297,7 +283,6 @@ def task_panel(request, task_id):
     """브라우저가 받아 둔 패널의 ETag(If-None-Match)가 지금 것과 같으면 본문 없이 304만 보낸다.
 
     Postgres: ETag = 데이터 버전(web.data_version) + 보는 사람 + 오늘 날짜 + 10분 칸 + 주소 + 배포본.
-    단, 그릴 때 돌 GitHub 동기화(이슈 10분·권한 6시간)가 차례면 304를 주지 않고 그려서 바로 동기화한다.
     패널 내용은 DB와 오늘 날짜로만 정해지므로(GitHub 상태도 DB 값) 그리지 않고 비교한다.
     - 버전은 사용자·세션·태스크를 포함한 어떤 조회보다 먼저 읽는다(그래서 login_required 바깥이다).
       READ COMMITTED라 뒤 조회가 더 새 데이터를 볼 수는 있어도(다음에 한 번 더 그릴 뿐), 낡은 데이터에 새 버전이 붙지는 않는다.
@@ -317,7 +302,7 @@ def _task_panel(request, task_id, version):
         etag = _tag(
             f"{version}|{request.user.pk}|{today_kst()}|{bucket}|{request.get_full_path()}|{_CODE_STAMP}"
         )
-        if sent == etag and not _github_due(request, task):
+        if sent == etag:
             return HttpResponseNotModified(headers={"ETag": etag})
         response = _panel(request, task)
     else:

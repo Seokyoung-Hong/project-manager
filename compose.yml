@@ -53,15 +53,15 @@ services:
       retries: 30
       start_period: 30s
 
-  purge:                         # 개인정보 보관 기간 정리: 하루 한 번 purge_expired. web과 같은 이미지(새 이미지·cron 없음)
+  purge:                         # 주기 작업: GitHub 보정(github_reconcile) 5분, 보관 기간 정리(purge_expired) 하루. web과 같은 이미지(새 이미지·cron 없음)
     build: ./core
     env_file: .env
     environment:
       DATABASE_URL: postgres://pm:${POSTGRES_PASSWORD:-pm}@db:5432/pm
     entrypoint: ["sh", "-c"]     # web의 entrypoint.sh(migrate·gunicorn)를 건너뛴다
-    # ponytail: sleep 루프라 실행 시각이 기동 시각 기준으로 밀리고(정시 아님) 실패해도 알림이 없다(다음 날 다시 돈다).
-    #   작업별 결과·실패는 `docker compose logs purge`에 남는다. 정시·알림이 필요하면 호스트 cron이나 전용 스케줄러로.
-    command: ["while true; do python manage.py purge_expired || true; sleep 86400; done"]
+    # 실행기: ops/management/commands/run_periodic.py(한 작업이 실패해도 루프는 산다).
+    #   작업별 결과·실패는 `docker compose logs purge`에 남는다.
+    command: ["exec python manage.py run_periodic"]
     depends_on:
       web:
         condition: service_healthy   # migrate가 끝난 뒤에 돈다

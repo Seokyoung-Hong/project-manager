@@ -690,24 +690,6 @@ def test_opened_does_not_import_twice(gh, client, conn, task, member):
     assert RepoIssue.objects.get(connection=conn, number=60).task == task
 
 
-def test_refresh_access_backs_off_after_failure(gh, admin, monkeypatch):
-    from types import SimpleNamespace
-
-    GitHubIdentity.objects.create(user=admin, github_id=9, login="a")
-    admin.refresh_from_db()
-    calls = []
-
-    def fail(identity):
-        calls.append(1)
-        raise gh_client.GitHubError(502, "장애")
-
-    monkeypatch.setattr(ghs, "sync_repos", fail)
-    req = SimpleNamespace(user=admin)
-    ghs.refresh_github_access(req)
-    ghs.refresh_github_access(req)
-    assert len(calls) == 1
-
-
 def test_member_cannot_change_repo_settings(gh, client, conn, member):
     client.force_login(member)
     client.post(f"/projects/{conn.project.pk}/repo/settings", {"auto_import": "on"})
@@ -769,32 +751,26 @@ def test_git_issue_does_not_steal_other_tasks_issue(gh, client, conn, task, proj
     assert not TaskGitLink.objects.filter(task=task, issue_number=70).exists()
 
 
-def test_panel_304_yields_to_due_github_sync(gh, client, conn, task, member, monkeypatch):
-    """패널 ETag가 같아도 GitHub 동기화 차례면 304를 주지 않고 그려서 바로 동기화한다."""
+def test_panel_never_calls_github(gh, client, conn, task, member, monkeypatch):
+    """화면은 DB만 읽는다. 이슈 10분·권한 6시간이 지나도 패널은 GitHub를 부르지 않고 304를 준다(보정은 github_reconcile)."""
     from web import data_version
 
     monkeypatch.setattr(data_version, "current", lambda: "1-1-1")
     synced = []
     monkeypatch.setattr(ghs, "sync_issues", lambda c: synced.append(c.pk))
     monkeypatch.setattr(ghs, "sync_repos", lambda i: synced.append("repos"))
-    ident = GitHubIdentity.objects.create(
-        user=member, github_id=321, login="m", repos=["o/r"], repos_checked_at=timezone.now()
+    GitHubIdentity.objects.create(
+        user=member,
+        github_id=321,
+        login="m",
+        repos=["o/r"],
+        repos_checked_at=timezone.now() - ghs.REPO_TTL * 2,
     )
-    conn.issues_synced_at = timezone.now()
+    conn.issues_synced_at = timezone.now() - ghs.ISSUE_TTL * 2
     conn.save(update_fields=["issues_synced_at"])
     client.login(username="member1", password="pw12345678")
     url = f"/tasks/{task.pk}/panel"
     etag = client.get(url)["ETag"]
     assert client.get(url, headers={"If-None-Match": etag}).status_code == 304
-    # 이슈 동기화 10분이 지났다 → 그리면서 동기화
-    conn.issues_synced_at = timezone.now() - ghs.ISSUE_TTL * 2
-    conn.save(update_fields=["issues_synced_at"])
-    assert client.get(url, headers={"If-None-Match": etag}).status_code == 200
-    assert synced == [conn.pk]
-    # 저장소 권한 재확인 6시간이 지났다 → 그리면서 재확인
-    conn.issues_synced_at = timezone.now()
-    conn.save(update_fields=["issues_synced_at"])
-    ident.repos_checked_at = timezone.now() - ghs.REPO_TTL * 2
-    ident.save(update_fields=["repos_checked_at"])
-    assert client.get(url, headers={"If-None-Match": etag}).status_code == 200
-    assert synced[-1] == "repos"
+    client.get("/")  # 셸 문맥도 부르지 않는다
+    assert synced == []

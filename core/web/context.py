@@ -46,10 +46,6 @@ def shell(request):
     """base.html 셸: 현재 조직, 프로젝트 레일, nav 강조, 닫기 후 돌아갈 주소."""
     if not request.user.is_authenticated:
         return {"github_enabled": settings.GITHUB_ENABLED}  # 로그인·가입 화면의 GitHub 버튼
-    if settings.GITHUB_ENABLED:
-        from github.services import refresh_github_access
-
-        refresh_github_access(request)
     # 셸이 조직 전환 패널을 그리므로 목록을 여기서 한 번 읽고 current_org에 넘긴다.
     my_orgs = list(orgs_of(request.user).order_by("name"))
     org = current_org(request, my_orgs)
