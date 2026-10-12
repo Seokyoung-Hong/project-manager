@@ -3,6 +3,7 @@ from pathlib import Path
 from django.contrib import messages
 from django.contrib.auth.forms import SetPasswordForm
 from django.contrib.auth.tokens import default_token_generator
+from django.db import transaction
 from django.shortcuts import redirect, render
 from django.utils.http import url_has_allowed_host_and_scheme, urlsafe_base64_decode
 from django.utils.safestring import mark_safe
@@ -20,6 +21,8 @@ from accounts.auth import (
 )
 from accounts.models import User
 from common.errors import ServiceError
+from orgs import services as osv
+from orgs.models import Invite
 from orgs.services import invite_org, join_by_token, orgs_of
 
 from ..forms import LoginForm, SignupForm
@@ -112,6 +115,8 @@ def signup(request):
 
 
 def join(request, token):
+    if Invite.objects.filter(token=token, for_user__isnull=False).exists():
+        return _claim(request, token)
     if not request.user.is_authenticated:
         # 초대받은 사람은 대개 계정이 없다. 맨몸 로그인 화면으로 보내면 무슨 링크였는지 잃는다.
         return render(request, "auth/join.html", {"token": token, "org": invite_org(token)})
@@ -124,6 +129,38 @@ def join(request, token):
         messages.success(request, f"{org.name} 조직에 참여했습니다.")
         return redirect("today")
     return render(request, "auth/join.html", {"token": token})
+
+
+def _claim(request, token):
+    """사람별 초대: 관리자가 만들어 둔 가입 전 계정을 그대로 넘겨받는다(담당·팀·이력 유지)."""
+    if request.user.is_authenticated:
+        # 이미 계정이 있는 사람과 합치지 않는다. 다른 계정으로 로그인한 채 열었다.
+        return render(request, "auth/join.html", {"error": osv.PERSONAL_LOGGED_IN})
+    invite = osv.personal_invite(token)
+    if invite is None:
+        return render(request, "auth/join.html", {"token": token})
+    # 아이디는 자동으로 만든 값이라 비워 두고, 표시 이름은 관리자가 넣은 이름을 채운다
+    form = SignupForm(request.POST or None, instance=invite.for_user, initial={"username": ""})
+    ctx = {"form": form, "invite": invite, "token": token}
+    if request.method == "POST" and form.is_valid():
+        ip = client_ip(request)
+        try:
+            check_lock("signup_ip", ip)
+            with transaction.atomic():
+                invite = osv.claim_invite(token, lambda user: form.save())
+        except LockedOut as e:
+            form.add_error(None, _too_many(e))
+            return render(request, "auth/claim.html", ctx)
+        except ServiceError as e:
+            return render(request, "auth/join.html", {"token": token, "error": e.errors["token"]})
+        record_failure("signup_ip", ip)  # signup과 같이 생성 횟수를 센다
+        login_user(request, invite.for_user, "password")
+        request.session["org_id"] = invite.org_id
+        messages.success(
+            request, f"가입되었습니다. {invite.org.name} 조직의 계정을 이어받았습니다."
+        )
+        return redirect("today")
+    return render(request, "auth/claim.html", ctx)
 
 
 RESET_TOKEN_SESSION_KEY = "_password_reset_token"

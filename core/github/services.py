@@ -393,12 +393,13 @@ def lookalike_exists(login: str, email: str) -> bool:
 
 
 @transaction.atomic
-def login_with_github(info: dict, token_data: dict) -> tuple:
+def login_with_github(info: dict, token_data: dict, claim: str = "") -> tuple:
     """GitHub 사용자 정보로 PM 사용자를 찾고, 없으면 만든다. (identity, 새로 만들었나)를 돌려준다.
 
     이미 연결된 GitHub 계정이면 그 사람이다. 처음 보는 계정이면 GitHub만으로 가입시킨다.
     같은 이메일·아이디의 기존 PM 계정에 자동으로 붙이지 않는다 — 남의 계정을 가로챌 수 있다.
     기존 계정을 쓰던 사람은 로그인한 뒤 프로필에서 GitHub를 연결하면 된다.
+    claim(사람별 초대 토큰)이 있으면 새 계정 대신 그 가입 전 계정에 GitHub를 붙여 넘겨준다.
     """
     from accounts.identity import resolve
     from accounts.models import User
@@ -413,6 +414,10 @@ def login_with_github(info: dict, token_data: dict) -> tuple:
         if identity.login != login:
             identity.login = login
             identity.save(update_fields=["login"])
+    elif claim:
+        from orgs.services import claim_invite
+
+        user = claim_invite(claim, lambda u: u).for_user
     else:
         user = User(
             username=_free_username(login or f"github-{github_id}"),
@@ -421,6 +426,7 @@ def login_with_github(info: dict, token_data: dict) -> tuple:
         )
         user.set_unusable_password()  # 비밀번호 로그인은 없다. GitHub로만 들어온다.
         user.save()
+    if created:
         identity = GitHubIdentity.objects.create(user=user, github_id=github_id, login=login)
         backfill_actor(identity)
     _store_tokens(identity, token_data)

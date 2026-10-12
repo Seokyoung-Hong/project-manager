@@ -141,6 +141,10 @@ class Invite(models.Model):
     revoked_at = models.DateTimeField(null=True, blank=True)
     use_count = models.PositiveIntegerField(default=0)
     max_uses = models.PositiveIntegerField("최대 사용 횟수", default=0)  # 0=무제한
+    # 사람별 초대(계정 인계). 있으면 이 링크로 가입한 사람이 새 계정 대신 이 "가입 전" 계정을 넘겨받는다.
+    for_user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, null=True, blank=True, related_name="+"
+    )
 
     class Meta:
         ordering = ["-created_at"]

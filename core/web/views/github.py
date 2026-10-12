@@ -220,12 +220,16 @@ def github_login(request):
     nxt = request.GET.get("next", "")
     if url_has_allowed_host_and_scheme(nxt, allowed_hosts={request.get_host()}):
         request.session["gh_login_next"] = nxt  # 초대 링크(/join/…)로 온 사람이 그대로 참여하게
+    # 사람별 초대 링크에서 왔으면 새 계정 대신 그 가입 전 계정을 넘겨받는다(_finish_login)
+    request.session["gh_claim"] = request.GET.get("claim", "")
     return _authorize(request)
 
 
 def _finish_login(request, data: dict, info: dict, consented: bool = False):
     try:
-        identity, created = gh_services.login_with_github(info, data)
+        identity, created = gh_services.login_with_github(
+            info, data, claim=request.session.pop("gh_claim", "")
+        )
     except ServiceError as e:
         messages.error(request, " ".join(e.errors.values()))
         return redirect("login")

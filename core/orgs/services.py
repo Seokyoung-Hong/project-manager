@@ -1,3 +1,5 @@
+import secrets
+
 from django.db import transaction
 from django.db.models import Exists, OuterRef, Q
 from django.utils import timezone
@@ -199,6 +201,8 @@ def join_by_token(user, token: str) -> Organization:
                 "token": "초대 링크가 만료되었거나 폐기되었습니다. 조직 관리자에게 새 초대 링크를 요청해 주세요."
             }
         )
+    if invite.for_user_id:
+        raise ServiceError({"token": PERSONAL_LOGGED_IN})
     _, created = OrgMembership.objects.get_or_create(
         org=invite.org, user=user, defaults={"role": "member"}
     )
@@ -206,6 +210,101 @@ def join_by_token(user, token: str) -> Organization:
         invite.use_count += 1
         invite.save(update_fields=["use_count"])
     return invite.org
+
+
+# ---------- 사람별 초대(가입 전 구성원 인계) ----------
+
+PERSONAL_LOGGED_IN = "이 초대 링크는 새 계정용입니다. 로그아웃한 뒤 링크를 다시 열어 주세요."
+PERSONAL_GONE = (
+    "초대 링크가 만료되었거나 이미 사용되었습니다. 조직 관리자에게 새 초대 링크를 요청해 주세요."
+)
+
+
+def is_pending(user) -> bool:
+    """가입 전: 비밀번호도 GitHub 연결도 로그인 기록도 없다. 셸로 만든 계정도 여기에 든다."""
+    return (
+        not user.has_usable_password() and user.last_login is None and not hasattr(user, "github")
+    )
+
+
+def _org_log(org, actor, field, value):
+    from tasks.models import ChangeLog
+
+    ChangeLog.objects.create(
+        target_type="org", target_id=org.pk, field=field, new_value=value, actor=actor, source="web"
+    )
+
+
+@transaction.atomic
+def add_pending_member(org, actor, display_name: str) -> OrgMembership:
+    """표시 이름만으로 가입 전 구성원을 만든다. 사람별 초대 링크로 실제 사람에게 넘긴다."""
+    from accounts.models import User
+
+    require_admin(actor, org)
+    name = (display_name or "").strip()[:50]
+    if not name:
+        raise ServiceError({"display_name": "표시 이름을 입력해 주세요."})
+    user = User(username=f"pending-{secrets.token_hex(6)}", display_name=name)
+    user.set_unusable_password()
+    user.save()
+    _org_log(org, actor, "member_add_pending", f"{name}({user.pk})")
+    return OrgMembership.objects.create(org=org, user=user, role="member")
+
+
+@transaction.atomic
+def create_personal_invite(membership, actor) -> Invite:
+    """가입 전 구성원 한 사람용 1회용 링크. 다시 만들면 그 사람의 이전 링크는 취소된다."""
+    org, user = membership.org, membership.user
+    require_admin(actor, org)
+    if not is_pending(user):
+        raise ServiceError(
+            {
+                "member": "이미 가입한 사람입니다. 사람별 초대 링크는 가입 전 구성원에게만 만들 수 있습니다."
+            }
+        )
+    now = timezone.now()
+    Invite.objects.filter(org=org, for_user=user, revoked_at__isnull=True).update(revoked_at=now)
+    _org_log(org, actor, "invite_personal", f"{user.display_name}({user.pk})")
+    return Invite.objects.create(org=org, created_by=actor, for_user=user, max_uses=1)
+
+
+def personal_invite(token: str, *, lock=False):
+    """쓸 수 있는 사람별 초대. 아니면 None. lock=True는 transaction.atomic 안에서만 쓴다."""
+    qs = Invite.objects.select_related("org", "for_user").filter(
+        token=token, for_user__isnull=False
+    )
+    if lock:
+        qs = qs.select_for_update(of=("self",))
+    invite = qs.first()
+    if (
+        invite is None
+        or not invite.is_usable
+        or invite.use_count >= invite.max_uses
+        or not is_pending(invite.for_user)
+    ):
+        return None
+    return invite
+
+
+def claim_invite(token: str, set_up) -> Invite:
+    """가입 전 계정을 넘겨받는다. set_up(user)가 아이디·비밀번호나 GitHub 연결을 붙이고 user를 돌려준다.
+
+    호출부의 transaction.atomic 안에서 부른다. 초대 행을 잠그고 다시 확인하므로 같은 링크로
+    두 번 넘겨받을 수 없다.
+    """
+    invite = personal_invite(token, lock=True)
+    if invite is None:
+        raise ServiceError({"token": PERSONAL_GONE})
+    invite.for_user = set_up(invite.for_user)
+    invite.use_count += 1
+    invite.save(update_fields=["use_count"])
+    _org_log(
+        invite.org,
+        invite.for_user,
+        "invite_claimed",
+        f"{invite.for_user.display_name}({invite.for_user.pk})",
+    )
+    return invite
 
 
 @transaction.atomic
