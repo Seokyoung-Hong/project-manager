@@ -124,23 +124,23 @@
       {% if series %}{% include "tasks/_series.html" %}{% endif %}
     </div>
     <div class="stack panel-folds">
-      <details class="fold"><summary>설명{% if not task.description %} <span class="muted">내용 없음</span>{% endif %}</summary>
+      <details class="fold" data-section="description"><summary>설명{% if not task.description %} <span class="muted">내용 없음</span>{% endif %}</summary>
         <div class="md-field"><label for="task-desc-{{ task.pk }}" class="sr-only">설명</label>
           <textarea id="task-desc-{{ task.pk }}" class="textarea" name="value" rows="{{ desc_rows }}" data-md data-toolbar="bottom" data-autosave placeholder="무엇을 하는 태스크인지 적습니다." hx-post="{% url 'task_text' task.pk 'description' %}" hx-trigger="change" hx-swap="none">{{ task.description }}</textarea>
         </div>
       </details>
-      <details class="fold"><summary>체크리스트 <span class="muted">{{ checklist_done }}/{{ checklist|length }}</span></summary>
+      <details class="fold" data-section="checklist"><summary>체크리스트 <span class="muted">{{ checklist_done }}/{{ checklist|length }}</span></summary>
         <div id="checklist">{% include "tasks/_checklist.html" %}</div>
       </details>
       {% include "tasks/_subtasks.html" %}
       {% include "tasks/_projects.html" %}
-      {% if github_enabled and task.project.dev_tools %}<details class="git-fold"><summary>GitHub · {{ gh_summary }}</summary>{% include "tasks/_git.html" %}</details>{% endif %}
-      <details class="fold"{% if link_open %} open{% endif %}><summary>참고 자료·첨부·산출물 <span class="muted">{{ refs_count }}</span></summary>
+      {% if github_enabled and task.project.dev_tools %}<details class="git-fold" data-section="github"><summary>GitHub · {{ gh_summary }}</summary>{% include "tasks/_git.html" %}</details>{% endif %}
+      <details class="fold" data-section="refs"{% if link_open %} open{% endif %}><summary>참고 자료·첨부·산출물 <span class="muted">{{ refs_count }}</span></summary>
         <div id="refs">{% include "tasks/_refs.html" %}</div>
       </details>
-      <details class="fold"><summary>변경 이력 <span class="muted">{{ history|length }}</span></summary>{% include "tasks/_history.html" %}</details>
+      <details class="fold" data-section="history"><summary>변경 이력 <span class="muted">{{ history|length }}</span></summary>{% include "tasks/_history.html" %}</details>
       <div hx-get="{% url 'task_decisions' task.pk %}" hx-trigger="load" hx-target="this" hx-swap="outerHTML" aria-label="의사결정 기록"></div>
-      <details class="fold"><summary>더보기</summary>
+      <details class="fold" data-section="more"><summary>더보기</summary>
         <div class="row">
           <button type="button" class="btn sm" hx-get="{% url 'task_duplicate' task.pk %}" hx-target="#dialog" hx-swap="innerHTML">{% if task.is_template %}회차 만들기{% elif task.status == "done" and task.parent_id %}다음 회차 만들기{% else %}복제{% endif %}</button>
           {% if task.is_template or task.status == "todo" %}

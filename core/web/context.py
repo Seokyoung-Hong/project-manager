@@ -42,6 +42,15 @@ NAV_BY_URL = {
 }
 
 
+def rt_keys(request, url_name, match):
+    """실시간 구독 키(realtime.js): 오늘은 내 할 일(U), 프로젝트 화면은 그 프로젝트(P). 권한은 /rt/ 서버가 다시 본다."""
+    if url_name == "today":
+        return f"U:{request.user.pk}"
+    if url_name == "project_detail":
+        return f"P:{match.kwargs['project_id']}"
+    return ""
+
+
 def shell(request):
     """base.html 셸: 현재 조직, 프로젝트 레일, nav 강조, 닫기 후 돌아갈 주소."""
     if not request.user.is_authenticated:
@@ -76,6 +85,7 @@ def shell(request):
         "nav": nav,
         "request_badge": received(request.user).filter(status="pending").count(),
         "current_project_id": match.kwargs.get("project_id") if match else None,
+        "rt_keys": rt_keys(request, url_name, match),
         "page_url": request.get_full_path(),
         "github_enabled": settings.GITHUB_ENABLED,
         "discord_enabled": bool(settings.DISCORD_CLIENT_ID),

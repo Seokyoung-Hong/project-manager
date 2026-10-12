@@ -1,5 +1,5 @@
 {# 연결 프로젝트 칸(IMPL-PLAN-11 §3.6). 패널의 독립 구역 — 다른 구역(하위 태스크 등)은 이 옆에 같은 방식으로 붙인다. #}
-<details class="section fold" id="task-projects"{% if widening %} open{% endif %}>
+<details class="section fold" id="task-projects" data-section="projects"{% if widening %} open{% endif %}>
   <summary>연결 프로젝트 <span class="muted">{{ linked_projects|length }}</span></summary>
   {% if linked_projects %}
   <ul class="project-links" aria-label="연결 프로젝트">

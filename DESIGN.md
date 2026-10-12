@@ -156,8 +156,10 @@ animation·transition을 끈다(파일 맨 끝 규칙).
 본문 폭·높이를 바꾸지 않으므로 패널을 열고 닫아도 누른 행이 같은 자리에 있다(목록 스크롤 유지). 열 때 초점은 `data-focus` 칸 또는 패널 첫 컨트롤로
 `focus({ preventScroll: true })`, 닫으면 연 행으로 돌아간다. 패널을 열 때 본문을 숨기거나 `scrollTo`로 페이지를 옮기지 않는다.
 패널 내용은 미리 받는다(`app.js` 태스크 패널 미리 받기): 화면에 보이는 행과 마우스·초점이 간 행의 `/tasks/N/panel`을 동시 2개씩 받아 두고, 열 때 받아 둔 것을 바로 넣은 뒤
-최신본인지 다시 물어 바뀌었고 손대기 전이면 갈아 끼운다. `task-changed`·`task-updated`(SSE 포함)가 오면 그 태스크 것을 낡음으로 표시하고 다시 묻는다.
+최신본인지 다시 물어 바뀌었고 손대기 전이면 갈아 끼운다. `task-changed`·`task-updated`·`rt-stale`(실시간)이 오면 그 태스크 것을 낡음으로 표시하고 다시 묻는다.
 물을 때는 가진 것의 ETag(`If-None-Match`)를 보내 같으면 서버가 본문 없이 304를 준다(`task_panel`). Postgres에서는 ETag가 데이터 버전(`web/data_version.py`, 모든 표의 쓰기 트리거)·보는 사람·오늘·주소·배포본이라 패널을 그리지 않고 비교한다.
+실시간 반영은 `realtime.js`가 맡는다(`design-concepts/realtime/DESIGN-v2.md` 4절): 탭 하나만 `/rt/`에 붙어(WebSocket→SSE→폴링) 열린 패널·보이는 행(`T:`)과 `body[data-rt-keys]`(오늘 `U:`, 프로젝트 `P:`)를 구독하고, 받은 키를 위 HTMX 이벤트와 `project-changed`로 바꿔 쏜다.
+패널 접이 섹션 `<details>`에는 `data-section`(table-map 1절 이름)을 단다. 접힌 섹션의 변경은 보류했다가 펼 때 패널을 다시 받으며, 같은 패널을 다시 받을 때 펼쳐 둔 섹션은 그대로 편다. 화면에 연결 상태를 표시하지 않는다(`body[data-rt]`만).
 패널 안 고정 막대(`.panel-bar`)는 패널이 스크롤 상자라 `top: 0`이다.
 
 **바닥글** `_site_footer.html` `.site-footer > .foot-in`. 좌우 끝선은 바로 위 본문 내용과 같다: 앱은 레일을 뺀 본문 열(`.frame-main`) 안에 두고
