@@ -19,6 +19,7 @@ from common.errors import ServiceError
 from github import services as gh_services
 from github import writes as gh_writes
 from notes.transcription import model_name
+from orgs import member_info
 from orgs import requests as creq
 from orgs import services as osv
 from orgs.governance import governance_text
@@ -220,6 +221,8 @@ def org_teams(request, org_id):
             "can_remove": not (m.role == "admin" and last_admin),
             "pending": osv.is_pending(m.user),
             "invite": personal.get(m.user_id),
+            "info": member_info.rows(m),
+            "info_missing": member_info.missing(m),
         }
         for m in memberships
     ]
@@ -515,7 +518,7 @@ def _settings_from_post(post, specs):
 def _org_settings_history(org):
     from tasks.models import ChangeLog
 
-    extra_labels = {"_locked": "프로젝트가 바꿀 수 있는 항목"}
+    extra_labels = {"_locked": "프로젝트가 바꿀 수 있는 항목", "member_fields": "구성원 정보"}
     logs = (
         ChangeLog.objects.filter(target_type="org", target_id=org.pk)
         .select_related("actor")
@@ -612,6 +615,87 @@ def org_settings(request, org_id):
             "history": _org_settings_history(org),
             "tab": "settings",
             "pending_requests": _pending(org, "settings") if is_admin else [],
+            "member_def": member_info.definition(org),
+            "real_name_modes": member_info.REAL_NAME,
+            "field_kinds": member_info.KINDS,
+        },
+    )
+
+
+def _fields_from_post(post) -> list[dict]:
+    """조직 설정의 구성원 정보 표. 행마다 f<n>-이름. 이름이 빈 새 행과 [삭제] 표시한 행은 뺀다."""
+    rows = []
+    i = 0
+    while f"f{i}-label" in post:
+        p = f"f{i}-"
+        fid = post.get(p + "id", "")
+        if post.get(p + "delete") != "on" and (fid or post.get(p + "label", "").strip()):
+            try:
+                order = int(post.get(p + "order") or 0)
+            except ValueError:
+                order = 0
+            rows.append(
+                (
+                    order,
+                    i,
+                    {
+                        "id": fid,
+                        "label": post.get(p + "label", ""),
+                        "kind": post.get(p + "kind", ""),
+                        "required": post.get(p + "required") == "on",
+                        "help": post.get(p + "help", ""),
+                        "choices": post.get(p + "choices", "").splitlines(),
+                    },
+                )
+            )
+        i += 1
+    return [f for _, _, f in sorted(rows, key=lambda r: r[:2])]
+
+
+@login_required
+@require_POST
+def org_member_fields(request, org_id):
+    """구성원 정보 항목 정의(조직 관리자)."""
+    org = org_or_404(request.user, org_id)
+    if denied := not_admin(request, org, "조직 설정"):
+        return denied
+    try:
+        member_info.set_definition(
+            org, request.POST.get("real_name", "off"), _fields_from_post(request.POST), request.user
+        )
+        messages.success(request, "구성원 정보 항목을 저장했습니다.")
+    except ServiceError as e:
+        messages.error(request, " ".join(e.errors.values()))
+    return redirect(reverse("org_settings", args=[org.pk]) + "#member-info")
+
+
+@login_required
+def org_member_info(request, org_id):
+    """구성원이 이 조직에 내는 자기 정보. 필수 항목이 비면 이 조직의 다른 화면은 여기로 온다."""
+    org = org_or_404(request.user, org_id)
+    m = OrgMembership.objects.select_related("org").get(org=org, user=request.user)
+    errors = {}
+    if request.method == "POST":
+        values = {k[2:]: v for k, v in request.POST.items() if k.startswith("v-")}
+        try:
+            member_info.save(m, request.POST.get("real_name", ""), values)
+            messages.success(request, "구성원 정보를 저장했습니다.")
+            return redirect("org_detail", org_id=org.pk)
+        except ServiceError as e:
+            errors = e.errors
+            m.real_name = request.POST.get("real_name", "")
+            m.info = values
+    rows = [{**r, "error": errors.get(r["id"], "")} for r in member_info.rows(m)]
+    return render(
+        request,
+        "orgs/member_info.html",
+        {
+            "org": org,
+            "m": m,
+            "real_name_mode": member_info.definition(org)["real_name"],
+            "rows": rows,
+            "errors": errors,
+            "blocked": member_info.missing(m),
         },
     )
 

@@ -156,6 +156,22 @@ def test_404_without_json_falls_back(fake_core, with_token):
     assert str(e.value) == "대상을 찾을 수 없습니다."
 
 
+def test_profile_required_message_passes_through():
+    """구성원 정보가 비어 core가 403 profile_required를 주면 입력 화면 주소가 든 문구를 그대로 낸다."""
+    import httpx
+
+    from mcp_server.core_client import Core
+
+    body = {
+        "detail": "산돌이 조직의 구성원 정보를 먼저 입력해 주세요: http://x/orgs/1/member-info",
+        "error": "profile_required",
+    }
+    core = Core("t", transport=httpx.MockTransport(lambda r: httpx.Response(403, json=body)))
+    with pytest.raises(CoreError) as e:
+        core.get("/api/tasks/1")
+    assert str(e.value) == body["detail"]
+
+
 def test_update_conflict_message(fake_core, with_token):
     with pytest.raises(CoreError) as e:
         fn("update_task")(1, version=99, priority=8)

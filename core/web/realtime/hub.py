@@ -68,7 +68,7 @@ def allowed(user_id: int, keys) -> set[str]:
     """keys 중 user가 볼 수 있는 것."""
     close_old_connections()
     from accounts.models import User
-    from orgs.models import OrgMembership
+    from orgs.services import usable_orgs
     from projects.services import visible_projects
     from tasks.services import visible_tasks
 
@@ -87,9 +87,8 @@ def allowed(user_id: int, keys) -> set[str]:
         qs = visible_projects(user).filter(pk__in=ids["P"]).values_list("pk", flat=True)
         ok |= {f"P:{i}" for i in qs}
     if ids["O"]:
-        qs = OrgMembership.objects.filter(user=user, org_id__in=ids["O"]).values_list(
-            "org_id", flat=True
-        )
+        # 구성원 정보가 빈 조직은 뺀다(T·P는 visible_*가 이미 뺀다)
+        qs = usable_orgs(user).filter(pk__in=ids["O"]).values_list("pk", flat=True)
         ok |= {f"O:{i}" for i in qs}
     return ok
 

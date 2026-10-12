@@ -224,11 +224,21 @@ class ChangeLogOut(Schema):
     created_at: datetime
 
 
+class BlockedOrgOut(Schema):
+    """구성원 정보를 입력하지 않아 결과에서 빠진 조직(orgs/member_info.py)."""
+
+    org_id: int
+    org_name: str
+    message: str
+    url: str
+
+
 class TaskListOut(Schema):
     items: list[TaskBriefOut]
     total: int
     limit: int
     offset: int
+    blocked_orgs: list[BlockedOrgOut] = []
 
 
 class ProjectStats(Schema):
@@ -304,6 +314,7 @@ class MeOut(Schema):
     auto_pull_days: int
     token_scope: str = "write"
     orgs: list[OrgBrief]
+    blocked_orgs: list[BlockedOrgOut] = []
 
 
 class OrgOut(Schema):  # 기존 TeamOut
@@ -339,6 +350,7 @@ class TodayOut(Schema):
     done_today: list[TaskBriefOut]
     auto_pull_days: int
     counts: dict
+    blocked_orgs: list[BlockedOrgOut] = []
 
 
 class TodayAddIn(Schema):

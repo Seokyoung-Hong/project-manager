@@ -15,7 +15,7 @@ from django.utils import timezone
 from common.dates import fmt_md, today_kst
 from common.errors import ServiceError
 from orgs.models import Team, TeamMembership
-from orgs.services import is_admin, is_member, orgs_of
+from orgs.services import is_admin, is_member, usable_orgs
 from projects.services import visible_projects
 
 from . import services as ts
@@ -131,7 +131,7 @@ def visible_requests(user):
             | Q(team__memberships__user=user)
             | Q(org__memberships__user=user, org__memberships__role="admin")
         )
-        .filter(org__in=orgs_of(user))
+        .filter(org__in=usable_orgs(user))
         .select_related("org", "team", "to_user", "requested_by", "responded_by", "task")
         .distinct()
     )

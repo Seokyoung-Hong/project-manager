@@ -130,6 +130,8 @@ AUTH: dict[str, str] = {
     "orgs_orgmembership": "TRUE",
     "orgs_teammembership": "TRUE",
     "orgs_team": _changed("is_private"),
+    # 필수 구성원 정보가 바뀌면 막히는 사람이 생긴다. 값 입력(orgs_orgmembership)은 위에서 이미 A를 낸다.
+    "orgs_organization": _changed("member_fields"),
     "projects_project": _changed("visibility", "org_id"),
     "projects_project_teams": "TRUE",
     "projects_project_owners": "TRUE",

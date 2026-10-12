@@ -17,6 +17,16 @@ def orgs_of(user):
     return Organization.objects.filter(memberships__user=user).distinct()
 
 
+def usable_orgs(user):
+    """user가 지금 쓸 수 있는 조직: 필수 구성원 정보가 빈 조직을 뺀다(orgs/member_info.py).
+
+    태스크·프로젝트·문서·작업 요청 열람 관문이 이것을 쓴다. 조직 전환·목록은 orgs_of 그대로.
+    """
+    from .member_info import blocked_orgs
+
+    return orgs_of(user).exclude(pk__in=[o.pk for o in blocked_orgs(user)])
+
+
 def is_member(user, org) -> bool:
     return OrgMembership.objects.filter(org=org, user=user).exists()
 

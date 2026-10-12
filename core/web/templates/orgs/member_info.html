@@ -1,0 +1,28 @@
+{% extends "base.html" %}{% block title %}구성원 정보{% endblock %}
+{% block main %}
+<div class="card form-card">
+  <h1 class="t24">{{ org.name }} 구성원 정보</h1>
+  <p class="muted t13">이 조직에만 제출하는 정보입니다. 조직 관리자가 구성원 화면에서 볼 수 있습니다.</p>
+  {% if blocked %}<div class="notice warn" role="alert"><span>⚠ 필수 항목을 입력해야 {{ org.name }} 조직을 쓸 수 있습니다. 다른 조직은 그대로 쓸 수 있습니다.</span></div>{% endif %}
+  {% if real_name_mode == "off" and not rows %}
+  <p>이 조직은 구성원 정보를 받지 않습니다.</p>
+  {% else %}
+  <form method="post" class="stack">{% csrf_token %}
+    {% if real_name_mode != "off" %}
+    <label class="field">실명{% if real_name_mode == "required" %} (필수){% endif %}<input class="input" name="real_name" value="{{ m.real_name }}" maxlength="50" autocomplete="name"{% if real_name_mode == "required" %} required{% endif %}></label>
+    {% if errors.real_name %}<div class="error">{{ errors.real_name }}</div>{% endif %}
+    {% endif %}
+    {% for r in rows %}
+    <label class="field">{{ r.label }}{% if r.required %} (필수){% endif %}
+      {% if r.kind == "long" %}<textarea class="textarea" name="v-{{ r.id }}" rows="4" maxlength="2000"{% if r.required %} required{% endif %}>{{ r.value }}</textarea>
+      {% elif r.kind == "choice" %}<select class="select" name="v-{{ r.id }}"{% if r.required %} required{% endif %}><option value="">고르기</option>{% for c in r.choices %}<option{% if c == r.value %} selected{% endif %}>{{ c }}</option>{% endfor %}</select>
+      {% else %}<input class="input" name="v-{{ r.id }}" value="{{ r.value }}" maxlength="200"{% if r.required %} required{% endif %}>{% endif %}
+      {% if r.help %}<span class="helptext">{{ r.help }}</span>{% endif %}
+    </label>
+    {% if r.error %}<div class="error">{{ r.error }}</div>{% endif %}
+    {% endfor %}
+    <div><button class="btn primary">구성원 정보 저장</button></div>
+  </form>
+  {% endif %}
+</div>
+{% endblock %}

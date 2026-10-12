@@ -17,9 +17,9 @@ from orgs.services import (
     ai_denied,
     is_admin,
     is_member,
-    orgs_of,
     require_admin,
     require_ai_enabled,
+    usable_orgs,
 )
 from orgs.settings import SPECS, clean, display, effective, locked_keys
 
@@ -81,7 +81,7 @@ def visible_projects(user, org=None):
 
     if not getattr(user, "is_authenticated", False):
         return Project.objects.none()
-    qs = Project.objects.filter(org__in=orgs_of(user))
+    qs = Project.objects.filter(org__in=usable_orgs(user))
     if org is not None:
         qs = qs.filter(org=org)
     admin = OrgMembership.objects.filter(user=user, role="admin", org_id=OuterRef("org_id"))
