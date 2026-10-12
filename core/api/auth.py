@@ -5,6 +5,7 @@ from accounts.models import ApiToken
 from accounts.services import consent_active, paused_message
 
 WRITE_EXEMPT_PREFIX = "/api/integrations/"
+STT_PREFIX = "/api/integrations/stt/"
 
 
 class BrowserSessionAuth(SessionAuth):
@@ -26,6 +27,9 @@ class TokenAuth(HttpBearer):
         t = ApiToken.authenticate(token)
         if t is None:
             return None
+        # 전사 서버(PC) 토큰은 자기 경로 밖에서 GET까지 막는다. 아래 쓰기 검사만으로는 읽기가 열린다.
+        if t.scope == "stt" and not request.path.startswith(STT_PREFIX):
+            raise HttpError(403, "전사 서버 토큰은 전사 서버 연결에만 쓸 수 있습니다.")
         if (
             # write가 아닌 모든 범위(read·bot)를 막는다. bot 범위는 아래 BotTokenAuth가
             # 지키는 /api/integrations/discord/ 안에서만 쓴다.
@@ -56,4 +60,24 @@ class BotTokenAuth(TokenAuth):
             return None
         if request.api_token.scope != "bot":
             raise HttpError(403, "Discord 봇 토큰이 필요합니다.")
+        return user
+
+
+class SttTokenAuth(TokenAuth):
+    """내 PC 전사 서버 경로 전용(IMPL-PLAN-11-local-stt-link §6.1). scope stt만 통과한다.
+
+    토큰의 서버를 `request.stt_server`에 둔다. 서버를 끊으면 토큰도 폐기되므로 서버가 없는 토큰은 없다.
+    """
+
+    def authenticate(self, request, token):
+        from notes.models import SttServer
+
+        user = super().authenticate(request, token)
+        if user is None:
+            return None
+        if request.api_token.scope != "stt":
+            raise HttpError(403, "전사 서버 토큰이 필요합니다.")
+        request.stt_server = SttServer.objects.filter(token=request.api_token).first()
+        if request.stt_server is None:
+            return None
         return user

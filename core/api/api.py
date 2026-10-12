@@ -23,6 +23,7 @@ from .routers import (
     reports,
     requests,
     settings,
+    stt,
     tasks,
     today,
 )
@@ -114,4 +115,5 @@ api.add_router("/requests", requests.router)
 # 고정 경로를 먼저. /integrations/{name}/status가 /integrations/discord/...를 삼키지 않게 한다.
 api.add_router("/integrations/discord", discord.router)
 api.add_router("/integrations/github", github.router)
+api.add_router("/integrations/stt", stt.router)
 api.add_router("/integrations", integrations.router)

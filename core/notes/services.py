@@ -464,8 +464,11 @@ def update_recording(
             engine = (stats if stats is not None else rec.stats or {}).get("engine")
             _notify_owner(
                 rec,
+                # 진행자 PC가 전사를 맡았다(IMPL-PLAN-11-local-stt-link §7.3-4). 문구는 임시.
+                "회의록 초안이 준비된 상태입니다. 전사문은 진행자 PC에서 만드는 중입니다."  # COPY:draft_pc_transcribing
+                if engine == "none" and transcription.pc_auto_waiting(rec)
                 # 녹음만(전사 수단 없음, IMPL-PLAN-9-parallel §7). 실패가 아니다.
-                "회의록 초안이 준비된 상태입니다. 녹음 파일은 회의록 화면에서 내려받아 직접 전사해 주세요."
+                else "회의록 초안이 준비된 상태입니다. 녹음 파일은 회의록 화면에서 내려받아 직접 전사해 주세요."
                 if engine == "none"
                 else f"회의록 초안과 전사문이 준비된 상태입니다. `/pm-meeting {note.pk}`로 정리하거나 "
                 "웹에서 작성해 주세요.",

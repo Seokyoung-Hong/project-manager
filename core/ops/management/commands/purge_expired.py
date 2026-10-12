@@ -9,6 +9,12 @@ from accounts.models import ApiToken, Consent, LoginLock, OAuthCode
 from web import data_version
 
 
+def _purge_stt_codes():
+    from notes.stt_link import purge_codes
+
+    return purge_codes()
+
+
 def purge_tokens():
     """만료된 AI용 토큰. 철회만 된 토큰은 목록 표시용이라 남긴다."""
     return ApiToken.objects.filter(expires_at__lt=timezone.now()).delete()[0]
@@ -50,6 +56,7 @@ class Command(BaseCommand):
             ("만료 세션", lambda: call_command("clearsessions")),
             ("만료 토큰", purge_tokens),
             ("인가 코드", purge_oauth_codes),
+            ("전사 서버 기기 코드", _purge_stt_codes),
             ("로그인 잠금 기록", purge_login_locks),
             ("탈퇴자 동의 기록", purge_withdrawn_consents),
             (

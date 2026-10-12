@@ -17,7 +17,7 @@ from django.views.decorators.http import require_POST
 from common.errors import ServiceError
 from github import services as gh_services
 from github import writes as gh_writes
-from notes.transcription import model_name
+from notes.transcription import parse_models
 from orgs import requests as creq
 from orgs import services as osv
 from orgs.governance import governance_text
@@ -561,9 +561,6 @@ class _NoRedirect(urllib.request.HTTPRedirectHandler):
         return None  # 3xx는 HTTPError로 끝낸다 — 다른 호스트로 끌려가지 않는다.
 
 
-_STT_STATUS = {"downloading": "받는 중", "not_downloaded": "받지 않음"}
-
-
 def _stt_call(org, url: str, path: str, method: str = "GET"):
     """로컬 전사 서버 호출(discord_gateway transcribe.mjs와 같은 규약). (본문, 오류 문구, 상태 코드)."""
     # SSRF: 조직 관리자만 부를 수 있고 로컬 서버가 목적이라 사설 IP는 허용한다(루프백·내부 이름은 validate_stt_url이 막는다).
@@ -601,47 +598,14 @@ def _stt_url(request, org) -> str:
     ).strip()
 
 
-INFO_KEYS = (
-    "display_name",
-    "family",
-    "owned_by",
-    "fits",
-    "device",
-    "compute_type",
-    "rtf",
-    "concurrency",
-)
-
-
 def stt_models(org, url: str):
     """GET /v1/models → ([{id, status, label, name, fits, info}], 오류, ms). 없는 필드는 없는 대로 둔다."""
     start = time.monotonic()
     body, error, _ = _stt_call(org, url, "/v1/models")
-    models = []
     if error:
-        return models, error, None
+        return [], error, None
     try:
-        for m in json.loads(body)["data"]:
-            if isinstance(m, dict) and m.get("id"):
-                # status가 없는 서버(일반 OpenAI 호환)는 ready로 본다.
-                status = m.get("status") or "ready"
-                label = _STT_STATUS.get(status, "")
-                if status == "downloading" and isinstance(m.get("progress"), int | float):
-                    label += f" {round(m['progress'] * 100)}%"
-                info = {k: m[k] for k in INFO_KEYS if m.get(k) not in (None, "")}
-                if info.get("fits") is False:
-                    label = "이 서버에서 쓸 수 없음"
-                mid = str(m["id"])
-                models.append(
-                    {
-                        "id": mid,
-                        "status": status,
-                        "label": label,
-                        "name": model_name(mid, info),
-                        "fits": info.get("fits") is not False,
-                        "info": info,
-                    }
-                )
+        models = parse_models(json.loads(body)["data"])
     except (ValueError, KeyError, TypeError):
         return [], "응답 형식이 OpenAI 호환 모델 목록이 아닙니다.", None
     return models, "", round((time.monotonic() - start) * 1000)

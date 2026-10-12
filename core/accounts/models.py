@@ -41,7 +41,12 @@ class User(AbstractUser):
 
 
 class ApiToken(models.Model):
-    SCOPES = [("read", "읽기"), ("write", "읽기·쓰기"), ("bot", "Discord 봇")]
+    SCOPES = [
+        ("read", "읽기"),
+        ("write", "읽기·쓰기"),
+        ("bot", "Discord 봇"),
+        ("stt", "전사 서버"),  # 내 PC 전사 서버. /api/integrations/stt/ 밖에서는 못 쓴다
+    ]
 
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="tokens")
     name = models.CharField(max_length=50)

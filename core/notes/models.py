@@ -141,7 +141,7 @@ class TranscriptionJob(models.Model):
     recording = models.ForeignKey(VoiceRecording, on_delete=models.CASCADE, related_name="jobs")
     kind = models.CharField(max_length=10, choices=KINDS, default="auto")
     status = models.CharField(max_length=12, choices=STATUSES, default="queued")
-    engine = models.CharField(max_length=10, blank=True)  # local | openai
+    engine = models.CharField(max_length=10, blank=True)  # local | openai | pc
     model = models.CharField(max_length=200, blank=True)
     requested_by = models.ForeignKey(
         settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
@@ -160,6 +160,12 @@ class TranscriptionJob(models.Model):
     started_at = models.DateTimeField(null=True, blank=True)
     progress_at = models.DateTimeField(null=True, blank=True)
     finished_at = models.DateTimeField(null=True, blank=True)
+    # 내 PC 전사(IMPL-PLAN-11-local-stt-link). 있으면 그 서버만 가져간다(Node claim은 server 없는 작업만).
+    server = models.ForeignKey(
+        "SttServer", null=True, blank=True, on_delete=models.SET_NULL, related_name="jobs"
+    )
+    # 작업자(Node·PC)가 가져간 시각. 재시작 되돌리기·"시작 전 취소" 판정 기준.
+    claimed_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         ordering = ["-created_at", "-id"]
@@ -178,3 +184,68 @@ class TranscriptionJob(models.Model):
 
     def __str__(self):
         return f"전사 작업 #{self.pk}"
+
+
+class SttServer(models.Model):
+    """사람이 기기 인증으로 연결한 자기 PC 전사 서버(IMPL-PLAN-11-local-stt-link §5).
+
+    들어오는 연결이 없다 — PC가 heartbeat로 모델 목록을 올리고 작업을 가져간다.
+    """
+
+    owner = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="stt_servers"
+    )
+    name = models.CharField(max_length=50)
+    machine_id = models.CharField(max_length=36)
+    token = models.OneToOneField(
+        "accounts.ApiToken", null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    last_seen_at = models.DateTimeField(null=True, blank=True)
+    version = models.CharField(max_length=20, blank=True)
+    # 장치 세부 정보(PC가 준 값 그대로, 32KB 상한). 장치 종류는 문자열 — 특정 GPU 제조사를 전제하지 않는다.
+    device = models.JSONField(default=dict, blank=True)
+    concurrency = models.PositiveSmallIntegerField(default=1)
+    default_model = models.CharField(
+        max_length=200, blank=True
+    )  # 마지막 [모델 적용] = 자동 전사 모델
+    pull_model = models.CharField(max_length=200, blank=True)  # 다음 heartbeat에 보낼 받기 명령
+
+    class Meta:
+        ordering = ["created_at", "id"]
+        constraints = [
+            models.UniqueConstraint(fields=["owner", "machine_id"], name="uniq_stt_server_machine")
+        ]
+
+    def __str__(self):
+        return self.name
+
+    # PC의 /v1/models data 원본. 이름이 모듈 `models`를 가리므로 클래스 맨 끝에 둔다.
+    models = models.JSONField(default=list, blank=True)
+
+
+class SttDeviceCode(models.Model):
+    """기기 인증 대기 코드(RFC 8628 유사). device_code는 sha256만 저장한다."""
+
+    code_hash = models.CharField(max_length=64, unique=True)
+    user_code = models.CharField(max_length=9)
+    name = models.CharField(max_length=50)
+    machine_id = models.CharField(max_length=36)
+    version = models.CharField(max_length=20, blank=True)
+    device = models.JSONField(default=dict, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField()
+    approved_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.CASCADE, related_name="+"
+    )
+    denied = models.BooleanField(default=False)
+    used_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["user_code"],
+                condition=models.Q(used_at__isnull=True, denied=False),
+                name="uniq_stt_user_code_pending",
+            )
+        ]

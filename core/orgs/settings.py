@@ -867,6 +867,28 @@ SPECS: dict[str, Spec] = {
             "녹음만 하는 방식입니다. 녹음 파일은 회의록 화면에서 내려받아 직접 전사해 주세요. 키는 암호화해 저장하는 값이며, "
             "화면에 표시되는 정보는 설정 여부뿐입니다.",
         ),
+        # 내 PC 전사(IMPL-PLAN-11-local-stt-link §5). 문구는 임시(docs/drafts/local-stt-link-copy.md).
+        Spec(
+            "meeting.member_pc",
+            "bool",
+            True,
+            "org",
+            False,
+            "meeting",
+            "멤버 PC로 전사",
+            "켜면 구성원이 자기 PC에 연결한 전사 서버로 이 조직 녹음을 전사할 수 있습니다. 끄면 대기 중인 PC 전사는 취소됩니다.",
+        ),
+        Spec(
+            "meeting.transcribe_level",
+            "choice",
+            "member",
+            "org",
+            False,
+            "meeting",
+            "조직 전사 수단을 쓸 수 있는 사람",
+            "조직 전사 서버와 조직 OpenAI 키로 전사를 시작할 수 있는 사람입니다. 멤버는 녹음마다 한 번만 쓸 수 있습니다.",
+            choices=(("member", "멤버 누구나"), ("admin", "조직 관리자만")),
+        ),
         # --- 4.6 개인 설정 ---
         Spec(
             "user.notify_dm",
@@ -959,6 +981,8 @@ STT_KEYS = (
     "meeting.stt_timeout_s",
     "meeting.stt_api_key",
     "meeting.openai_api_key",
+    "meeting.member_pc",
+    "meeting.transcribe_level",
 )
 
 GROUPS = [
