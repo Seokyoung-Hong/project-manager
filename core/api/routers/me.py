@@ -1,5 +1,6 @@
 from ninja import Router
 
+from orgs.member_info import blocked_out
 from orgs.models import OrgMembership
 
 from ..schemas import MeOut
@@ -24,4 +25,5 @@ def me(request):
             {"id": m.org_id, "name": m.org.name, "purpose": m.org.purpose, "role": m.role}
             for m in memberships
         ],
+        "blocked_orgs": blocked_out(u),
     }

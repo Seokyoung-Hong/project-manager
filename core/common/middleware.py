@@ -18,12 +18,16 @@ def origin_agent_cluster(get_response):
 _ORG_PREFIXES = {"today", "me", "requests", "org", "orgs", "projects", "tasks", "teams", "docs", "notes", "milestones", "search"}  # fmt: skip
 # 막혀도 열 수 있는 화면: 입력 화면, 조직 목록·만들기(전환), 항목 정의를 고치는 조직 설정.
 _OPEN_VIEWS = {"org_member_info", "org_list", "org_new", "org_settings", "org_member_fields"}
+# 여러 조직에 걸친 화면. 막힌 조직의 데이터는 열람 관문(usable_orgs)이 빼고 셸이 안내를 붙이므로
+# 세션의 현재 조직으로 막지 않는다.
+_CROSS_ORG_VIEWS = {"today", "today_quick", "me", "search", "request_index"}
 
 
 class MemberInfoGate:
     """현재 조직의 필수 구성원 정보가 비었으면 그 조직 화면 대신 입력 화면으로 보낸다(orgs/member_info.py).
 
-    URL이 조직·프로젝트·태스크·팀·문서를 가리키면 그 조직을, 아니면 세션의 현재 조직을 본다.
+    URL이 조직·프로젝트·태스크·팀·문서·초대·구성원·마일스톤·요청을 가리키면 그 객체의 조직을, 폼·쿼리에
+    org·project가 있으면 그 조직을, 아니면(여러 조직 화면 제외) 세션의 현재 조직을 본다.
     다른 조직 화면은 그 조직 기준이라 막히지 않는다. API(/api/)는 api.auth가 따로 막는다.
     """
 
@@ -45,11 +49,8 @@ class MemberInfoGate:
         from orgs.member_info import blocked_org, request_org_id, url
         from web.views.common import current_org, hx_redirect
 
-        # ponytail: 세션 조직이 이미 나간 조직이면 current_org의 대체 조직을 못 본다(다음 조직 화면 진입에서 막힌다)
-        org_id = (
-            request_org_id(view_kwargs)
-            or request.session.get("org_id")
-            or getattr(current_org(request), "pk", None)
-        )
+        org_id = request_org_id(view_kwargs, {**request.GET.dict(), **request.POST.dict()})
+        if org_id is None and match.url_name not in _CROSS_ORG_VIEWS:
+            org_id = getattr(current_org(request), "pk", None)
         org = blocked_org(request.user, org_id)
         return hx_redirect(request, url(org.pk)) if org else None

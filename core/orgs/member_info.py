@@ -165,6 +165,34 @@ def blocked_org(user, org_id):
     return m.org if m is not None and missing(m) else None
 
 
+def blocked_orgs(user) -> list:
+    """user가 필수 항목을 비워 쓸 수 없는 조직들. 열람 관문(visible_projects·visible_docs)이 이 조직을 뺀다.
+
+    # ponytail: 부를 때마다 내 구성원 행을 한 번 읽는다(사람당 조직 몇 개). 느려지면 요청 단위로 캐시한다.
+    """
+    if not getattr(user, "is_authenticated", False):
+        return []
+    ms = OrgMembership.objects.select_related("org").filter(user=user)
+    return [m.org for m in ms if missing(m)]
+
+
+def blocked_out(user) -> list[dict]:
+    """여러 조직에 걸친 응답에 붙이는 안내: 빠진 조직과 입력 화면 주소."""
+    return [
+        {
+            "org_id": o.pk,
+            "org_name": o.name,
+            "message": notice(o),
+            "url": settings.SITE_URL + url(o.pk),
+        }
+        for o in blocked_orgs(user)
+    ]
+
+
+def notice(org) -> str:
+    return f"{org.name} 조직은 구성원 정보를 입력해야 볼 수 있습니다."
+
+
 def url(org_id) -> str:
     return reverse("org_member_info", args=[org_id])
 
@@ -181,10 +209,10 @@ def _int(v):
 
 
 def _org_of(kind: str, pk: int):
-    from projects.models import Doc, Project
-    from tasks.models import Task
+    from projects.models import Doc, Milestone, Project
+    from tasks.models import Task, WorkRequest
 
-    from .models import Team
+    from .models import Invite, Team
 
     if kind == "org":
         return pk
@@ -194,22 +222,33 @@ def _org_of(kind: str, pk: int):
         "team": (Team, "org_id"),
         "doc": (Doc, "org_id"),
         "note": (Doc, "org_id"),
+        "milestone": (Milestone, "project__org_id"),
+        "invite": (Invite, "org_id"),
+        "membership": (OrgMembership, "org_id"),
+        "req": (WorkRequest, "org_id"),  # 웹 /requests/<req_id>
+        "request": (WorkRequest, "org_id"),  # API /api/requests/{request_id}
     }[kind]
     return model.objects.filter(pk=pk).values_list(path, flat=True).first()
 
 
-_KINDS = ("org", "project", "task", "team", "doc", "note")
+# URL 인자는 대상 객체의 조직으로, 쿼리·본문은 조직을 고르는 값(org·project·task·team)만 본다.
+_URL_KINDS = ("org", "project", "task", "team", "doc", "note", "milestone", "invite", "membership", "req", "request")  # fmt: skip
+_PARAM_KINDS = ("org", "project", "task", "team")
 
 
 def request_org_id(kwargs: dict, params: dict | None = None):
-    """요청이 가리키는 조직 id. URL 인자(org_id·project_id·task_id·team_id·doc_id·note_id)가 먼저,
-    없으면 쿼리·JSON 본문의 org·project·task·team(…_id 포함). 못 정하면 None."""
-    for source, suffixes in ((kwargs, ("_id",)), (params or {}, ("_id", ""))):
-        for kind in _KINDS:
-            for suffix in suffixes:
-                pk = _int(source.get(kind + suffix))
-                if pk is not None:
-                    return _org_of(kind, pk)
+    """요청이 가리키는 조직 id. URL 인자(org_id·project_id·…)가 먼저, 없으면 쿼리·본문의
+    org·project·task·team(…_id 포함). 못 정하면 None."""
+    for kind in _URL_KINDS:
+        pk = _int(kwargs.get(kind + "_id"))
+        if pk is not None:
+            return _org_of(kind, pk)
+    params = params or {}
+    for kind in _PARAM_KINDS:
+        for name in (kind + "_id", kind):
+            pk = _int(params.get(name))
+            if pk is not None:
+                return _org_of(kind, pk)
     return None
 
 

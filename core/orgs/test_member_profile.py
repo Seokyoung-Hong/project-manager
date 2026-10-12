@@ -1,4 +1,4 @@
-"""조직별 구성원 정보: 정의·입력, 웹·API 차단과 예외."""
+"""조직별 구성원 정보: 정의·입력, 웹·API 차단과 예외, 여러 조직 화면에서 막힌 조직 빼기."""
 
 import pytest
 
@@ -7,7 +7,7 @@ from tasks.models import ChangeLog
 
 from .member_info import missing, rows, save, set_definition
 from .models import OrgMembership
-from .services import create_org
+from .services import create_invite, create_org, usable_orgs
 
 pytestmark = pytest.mark.django_db
 
@@ -56,7 +56,7 @@ def test_web_block_and_exceptions(client, org, admin, member):
     set_definition(org, "optional", [PHONE], admin)
     client.force_login(member)
     url = f"/orgs/{org.pk}/member-info"
-    r = client.get("/today")
+    r = client.get("/projects")  # 세션의 현재 조직으로 정하는 화면
     assert r.status_code == 302 and r["Location"] == url
     r = client.get(f"/orgs/{org.pk}", headers={"HX-Request": "true"})
     assert r.status_code == 204 and r["HX-Redirect"] == url
@@ -115,3 +115,71 @@ def test_optional_only_does_not_block(client, api, org, admin, member, task):
     client.force_login(member)
     assert client.get("/today").status_code == 200
     assert api.get(f"/api/tasks/{task.pk}").status_code == 200
+
+
+def test_cross_org_views_hide_blocked_org(client, api, org, admin, member, project, task):
+    """오늘·내 태스크·검색·/api/today·/api/tasks·/api/me는 막지 않고 막힌 조직의 것만 빼고 안내한다."""
+    from projects.docs import visible_docs
+    from projects.services import create_project, visible_projects
+    from tasks.services import create_task, visible_tasks
+    from web.realtime.hub import allowed
+
+    other = create_org("다른 조직", "", member)
+    op = create_project(org=other, name="다른 일", actor=member, owners=[member], status="active")
+    ot = create_task(
+        project=op,
+        title="다른 조직 할 일",
+        actor=member,
+        source="web",
+        assignee=member,
+        due_date=task.due_date,
+    )
+    task.assignee = member
+    task.save()
+    set_definition(org, "required", [], admin)
+
+    assert list(usable_orgs(member)) == [other]
+    assert set(visible_projects(member)) == {op}
+    assert set(visible_tasks(member)) == {ot}
+    assert not visible_docs(member).filter(org=org).exists()
+
+    client.force_login(member)
+    for path in ("/today", "/me", "/search?q=할"):
+        r = client.get(path)
+        assert r.status_code == 200, path
+        html = r.content.decode()
+        assert "산돌이 조직은 구성원 정보를 입력해야 볼 수 있습니다." in html
+        assert f"/orgs/{org.pk}/member-info" in html and task.title not in html
+
+    for path in ("/api/today", "/api/tasks", "/api/me"):
+        body = api.get(path).json()
+        assert body["blocked_orgs"][0]["org_id"] == org.pk, path
+        assert body["blocked_orgs"][0]["url"].endswith(f"/orgs/{org.pk}/member-info")
+    items = api.get("/api/tasks").json()["items"]
+    assert [t["id"] for t in items] == [ot.pk]
+
+    # 실시간 구독도 막힌 조직의 키를 뺀다
+    keys = {f"O:{org.pk}", f"O:{other.pk}", f"T:{task.pk}", f"P:{project.pk}", f"T:{ot.pk}"}
+    assert allowed(member.pk, keys) == {f"O:{other.pk}", f"T:{ot.pk}"}
+
+    save(_m(org, member), "김팀원", {})
+    assert api.get("/api/tasks").json()["blocked_orgs"] == []
+
+
+def test_web_paths_use_target_org(client, org, admin, member):
+    """세션 조직이 아니라 대상 객체(초대·구성원·마일스톤)의 조직으로 판단한다."""
+    from projects.models import Milestone
+    from projects.services import create_project
+
+    other = create_org("다른 조직", "", admin)
+    set_definition(org, "required", [], admin)
+    client.force_login(admin)
+    client.get(f"/orgs/{other.pk}")  # 세션 조직 = 막히지 않은 다른 조직
+    url = f"/orgs/{org.pk}/member-info"
+    inv = create_invite(org, admin)
+    m = _m(org, member)
+    p = create_project(org=org, name="학식", actor=admin, owners=[admin], status="active")
+    ms = Milestone.objects.create(project=p, name="1차", target_date="2026-12-01", created_by=admin)
+    assert client.post(f"/orgs/invites/{inv.pk}/revoke")["Location"] == url
+    assert client.post(f"/orgs/memberships/{m.pk}/tags", {"tags": "a"})["Location"] == url
+    assert client.get(f"/milestones/{ms.pk}/edit")["Location"] == url

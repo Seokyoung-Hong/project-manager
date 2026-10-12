@@ -125,6 +125,7 @@
         {% if 'integration-help' in m.tags %}<a href="{% url 'integration_help' %}" class="btn sm">해결 절차·질문 복사</a>{% endif %}
         <button type="button" class="btn link" data-action="dismiss" aria-label="닫기">✕</button>
       </div>{% endfor %}
+      {% for o in blocked_orgs %}<div class="notice warn" role="status"><span aria-hidden="true">⚠</span> <span class="grow">{{ o.name }} 조직은 구성원 정보를 입력해야 볼 수 있습니다.</span> <a href="{% url 'org_member_info' o.pk %}" class="btn sm">{{ o.name }} 구성원 정보 입력</a></div>{% endfor %}
       {% block main %}{% endblock %}
     </main>
     <aside id="panel">{% block panel %}{% endblock %}</aside>

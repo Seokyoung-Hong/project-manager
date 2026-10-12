@@ -29,8 +29,8 @@ from orgs.services import (
     can_view_team,
     is_admin,
     is_member,
-    orgs_of,
     require_ai_enabled,
+    usable_orgs,
     visible_teams,
 )
 
@@ -87,7 +87,7 @@ def visible_docs(user, org=None, *, model=None):
     model = model or Doc
     if not getattr(user, "is_authenticated", False):
         return model.objects.none()
-    qs = model.objects.filter(org__in=orgs_of(user))
+    qs = model.objects.filter(org__in=usable_orgs(user))
     if org is not None:
         qs = qs.filter(org=org)
     admin = OrgMembership.objects.filter(user=user, role="admin", org_id=OuterRef("org_id"))

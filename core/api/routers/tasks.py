@@ -13,6 +13,7 @@ from github import writes as gh_writes
 from github.client import GitHubError
 from github.models import RepoIssue, TaskGitLink
 from github.services import can_view_repo, continuation, task_repo, task_repo_state, user_token
+from orgs.member_info import blocked_out
 from orgs.services import ai_denied
 from orgs.settings import effective
 from projects.services import can_view_project, visible_projects
@@ -143,6 +144,7 @@ def list_tasks(
         "total": total,
         "limit": limit,
         "offset": offset,
+        "blocked_orgs": blocked_out(request.auth),
     }
 
 

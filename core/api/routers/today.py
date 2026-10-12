@@ -1,5 +1,6 @@
 from ninja import Router
 
+from orgs.member_info import blocked_out
 from tasks.brief import task_brief
 from tasks.services import (
     attach_group_visible,
@@ -27,6 +28,7 @@ def _out(user) -> dict:
         "done_today": [task_brief(t) for t in v["done_today"]],
         "auto_pull_days": v["auto_pull_days"],
         "counts": v["counts"],
+        "blocked_orgs": blocked_out(user),
     }
 
 
