@@ -151,3 +151,48 @@ def test_run_periodic_keeps_going_and_respects_interval(db, monkeypatch):
     assert len(ran) == 2
     run_periodic.run_due(last, 1000.0 + 300, err)
     assert ran[-1] == "github_reconcile" and len(ran) == 3
+
+
+def test_reconcile_recovers_missed_close(inst, org, admin, member, monkeypatch):
+    """닫기 웹훅을 놓쳤다: 보정이 이슈·연결 상태를 닫고 규칙대로 태스크를 완료한다(한 번만)."""
+    from datetime import timedelta
+
+    from common.dates import today_kst
+    from github.models import RepoIssue, TaskGitLink
+    from tasks.services import create_task
+
+    p = create_project(org=org, name="일", actor=admin)
+    conn = _conn(p, admin, "o/r", OLD_ISSUES())
+    task = create_task(
+        project=p,
+        title="이슈",
+        actor=member,
+        source="web",
+        due_date=today_kst() + timedelta(days=3),
+    )
+    RepoIssue.objects.create(connection=conn, number=5, title="이슈", task=task)
+    TaskGitLink.objects.create(task=task, connection=conn, issue_number=5, issue_state="open")
+    monkeypatch.setattr(gh_client, "installation_token", lambda _: "t")
+    monkeypatch.setattr(gh_client, "paginate", lambda *_: iter([]))  # 열린 이슈 없음 = #5는 닫혔다
+
+    assert ghs.reconcile()["issues"] == 1
+    task.refresh_from_db()
+    assert task.status == "done"
+    assert RepoIssue.objects.get(number=5).state == "closed"
+    assert TaskGitLink.objects.get(task=task).issue_state == "closed"
+
+
+def test_issue_webhook_does_not_reset_reconcile_clock(inst, org, admin):
+    """다른 이슈 웹훅이 계속 와도 전체 보정 시각은 그대로다 — 놓친 이슈가 보정에서 빠지지 않는다."""
+    p = create_project(org=org, name="일", actor=admin)
+    old = OLD_ISSUES()
+    conn = _conn(p, admin, "o/r", old)
+    payload = {
+        "action": "edited",
+        "issue": {"number": 9, "title": "무관", "state": "open", "user": {"login": "x"}},
+        "repository": {"full_name": "o/r"},
+        "sender": {"login": "x"},
+    }
+    ghs._on_issues(conn, "d-1", payload)
+    conn.refresh_from_db()
+    assert conn.issues_synced_at == old

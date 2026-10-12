@@ -40,6 +40,30 @@ def test_hub_replay_and_debounce(monkeypatch):
     assert h.replay(h.seq + 5, set()) is None  # 다른(이후) 프로세스의 seq
 
 
+def test_hub_reauth_kicks_expired_sessions(monkeypatch):
+    """세션 자연 만료(S 알림 없음)·LISTEN 단절 중 로그아웃: 전체 재인증이 무효 세션 연결을 끊는다."""
+    calls = []
+    valid = {"live": 1}
+    monkeypatch.setattr(hubmod, "session_user_id", lambda k: calls.append(k) or valid.get(k))
+
+    async def run():
+        h = hubmod.Hub()
+        ok, gone, gone2 = (
+            hubmod.Conn(1, "live", "ws"),
+            hubmod.Conn(2, "expired", "ws"),
+            hubmod.Conn(2, "expired", "sse"),
+        )
+        for c in (ok, gone, gone2):
+            h.add(c)
+        await h.reauth()
+        return h, ok, gone
+
+    h, ok, gone = asyncio.run(run())
+    assert list(h.conns) == [ok.id]
+    assert gone.queue.get_nowait() == {"op": "logout"}
+    assert sorted(calls) == ["expired", "live"]  # 한 세션의 여러 연결은 한 번만 조회
+
+
 # ---------------- Postgres ----------------
 
 
@@ -66,6 +90,8 @@ def test_triggers_emit_keys(pg_flushable, listener, client, task, member, admin,
 
     _notifies(listener, 0.2)
     ChecklistItem.objects.create(task=task, text="a")
+    # 보드 카드 "n/m"은 P로만 다시 그려진다 — 체크리스트 변경이 P도 내야 한다
+    assert {f"T:{task.pk}|checklist", f"P:{task.project_id}|"} <= _notifies(listener)
     other = create_project(org=project.org, name="다른", actor=admin, owners=[admin])
     _notifies(listener, 0.5)
     Task.objects.filter(pk=task.pk).update(project=other, assignee=admin)

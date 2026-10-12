@@ -48,7 +48,16 @@ KEYS: dict[str, list[tuple[str, str | None]]] = {
         ("'T:'||r.task_id", "github"),
         ("'P:'||r.project_id", None),
     ],
-    "tasks_checklistitem": [("'T:'||r.task_id", "checklist")],
+    "tasks_checklistitem": [
+        ("'T:'||r.task_id", "checklist"),
+        # 보드 카드의 "n/m"은 P(project-changed)로만 다시 그려진다 — 주·연결 프로젝트 모두
+        (
+            "SELECT 'P:'||t.project_id FROM tasks_task t WHERE t.id = r.task_id::bigint "
+            "UNION SELECT 'P:'||tp.project_id FROM tasks_taskproject tp "
+            "WHERE tp.task_id = r.task_id::bigint",
+            None,
+        ),
+    ],
     "tasks_todayitem": [("'U:'||r.user_id", None), ("'T:'||r.task_id", None)],
     "tasks_link": T_OR_P,
     "tasks_attachment": T_OR_P,  # doc_id만 있으면 둘 다 NULL → 내지 않는다

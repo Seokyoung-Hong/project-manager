@@ -1,7 +1,7 @@
 """성능·안정성 회귀 테스트(IMPL-PLAN-7 H).
 
 - N+1: 규모 2와 10에서 같은 주소를 불러 쿼리 수가 같아야 한다. 늘면 어딘가 루프 안에서 조회한다.
-- SSE(/events): 사용자당·전체 동시 연결 상한, 비공개 프로젝트 태스크를 못 보는 멤버에게 안 흘림.
+- 실시간(web/realtime): 사용자당·전체 동시 연결 상한, 비공개 프로젝트 태스크는 구독 거절.
 - 초과 판정: 화면·집계가 프로젝트별 유예(`task.overdue_grace_days`)를 Discord 알림과 같이 본다.
 """
 
@@ -138,65 +138,40 @@ def test_query_count_flat(client, org, admin, member, who, url):
     assert big == small, f"{url} ({who}): 규모 2 → {small}회, 10 → {big}회"
 
 
-# ---------- SSE ----------
+# ---------- 실시간(web/realtime) ----------
 
 
-@pytest.fixture
-def ev(monkeypatch):
-    from web.views import events
+def test_rt_connection_limits(monkeypatch):
+    from web.realtime import hub as hubmod
 
-    # 테스트 DB 연결을 닫지 않게 한다.
-    monkeypatch.setattr(events, "connection", type("C", (), {"close": staticmethod(lambda: None)}))
-    yield events
-    left = dict(events._active)
-    events._active.clear()
-    assert not left, "열린 스트림이 남았다 — 닫을 때 자리를 돌려주지 않는다"
-
-
-def test_sse_per_user_limit(ev, org, member):
-    from django.utils import timezone
-
-    now = timezone.now()
-    open_ = [ev._stream(member, org, now) for _ in range(ev.MAX_STREAMS_PER_USER)]
-    for g in open_:
-        assert next(g).startswith("retry: 2000")
-    extra = ev._stream(member, org, now)
-    assert list(extra) == [f"retry: {ev.BUSY_RETRY_MS}\n\n"]  # 즉시 닫힌다
-    open_[0].close()  # 탭 하나를 닫으면 자리가 난다
-    again = ev._stream(member, org, now)
-    assert next(again).startswith("retry: 2000")
-    for g in [*open_, again]:
-        g.close()
+    monkeypatch.setattr(hubmod, "MAX_TOTAL", 7)
+    h = hubmod.Hub()
+    mine = [hubmod.Conn(1, "s", "ws") for _ in range(hubmod.MAX_PER_USER)]
+    assert all(h.add(c) for c in mine)
+    assert not h.add(hubmod.Conn(1, "s", "ws"))  # 사용자당 상한
+    h.remove(mine[0])  # 탭 하나를 닫으면 자리가 난다
+    assert h.add(hubmod.Conn(1, "s", "ws"))
+    assert h.add(hubmod.Conn(2, "s", "ws"))
+    assert not h.add(hubmod.Conn(3, "s", "ws"))  # 전체 상한
+    # 페이지 이동으로 버려진 SSE·폴링 stream(소비자 없음)은 새 연결에 자리를 내준다
+    h = hubmod.Hub()
+    old = [hubmod.Conn(1, "s", "poll") for _ in range(hubmod.MAX_PER_USER)]
+    assert all(h.add(c) for c in old)
+    assert h.add(hubmod.Conn(1, "s", "sse")) and old[0].id not in h.conns
 
 
-def test_sse_total_limit(ev, monkeypatch, org, admin, member):
-    from django.utils import timezone
-
-    monkeypatch.setattr(ev, "MAX_STREAMS", 1)
-    first = ev._stream(admin, org, timezone.now())
-    next(first)
-    busy = list(ev._stream(member, org, timezone.now()))
-    assert busy == [f"retry: {ev.BUSY_RETRY_MS}\n\n"]
-    first.close()
-
-
-def test_sse_hides_private_project_tasks(ev, monkeypatch, org, admin, member):
-    """담당 팀이 아닌 멤버에게 비공개 프로젝트 태스크의 번호를 보내지 않는다."""
-    from django.utils import timezone
+def test_rt_hides_private_project_tasks(org, admin, member):
+    """담당 팀이 아닌 멤버는 비공개 프로젝트 태스크를 구독할 수 없다."""
+    from web.realtime.hub import allowed
 
     secret = create_project(org=org, name="비공개", actor=admin, visibility="teams")
     open_ = create_project(org=org, name="공개", actor=admin)
-    since = timezone.now() - timedelta(seconds=1)
     hidden = create_task(project=secret, title="숨김", actor=admin, source="web", no_due_reason="-")
     shown = create_task(project=open_, title="보임", actor=admin, source="web", no_due_reason="-")
+    keys = {f"T:{hidden.pk}", f"T:{shown.pk}", f"P:{secret.pk}"}
 
-    assert [pk for pk, _ in ev._changed_since(org, since, member)] == [shown.pk]
-    assert {pk for pk, _ in ev._changed_since(org, since, admin)} == {hidden.pk, shown.pk}
-    # 스트림도 같은 거름을 쓴다.
-    monkeypatch.setattr(ev, "POLL_SECONDS", 0)
-    monkeypatch.setattr(ev, "STREAM_SECONDS", 0.01)
-    body = "".join(ev._stream(member, org, since))
-    assert f'"id": {shown.pk}' in body and f'"id": {hidden.pk}' not in body
+    assert allowed(member.pk, keys) == {f"T:{shown.pk}"}
+    assert allowed(admin.pk, keys) == keys
 
 
 # ---------- 초과 판정: 프로젝트별 유예 ----------

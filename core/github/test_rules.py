@@ -511,7 +511,8 @@ def test_stale_issues_synced_on_view_and_webhook_pauses_it(gh, conn, admin, org,
     assert len(calls) == 2
 
 
-def test_webhook_marks_issues_fresh(gh, client, conn):
+def test_webhook_does_not_mark_issues_fresh(gh, client, conn):
+    """동기화 시각은 전체 조회만 갱신한다. 웹훅이 갱신하면 놓친 이슈 보정이 미뤄진다."""
     payload = {
         "action": "opened",
         "repository": {"full_name": "o/r"},
@@ -520,7 +521,7 @@ def test_webhook_marks_issues_fresh(gh, client, conn):
     }
     signed(client, payload, "issues", "fresh-1")
     conn.refresh_from_db()
-    assert conn.issues_synced_at is not None
+    assert conn.issues_synced_at is None
 
 
 def test_issue_state_follows_payload_not_action(gh, client, conn):

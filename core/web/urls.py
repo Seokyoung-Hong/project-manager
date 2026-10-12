@@ -7,7 +7,6 @@ from .views import (
     decisions,
     discord,
     docs,
-    events,
     github,
     github_retries,
     integrations,
@@ -44,7 +43,6 @@ urlpatterns = [
     ),
     path("", auth.root, name="root"),
     path("healthz", ops.healthz, name="healthz"),
-    path("events", events.events, name="events"),
     # 실시간(realtime 컨테이너 전용. web에서는 503). WebSocket /rt/ws는 config.rt_asgi가 받는다.
     path("rt/sse", rt.sse, name="rt_sse"),
     path("rt/poll", rt.poll, name="rt_poll"),

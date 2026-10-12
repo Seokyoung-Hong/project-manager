@@ -524,9 +524,14 @@
         body.dispatchEvent(new CustomEvent("rt-row", { detail: { el: en.target, on: en.isIntersecting } }));
       });
     }, { rootMargin: "200px 0px" });
+    var ROW = "[data-panel], [hx-get$='/panel']";
     function scan(root) {
       if (!seen) return;
-      (root || document).querySelectorAll("[data-panel], [hx-get$='/panel']").forEach(function (el) {
+      root = root && root.isConnected ? root : document;
+      var els = Array.prototype.slice.call(root.querySelectorAll(ROW));
+      // 행 하나만 다시 그려졌으면(outerHTML) root가 곧 그 행이다 — querySelectorAll은 자기 자신을 안 본다
+      if (root.matches && root.matches(ROW)) els.push(root);
+      els.forEach(function (el) {
         if (!panel.contains(el) && urlOf(el)) { seen.unobserve(el); seen.observe(el); }
       });
     }
@@ -536,7 +541,7 @@
     // 누르기 직전(마우스 올림·초점)이면 줄 맨 앞으로
     ["pointerover", "focusin"].forEach(function (type) {
       body.addEventListener(type, function (e) {
-        var el = e.target.closest && e.target.closest("[data-panel], [hx-get$='/panel']");
+        var el = e.target.closest && e.target.closest(ROW);
         if (el && !panel.contains(el)) want(urlOf(el), true);
       }, { passive: true });
     });

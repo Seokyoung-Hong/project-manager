@@ -228,29 +228,17 @@ def test_panel_meta_rejects_outside_org(logged, task, outsider):
     assert task.assignee != outsider
 
 
+def test_project_list_refreshes_on_project_changed(logged, task):
+    """목록 보기도 보드처럼 P 키(project-changed)로 다시 받는다 — 다른 사람이 만든 새 태스크가 나타난다."""
+    page = logged.get(f"/projects/{task.project_id}?view=list").content.decode()
+    assert f"project-changed[event.detail.id=={task.project_id}]" in page
+    part = logged.get(f"/projects/{task.project_id}?part=list").content.decode()
+    assert part.startswith('<ul class="tasks"') and f'id="task-{task.pk}"' in part
+
+
 def test_task_edit_page_is_gone(logged, task):
     """편집 화면은 패널에 흡수됐다. 남아 있으면 같은 필드를 두 곳에서 고치게 된다."""
     assert logged.get(f"/tasks/{task.pk}/edit").status_code == 404
-
-
-def test_events_stream_reports_changes(logged, task, member):
-    """/events는 방금 바뀐 태스크 id를 흘려보낸다 — 실시간 반영의 유일한 출처."""
-    from tasks.services import update_text
-    from web.views import events as ev
-
-    update_text(task, "title", "다른 사람이 고친 제목", actor=member)
-    r = logged.get("/events")
-    assert r.status_code == 200
-    assert r["Content-Type"] == "text/event-stream"
-    assert r["X-Accel-Buffering"] == "no"
-    # 스트림을 통째로 돌리면 STREAM_SECONDS만큼 걸린다. 피드 함수만 직접 확인한다.
-    since = task.updated_at - timedelta(seconds=1)
-    assert task.pk in [pk for pk, _ in ev._changed_since(task.project.org, since)]
-    r.close()
-
-
-def test_events_needs_login(client):
-    assert client.get("/events").status_code == 302
 
 
 def test_me_group_buttons_mark_one(logged, task):

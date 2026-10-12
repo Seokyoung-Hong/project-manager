@@ -1439,7 +1439,6 @@ def _on_issues(conn, delivery, payload):
         if conn.rule_issue:
             # 닫힌 태스크는 되살리지 않고 계열로 이어지는 새 태스크를 만든다(§4).
             reopen_as_new(conn, delivery, payload, old=row.task, kind="issue")
-            _mark_issues_synced(conn)
             return
         result = "규칙 꺼짐"
     elif (
@@ -1489,7 +1488,8 @@ def _on_issues(conn, delivery, payload):
         if link:
             link.issue_state = row.state
             link.save(update_fields=["issue_state"])
-    _mark_issues_synced(conn)
+    # 동기화 시각은 전체 조회(sync_issues)만 갱신한다. 웹훅마다 갱신하면 다른 이슈 웹훅이 10분 안에
+    # 계속 오는 저장소는 놓친 이슈를 영영 보정받지 못한다(교차 검토).
     record_event(
         conn,
         delivery,
@@ -1535,7 +1535,18 @@ def sync_issues(conn) -> int:
                 "labels": [lb["name"] for lb in item.get("labels", []) if isinstance(lb, dict)],
             },
         )
-    conn.issues.filter(state="open").exclude(number__in=seen).update(state="closed")
+    gone = list(conn.issues.filter(state="open").exclude(number__in=seen).select_related("task"))
+    conn.issues.filter(pk__in=[r.pk for r in gone]).update(state="closed")
+    # 닫기 웹훅을 놓쳤다: 웹훅과 같은 결과를 이번에 닫힘으로 바뀐 이슈에만 한 번 낸다(멱등).
+    # ponytail: 닫힘만 복구한다. 다시 열림(새 태스크)·PR·리뷰·CI 누락은 보정하지 않는다.
+    for row in gone:
+        if row.task is None:
+            continue
+        TaskGitLink.objects.filter(task=row.task).update(issue_state="closed")
+        if conn.rule_issue and row.task.is_open:
+            _apply(
+                row.task, "done", actor=None, actor_login="", note=f"이슈 #{row.number} 닫힘(보정)"
+            )
     _mark_issues_synced(conn)
     return len(seen)
 

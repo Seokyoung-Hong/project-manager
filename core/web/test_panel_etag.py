@@ -8,7 +8,8 @@ pytestmark = pytest.mark.django_db
 HX = {"HX-Request": "true"}
 
 
-def test_panel_etag_304_until_task_changes(client, member, task):
+@pytest.mark.django_db(transaction=True)  # Postgres: 데이터 버전은 커밋(트랜잭션)마다 바뀐다
+def test_panel_etag_304_until_task_changes(pg_flushable, client, member, task):
     client.force_login(member)
     url = f"/tasks/{task.pk}/panel"
     first = client.get(url, headers=HX)

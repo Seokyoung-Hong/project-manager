@@ -40,6 +40,7 @@ MAX_TOTAL = int(os.environ.get("RT_MAX_CONNECTIONS", "2000"))
 MAX_KEYS = 500
 QUEUE = 1000
 IDLE_STREAM = 120  # 소비자가 붙어 있지 않은 SSE·폴링 stream을 남겨 두는 시간(초)
+REAUTH = 60  # 모든 연결의 세션을 다시 확인하는 주기(초). 만료 세션은 늦어도 이만큼 뒤에 끊긴다.
 
 
 def skey_hash(session_key: str) -> str:
@@ -99,8 +100,9 @@ def conninfo() -> dict:
     kw = {k: v for k, v in kw.items() if v}
     if s.get("PORT"):
         kw["port"] = s["PORT"]
-    # 반쯤 끊긴 TCP에서 notifies()가 영영 기다리지 않게 한다.
+    # 반쯤 끊긴 TCP에서 notifies()가, 응답 없는 DB에서 connect()가 영영 기다리지 않게 한다.
     return kw | {
+        "connect_timeout": 10,
         "keepalives": 1,
         "keepalives_idle": 30,
         "keepalives_interval": 10,
@@ -150,8 +152,15 @@ class Hub:
 
     # --- 연결 관리 ---
     def add(self, conn: Conn) -> bool:
-        mine = sum(1 for c in self.conns.values() if c.user_id == conn.user_id)
-        if len(self.conns) >= MAX_TOTAL or mine >= MAX_PER_USER:
+        mine = [c for c in self.conns.values() if c.user_id == conn.user_id]
+        if len(mine) >= MAX_PER_USER:
+            # 페이지 이동·새로고침마다 새 stream이 생기고 옛 것은 IDLE_STREAM 동안 남는다:
+            # 소비자가 없는 가장 오래된 것을 비운다(아직 쓰는 폴링이면 다음 폴링이 새 stream을 받는다)
+            idle = [c for c in mine if not c.live]
+            if not idle:
+                return False
+            self.remove(min(idle, key=lambda c: c.seen))
+        if len(self.conns) >= MAX_TOTAL:
             return False
         self.conns[conn.id] = conn
         return True
@@ -215,17 +224,25 @@ class Hub:
                 self.pending.setdefault(ks, last + DEBOUNCE)
 
     def reset(self) -> None:
-        """LISTEN이 끊겼다 붙었다: 그사이 놓친 게 있을 수 있으니 버퍼를 비우고 모두 resync."""
+        """LISTEN이 끊겼다 붙었다: 그사이 놓친 게 있을 수 있으니 버퍼를 비우고 모두 resync.
+        놓친 것에는 로그아웃(S)·권한 회수(A)도 있다 → 세션 재인증·권한 재검사를 먼저 돌린다."""
         self.buf.clear()
         self.seq += 1
         self.floor = self.seq
+        self._spawn(self.reauth())
+        self._spawn(self.recheck_all())
         for c in self.conns.values():
             if c.live:
                 c.push({"op": "resync"})
 
-    async def reauth(self, user_id: int) -> None:
-        for c in [c for c in self.conns.values() if c.user_id == user_id]:
-            if await sync_to_async(session_user_id)(c.session_key) != user_id:
+    async def reauth(self, user_id: int | None = None) -> None:
+        """세션이 무효(로그아웃·만료·비밀번호 변경)인 연결을 끊는다. user_id가 없으면 전부."""
+        conns = [c for c in self.conns.values() if user_id is None or c.user_id == user_id]
+        valid: dict[str, int | None] = {}  # 한 세션의 여러 연결(탭·stream)은 한 번만 조회
+        for c in conns:
+            if c.session_key not in valid:
+                valid[c.session_key] = await sync_to_async(session_user_id)(c.session_key)
+            if valid[c.session_key] != c.user_id:
                 self.kick(c)
 
     async def recheck_all(self) -> None:
@@ -251,9 +268,13 @@ class Hub:
             log.error("realtime 작업 실패", exc_info=t.exception())
 
     async def tick(self) -> None:
+        reauth_at = time.monotonic() + REAUTH
         while True:
             await asyncio.sleep(TICK)
             now = time.monotonic()
+            if now >= reauth_at:  # 세션 자연 만료는 행이 남아 S 알림이 없다(정리 작업은 하루 한 번)
+                reauth_at = now + REAUTH
+                self._spawn(self.reauth())
             for ks in [ks for ks, due in self.pending.items() if due <= now]:
                 del self.pending[ks]
                 self.publish(ks)

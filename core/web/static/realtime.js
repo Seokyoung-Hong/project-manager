@@ -32,8 +32,15 @@
     var p = panelId();
     if (p) k["T:" + p] = 1;
     rows.forEach(function (el) {
-      if (!el.isConnected) { rows.delete(el); return; }
-      var m = PANEL.exec(el.getAttribute("data-panel") || el.getAttribute("hx-get") || "");
+      var url = el.getAttribute("data-panel") || el.getAttribute("hx-get") || "";
+      if (!el.isConnected) {
+        // 행만 다시 그려졌다(outerHTML): 관찰자가 새 행을 알릴 때까지 구독이 빠지지 않게 새 행으로 갈아 끼운다
+        rows.delete(el);
+        el = url && document.querySelector('[data-panel="' + url + '"], [hx-get="' + url + '"]');
+        if (!el || panel && panel.contains(el)) return;
+        rows.add(el);
+      }
+      var m = PANEL.exec(url);
       if (m) k["T:" + m[1]] = 1;
     });
     return Object.keys(k);
@@ -304,11 +311,11 @@
       }
       arm();
       es.onmessage = function (e) {
-        arm();
         var m;
-        try { m = JSON.parse(e.data); } catch (err) { return; }
+        try { m = JSON.parse(e.data); } catch (err) { arm(); return; }
         if (m.stream) stream(t, m.stream);
         msg(t, m);
+        arm();   // 첫 메시지(stream)로 붙은 뒤에 걸어야 5초가 아니라 30초 감시가 된다
       };
       es.onerror = function () {
         if (es.readyState === 2) { t.close(); end(t, t.ok, false); }   // 닫혔다(브라우저가 다시 붙지 않는다)

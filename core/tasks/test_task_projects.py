@@ -78,17 +78,14 @@ def test_link_without_confirm_is_refused(w, member):
 
 
 def test_pending_link_does_not_widen(w, member, admin):
-    since = timezone.now() - timedelta(seconds=1)
     link = ts.link_project(w.task, w.public, actor=member, confirm_widening=True)
     assert link.status == "pending" and link.widened
     assert not _visible(w.other, w.task)
     assert not ts.can_view_task(w.other, w.task)
     assert w.task not in list(ts.search(w.other, "Swagger"))
-    from web.views import events
+    from web.realtime.hub import allowed
 
-    assert w.task.pk not in [
-        pk for pk, _ in events._changed_since(w.task.project.org, since, w.other)
-    ]
+    assert not allowed(w.other.pk, {f"T:{w.task.pk}"})
     assert ChangeLog.objects.filter(
         target_id=w.task.pk, field="projects", note__contains="승인 요청"
     ).exists()

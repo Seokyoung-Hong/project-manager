@@ -350,6 +350,10 @@ def project_detail(request, project_id, *, link_form=None):
     include_closed = request.GET.get("include_closed") == "1"
     if request.GET.get("part") == "board":
         return render(request, "projects/_board.html", board_context(request, project))
+    if request.GET.get("part") == "list":
+        ctx = {"project": project, "include_closed": include_closed}
+        ctx["rows"] = _list_rows(request, project, include_closed)
+        return render(request, "projects/_list.html", ctx)
     if request.GET.get("part") == "shelf":
         # 2쪽부터는 더 보기: 행과 다음 '더 보기'만 이어 붙인다.
         ctx = shelf_context(request, project)
@@ -380,15 +384,19 @@ def project_detail(request, project_id, *, link_form=None):
     elif view == "calendar":
         ctx.update(calendar_context(request, project))
     else:
-        qs = (
-            ts.tasks_of(project)
-            .filter(is_template=False)
-            .select_related("project", "project__org", "assignee")
-        )
-        if not include_closed:
-            qs = qs.filter(status__in=Task.OPEN)
-        ctx["rows"] = nest_rows(rows_for(request.user, sorted(qs, key=ts.by_due), "noproject"))
+        ctx["rows"] = _list_rows(request, project, include_closed)
     return render(request, "projects/detail.html", ctx)
+
+
+def _list_rows(request, project, include_closed):
+    qs = (
+        ts.tasks_of(project)
+        .filter(is_template=False)
+        .select_related("project", "project__org", "assignee")
+    )
+    if not include_closed:
+        qs = qs.filter(status__in=Task.OPEN)
+    return nest_rows(rows_for(request.user, sorted(qs, key=ts.by_due), "noproject"))
 
 
 @login_required
