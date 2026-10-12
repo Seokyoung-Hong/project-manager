@@ -203,10 +203,14 @@ def org_teams(request, org_id):
         return _member_teams(request, org)
     load = {r["assignee_id"]: r for r in org_status(org, viewer=request.user)["by_assignee"]}
     memberships = list(
-        org.memberships.select_related("user")
+        org.memberships.select_related("user", "user__github")
         .prefetch_related("user__teams")  # 표의 소속 팀 배지
         .order_by("user__display_name")
     )
+    personal = {
+        i.for_user_id: i
+        for i in org.invites.filter(for_user__isnull=False, revoked_at__isnull=True, use_count=0)
+    }
     # 마지막 관리자는 services.remove_member가 거부한다 — 버튼도 그 규칙을 그대로 보여 준다
     last_admin = sum(1 for m in memberships if m.role == "admin") <= 1
     rows = [
@@ -214,6 +218,8 @@ def org_teams(request, org_id):
             "m": m,
             "load": load.get(m.user_id),
             "can_remove": not (m.role == "admin" and last_admin),
+            "pending": osv.is_pending(m.user),
+            "invite": personal.get(m.user_id),
         }
         for m in memberships
     ]
@@ -236,7 +242,7 @@ def org_teams(request, org_id):
             "org": org,
             "rows": rows,
             "admin_count": sum(1 for r in rows if r["m"].role == "admin"),
-            "invites": org.invites.filter(revoked_at__isnull=True),
+            "invites": org.invites.filter(revoked_at__isnull=True, for_user__isnull=True),
             "form": InviteForm(),
             "site_url": settings.SITE_URL,
             "team_rows": teams,
@@ -310,6 +316,39 @@ def invite_create(request, org_id):
             else:
                 messages.success(request, f"GitHub 조직에도 @{login}님을 초대했습니다.")
     return _member_redirect(request, org.pk)
+
+
+@login_required
+@require_POST
+def member_add_pending(request, org_id):
+    org = org_or_404(request.user, org_id)
+    try:
+        m = osv.add_pending_member(org, request.user, request.POST.get("display_name", ""))
+        messages.success(
+            request,
+            f"가입 전 구성원 {m.user.display_name}님을 추가했습니다. [초대 링크 만들기]로 본인에게 넘겨 주세요.",
+        )
+    except ServiceError as e:
+        messages.error(request, " ".join(e.errors.values()))
+    return _member_redirect(request, org.pk)
+
+
+@login_required
+@require_POST
+def member_invite(request, membership_id):
+    membership = get_object_or_404(
+        OrgMembership.objects.select_related("org", "user"), pk=membership_id
+    )
+    org_or_404(request.user, membership.org_id)
+    try:
+        invite = osv.create_personal_invite(membership, request.user)
+        messages.success(
+            request,
+            f"{membership.user.display_name}님의 초대 링크: {settings.SITE_URL}{invite.path}",
+        )
+    except ServiceError as e:
+        messages.error(request, " ".join(e.errors.values()))
+    return _member_redirect(request, membership.org_id)
 
 
 @login_required
