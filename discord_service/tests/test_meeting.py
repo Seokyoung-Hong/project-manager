@@ -293,7 +293,7 @@ def test_take_posts_mention_with_two_buttons_in_voice_chat():
 def test_take_channel_post_failure_is_reported():
     i = FakeInteraction(uid=OTHER, channel=FakeChannel(fail=True))
     i = call("회의받기", v=voice(FakeNode()), interaction=i)
-    assert "올리지 못했습니다" in i.reply
+    assert "요청을 올리지 못한 상태입니다" in i.reply
 
 
 def press(flag, core, node=None, **kw):

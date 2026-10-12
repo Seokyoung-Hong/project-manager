@@ -82,7 +82,7 @@ test('시작: core에 음성 채널을 보내고 접속·닉네임·고지·참�
   assert.deepEqual(out.meeting.participants.map((p) => p.discord_user_id), ['h', 'a']);
   assert.deepEqual(d.nicks, [texts.NICK_RECORDING]);
   await sleep(5);
-  assert.match(d.sent[0][1], /회의 녹음을 시작했습니다\(진행자: <@h>\)/);
+  assert.match(d.sent[0][1], /회의 녹음 중입니다\(진행자: <@h>\)/);
   assert.equal(patches(calls)[0].participants.length, 2);
   await assert.rejects(m.start(startBody), (e) => e.status === 409 && e.detail === texts.alreadyRunning());
   await assert.rejects(m.start({ ...startBody, guild_id: '2', discord_user_id: 'x' }), (e) => e.status === 409 && e.detail === texts.notInVoice());
@@ -139,7 +139,7 @@ test('진행자 퇴장 유예가 지나 200이면 종료: channel_notice·종료
   assert.deepEqual(d.nicks, [texts.NICK_RECORDING, '원래']);
   const sent = d.sent.map(([, t]) => t);
   assert.ok(sent.includes('회의 진행자가 나가서 회의를 종료하였습니다.'));
-  assert.ok(sent.some((t) => t.startsWith('회의 녹음을 마쳤습니다')));
+  assert.ok(sent.some((t) => t.startsWith('회의 녹음이 끝난 상태입니다')));
   const ps = patches(calls).filter((b) => b.status);
   assert.equal(ps[0].status, 'transcribing');
   assert.ok(ps[0].participants.every((p) => p.left_at));

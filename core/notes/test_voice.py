@@ -845,7 +845,7 @@ def test_audio_purge_after_expiry(client, enabled, member, media):
     rec.refresh_from_db()
     assert not rec.audio and rec.audio_size == len(OGG)
     page = client.get(f"/orgs/{enabled.pk}/notes?note={rec.note_id}").content.decode()
-    assert "보관 기간이 지나 녹음을 삭제했습니다." in page and "녹음 내려받기" not in page
+    assert "보관 기간이 지나 녹음 파일이 삭제된 상태입니다." in page and "녹음 내려받기" not in page
 
 
 def test_engine_none_draft_notice(enabled, member, bot):
@@ -858,7 +858,7 @@ def test_engine_none_draft_notice(enabled, member, bot):
     )
     assert r.status_code == 200 and r.json()["status"] == "draft"
     n = Notice.objects.get(user=member)
-    assert "녹음 파일이 준비되었습니다" in n.text and "회의록 화면에서 내려받아" in n.text
+    assert "회의록 초안이 준비된 상태입니다" in n.text and "회의록 화면에서 내려받아" in n.text
 
 
 def test_openai_key_masked_and_only_bot_sees(client, enabled, admin, bot):

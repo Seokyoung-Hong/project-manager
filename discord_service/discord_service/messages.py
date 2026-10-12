@@ -27,21 +27,19 @@ SLASH_HELP = """슬래시 명령으로도 됩니다. 답장은 나에게만 보�
 번호·프로젝트·팀·담당자는 입력하면 목록이 뜹니다. 숫자를 외울 필요는 없습니다."""
 
 # --- 회의(IMPL-PLAN-9). 용어표: 회의·회의록·녹음·전사문·진행자·참여자·넘겨받기 요청 ---
-MEETING_NOT_CONFIGURED = (
-    "음성 서비스가 설정되지 않아 회의를 시작할 수 없습니다. 관리자에게 문의해 주세요."
-)
-MEETING_VOICE_DOWN = "음성 서비스에 연결할 수 없습니다. 잠시 뒤 다시 시도해 주세요."
-MEETING_NONE = "이 서버에서 진행 중인 회의가 없습니다."
-MEETING_STARTED = "회의를 시작했습니다. 지금부터 녹음합니다. 끝낼 때는 `/회의종료`를 입력해 주세요."
-MEETING_STOPPED = "회의를 종료하고 녹음을 마쳤습니다. 회의록 초안은 웹에서 확인해 주세요."
-MEETING_VOICE_MISCONFIGURED = (
-    "음성 서비스 설정 오류로 회의를 처리할 수 없습니다. 관리자에게 문의해 주세요."
-)
+MEETING_NOT_CONFIGURED = "음성 서비스가 설정되지 않은 상태입니다. 관리자에게 문의해 주세요."
+MEETING_VOICE_DOWN = "음성 서비스에 연결할 수 없는 상태입니다. 잠시 뒤 다시 시도해 주세요."
+MEETING_NONE = "이 Discord 서버에는 진행 중인 회의가 없는 상태입니다."
+MEETING_STARTED = "회의 녹음 중입니다. 종료하려면 `/회의종료`를 입력해 주세요."
+MEETING_STOPPED = "회의 녹음이 끝난 상태입니다. 회의록 초안을 준비 중입니다. 준비 후 웹 회의록 화면에서 확인해 주세요."
+MEETING_VOICE_MISCONFIGURED = "음성 서비스 설정에 오류가 있는 상태입니다. 관리자에게 문의해 주세요."
 MEETING_HOST_REQUESTED = (
-    "넘겨받기 요청을 보냈습니다. 진행자가 2분 안에 승인하면 회의 진행자가 바뀝니다."
+    "넘겨받기 요청이 승인 대기 중입니다. 요청 유효 시간은 2분이며, 승인 후 진행자는 요청자입니다."
 )
-MEETING_HOST_REJECTED = "넘겨받기 요청을 거절했습니다."
-MEETING_POST_FAILED = "음성 채널 채팅에 글을 올리지 못했습니다. 봇의 채널 권한을 확인해 주세요."
+MEETING_HOST_REJECTED = "넘겨받기 요청이 거절된 상태입니다."
+MEETING_POST_FAILED = (
+    "음성 채널 채팅에 요청을 올리지 못한 상태입니다. 봇의 채널 권한을 확인해 주세요."
+)
 
 
 def mention(assignee: dict) -> str:

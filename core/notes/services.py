@@ -414,9 +414,9 @@ def update_recording(
             _notify_owner(
                 rec,
                 # 녹음만(전사 수단 없음, IMPL-PLAN-9-parallel §7). 실패가 아니다.
-                "녹음 파일이 준비되었습니다. 회의록 화면에서 내려받아 전사할 수 있습니다."
+                "회의록 초안이 준비된 상태입니다. 녹음 파일은 회의록 화면에서 내려받아 직접 전사해 주세요."
                 if engine == "none"
-                else f"회의록 초안(전사문)이 준비되었습니다. `/pm-meeting {note.pk}`로 정리하거나 "
+                else f"전사문이 포함된 회의록 초안입니다. `/pm-meeting {note.pk}`로 정리하거나 "
                 "웹에서 작성해 주세요.",
             )
         elif status == "failed":
@@ -448,7 +448,7 @@ def update_recording(
 
 
 AUDIO_MAX_BYTES = 300 * 1024 * 1024  # IMPL-PLAN-9-parallel §7
-AUDIO_EXPIRED = "보관 기간이 지나 녹음을 삭제했습니다."
+AUDIO_EXPIRED = "보관 기간이 지나 녹음 파일이 삭제된 상태입니다."
 
 
 def audio_expired(rec) -> bool:
@@ -459,11 +459,11 @@ def audio_expired(rec) -> bool:
 def save_audio(rec, upload) -> VoiceRecording:
     """봇이 올린 혼합 녹음(Ogg). 같은 회의에 다시 올리면 바꾼다. 옛 파일은 커밋 뒤에 지운다."""
     if upload.size > AUDIO_MAX_BYTES:
-        raise ServiceError({"file": "녹음 파일이 너무 큽니다 (300MB 상한)."})
+        raise ServiceError({"file": "녹음 파일의 크기 제한은 300MB입니다."})
     head = upload.read(4)
     upload.seek(0)
     if head != b"OggS":
-        raise ServiceError({"file": "Ogg 녹음 파일만 올릴 수 있습니다."})
+        raise ServiceError({"file": "올릴 수 있는 녹음 파일 형식은 Ogg입니다."})
     rec = VoiceRecording.objects.select_for_update().select_related("note").get(pk=rec.pk)
     old = rec.audio.name
     rec.audio.save("meeting.ogg", upload, save=False)
