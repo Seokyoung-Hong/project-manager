@@ -2,6 +2,12 @@
 
 구현 전 계획이다. 사용자가 §7 질문에 답하면 방식·범위를 확정한다. 전사 흐름·용어는 `IMPL-PLAN-9.md`, 프로세스 구성은 `IMPL-PLAN-9-parallel.md`를 따른다.
 
+## 사용자 결정 (2026-10-12) — 위 설계보다 우선
+
+- **Discord 회의 기본값 = 참여자별 음성을 각각 전사해 타임라인으로 병합한 전사문.** 이미 Discord가 사람별로 나눠 주므로 별도 화자 분리를 돌리지 않는다(현재 `transcribe.mjs` 동작 그대로).
+- **옵션으로 화자 분리를 켤 수 있다**(조직/회의 설정). 켜면 참여자 트랙 안에서 다시 화자를 나눈다(§1 경우 B: 한 계정 마이크로 여러 명). 라벨은 "홍석영 마이크 · 화자 2", 타임라인 병합은 그대로.
+- 옵션 구현은 화자 분리 엔진(udally-stt의 pyannote, 또는 조직 OpenAI 키 `gpt-4o-transcribe-diarize`)이 준비된 뒤. 녹음 파일 올리기(C·D)는 별도 결정.
+
 ## 0. 요지
 
 - **Discord 회의는 이미 화자가 분리돼 있다.** 녹음이 사람별 구간(`discord_gateway/src/recorder.mjs`, 구간마다 `user_id`)이고, 전사도 구간 단위로 `[HH:MM:SS] 이름: 텍스트`를 만든다(`discord_gateway/src/transcribe.mjs:24-30`). 참여자별 트랙도 저장된다(`core/notes/models.py:95` VoiceTrack).
