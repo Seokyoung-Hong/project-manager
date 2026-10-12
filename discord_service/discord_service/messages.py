@@ -33,7 +33,10 @@ MEETING_NOT_CONFIGURED = (
 MEETING_VOICE_DOWN = "음성 서비스에 연결할 수 없습니다. 잠시 뒤 다시 시도해 주세요."
 MEETING_NONE = "이 서버에서 진행 중인 회의가 없습니다."
 MEETING_STARTED = "회의를 시작했습니다. 지금부터 녹음합니다. 끝낼 때는 `/회의종료`를 입력해 주세요."
-MEETING_STOPPED = "회의를 종료했습니다. 전사문이 준비되면 회의록 초안이 만들어집니다."
+MEETING_STOPPED = "회의를 종료하고 녹음을 마쳤습니다. 회의록 초안은 웹에서 확인해 주세요."
+MEETING_VOICE_MISCONFIGURED = (
+    "음성 서비스 설정 오류로 회의를 처리할 수 없습니다. 관리자에게 문의해 주세요."
+)
 MEETING_HOST_REQUESTED = (
     "넘겨받기 요청을 보냈습니다. 진행자가 2분 안에 승인하면 회의 진행자가 바뀝니다."
 )

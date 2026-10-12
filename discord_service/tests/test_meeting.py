@@ -18,6 +18,7 @@ from discord_service.messages import (
     MEETING_STARTED,
     MEETING_STOPPED,
     MEETING_VOICE_DOWN,
+    MEETING_VOICE_MISCONFIGURED,
 )
 
 GUILD = discord.Object(id=1)
@@ -337,3 +338,13 @@ def test_other_components_are_not_ours():
     i = FakeInteraction(data={"custom_id": "something-else"})
     assert not meeting.is_host_button(i)
     assert not meeting.is_host_button(FakeInteraction())
+
+
+def test_node_error_statuses_show_detail_except_401(caplog):
+    for status in (400, 404, 409, 502, 403):
+        node = FakeNode(status=status, detail=f"문장 {status}")
+        assert call("회의시작", v=voice(node)).reply == f"문장 {status}"
+    node = FakeNode(status=401, detail="unauthorized")
+    with caplog.at_level("ERROR"):
+        assert call("회의종료", v=voice(node)).reply == MEETING_VOICE_MISCONFIGURED
+    assert "VOICE_CONTROL_SECRET" in caplog.text

@@ -22,12 +22,15 @@ from .messages import (
     MEETING_STARTED,
     MEETING_STOPPED,
     MEETING_VOICE_DOWN,
+    MEETING_VOICE_MISCONFIGURED,
 )
 
 log = logging.getLogger(__name__)
 
 HOST_BUTTON = "meeting-host:"  # custom_id = meeting-host:{recording_id}:{request_id}:{1|0}
-START_TIMEOUT = 40  # Node가 음성 접속까지 마치고 답한다(30초 상한) — defer 뒤라 3초 규칙과 무관
+START_TIMEOUT = (
+    50  # Node가 core 호출 + Ready 대기(30초)까지 마치고 답한다 — defer 뒤라 3초 규칙과 무관
+)
 TIMEOUT = 10
 NO_MENTION = discord.AllowedMentions.none()
 USER_MENTION = discord.AllowedMentions(users=True, roles=False, everyone=False)
@@ -69,6 +72,12 @@ async def node(voice: Voice, method: str, path: str, body=None, timeout=TIMEOUT)
         raise Refused(MEETING_VOICE_DOWN) from e
     if r.is_success:
         return r.json()
+    if r.status_code == 401:  # VOICE_CONTROL_SECRET이 양쪽에서 다르다. Node 문장은 운영자용이다
+        log.error(
+            "음성 서비스가 인증을 거절했습니다(VOICE_CONTROL_SECRET 확인): %s %s", method, path
+        )
+        raise Refused(MEETING_VOICE_MISCONFIGURED)
+    # Node 오류는 항상 {detail: 문장}(400·404·409·502, core의 403·400·404 전달)이다
     raise Refused(_detail(r) or _error_reply(r))
 
 
