@@ -469,14 +469,15 @@
 
   // ---------- 태스크 패널 미리 받기 ----------
   // 화면에 보이는(또는 마우스·초점이 간) 태스크의 패널을 미리 받아 두고, 열 때는 받아 둔 것을 바로 넣는다.
-  // 넣은 직후 최신본을 다시 받아, 그사이 바뀌었고 아직 손대지 않았으면 갈아 끼운다.
-  // 태스크가 바뀌었다는 이벤트(task-changed·task-updated, SSE 포함)가 오면 그 태스크 것을 버리고 다시 받는다.
+  // 넣은 직후 최신본인지 다시 묻고, 그사이 바뀌었고 아직 손대지 않았으면 갈아 끼운다.
+  // 태스크가 바뀌었다는 이벤트(task-changed·task-updated, SSE 포함)가 오면 그 태스크 것을 낡음으로 표시하고 다시 묻는다.
+  // 물을 때는 가진 것의 해시(If-None-Match)를 보내, 같으면 서버가 본문 없이 304만 돌려준다.
   // ponytail: 캐시는 페이지 수명 동안 메모리에만 둔다. 화면에 나온 태스크 수만큼만 쌓인다.
   (function () {
     var panel = document.getElementById("panel");
     if (!panel || !window.fetch) return;
     var RE = /^\/tasks\/\d+\/panel$/;
-    var cache = {}, gen = {}, queue = [], busy = 0, touched = false;
+    var cache = {}, tags = {}, stale = {}, gen = {}, queue = [], busy = 0, touched = false;
     // 폼마다 새로 섞이는 CSRF 값은 비교에서 뺀다
     function same(a, b) {
       var strip = function (h) { return h.replace(/name="csrfmiddlewaretoken" value="[^"]*"/g, ""); };
@@ -486,22 +487,31 @@
       var u = el.getAttribute && (el.getAttribute("data-panel") || el.getAttribute("hx-get"));
       return u && RE.test(u) ? u : null;
     }
+    function fresh(url) { return cache[url] && !stale[url]; }
     function load(url) {
-      var g = gen[url] || 0;
-      return fetch(url, { headers: { "HX-Request": "true" }, credentials: "same-origin" })
-        .then(function (r) { if (!r.ok || r.redirected) throw r; return r.text(); })
-        .then(function (html) { if ((gen[url] || 0) === g) cache[url] = html; return html; });
+      var g = gen[url] || 0, headers = { "HX-Request": "true" };
+      if (cache[url] && tags[url]) headers["If-None-Match"] = tags[url];
+      return fetch(url, { headers: headers, credentials: "same-origin" }).then(function (r) {
+        var mine = (gen[url] || 0) === g;   // 받는 사이 또 바뀌었으면 결과를 믿지 않는다
+        if (r.status === 304) { if (mine) delete stale[url]; return cache[url]; }
+        if (!r.ok || r.redirected) throw r;
+        var tag = r.headers.get("ETag");
+        return r.text().then(function (html) {
+          if (mine) { cache[url] = html; tags[url] = tag; delete stale[url]; }
+          return html;
+        });
+      });
     }
     function pump() {
       while (busy < 2 && queue.length) {
         var url = queue.shift();
-        if (cache[url]) continue;
+        if (fresh(url)) continue;
         busy++;
         load(url).catch(function () {}).then(function () { busy--; pump(); });
       }
     }
     function want(url, first) {
-      if (!url || cache[url]) return;
+      if (!url || fresh(url)) return;
       var i = queue.indexOf(url);
       if (i >= 0) { if (!first) return; queue.splice(i, 1); }
       if (first) queue.unshift(url); else queue.push(url);
@@ -528,9 +538,9 @@
     });
     function drop(e) {
       var id = e.detail && e.detail.id;
-      if (id == null) { Object.keys(cache).forEach(function (u) { gen[u] = (gen[u] || 0) + 1; }); cache = {}; scan(); return; }
+      if (id == null) { Object.keys(cache).forEach(function (u) { gen[u] = (gen[u] || 0) + 1; stale[u] = true; }); scan(); return; }
       var url = "/tasks/" + id + "/panel";
-      gen[url] = (gen[url] || 0) + 1; delete cache[url];
+      gen[url] = (gen[url] || 0) + 1; stale[url] = true;
       if (document.querySelector('[data-panel="' + url + '"], [hx-get="' + url + '"]')) want(url);
     }
     body.addEventListener("task-changed", drop);
@@ -551,18 +561,19 @@
       if (push && push !== "false") history.pushState(null, "", push);
       touched = false;
       put(html);
-      load(url).then(function (fresh) {
-        if (touched || !shown(url) || same(fresh, html)) return;
+      load(url).then(function (latest) {
+        if (touched || !shown(url) || same(latest, html)) return;
         var top = panel.scrollTop, focused = panel.contains(document.activeElement);
         panelOpening = focused;
-        put(fresh);
+        put(latest);
         panel.scrollTop = top;
       }).catch(function () {});
     });
     // 네트워크로 연 패널도 받아 둔다
     body.addEventListener("htmx:afterRequest", function (e) {
       var d = e.detail || {}, url = d.pathInfo && d.pathInfo.requestPath;
-      if (d.successful && d.target === panel && RE.test(url || "") && d.xhr) cache[url] = d.xhr.responseText;
+      if (!(d.successful && d.target === panel && RE.test(url || "") && d.xhr)) return;
+      cache[url] = d.xhr.responseText; tags[url] = d.xhr.getResponseHeader("ETag"); delete stale[url];
     });
   })();
 

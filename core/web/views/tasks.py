@@ -1,10 +1,12 @@
+import hashlib
 import json
+import re
 from datetime import date, timedelta
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db.models import Q
-from django.http import Http404, HttpResponse, JsonResponse
+from django.http import Http404, HttpResponse, HttpResponseNotModified, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.views.decorators.http import require_POST
@@ -244,9 +246,23 @@ def task_detail(request, task_id):
     return render(request, "tasks/detail.html", ctx)
 
 
+# 폼마다 새로 섞이는 CSRF 값은 해시에서 뺀다. 빼지 않으면 내용이 같아도 해시가 매번 달라진다.
+_CSRF_VALUE = re.compile(rb'name="csrfmiddlewaretoken" value="[^"]*"')
+
+
 @login_required
 def task_panel(request, task_id):
-    return _panel(request, task_or_404(request.user, task_id))
+    """브라우저가 미리 받아 둔 패널의 해시(If-None-Match)가 지금 것과 같으면 본문 없이 304만 보낸다.
+    ponytail: 같은지 보려고 한 번 그리므로 줄어드는 것은 전송량이다. 서버 계산까지 줄이려면 태스크·하위 표의 갱신 시각으로 해시를 만든다."""
+    response = _panel(request, task_or_404(request.user, task_id))
+    digest = hashlib.blake2b(_CSRF_VALUE.sub(b"", response.content), digest_size=12).hexdigest()
+    etag = f'"{digest}"'
+    # 중간 프록시·gzip이 약한 ETag(W/)로 바꿔도 같은 것으로 본다
+    sent = request.headers.get("If-None-Match", "").removeprefix("W/")
+    if sent == etag:
+        return HttpResponseNotModified(headers={"ETag": etag})
+    response["ETag"] = etag
+    return response
 
 
 @login_required
