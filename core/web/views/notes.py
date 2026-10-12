@@ -78,24 +78,7 @@ def org_notes(request, org_id):
         extras = extras_ctx(request.user, note)
         extras["here"] = request.get_full_path()
         extras["recording"] = rec = getattr(note, "recording", None)
-        # 녹음 내려받기: ready | expired | None(올린 파일 없음)
-        extras["audio_state"] = (
-            None
-            if rec is None or not rec.audio_size
-            else "expired"
-            if not rec.audio or ts_notes.audio_expired(rec)
-            else "ready"
-        )
-        extras["audio_expired_text"] = ts_notes.AUDIO_EXPIRED
-        if extras["audio_state"] == "ready":
-            extras["tracks"] = [
-                {
-                    "id": t.discord_user_id,
-                    "name": _track_name(rec, t.discord_user_id),
-                    "size": t.audio_size,
-                }
-                for t in rec.tracks.exclude(audio="").order_by("pk")
-            ]
+        extras.update(audio_ctx(rec))
         # 녹음 파일 올리기·[전사]: 회의록을 고칠 수 있는 사람, Discord 녹음이 없는 회의록만.
         from notes import transcription as tx
 
@@ -339,6 +322,28 @@ def note_audio(request, note_id):
     )
     r["X-Content-Type-Options"] = "nosniff"
     return r
+
+
+def audio_ctx(rec):
+    """녹음 내려받기 칸(회의록 화면·전사 패널 공용). audio_state: ready | expired | None(올린 파일 없음)."""
+    state = (
+        None
+        if rec is None or not rec.audio_size
+        else "expired"
+        if not rec.audio or ts_notes.audio_expired(rec)
+        else "ready"
+    )
+    tracks = []
+    if state == "ready":
+        tracks = [
+            {
+                "id": t.discord_user_id,
+                "name": _track_name(rec, t.discord_user_id),
+                "size": t.audio_size,
+            }
+            for t in rec.tracks.exclude(audio="").order_by("pk")
+        ]
+    return {"audio_state": state, "audio_expired_text": ts_notes.AUDIO_EXPIRED, "tracks": tracks}
 
 
 def _track_name(rec, discord_user_id):

@@ -26,6 +26,14 @@
     </form>
     {% endif %}
     <div class="stack panel-folds">
+      {% if audio_state %}<details class="fold"><summary>녹음 내려받기</summary>
+        {% if audio_state == "ready" %}
+        <p class="t13"><a href="{% url 'note_audio' note.pk %}" download>녹음 내려받기</a> <span class="muted">· {{ recording.audio_size|filesizeformat }}{% if recording.audio_expires_at %} · {{ recording.audio_expires_at|date:"n월 j일" }}까지 보관{% endif %}</span></p>
+        {% for t in tracks %}
+        <p class="t13"><a href="{% url 'note_track' note.pk t.id %}" download>{{ t.name }} 녹음 내려받기</a> <span class="muted">· {{ t.size|filesizeformat }}</span></p>
+        {% endfor %}
+        {% else %}<p class="t13 muted">{{ audio_expired_text }}</p>{% endif %}
+      </details>{% endif %}
       {% if row %}<details class="fold"><summary>세부 정보</summary>
         <dl class="tjob-meta">
           <dt>모델</dt><dd>{{ row.label }}</dd>

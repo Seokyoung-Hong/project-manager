@@ -452,3 +452,15 @@ def test_upload_audio_download_keeps_extension(client, enabled, member):
     r = client.get(f"/notes/{note.pk}/audio")
     assert r.status_code == 200 and r["Content-Type"] == "audio/wav"
     assert ".wav" in r["Content-Disposition"]
+
+
+def test_panel_offers_audio_and_track_downloads(client, enabled, admin, member, bot, monkeypatch):
+    rec, _ = _drafted(enabled, member, bot)
+    rec.audio = ContentFile(b"ogg", name="m.ogg")
+    rec.audio_size = 3
+    rec.save()
+    monkeypatch.setattr("web.views.transcribe.stt_models", lambda org, url: ([], "", None))
+    client.force_login(admin)
+    body = client.get(f"/orgs/{enabled.pk}/transcribe/recordings/{rec.pk}/panel").content.decode()
+    assert f'href="/notes/{rec.note.pk}/audio"' in body
+    assert f'href="/notes/{rec.note.pk}/tracks/h"' in body
