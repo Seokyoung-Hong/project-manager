@@ -13,6 +13,8 @@ import asyncio
 import json
 import time
 
+from asgiref.sync import sync_to_async
+from django.db import connections
 from django.http import HttpResponse, JsonResponse, StreamingHttpResponse
 from django.views.decorators.http import require_GET, require_POST
 
@@ -83,6 +85,9 @@ async def sse(request):
             c.live = False
             c.seen = time.monotonic()
 
+    # 인증에 쓴 DB 연결을 지금 닫는다. 안 닫으면 스트림이 끝날 때까지 연결 하나를 붙잡아 수백 개가 열리면
+    # Postgres max_connections(web과 공유)가 바닥난다(리허설 300연결에서 "too many clients" 재현).
+    await sync_to_async(connections.close_all)()
     resp = StreamingHttpResponse(gen(), content_type="text/event-stream")
     resp["Cache-Control"] = "no-cache"
     resp["X-Accel-Buffering"] = "no"

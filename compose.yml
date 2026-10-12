@@ -78,6 +78,7 @@ services:
     env_file: .env
     environment:
       DATABASE_URL: postgres://pm:${POSTGRES_PASSWORD:-pm}@db:5432/pm
+      DB_CONN_MAX_AGE: "0"   # 요청 스레드마다 연결을 남기지 않는다(동시 연결 수는 rt_asgi의 처리 상한이 묶는다)
     # web의 entrypoint.sh(migrate·collectstatic)를 건너뛴다. 프로세스 하나가 직접 LISTEN하므로 --workers 1 고정.
     # 접속 로그는 web과 같이 끈다(처리방침: 앱에는 IP를 남기지 않는다).
     entrypoint: ["uvicorn", "config.rt_asgi:app", "--host", "0.0.0.0", "--port", "8082", "--workers", "1",
