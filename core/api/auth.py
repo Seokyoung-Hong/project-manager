@@ -3,8 +3,24 @@ from ninja.security import HttpBearer, SessionAuth
 
 from accounts.models import ApiToken
 from accounts.services import consent_active, paused_message
+from orgs.member_info import MemberInfoRequired, api_params, blocked_org, request_org_id
 
 WRITE_EXEMPT_PREFIX = "/api/integrations/"
+
+
+def member_info_gate(request, user):
+    """요청이 가리키는 조직의 필수 구성원 정보가 비었으면 403 profile_required(api/api.py).
+
+    모든 API 인증이 지나는 자리라 엔드포인트마다 붙이지 않는다. 봇·웹훅 경로(/api/integrations/)는
+    사람의 조직 사용이 아니라 빼고, 조직을 정할 수 없는 요청(/api/me 등)은 막지 않는다.
+    """
+    if user is None or request.path.startswith(WRITE_EXEMPT_PREFIX):
+        return user
+    match = request.resolver_match
+    org = blocked_org(user, request_org_id(match.kwargs if match else {}, api_params(request)))
+    if org is not None:
+        raise MemberInfoRequired(org)
+    return user
 
 
 class BrowserSessionAuth(SessionAuth):
@@ -18,7 +34,7 @@ class BrowserSessionAuth(SessionAuth):
     def __call__(self, request):
         if self.param_name not in request.COOKIES:
             return None
-        return super().__call__(request)
+        return member_info_gate(request, super().__call__(request))
 
 
 class TokenAuth(HttpBearer):
@@ -38,7 +54,7 @@ class TokenAuth(HttpBearer):
         if t.for_ai and not consent_active(t.user, "ai"):
             raise HttpError(403, paused_message("ai"))
         request.api_token = t
-        return t.user
+        return member_info_gate(request, t.user)
 
 
 class BotTokenAuth(TokenAuth):

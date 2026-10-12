@@ -58,6 +58,7 @@ MIDDLEWARE = [
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
+    "common.middleware.MemberInfoGate",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     # PUT multipart(봇의 회의 녹음 올리기)도 request.FILES를 채운다. JSON 본문은 건드리지 않는다
     "ninja.compatibility.files.fix_request_files_middleware",

@@ -134,7 +134,15 @@ def call(method, path, query=None, body=None, key=None):
             raw = r.read()
             return json.loads(raw) if raw else None
     except HTTPError as e:
-        raise SystemExit(f"HTTP {e.code}: {e.read().decode('utf-8', errors='replace')}")
+        text = e.read().decode('utf-8', errors='replace')
+        try:
+            err = json.loads(text)
+        except ValueError:
+            err = None
+        # 조직 구성원 정보가 비어 막혔다: 사용자에게 입력 화면 주소를 그대로 보여 준다
+        if isinstance(err, dict) and err.get("error") == "profile_required":
+            raise SystemExit(err.get("message") or err.get("detail"))
+        raise SystemExit(f"HTTP {e.code}: {text}")
     except URLError as e:
         raise SystemExit(f"연결 실패: {e.reason}")
 

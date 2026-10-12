@@ -5,6 +5,7 @@ from ninja.errors import HttpError
 from ninja.throttling import AuthRateThrottle
 
 from common.errors import ConflictError, Forbidden, ServiceError
+from orgs.member_info import MemberInfoRequired
 from portfolio.api import router as portfolio_router
 
 from .auth import BrowserSessionAuth, TokenAuth
@@ -78,6 +79,22 @@ def _service_error(request, exc):
 @api.exception_handler(Forbidden)
 def _forbidden(request, exc):
     return api.create_response(request, {"detail": exc.errors}, status=403)
+
+
+@api.exception_handler(MemberInfoRequired)
+def _member_info_required(request, exc):
+    # MCP·스킬은 detail(문자열)을 그대로 보여 준다. 기계는 error, 사람은 message·url을 읽는다.
+    msg = str(exc)
+    return api.create_response(
+        request,
+        {
+            "detail": msg,
+            "error": "profile_required",
+            "message": msg,
+            "url": exc.url,
+        },
+        status=403,
+    )
 
 
 @api.exception_handler(ConflictError)
