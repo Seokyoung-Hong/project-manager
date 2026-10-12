@@ -50,5 +50,11 @@ export function createCore({ url, token, fetch = globalThis.fetch, timeoutMs = 2
       form.append('file', await openAsBlob(path, { type: 'audio/ogg' }), 'meeting.ogg');
       return call('PUT', `/meetings/${id}/audio`, form, 600000);
     },
+    // 참여자별 트랙(회의 시작 기준 정렬). 같은 사람에게 다시 올리면 바꾼다
+    async uploadTrack(id, discordUserId, path) {
+      const form = new FormData();
+      form.append('file', await openAsBlob(path, { type: 'audio/ogg' }), 'track.ogg');
+      return call('PUT', `/meetings/${id}/tracks/${encodeURIComponent(discordUserId)}`, form, 600000);
+    },
   };
 }

@@ -105,6 +105,7 @@ def test_meeting_notes_move_into_docs(pg_flushable):
     finally:
         from projects.models import Doc
 
-        Doc.objects.filter(kind="meeting", is_template=False).delete()
         ex = MigrationExecutor(connection)
         ex.migrate(ex.loader.graph.leaf_nodes())
+        # 지우기는 끝까지 올린 뒤에(0006 시점엔 연쇄 삭제가 볼 0008 voicetrack 표가 없다)
+        Doc.objects.filter(kind="meeting", is_template=False).delete()

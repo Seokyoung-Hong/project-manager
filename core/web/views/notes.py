@@ -1,3 +1,4 @@
+import re
 from datetime import datetime
 
 from django.contrib import messages
@@ -86,6 +87,15 @@ def org_notes(request, org_id):
             else "ready"
         )
         extras["audio_expired_text"] = ts_notes.AUDIO_EXPIRED
+        if extras["audio_state"] == "ready":
+            extras["tracks"] = [
+                {
+                    "id": t.discord_user_id,
+                    "name": _track_name(rec, t.discord_user_id),
+                    "size": t.audio_size,
+                }
+                for t in rec.tracks.exclude(audio="").order_by("pk")
+            ]
         extras["can_finalize"] = note.status == "draft" and ts_notes._is_owner(note, request.user)
         extras["teams"] = visible_teams(request.user, org).order_by("name")
     return render(
@@ -253,6 +263,33 @@ def note_audio(request, note_id):
         raise Http404 from None
     r = FileResponse(
         fh, as_attachment=True, filename=f"회의록-{note.pk}.ogg", content_type="audio/ogg"
+    )
+    r["X-Content-Type-Options"] = "nosniff"
+    return r
+
+
+def _track_name(rec, discord_user_id):
+    p = next((p for p in rec.participants or [] if p.get("discord_user_id") == discord_user_id), {})
+    return (p.get("display_name") or discord_user_id).removesuffix(ts_notes.UNLINKED_MARK)
+
+
+@login_required
+def note_track(request, note_id, discord_user_id):
+    """참여자별 녹음 내려받기. 권한은 note_audio와 같다."""
+    note = _note_or_404(request.user, note_id)
+    rec = getattr(note, "recording", None)
+    if rec is None or ts_notes.audio_expired(rec):
+        raise Http404
+    track = rec.tracks.filter(discord_user_id=discord_user_id).exclude(audio="").first()
+    if track is None:
+        raise Http404
+    try:
+        fh = track.audio.open("rb")
+    except FileNotFoundError:
+        raise Http404 from None
+    name = re.sub(r"[^\w-]+", "_", _track_name(rec, discord_user_id)).strip("_") or "참여자"
+    r = FileResponse(
+        fh, as_attachment=True, filename=f"회의록-{note.pk}-{name}.ogg", content_type="audio/ogg"
     )
     r["X-Content-Type-Options"] = "nosniff"
     return r

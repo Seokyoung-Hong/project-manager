@@ -112,7 +112,7 @@ services:
       VOICE_CONTROL_PORT: "8082"
       VOICE_DATA: /data
       SITE_URL: ${SITE_URL:-}      # 시작 고지의 처리방침 링크
-      NODE_OPTIONS: --max-old-space-size=96
+      NODE_OPTIONS: --max-old-space-size=192
     volumes:
       - discord_voice_data:/data   # 녹음 구간(7일 뒤 스스로 지운다). 백업에 넣지 않는다
     depends_on:
@@ -121,7 +121,7 @@ services:
     expose:
       - "8082"                    # discord-bot만 부른다. 호스트 포트로 공개하지 않는다.
     # LXC 512MB의 가용분(≈190MB) 아래로 둔다. 넘치면 db·web 대신 이 컨테이너가 먼저 죽는다(재시도 큐가 이어 받는다)
-    mem_limit: 160m
+    mem_limit: 384m
     oom_score_adj: 1000
     logging: *logging
     restart: unless-stopped

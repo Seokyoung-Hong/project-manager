@@ -15,7 +15,7 @@ from orgs.services import ai_denied, is_admin, is_member, visible_teams
 from projects import docs
 from projects.services import can_view_project, visible_projects
 
-from .models import MeetingNote, VoiceRecording
+from .models import MeetingNote, VoiceRecording, VoiceTrack
 
 log = logging.getLogger(__name__)
 
@@ -553,13 +553,21 @@ def _is_ogg_opus(upload) -> bool:
 
 
 @transaction.atomic
-def save_audio(rec, upload) -> VoiceRecording:
-    """봇이 올린 혼합 녹음(Ogg). 같은 회의에 다시 올리면 바꾼다. 옛 파일은 커밋 뒤에 지운다."""
+def save_audio(rec, upload, discord_user_id: str | None = None):
+    """봇이 올린 혼합 녹음(Ogg), discord_user_id가 있으면 그 참여자의 트랙(VoiceTrack).
+    같은 대상에 다시 올리면 바꾼다. 옛 파일은 커밋 뒤에 지운다."""
     if upload.size > AUDIO_MAX_BYTES:
         raise ServiceError({"file": "녹음 파일의 크기 제한은 300MB입니다."})
     if not _is_ogg_opus(upload):
         raise ServiceError({"file": "올릴 수 있는 녹음 파일 형식은 Ogg입니다."})
-    rec = VoiceRecording.objects.select_for_update().select_related("note").get(pk=rec.pk)
+    if discord_user_id is None:
+        rec = VoiceRecording.objects.select_for_update().select_related("note").get(pk=rec.pk)
+    else:
+        if not 0 < len(discord_user_id) <= 32:
+            raise ServiceError({"discord_user_id": "Discord 사용자 ID가 올바르지 않습니다."})
+        rec = VoiceTrack.objects.select_for_update().get_or_create(
+            recording=rec, discord_user_id=discord_user_id
+        )[0]
     old = rec.audio.name
     rec.audio.save("meeting.ogg", upload, save=False)
     rec.audio_size = upload.size
@@ -580,6 +588,11 @@ def purge_expired_audio() -> int:
         storage.delete(rec.audio.name)
         VoiceRecording.objects.filter(pk=rec.pk).update(audio="")
         n += 1
+    for t in VoiceTrack.objects.filter(recording__audio_expires_at__lte=timezone.now()).exclude(
+        audio=""
+    ):
+        storage.delete(t.audio.name)
+        VoiceTrack.objects.filter(pk=t.pk).update(audio="")
     return n
 
 

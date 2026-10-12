@@ -86,3 +86,23 @@ class VoiceRecording(models.Model):
 
     def __str__(self):
         return f"녹음 #{self.pk}"
+
+
+def track_path(instance, filename):
+    return f"meeting/{instance.recording.note.org_id}/{uuid.uuid4().hex}.ogg"
+
+
+class VoiceTrack(models.Model):
+    """참여자별 녹음(그 사람 구간만, 회의 시작 기준 정렬). 보관·정리는 VoiceRecording.audio와 같다."""
+
+    recording = models.ForeignKey(VoiceRecording, on_delete=models.CASCADE, related_name="tracks")
+    discord_user_id = models.CharField(max_length=32)
+    audio = models.FileField(upload_to=track_path, max_length=200, blank=True)
+    audio_size = models.PositiveBigIntegerField(default=0)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["recording", "discord_user_id"], name="uniq_voice_track_user"
+            )
+        ]

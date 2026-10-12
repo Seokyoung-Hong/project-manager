@@ -794,6 +794,16 @@ def meeting_audio(request, recording_id: int, file: UploadedFile = File(...)):  
     return {"ok": True, "size": rec.audio_size}
 
 
+@router.put("/meetings/{int:recording_id}/tracks/{discord_user_id}", response=dict)
+def meeting_track(request, recording_id: int, discord_user_id: str, file: UploadedFile = File(...)):  # noqa: B008
+    """참여자별 트랙(그 사람 구간만, 회의 시작 기준 정렬). 상한·형식·410은 `/audio`와 같다."""
+    rec = _recording(recording_id)
+    if notes_svc.audio_expired(rec):
+        raise HttpError(410, notes_svc.AUDIO_EXPIRED)
+    track = notes_svc.save_audio(rec, file, discord_user_id)
+    return {"ok": True, "size": track.audio_size}
+
+
 @router.get("/meetings/{int:recording_id}/names", response=dict)
 def meeting_names(request, recording_id: int):
     """전사문 화자 표기(PM 이름, 미연결자는 'Discord 닉네임 (계정 없음)')·전사 설정·용어집."""

@@ -753,7 +753,7 @@ def media(settings, tmp_path):
     return tmp_path
 
 
-def _put_audio(client, rec, data=OGG, *, token=None, name="meeting.ogg"):
+def _put_audio(client, rec, data=OGG, *, token=None, name="meeting.ogg", path="audio"):
     from django.core.files.uploadedfile import SimpleUploadedFile
     from django.test.client import BOUNDARY, MULTIPART_CONTENT, encode_multipart
 
@@ -762,7 +762,7 @@ def _put_audio(client, rec, data=OGG, *, token=None, name="meeting.ogg"):
         token = ApiToken.issue(u, "봇", "bot")[1]
     body = encode_multipart(BOUNDARY, {"file": SimpleUploadedFile(name, data)})
     return client.put(
-        f"/api/integrations/discord/meetings/{rec.pk}/audio",
+        f"/api/integrations/discord/meetings/{rec.pk}/{path}",
         body,
         content_type=MULTIPART_CONTENT,
         headers=_h(token),
@@ -882,6 +882,71 @@ def test_audio_purge_after_expiry(client, enabled, member, media):
     assert not rec.audio and rec.audio_size == len(OGG)
     page = client.get(f"/orgs/{enabled.pk}/notes?note={rec.note_id}").content.decode()
     assert "보관 기간이 지나 녹음 파일이 삭제된 상태입니다." in page and "녹음 내려받기" not in page
+
+
+def _with_tracks(client, org, host):
+    rec = _ended(org, host)
+    VoiceRecording.objects.filter(pk=rec.pk).update(
+        participants=[
+            {"discord_user_id": "111", "display_name": "팀원"},
+            {"discord_user_id": "999", "display_name": "철/수 (계정 없음)"},
+        ]
+    )
+    _put_audio(client, rec)
+    for did in ("111", "999"):
+        assert _put_audio(client, rec, path=f"tracks/{did}").status_code == 200
+    rec.refresh_from_db()
+    return rec
+
+
+def test_track_upload_bot_only_replaces_and_expired(
+    client, enabled, member, media, write_token, django_capture_on_commit_callbacks
+):
+    from notes.models import VoiceTrack
+
+    rec = _ended(enabled, member)
+    assert _put_audio(client, rec, token=write_token, path="tracks/111").status_code in (401, 403)
+    assert _put_audio(client, rec, b"RIFF....WAVE", path="tracks/111").status_code == 400
+    r = _put_audio(client, rec, path="tracks/111")
+    assert r.status_code == 200 and r.json() == {"ok": True, "size": len(OGG)}
+    first = VoiceTrack.objects.get(recording=rec, discord_user_id="111").audio.name
+    with django_capture_on_commit_callbacks(execute=True):
+        _put_audio(client, rec, OGG + _page(b"more", flags=0x04), path="tracks/111")
+    t = VoiceTrack.objects.get(recording=rec, discord_user_id="111")  # 덮어쓰기: 한 줄
+    assert t.audio_size == len(OGG) + 32 and not (media / first).exists()
+    rec.audio_expires_at = timezone.now() - timezone.timedelta(minutes=1)
+    rec.save()
+    assert _put_audio(client, rec, path="tracks/111").status_code == 410
+
+
+def test_track_download_names_and_visibility(client, enabled, member, other, media):
+    rec = _with_tracks(client, enabled, member)
+    client.force_login(member)
+    page = client.get(f"/orgs/{enabled.pk}/notes?note={rec.note_id}").content.decode()
+    assert "팀원 녹음 내려받기" in page and "철/수 녹음 내려받기" in page
+    r = client.get(f"/notes/{rec.note_id}/tracks/999")
+    assert r.status_code == 200 and b"".join(r.streaming_content) == OGG
+    # 회의록-{id}-철_수.ogg (파일명 안전 처리, '(계정 없음)' 뺌)
+    assert f"-{rec.note_id}-%EC%B2%A0_%EC%88%98.ogg" in r["Content-Disposition"]
+    assert client.get(f"/notes/{rec.note_id}/tracks/555").status_code == 404
+    client.force_login(other)  # 초안은 진행자·관리자만
+    assert client.get(f"/notes/{rec.note_id}/tracks/999").status_code == 404
+
+
+def test_track_purge_after_expiry(client, enabled, member, media):
+    from notes.services import purge_expired_audio
+
+    rec = _with_tracks(client, enabled, member)
+    path = media / rec.tracks.get(discord_user_id="111").audio.name
+    assert path.exists()
+    VoiceRecording.objects.filter(pk=rec.pk).update(
+        audio_expires_at=timezone.now() - timezone.timedelta(seconds=1)
+    )
+    client.force_login(member)
+    assert client.get(f"/notes/{rec.note_id}/tracks/111").status_code == 404
+    purge_expired_audio()
+    assert not path.exists() and not rec.tracks.exclude(audio="").exists()
+    assert rec.tracks.get(discord_user_id="111").audio_size == len(OGG)
 
 
 def test_engine_none_draft_notice(enabled, member, bot):

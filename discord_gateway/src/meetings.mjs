@@ -264,6 +264,7 @@ export class Meetings {
     if (!uploaded) return this.retry(st, '녹음 파일 올리기');
     rmSync(join(this.dir(st), 'seg'), { recursive: true, force: true });
     rmSync(join(this.dir(st), 'meeting.ogg'), { force: true });
+    for (const f of readdirSync(this.dir(st))) if (f.startsWith('track-')) rmSync(join(this.dir(st), f), { force: true });
     st.retries = 0;
     this.save(st);
   }
@@ -276,7 +277,8 @@ export class Meetings {
     setTimeout(() => this.enqueue(st), ms).unref?.();
   }
 
-  /** 구간들을 회의 시작 기준으로 섞어 meeting.ogg를 만들고 core에 올린다. 성공 여부를 돌려준다. */
+  /** 구간들을 회의 시작 기준으로 섞어 meeting.ogg를, 참여자마다 그 사람 구간만 같은 기준으로 섞어
+   * track-<user_id>.ogg를 만들고(순차, 동시 ffmpeg 없음) core에 올린다. 전부 올라가야 성공. 성공 여부를 돌려준다. */
   async upload(st) {
     const dir = this.dir(st);
     const segs = readJsonl(join(dir, 'segments.jsonl'))
@@ -287,7 +289,13 @@ export class Meetings {
         const out = join(dir, 'meeting.ogg');
         if (!existsSync(out)) await mix(segs.map((g) => ({ path: join(dir, g.file), delay_ms: g.start_ms })), out, { run: this.ffmpeg });
         await this.core.uploadAudio(st.recording_id, out);
-        this.log('녹음 파일 올림', { recording_id: st.recording_id, segments: segs.length });
+        const users = [...new Set(segs.map((g) => g.user_id))];
+        for (const u of users) { // PUT은 덮어쓰기라 재시도 때 다시 올려도 된다
+          const t = join(dir, `track-${u}.ogg`);
+          if (!existsSync(t)) await mix(segs.filter((g) => g.user_id === u).map((g) => ({ path: join(dir, g.file), delay_ms: g.start_ms })), t, { run: this.ffmpeg });
+          await this.core.uploadTrack(st.recording_id, u, t);
+        }
+        this.log('녹음 파일 올림', { recording_id: st.recording_id, segments: segs.length, tracks: users.length });
       }
       st.uploaded = true; // 말한 구간이 없으면 올릴 것도 없다
       this.save(st);
