@@ -98,8 +98,8 @@ def tokens(request):
             "revoked_tokens": request.user.tokens.filter(revoked_at__isnull=False),
             "new_token": request.session.pop("new_token", None),
             "mcp_url": settings.MCP_URL,
-            # 스킬 설치 명령. 설치 스크립트도 요청한 주소를 박으므로 같은 기준을 쓴다
-            "site_url": request.build_absolute_uri("/").rstrip("/"),
+            # 스킬 설치 명령. 설치 스크립트와 같은 정식 주소
+            "site_url": settings.SITE_URL,
         },
     )
 

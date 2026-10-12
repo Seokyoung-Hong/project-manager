@@ -15,8 +15,8 @@ TYPES = {"ps1": "text/plain; charset=utf-8", "sh": "text/x-shellscript; charset=
 def install(request, ext):
     if ext not in TYPES:
         raise Http404
-    # 요청한 주소로 설치해야 토큰도 그 주소로 받는다
-    base = request.build_absolute_uri("/").rstrip("/")
+    # 별칭(project.sio2.kr)이나 프록시 헤더와 상관없이 정식 주소로 설치·로그인한다
+    base = settings.SITE_URL
     body = (SCRIPTS / f"install.{ext}").read_text(encoding="utf-8").replace("\r\n", "\n")
     return HttpResponse(body.replace("__BASE__", base), content_type=TYPES[ext])
 
