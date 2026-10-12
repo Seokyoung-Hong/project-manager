@@ -15,7 +15,7 @@ from orgs.services import ai_denied, is_admin, is_member, visible_teams
 from projects import docs
 from projects.services import can_view_project, visible_projects
 
-from .models import MeetingNote, VoiceRecording, VoiceTrack
+from .models import MeetingNote, TranscriptionJob, VoiceRecording, VoiceTrack
 
 log = logging.getLogger(__name__)
 
@@ -588,6 +588,72 @@ def save_audio(rec, upload, discord_user_id: str | None = None):
     rec.audio.save("meeting.ogg", upload, save=False)
     rec.audio_size = upload.size
     rec.save(update_fields=["audio", "audio_size"])
+    if old:
+        storage = rec.audio.storage
+        transaction.on_commit(lambda: storage.delete(old))
+    return rec
+
+
+# 회의록 화면에서 올리는 녹음(IMPL-PLAN-10-transcribe-menu §12). core에는 ffmpeg가 없어 확장자 + 앞 바이트만 본다.
+# 실제 디코딩은 Node 전사 때 ffmpeg가 한다(못 읽으면 전사 작업 실패로 남는다).
+UPLOAD_AUDIO_TYPES = {
+    "mp3": lambda h: h[:3] == b"ID3" or (h[0] == 0xFF and h[1] & 0xE0 == 0xE0),
+    "m4a": lambda h: h[4:8] == b"ftyp",
+    "wav": lambda h: h[:4] == b"RIFF" and h[8:12] == b"WAVE",
+    "ogg": lambda h: h[:4] == b"OggS",
+    "opus": lambda h: h[:4] == b"OggS",
+    "webm": lambda h: h[:4] == bytes.fromhex("1a45dfa3"),  # EBML
+}
+UPLOAD_AUDIO_ACCEPT = ",".join(f".{e}" for e in UPLOAD_AUDIO_TYPES)
+
+
+@transaction.atomic
+def upload_audio(note, upload, actor) -> VoiceRecording:
+    """회의록에 녹음 파일을 올린다. 권한은 회의록 고치기와 같다. Discord 녹음이 있는 회의록에는 올리지 않는다.
+    다시 올리면 파일을 바꾼다(전사문·전사 기록은 남는다). 보관 기간은 Discord 녹음과 같다."""
+    _check_edit(note, actor, "web")
+    ext = (upload.name or "").rsplit(".", 1)[-1].lower() if "." in (upload.name or "") else ""
+    if ext not in UPLOAD_AUDIO_TYPES:
+        raise ServiceError(
+            {"file": "올릴 수 있는 녹음 파일 형식은 mp3·m4a·wav·ogg·webm·opus입니다."}
+        )
+    if upload.size > AUDIO_MAX_BYTES:
+        raise ServiceError({"file": "녹음 파일의 크기 제한은 300MB입니다."})
+    upload.seek(0)
+    head = upload.read(12)
+    upload.seek(0)
+    if len(head) < 12 or not UPLOAD_AUDIO_TYPES[ext](head):
+        raise ServiceError(
+            {"file": f"파일 내용이 .{ext} 녹음 형식이 아닙니다. 파일을 확인해 주세요."}
+        )
+    rec = VoiceRecording.objects.select_for_update().filter(note=note).first()
+    if rec is not None and rec.source != "upload":
+        raise ServiceError(
+            {"file": "Discord 회의 녹음이 있는 회의록에는 녹음 파일을 올릴 수 없습니다."}
+        )
+    if rec is not None and rec.jobs.filter(status__in=TranscriptionJob.ACTIVE).exists():
+        raise ServiceError(
+            {"file": "전사 중에는 녹음 파일을 바꿀 수 없습니다. 전사가 끝난 뒤 올려 주세요."}
+        )
+    now = timezone.now()
+    if rec is None:
+        rec = VoiceRecording(
+            note=note,
+            source="upload",
+            guild_id="",
+            voice_channel_id="",
+            started_by=actor,
+            host_id=note.created_by_id or actor.pk,  # 초안을 다룰 사람(작성자)을 바꾸지 않는다
+            status="draft",
+        )
+    keep = org_settings.effective("meeting.audio_keep_days", org=note.org)
+    rec.ended_at = now
+    rec.audio_expires_at = now + timedelta(days=keep)
+    old = rec.audio.name
+    rec.audio.save(f"upload.{ext}", upload, save=False)
+    rec.audio_size = upload.size
+    rec.segments = []  # 구간은 전사할 때 Node가 무음 기준으로 나눈다
+    rec.save()
     if old:
         storage = rec.audio.storage
         transaction.on_commit(lambda: storage.delete(old))

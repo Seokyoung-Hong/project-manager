@@ -126,6 +126,17 @@
     {% elif audio_state == "expired" %}
     <p class="t13 muted">{{ audio_expired_text }}</p>
     {% endif %}
+    {% if can_upload_audio %}
+    <form class="row" method="post" enctype="multipart/form-data" action="{% url 'note_audio_upload' note.pk %}">{% csrf_token %}
+      <label class="field"><span class="label">녹음 파일{% if recording %} 바꾸기{% endif %}</span>
+        <input class="input" type="file" name="file" accept="{{ upload_accept }}" required aria-describedby="note-audio-help"></label>
+      <button class="btn sm">녹음 파일 올리기</button>
+      <span id="note-audio-help" class="muted t12">mp3·m4a·wav·ogg·webm·opus, 300MB까지. 화자 하나("올린 녹음")로 전사합니다.</span>
+    </form>
+    {% endif %}
+    {% if can_transcribe_upload %}
+    <form method="post" action="{% url 'note_transcribe' note.pk %}">{% csrf_token %}<button class="btn sm tint">전사 시작</button></form>
+    {% endif %}
     {% if transcribe_line %}<p class="t13 muted" role="status">{{ transcribe_line }}{% if transcribe_admin %} · <a href="{% url 'org_transcribe' note.org_id %}">전사 메뉴에서 보기</a>{% endif %}</p>{% endif %}
     {% if recording and recording.transcript_md %}
     <details>

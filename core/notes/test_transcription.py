@@ -48,6 +48,15 @@ def bot(client):
 
 
 @pytest.fixture
+def other_member(org):
+    from orgs.models import OrgMembership
+
+    u = User.objects.create_user("other2", password="pw12345678", display_name="다른팀원")
+    OrgMembership.objects.create(org=org, user=u, role="member")
+    return u
+
+
+@pytest.fixture
 def enabled(org, admin):
     org.discord_guild_id = "g1"
     org.save()
@@ -292,3 +301,154 @@ def test_panel_lists_options_without_server_and_shows_history(
     assert 'value="openai|whisper-1"' in body and "OpenAI Whisper(whisper-1) · OpenAI API" in body
     assert "모델 목록을 불러오지 못했습니다" in body
     assert "현재 전사문" in body and "회의록 본문은 바뀌지 않습니다" in body
+
+
+# ---------- 올린 녹음(IMPL-PLAN-10-transcribe-menu §12) ----------
+MP3 = b"ID3\x04\x00\x00\x00\x00\x00\x00" + bytes(100)
+
+
+def _upload(client, note, data=MP3, name="회의.mp3"):
+    from django.core.files.uploadedfile import SimpleUploadedFile
+
+    return client.post(f"/notes/{note.pk}/audio/upload", {"file": SimpleUploadedFile(name, data)})
+
+
+@pytest.mark.parametrize(
+    ("name", "data"),
+    [
+        ("a.mp3", MP3),
+        ("a.mp3", b"\xff\xfb\x90\x00" + bytes(20)),
+        ("a.m4a", b"\x00\x00\x00\x20ftypM4A " + bytes(20)),
+        ("a.wav", b"RIFF\x00\x00\x00\x00WAVEfmt " + bytes(20)),
+        ("a.OGG", b"OggS" + bytes(20)),
+        ("a.opus", b"OggS" + bytes(20)),
+        ("a.webm", bytes.fromhex("1a45dfa3") + bytes(20)),
+    ],
+)
+def test_upload_accepts_types_by_extension_and_magic(client, enabled, member, name, data):
+    from notes.services import create_note
+
+    note = create_note(org=enabled, actor=member, title="대면 회의")
+    client.force_login(member)
+    assert _upload(client, note, data, name).status_code == 302
+    rec = note.recording
+    assert rec.source == "upload" and rec.status == "draft" and rec.audio_size == len(data)
+    assert rec.audio.name.endswith("." + name.rsplit(".", 1)[1].lower())
+    assert rec.host_id == member.pk and rec.audio_expires_at is not None
+    assert rec.note.body_md == ""  # 회의록 본문은 그대로
+
+
+@pytest.mark.parametrize(
+    ("name", "data", "why"),
+    [
+        ("a.txt", MP3, "형식은"),
+        ("a.mp3", b"OggS" + bytes(20), ".mp3 녹음 형식이 아닙니다"),
+        ("a.wav", b"RIFF" + bytes(20), ".wav 녹음 형식이 아닙니다"),
+        ("a.ogg", b"Og", ".ogg 녹음 형식이 아닙니다"),
+    ],
+)
+def test_upload_rejects_bad_files(client, enabled, member, name, data, why):
+    from notes.services import create_note
+
+    note = create_note(org=enabled, actor=member)
+    client.force_login(member)
+    r = _upload(client, note, data, name)
+    assert why in [m.message for m in r.wsgi_request._messages][0]
+    note.refresh_from_db()
+    assert not hasattr(note, "recording")
+
+
+def test_upload_size_limit(enabled, member, monkeypatch):
+    from django.core.files.uploadedfile import SimpleUploadedFile
+
+    from notes import services
+    from notes.services import create_note
+
+    note = create_note(org=enabled, actor=member)
+    monkeypatch.setattr(services, "AUDIO_MAX_BYTES", 50)
+    with pytest.raises(Exception, match="300MB"):
+        services.upload_audio(note, SimpleUploadedFile("a.mp3", MP3), member)
+
+
+def test_upload_permission_and_discord_recording(client, enabled, admin, member, other_member, bot):
+    from notes.services import create_note
+
+    # 다른 사람 초안(Discord 회의) — 진행자·관리자가 아니면 못 올리고, 진행자도 Discord 녹음에는 못 올린다
+    rec, _ = _drafted(enabled, member, bot)
+    client.force_login(member)
+    r = _upload(client, rec.note)
+    assert "Discord 회의 녹음" in [m.message for m in r.wsgi_request._messages][0]
+    # 확정 회의록은 조직 구성원이면 올릴 수 있다(회의록 고치기 규칙과 같다)
+    note = create_note(org=enabled, actor=admin)
+    client.force_login(other_member)
+    assert _upload(client, note).status_code == 302
+    note.refresh_from_db()
+    assert note.recording.source == "upload"
+
+
+def test_upload_transcribe_queue_claim_and_menu(client, enabled, admin, member, bot):
+    from notes.services import create_note
+
+    note = create_note(org=enabled, actor=member, title="대면 회의")
+    client.force_login(member)
+    _upload(client, note)
+    page = client.get(f"/orgs/{enabled.pk}/notes?note={note.pk}").content.decode()
+    assert "전사 시작" in page and 'accept=".mp3,.m4a,.wav,.ogg,.opus,.webm"' in page
+    client.post(f"/notes/{note.pk}/transcribe")
+    job = TranscriptionJob.objects.get()
+    assert (job.kind, job.status, job.engine, job.model, job.audio_ms) == (
+        "upload",
+        "queued",
+        "local",
+        "large-v3",
+        0,
+    )
+    assert tx.remaining_s(job) is None  # 길이를 모른다 → 계산 중
+    client.post(f"/notes/{note.pk}/transcribe")
+    assert TranscriptionJob.objects.count() == 1  # 대기 중이면 또 넣지 않는다
+    # 녹음 파일을 바꾸려 해도 전사 중이면 막는다
+    r = _upload(client, note)
+    assert "전사 중에는" in [m.message for m in r.wsgi_request._messages][-1]
+
+    out = bot("post", "/transcriptions/claim").json()
+    assert out["source"] == "upload" and out["speaker"] == "올린 녹음"
+    assert out["segments"] == [] and out["tracks"] == []
+    r = bot("get", f"/meetings/{note.recording.pk}/audio")
+    assert r.status_code == 200 and b"".join(r.streaming_content) == MP3
+    assert r["X-Audio-Ext"] == "mp3"
+    bot(
+        "patch",
+        f"/transcriptions/{job.pk}",
+        {"audio_ms": 9000, "done_ms": 3000, "segments_total": 3},
+    )
+    bot(
+        "patch",
+        f"/transcriptions/{job.pk}",
+        {"status": "done", "transcript_md": "[00:00:01] 올린 녹음: 안녕", "done_ms": 9000},
+    )
+    note.refresh_from_db()
+    assert note.recording.transcript_md == "[00:00:01] 올린 녹음: 안녕"
+    assert "안녕" not in note.body_md
+
+    # 전사 메뉴: 목록·패널·다른 모델로 다시 전사가 올린 녹음에도
+    client.force_login(admin)
+    menu = client.get(f"/orgs/{enabled.pk}/transcribe").content.decode()
+    assert "대면 회의" in menu and "올린 녹음 전사" in menu
+    panel = client.get(
+        f"/orgs/{enabled.pk}/transcribe/recordings/{note.recording.pk}/panel"
+    ).content.decode()
+    assert "올린 녹음" in panel and 'value="openai|whisper-1"' in panel
+    retry = tx.request_retry(note.recording, engine="openai", model="whisper-1", actor=admin)
+    assert retry.kind == "retry" and retry.status == "queued"
+    assert tx.claim().pk == retry.pk
+
+
+def test_upload_audio_download_keeps_extension(client, enabled, member):
+    from notes.services import create_note
+
+    note = create_note(org=enabled, actor=member)
+    client.force_login(member)
+    _upload(client, note, b"RIFF\x00\x00\x00\x00WAVEfmt " + bytes(20), "a.wav")
+    r = client.get(f"/notes/{note.pk}/audio")
+    assert r.status_code == 200 and r["Content-Type"] == "audio/wav"
+    assert ".wav" in r["Content-Disposition"]

@@ -812,6 +812,23 @@ def meeting_track(request, recording_id: int, discord_user_id: str, file: Upload
     return {"ok": True, "size": track.audio_size}
 
 
+@router.get("/meetings/{int:recording_id}/audio")
+def meeting_audio_get(request, recording_id: int):
+    """전사용 녹음 파일 내려받기(올린 녹음은 원래 형식 그대로). 보관 기간이 지났으면 410."""
+    rec = _recording(recording_id)
+    if notes_svc.audio_expired(rec):
+        raise HttpError(410, notes_svc.AUDIO_EXPIRED)
+    if not rec.audio:
+        raise HttpError(404, "녹음 파일을 찾을 수 없습니다.")
+    try:
+        fh = rec.audio.open("rb")
+    except FileNotFoundError:
+        raise HttpError(404, "녹음 파일을 찾을 수 없습니다.") from None
+    r = FileResponse(fh, content_type="application/octet-stream")
+    r["X-Audio-Ext"] = rec.audio.name.rsplit(".", 1)[-1]
+    return r
+
+
 @router.get("/meetings/{int:recording_id}/tracks/{discord_user_id}")
 def meeting_track_get(request, recording_id: int, discord_user_id: str):
     """다시 전사용 참여자별 트랙 내려받기. 보관 기간이 지났으면 410."""

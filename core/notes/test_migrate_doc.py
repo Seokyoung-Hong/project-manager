@@ -93,9 +93,9 @@ def test_meeting_notes_move_into_docs(pg_flushable):
         assert (d1.created_on, d1.created_at, d1.created_by_id) == (T0, T0, host.pk)
         assert list(d1.tasks.all()) == [task]
         assert set(d1.attendees.all()) == {host, guest}
-        # 0006 시점 표에는 뒤 마이그레이션(0007 audio, 0009 전사 작업)의 열이 없다
+        # 0006 시점 표에는 뒤 마이그레이션(0007 audio, 0009 전사 작업, 0010 출처)의 열이 없다
         rec = VoiceRecording.objects.defer(
-            "audio", "audio_size", "segments", "transcript_job"
+            "audio", "audio_size", "segments", "transcript_job", "source"
         ).get()
         assert rec.note_id == d1.pk and rec.host == guest and rec.transcript_md == "안녕"
         assert d1.revisions.get().version == 4

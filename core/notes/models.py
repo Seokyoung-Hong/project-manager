@@ -32,8 +32,10 @@ class MeetingNote(Doc):
 
 
 def audio_path(instance, filename):
-    """meeting/<org_id>/<uuid4 hex>.ogg. MEDIA_ROOT 아래지만 URL이 없다 — 내려받기 뷰만 내준다."""
-    return f"meeting/{instance.note.org_id}/{uuid.uuid4().hex}.ogg"
+    """meeting/<org_id>/<uuid4 hex>.<확장자>. MEDIA_ROOT 아래지만 URL이 없다 — 내려받기 뷰만 내준다.
+    봇 녹음은 .ogg, 올린 녹음은 검증한 확장자(UPLOAD_AUDIO_TYPES)다."""
+    ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else "ogg"
+    return f"meeting/{instance.note.org_id}/{uuid.uuid4().hex}.{ext}"
 
 
 class VoiceRecording(models.Model):
@@ -55,6 +57,8 @@ class VoiceRecording(models.Model):
         ("failed", "실패"),
     ]
 
+    SOURCES = [("discord", "Discord 회의"), ("upload", "올린 녹음")]
+
     # 회의록 문서(kind="meeting"). 문서 쪽에서는 doc.recording.
     note = models.OneToOneField("projects.Doc", on_delete=models.CASCADE, related_name="recording")
     guild_id = models.CharField(max_length=32)
@@ -74,6 +78,8 @@ class VoiceRecording(models.Model):
     ended_at = models.DateTimeField(null=True, blank=True)
     end_reason = models.CharField(max_length=20, choices=END_REASONS, blank=True)
     status = models.CharField(max_length=20, choices=STATUSES, default="recording")
+    # upload: 회의록 화면에서 올린 녹음 파일 하나(guild·참여자·트랙 없음, 화자 하나).
+    source = models.CharField(max_length=10, choices=SOURCES, default="discord")
     # [{discord_user_id, display_name, user_id|null, joined_at, left_at}]
     participants = models.JSONField(default=list, blank=True)
     transcript_md = models.TextField(blank=True)
@@ -120,7 +126,7 @@ class TranscriptionJob(models.Model):
     실행은 Node 음성 서비스가 한다. core는 상태·진행·취소 신호만 들고 있다.
     """
 
-    KINDS = [("auto", "회의 종료 뒤"), ("retry", "다시 전사")]
+    KINDS = [("auto", "회의 종료 뒤"), ("retry", "다시 전사"), ("upload", "올린 녹음 전사")]
     STATUSES = [
         ("queued", "대기"),
         ("running", "전사 중"),

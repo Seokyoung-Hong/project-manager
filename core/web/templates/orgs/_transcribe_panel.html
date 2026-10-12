@@ -6,7 +6,7 @@
   <div class="stack tjob-panel">
     <div>
       <h2 class="display t24">{{ note.title }}</h2>
-      <p class="t13 muted">{{ rec.started_at|date:"n월 j일 H:i" }} · 참여자 {{ rec.participants|length }}명{% if speech_min %} · 말한 음성 {{ speech_min }}분{% endif %} · <a href="{% url 'org_notes' org.pk %}?note={{ note.pk }}">회의록 보기</a></p>
+      <p class="t13 muted">{{ rec.started_at|date:"n월 j일 H:i" }} · {% if rec.source == "upload" %}올린 녹음{% else %}참여자 {{ rec.participants|length }}명{% endif %}{% if speech_min %} · 말한 음성 {{ speech_min }}분{% endif %} · <a href="{% url 'org_notes' org.pk %}?note={{ note.pk }}">회의록 보기</a></p>
     </div>
     {% if error %}<p class="notice bad" role="alert">⚠ {{ error }}</p>{% endif %}
     {% include "orgs/_transcribe_progress.html" with row=active_row %}

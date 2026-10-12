@@ -185,3 +185,19 @@ queued ──(Node가 가져감)──▶ running ──▶ done
 - 회의록 화면에는 "전사 중 · 약 N분"(관리자에게는 전사 메뉴 링크)과 접힌 전사문 칸만 둔다.
 - 조직 설정 화면에서 전사 칸(`orgs.settings.STT_KEYS`)을 빼고 링크 한 줄만 남겼다. 두 화면 모두 서로의 값을 보존해 저장한다.
 - `/ops/design` 견본은 추가하지 않았다(DESIGN.md 4장에 부품 한 줄만).
+
+## 12. 회의록에 녹음 파일 올리기 → 전사 (2026-10-12 추가)
+
+사용자 요구: "회의록에 음성을 올리고, 올린 뒤 전사할 수 있게". 화자 분리 결정은 `docs/PLAN-diarization.md` 맨 위 "사용자 결정"(Discord 기본 = 참여자별 전사 후 타임라인 병합).
+
+- **올리기**: 회의록 화면 [녹음 파일 올리기](`POST /notes/<id>/audio/upload`). 권한은 회의록 고치기와 같다(`notes.services._check_edit` — 구성원, 초안이면 진행자·조직 관리자).
+  Discord 녹음이 있는 회의록에는 올리지 않는다(VoiceRecording은 회의록당 하나). 다시 올리면 파일만 바꾸고 전사문·전사 기록은 남긴다. 전사 대기·진행 중에는 바꾸지 않는다.
+- **검증**: core 컨테이너에는 ffmpeg가 없다(`core/Dockerfile`) → 확장자(mp3·m4a·wav·ogg·webm·opus) + 앞 12바이트(ID3/프레임 동기·`ftyp`·RIFF/WAVE·OggS·EBML)만 본다. 상한 300MB(`AUDIO_MAX_BYTES`).
+  디코딩은 Node ffmpeg가 하고, 못 읽으면 전사 작업이 실패(`node_error`)로 남는다.
+- **저장**: 기존 `VoiceRecording` 재사용 + `source`(discord/upload) AddField(0010). `guild_id`·트랙·참여자 없음, `host` = 회의록 작성자(초안을 다룰 사람이 바뀌지 않게), 상태 `draft`.
+  파일은 `audio`에 원래 확장자로, 보관 기간(`meeting.audio_keep_days`)·만료 정리(`purge_expired_audio`)·내려받기(`note_audio`, 확장자·형식 유지)는 그대로.
+- **[전사 시작]**(`POST /notes/<id>/transcribe`, 같은 권한): 조직 기본 수단·모델로 `TranscriptionJob(kind="upload")`를 대기열에 넣는다. 전사 메뉴의 목록·패널·취소·다른 모델로 다시 전사가 그대로 동작한다(다시 전사는 조직 관리자).
+- **Node**: claim 응답 `source="upload"`면 `GET /meetings/{id}/audio`를 디스크로 받고(스트리밍), `ffmpeg silencedetect`(-35dB, 0.6초)로 무음 사이를 구간으로 나눠 30초 넘는 구간은 자른다.
+  구간마다 `-ss/-t`로 잘라 16kHz wav로 보낸다(mp3·m4a는 webm 복사가 안 된다). 1.5초 미만 생략·동시 3·전사문 형식은 그대로, 화자는 하나 **"올린 녹음"**.
+- **예상 시간**: 올린 녹음은 구간을 나누기 전까지 길이를 모르므로 "예상 시간 계산 중" → 첫 진행 보고(`audio_ms`)부터 계산.
+- **후속(만들지 않음)**: 올린 녹음의 화자 분리(PLAN-diarization §3 엔진 준비 뒤 옵션), 무음 기준값 조직 설정, 브라우저 업로드가 NPM 프록시 본문 상한에 걸리는지 확인.

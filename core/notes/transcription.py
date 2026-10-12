@@ -17,6 +17,8 @@ from orgs.services import require_admin
 
 from .models import TranscriptionJob, VoiceRecording
 
+UPLOAD_SPEAKER = "올린 녹음"  # 올린 녹음 전사문의 화자 표기(화자 하나)
+
 MIN_SEGMENT_MS = 1500  # discord_gateway/src/transcribe.mjs MIN_SEGMENT_MS
 NODE_CONCURRENCY = 3  # transcribe.mjs CONCURRENCY
 SEGMENT_OVERHEAD_S = 0.4  # 구간마다 변환·HTTP 고정비(추정)
@@ -28,6 +30,8 @@ OPENAI_MODEL = "whisper-1"
 NO_SEGMENTS = "이 회의는 다시 전사를 지원하기 전에 녹음되어 다시 전사할 수 없습니다."
 EXPIRED = "보관 기간이 지나 다시 전사할 수 없습니다."
 NO_TRACKS = "참여자별 녹음이 없어 다시 전사할 수 없습니다."
+NO_AUDIO = "녹음 파일이 없어 전사할 수 없습니다. 녹음 파일을 올려 주세요."
+NO_ENGINE = "전사 수단이 없습니다. 조직 관리자에게 전사 서버나 조직 OpenAI 키 설정을 요청해 주세요."
 
 
 def model_name(model: str, info: dict | None = None) -> str:
@@ -122,6 +126,8 @@ def remaining_s(job, now=None) -> float | None:
     a, d = job.audio_ms, min(job.done_ms, job.audio_ms)
     r0 = job.stats.get("prior_rtf") if isinstance(job.stats, dict) else None
     p = parallel(job.engine, job.stats if isinstance(job.stats, dict) else None)
+    if a <= 0:
+        return None  # 올린 녹음은 Node가 구간을 나누기 전까지 길이를 모른다
     if job.status == "queued" or not job.started_at or d <= 0:
         return estimate_s(a, job.segments_total, r0, p)
     r_obs = max(0.0, (now - job.started_at).total_seconds()) / (d / 1000)
@@ -241,6 +247,9 @@ def _retry_payload(job) -> dict:
     rec = job.recording
     return {
         "job": {"id": job.pk, "recording_id": rec.pk, "engine": job.engine, "model": job.model},
+        # upload: 녹음 파일 하나를 받아 무음 기준으로 구간을 나눈다(segments·tracks 없음)
+        "source": rec.source,
+        "speaker": UPLOAD_SPEAKER if rec.source == "upload" else "",
         "segments": rec.segments,
         "tracks": list(rec.tracks.exclude(audio="").values_list("discord_user_id", flat=True)),
         "participants": rec.participants,
@@ -293,6 +302,8 @@ def retry_block(rec) -> str:
 
     if audio_expired(rec):
         return EXPIRED
+    if rec.source == "upload":
+        return "" if rec.audio else NO_AUDIO
     if not rec.segments:
         return NO_SEGMENTS
     if not rec.tracks.exclude(audio="").exists():
@@ -302,10 +313,32 @@ def retry_block(rec) -> str:
 
 @transaction.atomic
 def request_retry(rec, *, engine: str, model: str, actor, info: dict | None = None):
-    """다시 전사 요청. 돌고 있는 작업은 취소 중으로, 대기 작업은 새 요청으로 바꾼다."""
+    """다시 전사 요청(전사 메뉴, 조직 관리자). 돌고 있는 작업은 취소 중으로, 대기 작업은 새 요청으로 바꾼다."""
     rec = VoiceRecording.objects.select_for_update().select_related("note__org").get(pk=rec.pk)
+    require_admin(actor, rec.note.org)
+    kind = "upload" if rec.source == "upload" and not rec.jobs.exists() else "retry"
+    return _enqueue(rec, engine=engine, model=model, actor=actor, info=info, kind=kind)
+
+
+@transaction.atomic
+def request_upload(rec, *, actor):
+    """올린 녹음 [전사] — 회의록을 고칠 수 있는 사람. 조직 기본 수단·모델로 대기열에 넣는다."""
+    from .services import _check_edit
+
+    rec = VoiceRecording.objects.select_for_update().select_related("note__org").get(pk=rec.pk)
+    _check_edit(rec.note, actor, "web")
+    if rec.source != "upload":
+        raise ServiceError({"job": "올린 녹음만 여기서 전사할 수 있습니다."})
+    if rec.jobs.filter(status__in=TranscriptionJob.ACTIVE).exists():
+        raise ServiceError({"job": "이미 전사 대기 중이거나 전사 중입니다."})
+    engine, model = _org_engine(rec.note.org)
+    if not engine:
+        raise ServiceError({"engine": NO_ENGINE})
+    return _enqueue(rec, engine=engine, model=model, actor=actor, info=None, kind="upload")
+
+
+def _enqueue(rec, *, engine: str, model: str, actor, info, kind: str):
     org = rec.note.org
-    require_admin(actor, org)
     if rec.status not in ("draft", "done"):
         raise ServiceError({"job": "회의 전사가 끝난 뒤 다시 전사해 주세요."})
     if why := retry_block(rec):
@@ -335,7 +368,7 @@ def request_retry(rec, *, engine: str, model: str, actor, info: dict | None = No
         )
     return TranscriptionJob.objects.create(
         recording=rec,
-        kind="retry",
+        kind=kind,
         status="queued",
         engine=engine,
         model=model,

@@ -18,6 +18,34 @@ export function ffmpegConvert(path, format, g) {
     execFile('ffmpeg', args, { encoding: 'buffer', maxBuffer: 64 << 20 }, (e, out) => (e ? reject(e) : resolve(out))));
 }
 
+// 올린 녹음 구간 나누기(IMPL-PLAN-10-transcribe-menu §12): ffmpeg silencedetect가 stderr에 남긴 무음 구간의 사이를 말한 구간으로 본다.
+// 긴 구간은 maxMs로 자른다(whisper 창 30초). ponytail: 고정 잡음 기준(-35dB) — 시끄러운 녹음이면 조직 설정으로 뺀다.
+export const SPLIT_MAX_MS = 30000;
+export function speechRanges(stderr, { maxMs = SPLIT_MAX_MS } = {}) {
+  const d = /Duration: (\d+):(\d+):(\d+(?:\.\d+)?)/.exec(stderr);
+  if (!d) return [];
+  const total = Math.round(((+d[1] * 60 + +d[2]) * 60 + +d[3]) * 1000);
+  const silences = [];
+  for (const m of stderr.matchAll(/silence_(start|end): (-?\d+(?:\.\d+)?)/g)) {
+    const ms = Math.max(0, Math.round(+m[2] * 1000));
+    if (m[1] === 'start') silences.push([ms, total]);
+    else if (silences.length) silences.at(-1)[1] = ms;
+  }
+  const out = [];
+  let at = 0;
+  const speech = (a, b) => { for (let s = a; s < b; s += maxMs) out.push({ start_ms: s, duration_ms: Math.min(maxMs, b - s) }); };
+  for (const [a, b] of silences) { if (a > at) speech(at, a); at = Math.max(at, b); }
+  if (at < total) speech(at, total);
+  return out;
+}
+
+// 파일을 디스크에서 흘려 읽는다(메모리에 올리지 않는다). 디코딩 실패는 그대로 던진다.
+export function splitBySilence(path, run = execFile) {
+  const args = ['-hide_banner', '-nostats', '-i', path, '-af', 'silencedetect=noise=-35dB:d=0.6', '-f', 'null', '-'];
+  return new Promise((resolve, reject) =>
+    run('ffmpeg', args, { maxBuffer: 16 << 20 }, (e, _out, err) => (e ? reject(e) : resolve(speechRanges(String(err))))));
+}
+
 export function stamp(ms) {
   const s = Math.floor(ms / 1000);
   return [s / 3600, (s % 3600) / 60, s % 60].map((n) => String(Math.floor(n)).padStart(2, '0')).join(':');
@@ -71,14 +99,15 @@ export async function localHealthy({ url, apiKey, fetch, timeoutMs = 3000 }) {
 export async function transcribeMeeting({
   dir, segments, names, stt = {}, glossary = '', minutes = 0, env = process.env,
   fetch = globalThis.fetch, convert = ffmpegConvert, cached = new Map(), onResult = () => {},
-  retryDelayMs = 10000, log = () => {}, signal = null, onProgress = () => {},
+  retryDelayMs = 10000, log = () => {}, signal = null, onProgress = () => {}, wav = false,
 }) {
   const url = (stt.url || '').replace(/\/$/, '');
   const localModel = stt.model || 'whisper-1';
   // 엔진 순서(parallel §7): ① 로컬(stt.url) ② 조직 OpenAI 키(stt.openai_api_key) ③ 녹음만. .env의 OPENAI_API_KEY는 읽지 않는다
   const openaiKey = stt.openai_api_key || '';
   const openaiModel = env.OPENAI_TRANSCRIBE_MODEL || 'whisper-1';
-  const s = { localOk: url ? await localHealthy({ url, apiKey: stt.api_key, fetch }) : false, wav: false, noPrompt: false, connFails: 0 };
+  // wav: 올린 녹음(mp3·m4a 등)은 webm으로 복사할 수 없어 처음부터 16kHz wav로 보낸다
+  const s = { localOk: url ? await localHealthy({ url, apiKey: stt.api_key, fetch }) : false, wav, noPrompt: false, connFails: 0 };
   if (url && !s.localOk) log('로컬 전사 서버 헬스 실패, OpenAI로 대체', { host: new URL(url).host });
 
   const todo = segments.filter((g) => g.duration_ms >= MIN_SEGMENT_MS);

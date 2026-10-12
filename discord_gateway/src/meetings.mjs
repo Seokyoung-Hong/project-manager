@@ -4,7 +4,7 @@ import { mkdirSync, writeFileSync, readFileSync, readdirSync, appendFileSync, ex
 import { join } from 'node:path';
 import { Recorder } from './recorder.mjs';
 import { CoreError } from './core.mjs';
-import { transcribeMeeting } from './transcribe.mjs';
+import { transcribeMeeting, splitBySilence } from './transcribe.mjs';
 import { mix, runFfmpeg } from './mix.mjs';
 import * as texts from './texts.mjs';
 
@@ -17,10 +17,10 @@ const readJsonl = (p) => (existsSync(p) ? readFileSync(p, 'utf8').split('\n').fi
 
 export class Meetings {
   constructor({ core, discord, dataDir, siteUrl = '', env = process.env, fetch = globalThis.fetch,
-    convert, ffmpeg = runFfmpeg, backoff = (n) => Math.min(60000 * 2 ** (n - 1), 3600000),
+    convert, ffmpeg = runFfmpeg, split = splitBySilence, backoff = (n) => Math.min(60000 * 2 ** (n - 1), 3600000),
     hostBackoff = (n) => Math.min(15000 * 2 ** (n - 1), 300000),
     now = Date.now, minuteMs = 60000, debounceMs = DEBOUNCE_MS, retryDelayMs, log = () => {} }) {
-    Object.assign(this, { core, discord, siteUrl, env, fetch, convert, ffmpeg, backoff, hostBackoff, now, minuteMs, debounceMs, retryDelayMs, log });
+    Object.assign(this, { core, discord, siteUrl, env, fetch, convert, ffmpeg, split, backoff, hostBackoff, now, minuteMs, debounceMs, retryDelayMs, log });
     this.root = join(dataDir, 'meetings');
     this.retryRoot = join(dataDir, 'retry'); // 다시 전사 때 받은 트랙(끝나면 지운다)
     mkdirSync(this.root, { recursive: true });
@@ -379,13 +379,23 @@ export class Meetings {
     const job = this.jobReporter(id);
     mkdirSync(dir, { recursive: true });
     try {
-      const tracks = new Set(p.tracks || []);
-      for (const u of tracks) await this.core.downloadTrack(recording_id, u, join(dir, `track-${u}.ogg`));
-      const segments = (p.segments || []).filter((g) => tracks.has(g.user_id))
-        .map((g) => ({ ...g, file: `track-${g.user_id}.ogg`, cut: true }));
-      const names = Object.fromEntries((p.names || []).map((n) => [n.discord_user_id, n.display_name]));
-      for (const x of p.participants || []) names[x.discord_user_id] ??= x.discord_name;
-      const out = await transcribeMeeting({
+      const upload = p.source === 'upload';
+      let segments, names;
+      if (upload) {
+        // 올린 녹음: 파일 하나를 받아 무음 기준으로 나누고 화자는 하나
+        await this.core.downloadAudio(recording_id, join(dir, 'upload.audio'));
+        segments = (await this.split(join(dir, 'upload.audio')))
+          .map((r, i) => ({ ...r, seq: i + 1, user_id: 'upload', file: 'upload.audio', cut: true }));
+        names = { upload: p.speaker || 'upload' };
+      } else {
+        const tracks = new Set(p.tracks || []);
+        for (const u of tracks) await this.core.downloadTrack(recording_id, u, join(dir, `track-${u}.ogg`));
+        segments = (p.segments || []).filter((g) => tracks.has(g.user_id))
+          .map((g) => ({ ...g, file: `track-${g.user_id}.ogg`, cut: true }));
+        names = Object.fromEntries((p.names || []).map((n) => [n.discord_user_id, n.display_name]));
+        for (const x of p.participants || []) names[x.discord_user_id] ??= x.discord_name;
+      }
+      const out = await transcribeMeeting({ wav: upload,
         dir, segments, names, stt: p.stt || {}, glossary: p.glossary || '', env: this.env, fetch: this.fetch,
         ...(this.convert ? { convert: this.convert } : {}), ...(this.retryDelayMs != null ? { retryDelayMs: this.retryDelayMs } : {}),
         log: this.log, signal: job.signal, onProgress: job.onProgress,
