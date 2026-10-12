@@ -17,6 +17,7 @@ from django.views.decorators.http import require_POST
 from common.errors import ServiceError
 from github import services as gh_services
 from github import writes as gh_writes
+from notes.transcription import model_name
 from orgs import requests as creq
 from orgs import services as osv
 from orgs.governance import governance_text
@@ -24,6 +25,7 @@ from orgs.models import ChangeRequest, Invite, OrgMembership, TeamMembership
 from orgs.settings import (
     GROUPS,
     SPECS,
+    STT_KEYS,
     display,
     effective,
     enforced,
@@ -501,10 +503,14 @@ def org_settings(request, org_id):
     """조직 설정. 관리자가 고치고 멤버는 읽기만 한다 — "왜 진행 중으로 못 바꾸지"의 답이 여기 있다."""
     org = org_or_404(request.user, org_id)
     is_admin = can_admin(request.user, org)
-    specs = specs_for("org")
+    # 전사 서버·모델은 전사 메뉴(views/transcribe.py)가 저장한다. 여기서는 그 값을 그대로 둔다.
+    specs = [s for s in specs_for("org") if s.key not in STT_KEYS]
     if request.method == "POST" and is_admin:
         try:
-            osv.set_org_settings(org, _settings_from_post(request.POST, specs), request.user)
+            keep = {k: v for k, v in (org.settings or {}).items() if k in STT_KEYS}
+            osv.set_org_settings(
+                org, {**keep, **_settings_from_post(request.POST, specs)}, request.user
+            )
             unlocked = {
                 spec.key
                 for spec in specs
@@ -595,30 +601,62 @@ def _stt_url(request, org) -> str:
     ).strip()
 
 
-def _stt_models(request, org, ctx=None):
-    """GET /v1/models → 모델 select 부분 템플릿. downloading이 있으면 3초 뒤 다시 부른다(폴링)."""
-    ctx = ctx or {}
+INFO_KEYS = (
+    "display_name",
+    "family",
+    "owned_by",
+    "fits",
+    "device",
+    "compute_type",
+    "rtf",
+    "concurrency",
+)
+
+
+def stt_models(org, url: str):
+    """GET /v1/models → ([{id, status, label, name, fits, info}], 오류, ms). 없는 필드는 없는 대로 둔다."""
     start = time.monotonic()
-    body, error, _ = _stt_call(org, _stt_url(request, org), "/v1/models")
+    body, error, _ = _stt_call(org, url, "/v1/models")
     models = []
-    if not error:
-        ctx["ms"] = round((time.monotonic() - start) * 1000)
-        try:
-            for m in json.loads(body)["data"]:
-                if isinstance(m, dict) and m.get("id"):
-                    # status가 없는 서버(일반 OpenAI 호환)는 ready로 본다.
-                    status = m.get("status") or "ready"
-                    label = _STT_STATUS.get(status, "")
-                    if status == "downloading" and isinstance(m.get("progress"), int | float):
-                        label += f" {round(m['progress'] * 100)}%"
-                    models.append({"id": str(m["id"]), "status": status, "label": label})
-        except (ValueError, KeyError, TypeError):
-            error, models = "응답 형식이 OpenAI 호환 모델 목록이 아닙니다.", []
+    if error:
+        return models, error, None
+    try:
+        for m in json.loads(body)["data"]:
+            if isinstance(m, dict) and m.get("id"):
+                # status가 없는 서버(일반 OpenAI 호환)는 ready로 본다.
+                status = m.get("status") or "ready"
+                label = _STT_STATUS.get(status, "")
+                if status == "downloading" and isinstance(m.get("progress"), int | float):
+                    label += f" {round(m['progress'] * 100)}%"
+                info = {k: m[k] for k in INFO_KEYS if m.get(k) not in (None, "")}
+                if info.get("fits") is False:
+                    label = "이 서버에서 쓸 수 없음"
+                mid = str(m["id"])
+                models.append(
+                    {
+                        "id": mid,
+                        "status": status,
+                        "label": label,
+                        "name": model_name(mid, info),
+                        "fits": info.get("fits") is not False,
+                        "info": info,
+                    }
+                )
+    except (ValueError, KeyError, TypeError):
+        return [], "응답 형식이 OpenAI 호환 모델 목록이 아닙니다.", None
+    return models, "", round((time.monotonic() - start) * 1000)
+
+
+def _stt_models(request, org, ctx=None):
+    """모델 select 부분 템플릿. downloading이 있으면 3초 뒤 다시 부른다(폴링)."""
+    ctx = ctx or {}
+    models, error, ms = stt_models(org, _stt_url(request, org))
+    ctx["ms"] = ms
     ctx["error"] = ctx.get("error") or error
     # 지금 고른 값(폼 → 저장값)은 목록에 없어도 남겨 선택을 잃지 않는다.
     current = request.POST.get("meeting.stt_model", effective("meeting.stt_model", org=org))
     if current and current not in {m["id"] for m in models}:
-        models.insert(0, {"id": current, "status": "", "label": ""})
+        models.insert(0, {"id": current, "status": "", "label": "", "name": current, "fits": True})
     ctx.update(
         org=org,
         current=current,

@@ -31,6 +31,7 @@ from .views import (
     tasks,
     teams,
     today,
+    transcribe,
     work_requests,
 )
 
@@ -87,6 +88,42 @@ urlpatterns = [
     path("orgs/<int:org_id>/settings", orgs.org_settings, name="org_settings"),
     path("orgs/<int:org_id>/settings/stt-test", orgs.org_stt_test, name="org_stt_test"),
     path("orgs/<int:org_id>/settings/stt-apply", orgs.org_stt_apply, name="org_stt_apply"),
+    path("orgs/<int:org_id>/transcribe", transcribe.org_transcribe, name="org_transcribe"),
+    path(
+        "orgs/<int:org_id>/transcribe/server",
+        transcribe.org_transcribe_server,
+        name="org_transcribe_server",
+    ),
+    path(
+        "orgs/<int:org_id>/transcribe/jobs",
+        transcribe.org_transcribe_jobs,
+        name="org_transcribe_jobs",
+    ),
+    path(
+        "orgs/<int:org_id>/transcribe/recordings/<int:rec_id>/panel",
+        transcribe.transcribe_panel,
+        name="transcribe_panel",
+    ),
+    path(
+        "orgs/<int:org_id>/transcribe/recordings/<int:rec_id>/progress",
+        transcribe.transcribe_progress,
+        name="transcribe_progress",
+    ),
+    path(
+        "orgs/<int:org_id>/transcribe/recordings/<int:rec_id>/retry",
+        transcribe.transcribe_retry,
+        name="transcribe_retry",
+    ),
+    path(
+        "orgs/<int:org_id>/transcribe/jobs/<int:job_id>/cancel",
+        transcribe.transcribe_cancel,
+        name="transcribe_cancel",
+    ),
+    path(
+        "orgs/<int:org_id>/transcribe/jobs/<int:job_id>/use",
+        transcribe.transcribe_use,
+        name="transcribe_use",
+    ),
     path("orgs/<int:org_id>/requests/<int:req_id>", orgs.change_request, name="change_request"),
     path("orgs/<int:org_id>/teams/new", teams.team_new, name="team_new"),
     path("orgs/<int:org_id>/invites", orgs.invite_create, name="invite_create"),

@@ -96,6 +96,20 @@ def org_notes(request, org_id):
                 }
                 for t in rec.tracks.exclude(audio="").order_by("pk")
             ]
+        if rec is not None:
+            # 전사 진행(전사문 쪽 상태). 회의록 본문과 별개다.
+            from notes import transcription as tx
+            from notes.models import TranscriptionJob
+
+            active = list(rec.jobs.filter(status__in=TranscriptionJob.ACTIVE))
+            if active:
+                left, _ = tx.queue_eta(active).get(active[0].pk, (None, 0))
+                extras["transcribe_line"] = (
+                    "전사 대기 중"
+                    if active[0].status == "queued"
+                    else f"전사 중 · {tx.eta_text(left)}"
+                )
+            extras["transcribe_admin"] = can_admin(request.user, org)
         extras["can_finalize"] = note.status == "draft" and ts_notes._is_owner(note, request.user)
         extras["teams"] = visible_teams(request.user, org).order_by("name")
     return render(

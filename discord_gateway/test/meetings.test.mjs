@@ -337,6 +337,8 @@ test('녹음만: 올리기 → 빈 전사문 draft(engine none) → 로컬 구�
   assert.equal(draft.transcript_md, '');
   assert.equal(draft.stats.engine, 'none');
   assert.equal(draft.participants.length, 2);
+  // 다시 전사 입력: 구간 경계만(파일 경로·패킷 수는 보내지 않는다)
+  assert.deepEqual(draft.segments, [{ seq: 1, user_id: 'h', start_ms: 1000, duration_ms: 3000 }, { seq: 2, user_id: 'a', start_ms: 0, duration_ms: 0 }]);
   assert.ok(!existsSync(join(dir, 'seg')));
   assert.ok(!existsSync(join(dir, 'meeting.ogg')));
   assert.equal(JSON.parse(readFileSync(join(dir, 'state.json'))).uploaded, true);

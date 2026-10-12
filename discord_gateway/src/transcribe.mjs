@@ -8,10 +8,12 @@ export const CONCURRENCY = 3;
 const OPENAI_URL = 'https://api.openai.com/v1/audio/transcriptions';
 
 // ogg(Opus) → webm(재인코딩 없음) 또는 16kHz mono wav. OpenAI는 ogg를 받지 않는다(IMPL-PLAN-9-v1 §1.4).
-export function ffmpegConvert(path, format) {
+// g.cut이면 참여자별 트랙에서 그 구간(start_ms부터 duration_ms)만 잘라 낸다(다시 전사, IMPL-PLAN-10-transcribe-menu §5).
+export function ffmpegConvert(path, format, g) {
+  const cut = g?.cut ? ['-ss', String(g.start_ms / 1000), '-t', String(g.duration_ms / 1000)] : [];
   const args = format === 'wav'
-    ? ['-v', 'error', '-i', path, '-ar', '16000', '-ac', '1', '-f', 'wav', 'pipe:1']
-    : ['-v', 'error', '-i', path, '-c:a', 'copy', '-f', 'webm', 'pipe:1'];
+    ? ['-v', 'error', ...cut, '-i', path, '-ar', '16000', '-ac', '1', '-f', 'wav', 'pipe:1']
+    : ['-v', 'error', ...cut, '-i', path, '-c:a', 'copy', '-f', 'webm', 'pipe:1'];
   return new Promise((resolve, reject) =>
     execFile('ffmpeg', args, { encoding: 'buffer', maxBuffer: 64 << 20 }, (e, out) => (e ? reject(e) : resolve(out))));
 }
@@ -34,12 +36,13 @@ class HttpFail extends Error {
 }
 const isConnFail = (e) => !(e instanceof HttpFail) || e.status >= 500;
 
-async function post(fetch, url, key, fields, audio, filename, timeoutMs) {
+async function post(fetch, url, key, fields, audio, filename, timeoutMs, cancel) {
   const form = new FormData();
   form.append('file', new Blob([audio]), filename);
   for (const [k, v] of Object.entries(fields)) if (v) form.append(k, v);
   const r = await fetch(url, {
-    method: 'POST', body: form, signal: AbortSignal.timeout(timeoutMs),
+    method: 'POST', body: form,
+    signal: cancel ? AbortSignal.any([AbortSignal.timeout(timeoutMs), cancel]) : AbortSignal.timeout(timeoutMs),
     headers: key ? { Authorization: `Bearer ${key}` } : {},
   });
   if (!r.ok) throw new HttpFail(r.status, await r.text().catch(() => ''));
@@ -62,12 +65,13 @@ export async function localHealthy({ url, apiKey, fetch, timeoutMs = 3000 }) {
 
 /**
  * segments: segments.jsonl 행들. cached: 이미 끝난 결과(seq → row, 재시작 재개용). onResult: 결과 한 줄씩 저장.
- * 돌려주는 값: { status: 'draft'|'failed', transcript_md, stats }
+ * signal: 취소(AbortSignal). 걸리면 새 구간을 꺼내지 않고 진행 중 요청을 끊는다. onProgress: 구간이 끝날 때마다 진행.
+ * 돌려주는 값: { status: 'draft'|'failed', transcript_md, stats, cancelled }
  */
 export async function transcribeMeeting({
   dir, segments, names, stt = {}, glossary = '', minutes = 0, env = process.env,
   fetch = globalThis.fetch, convert = ffmpegConvert, cached = new Map(), onResult = () => {},
-  retryDelayMs = 10000, log = () => {},
+  retryDelayMs = 10000, log = () => {}, signal = null, onProgress = () => {},
 }) {
   const url = (stt.url || '').replace(/\/$/, '');
   const localModel = stt.model || 'whisper-1';
@@ -79,6 +83,7 @@ export async function transcribeMeeting({
 
   const todo = segments.filter((g) => g.duration_ms >= MIN_SEGMENT_MS);
   const skipped = segments.length - todo.length;
+  const audioMs = todo.reduce((n, g) => n + g.duration_ms, 0);
   const stats = (rows, extra = {}) => {
     const eng = {};
     for (const r of rows) {
@@ -92,7 +97,7 @@ export async function transcribeMeeting({
     // stats.engine = 주로 쓴 엔진(구간 수 최다). 쓴 구간이 없으면 고른 엔진, 고를 게 없으면 none
     const main = Object.values(eng).sort((a, b) => b.segments - a.segments)[0]?.engine
       ?? (s.localOk ? 'local' : openaiKey ? 'openai' : 'none');
-    return { engine: main, engines: Object.values(eng), segments: segments.length, skipped, failed: rows.filter((r) => r.failed).length, minutes, ...extra };
+    return { engine: main, engines: Object.values(eng), segments: segments.length, skipped, failed: rows.filter((r) => r.failed).length, minutes, audio_ms: audioMs, ...extra };
   };
   // 녹음만: 실패가 아니라 빈 전사문의 초안(녹음 파일을 내려받아 직접 전사)
   if (!s.localOk && !openaiKey) return { status: 'draft', transcript_md: '', stats: stats([]) };
@@ -100,10 +105,10 @@ export async function transcribeMeeting({
   async function viaLocal(g) {
     const sec = g.duration_ms / 1000;
     const timeoutMs = Math.min(stt.timeout_s || 120, 30 + 3 * sec) * 1000;
-    const send = (wav, noPrompt) => convert(join(dir, g.file), wav ? 'wav' : 'webm').then((audio) =>
+    const send = (wav, noPrompt) => convert(join(dir, g.file), wav ? 'wav' : 'webm', g).then((audio) =>
       post(fetch, `${url}/v1/audio/transcriptions`, stt.api_key,
         { model: localModel, language: 'ko', response_format: 'json', prompt: noPrompt ? '' : glossary },
-        audio, wav ? 'audio.wav' : 'audio.webm', timeoutMs));
+        audio, wav ? 'audio.wav' : 'audio.webm', timeoutMs, signal));
     for (let attempt = 0; ; attempt++) {
       try {
         const text = await send(s.wav, s.noPrompt);
@@ -135,9 +140,9 @@ export async function transcribeMeeting({
     let last;
     for (let i = 0; i < 3; i++) {
       try {
-        const audio = await convert(join(dir, g.file), 'webm');
+        const audio = await convert(join(dir, g.file), 'webm', g);
         return await post(fetch, OPENAI_URL, openaiKey,
-          { model: openaiModel, language: 'ko', response_format: 'json', prompt: glossary }, audio, 'audio.webm', 120000);
+          { model: openaiModel, language: 'ko', response_format: 'json', prompt: glossary }, audio, 'audio.webm', 120000, signal);
       } catch (e) {
         last = e;
         if (e instanceof HttpFail && e.status < 500 && e.status !== 429) break;
@@ -168,16 +173,22 @@ export async function transcribeMeeting({
 
   const rows = [];
   const queue = [...todo];
+  let doneMs = 0;
   await Promise.all(Array.from({ length: CONCURRENCY }, async () => {
-    for (let g; (g = queue.shift());) {
+    for (let g; !signal?.aborted && (g = queue.shift());) {
       let row = cached.get(g.seq);
       if (!row) {
         row = { seq: g.seq, user_id: g.user_id, start_ms: g.start_ms, ...(await one(g)) };
+        if (signal?.aborted) return; // 끊긴 요청의 실패는 결과로 남기지 않는다
         onResult(row);
       }
       rows.push(row);
+      doneMs += g.duration_ms;
+      onProgress({ done_ms: doneMs, audio_ms: audioMs, segments_total: todo.length,
+        segments_done: rows.length, segments_failed: rows.filter((r) => r.failed).length });
     }
   }));
+  if (signal?.aborted) return { status: 'draft', transcript_md: '', stats: stats(rows, { cancelled: true }), cancelled: true };
   // 전부 실패해도 draft: 녹음 파일은 이미 올라가 있어 내려받아 직접 전사할 수 있다(failed는 회의 자체 실패만)
   return { status: 'draft', transcript_md: formatTranscript(rows, names), stats: stats(rows) };
 }

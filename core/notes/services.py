@@ -414,8 +414,15 @@ def update_recording(
     participants: list | None = None,
     transcript_md: str | None = None,
     stats: dict | None = None,
+    segments: list | None = None,
 ) -> VoiceRecording:
-    """봇이 올리는 상태 전이·결과. 종료(transcribing)·전사문(draft)·실패. 참여자는 PM 계정으로 매핑한다."""
+    """봇이 올리는 상태 전이·결과. 종료(transcribing)·전사문(draft)·실패. 참여자는 PM 계정으로 매핑한다.
+
+    전사문은 `rec.transcript_md`(현재 전사문)와 전사 작업에만 둔다. 회의록 본문에는 정리용 틀만 넣는다.
+    """
+    from . import transcription
+
+    started_job = False
     rec = (
         VoiceRecording.objects.select_for_update()
         .select_related("note", "note__org", "started_by", "host")
@@ -445,6 +452,7 @@ def update_recording(
             rec.ended_at = ended_at or timezone.now()
             keep = org_settings.effective("meeting.audio_keep_days", org=note.org)
             rec.audio_expires_at = rec.ended_at + timedelta(days=keep)
+            started_job = True
         if status == "failed" and not rec.ended_at:
             rec.ended_at = ended_at or timezone.now()
         rec.status = status
@@ -459,7 +467,7 @@ def update_recording(
                 # 녹음만(전사 수단 없음, IMPL-PLAN-9-parallel §7). 실패가 아니다.
                 "회의록 초안이 준비된 상태입니다. 녹음 파일은 회의록 화면에서 내려받아 직접 전사해 주세요."
                 if engine == "none"
-                else f"전사문이 포함된 회의록 초안입니다. `/pm-meeting {note.pk}`로 정리하거나 "
+                else f"회의록 초안과 전사문이 준비된 상태입니다. `/pm-meeting {note.pk}`로 정리하거나 "
                 "웹에서 작성해 주세요.",
             )
         elif status == "failed":
@@ -492,7 +500,15 @@ def update_recording(
                 }
             )
         rec.transcript_md = transcript_md
+    if segments is not None:
+        rec.segments = transcription.clean_segments(segments)
     rec.save()
+    if started_job:
+        transcription.start_auto_job(rec)
+    if status == "draft":
+        transcription.finish_auto_job(rec, transcript_md=transcript_md, stats=stats)
+    elif status == "failed":
+        transcription.fail_active(rec)
     return rec
 
 

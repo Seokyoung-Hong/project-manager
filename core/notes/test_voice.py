@@ -594,10 +594,12 @@ def test_web_form_blank_keeps_key_and_clear_removes(client, enabled, admin):
     stored = enabled.settings["meeting.stt_api_key"]
     client.force_login(admin)
     form = {"meeting.recording_enabled": "on", "meeting.stt_api_key": ""}
-    client.post(f"/orgs/{enabled.pk}/settings", form)
+    client.post(f"/orgs/{enabled.pk}/transcribe/server", form)
     enabled.refresh_from_db()
     assert enabled.settings["meeting.stt_api_key"] == stored
-    client.post(f"/orgs/{enabled.pk}/settings", {**form, "clear__meeting.stt_api_key": "on"})
+    client.post(
+        f"/orgs/{enabled.pk}/transcribe/server", {**form, "clear__meeting.stt_api_key": "on"}
+    )
     enabled.refresh_from_db()
     assert "meeting.stt_api_key" not in enabled.settings
 

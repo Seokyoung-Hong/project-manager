@@ -1,5 +1,7 @@
 // core 봇 API(/api/integrations/discord/meetings*) 클라이언트. 인증은 CORE_TOKEN Bearer(봇 범위 토큰).
-import { openAsBlob } from 'node:fs';
+import { openAsBlob, createWriteStream } from 'node:fs';
+import { Readable } from 'node:stream';
+import { pipeline } from 'node:stream/promises';
 import * as texts from './texts.mjs';
 
 export class CoreError extends Error {
@@ -55,6 +57,23 @@ export function createCore({ url, token, fetch = globalThis.fetch, timeoutMs = 2
       const form = new FormData();
       form.append('file', await openAsBlob(path, { type: 'audio/ogg' }), 'track.ogg');
       return call('PUT', `/meetings/${id}/tracks/${encodeURIComponent(discordUserId)}`, form, 600000);
+    },
+    // 전사 작업(IMPL-PLAN-10-transcribe-menu). 진행 PATCH 응답의 cancel이 true면 멈춘다
+    reportJob: (id, body) => call('PATCH', `/transcriptions/${id}`, body),
+    claimJob: () => call('POST', '/transcriptions/claim', {}),
+    requeueJobs: () => call('POST', '/transcriptions/requeue', {}),
+    // 다시 전사용 참여자별 트랙을 파일로 받는다(메모리에 통째로 올리지 않는다)
+    async downloadTrack(id, discordUserId, path) {
+      let r;
+      try {
+        r = await fetch(`${base}/meetings/${id}/tracks/${encodeURIComponent(discordUserId)}`, {
+          headers: { Authorization: `Bearer ${token}`, 'X-Source': 'api' }, signal: AbortSignal.timeout(600000),
+        });
+      } catch {
+        throw new CoreError(0, texts.coreDown());
+      }
+      if (!r.ok) throw new CoreError(r.status, detailText((await r.json().catch(() => ({}))).detail) || texts.coreDown());
+      await pipeline(Readable.fromWeb(r.body), createWriteStream(path));
     },
   };
 }

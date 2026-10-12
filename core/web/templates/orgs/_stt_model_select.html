@@ -1,4 +1,4 @@
 <span id="stt-model-box"{% if oob %} hx-swap-oob="true"{% endif %}><select id="setting-meeting.stt_model" class="select setting-select" name="meeting.stt_model" aria-labelledby="setting-label-meeting.stt_model" aria-describedby="setting-help-meeting.stt_model">
 <option value=""{% if not current %} selected{% endif %}>기본값(whisper-1)</option>
-{% for m in options %}<option value="{{ m.id }}"{% if m.id == current %} selected{% endif %}>{{ m.id }}{% if m.label %} · {{ m.label }}{% endif %}</option>{% empty %}{% if current %}<option value="{{ current }}" selected>{{ current }}</option>{% endif %}{% endfor %}
+{% for m in options %}<option value="{{ m.id }}"{% if m.id == current %} selected{% endif %}{% if not m.fits and m.id != current %} disabled{% endif %}>{{ m.name|default:m.id }}{% if m.label %} · {{ m.label }}{% endif %}</option>{% empty %}{% if current %}<option value="{{ current }}" selected>{{ current }}</option>{% endif %}{% endfor %}
 </select></span>

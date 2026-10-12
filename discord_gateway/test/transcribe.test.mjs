@@ -44,7 +44,7 @@ test('로컬 헬스 통과면 로컬 전사, 1.5초 미만 생략, start_ms 순 
   assert.equal(tx[0].auth, 'Bearer k');
   assert.deepEqual(out.stats, {
     engine: 'local', engines: [{ engine: 'local', host: 'stt.local:8000', model: 'Systran/faster-whisper-small', segments: 2, failed: 0 }],
-    segments: 3, skipped: 1, failed: 0, minutes: 62,
+    segments: 3, skipped: 1, failed: 0, minutes: 62, audio_ms: 6000,
   });
 });
 
@@ -65,7 +65,7 @@ test('엔진 ②: 로컬 헬스 실패 + 조직 OpenAI 키 → OpenAI(기본 whi
 test('엔진 ③: 로컬·조직 키 둘 다 없으면 녹음만 — 실패가 아니라 빈 전사문 draft, engine none', async () => {
   const { fetch, calls } = fakeFetch(() => json({}));
   const out = await transcribeMeeting({ ...base, fetch, env: { OPENAI_API_KEY: 'env-key' }, stt: {}, segments: [seg(1, 'u1', 0), seg(2, 'u1', 9000, 500)], minutes: 3 });
-  assert.deepEqual(out, { status: 'draft', transcript_md: '', stats: { engine: 'none', engines: [], segments: 2, skipped: 1, failed: 0, minutes: 3 } });
+  assert.deepEqual(out, { status: 'draft', transcript_md: '', stats: { engine: 'none', engines: [], segments: 2, skipped: 1, failed: 0, minutes: 3, audio_ms: 3000 } });
   assert.equal(calls.length, 0);
 });
 

@@ -952,6 +952,15 @@ SPECS: dict[str, Spec] = {
     ]
 }
 
+# 전사 서버·모델 설정. 조직 설정 화면이 아니라 전사 메뉴에서 바꾼다(IMPL-PLAN-10-transcribe-menu).
+STT_KEYS = (
+    "meeting.stt_url",
+    "meeting.stt_model",
+    "meeting.stt_timeout_s",
+    "meeting.stt_api_key",
+    "meeting.openai_api_key",
+)
+
 GROUPS = [
     ("task", "태스크 규칙"),
     ("project", "프로젝트 권한"),

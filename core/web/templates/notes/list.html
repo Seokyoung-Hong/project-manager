@@ -126,9 +126,10 @@
     {% elif audio_state == "expired" %}
     <p class="t13 muted">{{ audio_expired_text }}</p>
     {% endif %}
+    {% if transcribe_line %}<p class="t13 muted" role="status">{{ transcribe_line }}{% if transcribe_admin %} · <a href="{% url 'org_transcribe' note.org_id %}">전사 메뉴에서 보기</a>{% endif %}</p>{% endif %}
     {% if recording and recording.transcript_md %}
     <details>
-      <summary>전사문</summary>
+      <summary>전사문 <span class="muted t12">녹음을 글로 옮긴 원문 · 회의록 본문과 따로 저장됩니다</span></summary>
       <pre class="revision-body">{{ recording.transcript_md }}</pre>
     </details>
     {% endif %}

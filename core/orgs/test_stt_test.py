@@ -100,11 +100,12 @@ def test_current_model_kept_when_missing_from_list(client, org, admin, monkeypat
 def test_settings_page_autoloads_and_saves_select_value(client, org, admin):
     set_org_settings(org, {"meeting.stt_url": "http://172.30.1.50:8000"}, admin)
     client.force_login(admin)
-    page = client.get(f"/orgs/{org.pk}/settings").content.decode()
+    # 전사 서버 설정은 조직 설정이 아니라 전사 메뉴의 "전사 서버" 보기에 있다(IMPL-PLAN-10-transcribe-menu).
+    page = client.get(f"/orgs/{org.pk}/transcribe?view=server").content.decode()
     assert 'hx-trigger="load"' in page
     assert '<select id="setting-meeting.stt_model"' in page
     client.post(
-        f"/orgs/{org.pk}/settings",
+        f"/orgs/{org.pk}/transcribe/server",
         {"meeting.stt_url": "http://172.30.1.50:8000", "meeting.stt_model": "large-v3"},
     )
     org.refresh_from_db()

@@ -533,6 +533,24 @@ class DiscordMeetingPatchIn(Schema):
     participants: list[dict] | None = None
     transcript_md: str | None = None
     stats: dict | None = None
+    # 구간 목록 [{seq, user_id, start_ms, duration_ms}] — 다시 전사 입력(IMPL-PLAN-10-transcribe-menu §5)
+    segments: list[dict] | None = None
+
+
+class DiscordTranscriptionReportIn(Schema):
+    """전사 작업 진행·결과. 응답의 cancel이 true면 Node는 새 구간을 꺼내지 않고 cancelled를 보낸다."""
+
+    status: Literal["done", "failed", "cancelled"] | None = None
+    audio_ms: int | None = None
+    done_ms: int | None = None
+    segments_total: int | None = None
+    segments_done: int | None = None
+    segments_failed: int | None = None
+    engine: str = ""
+    model: str = ""
+    transcript_md: str | None = None
+    stats: dict | None = None
+    error: str = ""
 
 
 class DiscordMeetingHostIn(Schema):

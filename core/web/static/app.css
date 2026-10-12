@@ -1228,6 +1228,33 @@ details.card.settings-section { padding: 0; gap: 0; }
 form:has(option[value="person"]:checked) .person-only { display: flex; }
 .token-issue > summary { min-height: 32px; }
 .token-issue[open] > summary { margin-bottom: var(--sp-3); }
+/* ---- 22-1. 전사 메뉴(조직 탭 '전사', 시안 B): 작업 목록 행 + 패널 ---- */
+.tjob-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; }
+.tjob {
+  width: 100%; display: grid; grid-template-columns: minmax(0, 1fr) minmax(160px, 260px); gap: var(--sp-2) var(--sp-4); align-items: center;
+  padding: 12px 10px; border: 0; border-bottom: 1px solid var(--c-line); border-radius: var(--r-sm); background: none; color: inherit;
+  font: inherit; text-align: left; cursor: pointer; transition: background var(--dur-fast) var(--ease);
+}
+.tjob-list > li:last-child .tjob { border-bottom: 0; }
+.tjob:hover { background: var(--c-soft); }
+.tjob-name { display: flex; flex-direction: column; min-width: 0; }
+.tjob-title { font-weight: 600; font-size: var(--fs-task); }
+.tjob-state { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: var(--sp-2); }
+.tjob-bar { flex: 1; min-width: 80px; }
+.tjob-eta { font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.tjob-big { font-size: var(--fs-h2); line-height: 1.3; font-variant-numeric: tabular-nums; }
+.tjob-panel { gap: var(--sp-5); padding-top: var(--sp-4); }
+.tjob-legend { font-weight: 600; margin-bottom: 6px; }
+.tjob-meta { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 6px var(--sp-4); font-size: var(--fs-sm); margin: var(--sp-2) 0 0; }
+.tjob-meta dt { color: var(--c-muted); }
+.tjob-meta dd { margin: 0; font-variant-numeric: tabular-nums; }
+.tjob-history { padding-left: 18px; margin: var(--sp-2) 0 0; display: flex; flex-direction: column; gap: var(--sp-2); font-size: var(--fs-sm); }
+.tjob-history li { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2); }
+@media (max-width: 700px) {
+  .tjob { grid-template-columns: 1fr; }
+  .tjob-state { justify-content: flex-start; }
+}
+
 /* ---- 23. 그림: 인라인 SVG 칠은 토큰 클래스로(다크에서 같이 바뀐다). 외부 이미지 없음 ---- */
 .art-shadow { fill: var(--plant-shadow); } .art-pot { fill: var(--plant-pot); } .art-rim { fill: var(--plant-rim); }
 .art-soil { fill: var(--plant-soil); } .art-leaf { fill: var(--plant-leaf); } .art-leaf-2 { fill: var(--plant-leaf-2); }
