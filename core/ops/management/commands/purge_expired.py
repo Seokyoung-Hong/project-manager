@@ -6,6 +6,7 @@ from django.db.models import Q
 from django.utils import timezone
 
 from accounts.models import ApiToken, Consent, LoginLock, OAuthCode
+from web import data_version
 
 
 def purge_tokens():
@@ -51,6 +52,10 @@ class Command(BaseCommand):
             ("인가 코드", purge_oauth_codes),
             ("로그인 잠금 기록", purge_login_locks),
             ("탈퇴자 동의 기록", purge_withdrawn_consents),
+            (
+                "데이터 버전 기록",
+                data_version.prune,
+            ),  # 개인정보는 아니지만 하루 한 번 도는 정리라 함께 둔다
         ]
         failed = []
         for name, job in jobs:

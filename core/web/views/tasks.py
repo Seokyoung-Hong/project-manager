@@ -2,6 +2,7 @@ import hashlib
 import json
 import os
 import re
+import time
 from datetime import date, timedelta
 
 from django.conf import settings
@@ -254,14 +255,17 @@ _CSRF_VALUE = re.compile(rb'name="csrfmiddlewaretoken" value="[^"]*"')
 
 
 def _code_stamp() -> str:
-    """배포본 표시: 코드·템플릿 파일의 가장 늦은 수정 시각. 배포로 패널 모양이 바뀌면 ETag도 바뀐다."""
-    latest = 0
-    for root, dirs, files in os.walk(settings.BASE_DIR):
-        dirs[:] = [d for d in dirs if not d.startswith((".", "__")) and d != "node_modules"]
-        for f in files:
+    """배포본 표시: 코드·템플릿 파일 내용과 환경 변수의 해시. 배포·설정 변경으로 패널이 바뀌면 ETag도 바뀐다.
+    파일 시각이 아니라 내용을 본다(git archive는 커밋 시각을 쓰고, 부분 복사면 최대 시각이 그대로일 수 있다)."""
+    h = hashlib.blake2b(digest_size=12)
+    for root, dirs, files in sorted(os.walk(settings.BASE_DIR)):
+        dirs[:] = sorted(d for d in dirs if not d.startswith((".", "__")) and d != "node_modules")
+        for f in sorted(files):
             if f.endswith((".py", ".html")):
-                latest = max(latest, os.stat(os.path.join(root, f)).st_mtime_ns)
-    return str(latest)
+                with open(os.path.join(root, f), "rb") as fh:
+                    h.update(f.encode() + fh.read())
+    h.update(repr(sorted(os.environ.items())).encode())
+    return h.hexdigest()
 
 
 _CODE_STAMP = _code_stamp()
@@ -272,21 +276,29 @@ def _tag(text: str | bytes) -> str:
     return f'"{hashlib.blake2b(raw, digest_size=12).hexdigest()}"'
 
 
-@login_required
 def task_panel(request, task_id):
     """브라우저가 받아 둔 패널의 ETag(If-None-Match)가 지금 것과 같으면 본문 없이 304만 보낸다.
 
-    Postgres: ETag = 데이터 버전(web.data_version) + 보는 사람 + 오늘 날짜 + 주소 + 배포본.
-    패널 내용은 DB와 오늘 날짜로만 정해지므로(GitHub 상태도 DB에 저장된 값) 그리지 않고 비교한다.
+    Postgres: ETag = 데이터 버전(web.data_version) + 보는 사람 + 오늘 날짜 + 10분 칸 + 주소 + 배포본.
+    패널 내용은 DB와 오늘 날짜로만 정해지므로(GitHub 상태도 DB 값) 그리지 않고 비교한다.
+    - 버전은 사용자·세션·태스크를 포함한 어떤 조회보다 먼저 읽는다(그래서 login_required 바깥이다).
+      READ COMMITTED라 뒤 조회가 더 새 데이터를 볼 수는 있어도(다음에 한 번 더 그릴 뿐), 낡은 데이터에 새 버전이 붙지는 않는다.
+    - 10분 칸: 패널을 그릴 때 GitHub 이슈 동기화(10분)·저장소 권한 재확인(6시간)이 함께 돈다.
+      304만 주면 이 기회가 사라지므로 10분마다 한 번은 그린다.
     그 밖의 DB(로컬·테스트 SQLite): 그린 본문의 해시로 비교한다.
     """
+    return _task_panel(request, task_id, data_version.current())
+
+
+@login_required
+def _task_panel(request, task_id, version):
     task = task_or_404(request.user, task_id)
     # 중간 프록시·gzip이 약한 ETag(W/)로 바꿔도 같은 것으로 본다
     sent = request.headers.get("If-None-Match", "").removeprefix("W/")
-    version = data_version.current()
     if version is not None:
+        bucket = int(time.time() // 600)
         etag = _tag(
-            f"{version}|{request.user.pk}|{today_kst()}|{request.get_full_path()}|{_CODE_STAMP}"
+            f"{version}|{request.user.pk}|{today_kst()}|{bucket}|{request.get_full_path()}|{_CODE_STAMP}"
         )
         if sent == etag:
             return HttpResponseNotModified(headers={"ETag": etag})
