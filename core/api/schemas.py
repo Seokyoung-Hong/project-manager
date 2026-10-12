@@ -1,3 +1,4 @@
+import uuid
 from datetime import date, datetime
 from typing import Annotated, Literal
 
@@ -628,3 +629,47 @@ class AttachmentOut(Schema):
     url: str  # GET 하면 파일(토큰 인증)
     created_by: UserBrief
     created_at: datetime
+
+
+# ---------- 내 PC 전사 서버(IMPL-PLAN-11-local-stt-link §6.1) ----------
+
+
+class SttDeviceIn(Schema):
+    name: str = Field("", max_length=50)
+    machine_id: uuid.UUID
+    version: str = Field("", max_length=20)
+    device: dict = {}
+
+
+class SttDeviceTokenIn(Schema):
+    device_code: str = Field(max_length=200)
+
+
+class SttHeartbeatIn(Schema):
+    version: str = Field("", max_length=20)
+    job_id: int | None = None
+    concurrency: int = Field(1, ge=1, le=32)
+    device: dict = {}
+    models: list[dict] = []
+
+
+class SttRowIn(Schema):
+    seq: int
+    user_id: str = Field("", max_length=32)
+    start_ms: int = Field(ge=0)
+    text: str = ""  # 2,000자 넘는 구간은 라우터가 잘라 저장한다(보고 전체를 거절하지 않는다)
+    failed: bool = False
+
+
+class SttJobReportIn(Schema):
+    """PC 진행·결과. engine·model·transcript_md는 받지 않는다 — 전사문은 rows로 core가 조립한다."""
+
+    status: Literal["done", "failed", "cancelled"] | None = None
+    audio_ms: int | None = Field(None, ge=0)
+    done_ms: int | None = Field(None, ge=0)
+    segments_total: int | None = Field(None, ge=0)
+    segments_done: int | None = Field(None, ge=0)
+    segments_failed: int | None = Field(None, ge=0)
+    rows: list[SttRowIn] | None = Field(None, max_length=20000)
+    stats: dict | None = None
+    error: str = Field("", max_length=40)

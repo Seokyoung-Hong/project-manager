@@ -897,9 +897,13 @@ def transcription_requeue(request):
 def meeting_names(request, recording_id: int):
     """전사문 화자 표기(PM 이름, 미연결자는 'Discord 닉네임 (계정 없음)')·전사 설정·용어집."""
     rec = _recording(recording_id)
+    stt = _stt(rec.note.org)
+    if tx.withhold_stt(rec):
+        # 진행자 PC가 자동 전사를 맡았다 — 비우면 Node는 녹음만 올리고 draft를 보낸다(IMPL-PLAN-11-local-stt-link §7.3)
+        stt = {**stt, "url": "", "model": "", "api_key": "", "openai_api_key": ""}
     return {
         "names": notes_svc.speaker_names(rec),
-        "stt": _stt(rec.note.org),
+        "stt": stt,
         "glossary": notes_svc.meeting_glossary(rec),
     }
 

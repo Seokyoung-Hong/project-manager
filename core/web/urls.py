@@ -27,6 +27,7 @@ from .views import (
     settings,
     skills,
     split,
+    stt_link,
     subtasks,
     task_projects,
     tasks,
@@ -255,6 +256,13 @@ urlpatterns = [
     path("settings/profile/discord", settings.discord_link, name="discord_link"),
     path("settings/profile/discord/unlink", settings.discord_unlink, name="discord_unlink"),
     path("settings/tokens", settings.tokens, name="tokens"),
+    # 내 PC 전사 서버(IMPL-PLAN-11-local-stt-link)
+    path("link", stt_link.link, name="stt_link"),
+    path("settings/stt", stt_link.settings_stt, name="settings_stt"),
+    path("settings/stt/<int:server_id>", stt_link.stt_server_row, name="stt_server_row"),
+    path("settings/stt/<int:server_id>/pull", stt_link.stt_pull, name="stt_pull"),
+    path("settings/stt/<int:server_id>/unlink", stt_link.stt_unlink, name="stt_unlink"),
+    path("stt/<str:name>", stt_link.stt_script, name="stt_script"),
     path("settings/consents", settings.consents, name="consents"),
     path("settings/consents/<str:target>", settings.consent, name="consent"),
     path(
@@ -308,6 +316,7 @@ urlpatterns = [
     path("notes/<int:note_id>/audio", notes.note_audio, name="note_audio"),
     path("notes/<int:note_id>/audio/upload", notes.note_audio_upload, name="note_audio_upload"),
     path("notes/<int:note_id>/transcribe", notes.note_transcribe, name="note_transcribe"),
+    path("notes/<int:note_id>/tracks.zip", notes.note_tracks_zip, name="note_tracks_zip"),
     path("notes/<int:note_id>/tracks/<str:discord_user_id>", notes.note_track, name="note_track"),
     path("tasks/<int:task_id>/notes", notes.task_note_link, name="task_note_link"),
     path(

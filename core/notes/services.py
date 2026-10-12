@@ -350,9 +350,10 @@ def _terms(text: str):
             yield t
 
 
-def meeting_glossary(rec) -> str:
+def meeting_glossary(rec, viewer=None) -> str:
     """전사 정확도용 용어집(전사 API의 prompt). 처음 진행자(started_by)가 볼 수 있는 자료에서만
     뽑는다(결정 2-3). 진행자를 넘겨도 바꾸지 않는다 — 녹음 중 용어집이 넓어지지 않게.
+    viewer를 주면 그 사람도 볼 수 있는 자료로 더 좁힌다(내 PC 전사: PC 주인에게 나가는 용어집).
 
     참여자 이름이 먼저, 그다음 프로젝트·마일스톤 이름(가중 2)과 문서·회의록·태스크 제목에 자주 나오는
     용어 순. 한 번만 나온 일반 용어는 뺀다.
@@ -362,6 +363,10 @@ def meeting_glossary(rec) -> str:
 
     starter, org = rec.started_by, rec.note.org
     projects = visible_projects(starter, org)
+    notes = visible_notes(starter).filter(org=org)
+    if viewer is not None:
+        projects = projects.filter(pk__in=visible_projects(viewer, org).values("pk"))
+        notes = notes.filter(pk__in=visible_notes(viewer).values("pk"))
     counts = Counter()
     for weight, titles in (
         (2, projects.values_list("name", flat=True)),
@@ -379,10 +384,7 @@ def meeting_glossary(rec) -> str:
         ),
         (
             1,
-            visible_notes(starter)
-            .filter(org=org)
-            .exclude(pk=rec.note_id)
-            .values_list("title", flat=True),
+            notes.exclude(pk=rec.note_id).values_list("title", flat=True),
         ),
     ):
         for title in titles:
@@ -464,8 +466,11 @@ def update_recording(
             engine = (stats if stats is not None else rec.stats or {}).get("engine")
             _notify_owner(
                 rec,
+                # 진행자 PC가 전사를 맡았다(IMPL-PLAN-11-local-stt-link §7.3-4). 문구는 임시.
+                "회의록 초안이 준비된 상태입니다. 전사문은 진행자 PC에서 만드는 중입니다."  # COPY:draft_pc_transcribing
+                if engine == "none" and transcription.pc_auto_waiting(rec)
                 # 녹음만(전사 수단 없음, IMPL-PLAN-9-parallel §7). 실패가 아니다.
-                "회의록 초안이 준비된 상태입니다. 녹음 파일은 회의록 화면에서 내려받아 직접 전사해 주세요."
+                else "회의록 초안이 준비된 상태입니다. 녹음 파일은 회의록 화면에서 내려받아 직접 전사해 주세요."
                 if engine == "none"
                 else f"회의록 초안과 전사문이 준비된 상태입니다. `/pm-meeting {note.pk}`로 정리하거나 "
                 "웹에서 작성해 주세요.",

@@ -1,0 +1,40 @@
+{% extends "base.html" %}{% block title %}내 PC 연결 허용{% endblock %}
+{% block main %}
+{# 기기 인증(IMPL-PLAN-11-local-stt-link §3). 코드는 늘 빈 칸에서 시작한다 — 주소로 채우지 않는다. 문구는 임시. #}
+<section class="card w-md stack">
+  <h1 class="t24">내 PC를 전사 서버로 연결</h1>{# COPY:link_title #}
+  {% if error %}<p class="notice bad" role="alert">⚠ {{ error }}</p>{% endif %}
+  {% if step == "enter" %}
+  <p class="muted t13">PC에서 실행한 연결 명령이 보여 준 코드 8자리를 입력해 주세요.</p>{# COPY:link_code_help #}
+  <form method="post" class="stack">{% csrf_token %}
+    <input type="hidden" name="step" value="lookup">
+    <label class="field"><span class="label">연결 코드</span>
+      <input class="input" name="code" value="" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="12" required placeholder="BCDF-GHJK" aria-describedby="link-code-help"></label>
+    <span id="link-code-help" class="muted t12">대소문자와 하이픈은 구분하지 않습니다.</span>
+    <button class="btn primary">코드 확인</button>
+  </form>
+  {% elif step == "confirm" %}
+  <p class="notice warn" role="note">⚠ 직접 PC에서 연결 명령을 실행한 경우에만 허용해 주세요. 다른 사람이 보내 준 코드를 허용하면 그 사람의 PC가 내 계정으로 내가 볼 수 있는 녹음을 전사합니다.</p>{# COPY:link_consent #}
+  <form method="post" class="stack">{% csrf_token %}
+    <input type="hidden" name="code" value="{{ code.user_code }}">
+    <label class="field"><span class="label">기기 이름</span>
+      <input class="input" name="name" value="{{ code.name }}" maxlength="50" required></label>
+    <dl class="panel-meta">
+      <dt>코드</dt><dd><code>{{ code.user_code }}</code></dd>
+      {% if code.version %}<dt>버전</dt><dd>{{ code.version }}</dd>{% endif %}
+      {% for k, v in device %}<dt>{{ k }}</dt><dd>{{ v }}</dd>{% endfor %}
+      <dt>요청 시각</dt><dd>{{ code.created_at|date:"n월 j일 H:i" }}</dd>
+    </dl>
+    <div class="row">
+      <button class="btn primary" name="step" value="approve">연결 허용</button>
+      <button class="btn danger" name="step" value="deny">연결 거절</button>
+    </div>
+  </form>
+  {% else %}
+  {% if result == "done" %}<p class="conn"><span class="conn-state on">연결됨</span> '{{ name }}'을(를) 연결했습니다. PC 화면으로 돌아가 주세요.</p>{# COPY:link_done #}
+  {% elif result == "denied" %}<p class="conn"><span class="conn-state off">거절함</span> 연결을 거절했습니다. 이 PC는 내 계정에 연결되지 않습니다.</p>{# COPY:link_denied #}
+  {% else %}<p class="conn"><span class="conn-state warn">만료</span> 코드가 만료되었습니다. PC에서 연결 명령을 다시 실행해 주세요.</p>{# COPY:link_expired #}{% endif %}
+  <p><a href="{% url 'settings_stt' %}">내 PC 연결 화면으로</a></p>
+  {% endif %}
+</section>
+{% endblock %}

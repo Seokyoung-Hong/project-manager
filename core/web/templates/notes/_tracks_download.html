@@ -1,0 +1,7 @@
+{# 참여자별 녹음: zip 하나 + 하나씩은 접힘 안(회의록 화면·전사 패널 공용). 문구는 임시(docs/drafts/local-stt-link-copy.md). #}
+{% if tracks %}
+<p class="t13"><a href="{% url 'note_tracks_zip' note.pk %}" download>참여자별 녹음 한 번에 내려받기(zip)</a> <span class="muted">· {{ tracks|length }}명 · {{ tracks_size|filesizeformat }}</span></p>{# COPY:tracks_zip #}
+<details class="fold"><summary>참여자별로 하나씩 내려받기</summary>{# COPY:tracks_each #}
+  {% for t in tracks %}<p class="t13"><a href="{% url 'note_track' note.pk t.id %}" download>{{ t.name }} 녹음 내려받기</a> <span class="muted">· {{ t.size|filesizeformat }}</span></p>{% endfor %}
+</details>
+{% endif %}

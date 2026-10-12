@@ -94,8 +94,11 @@ def tokens(request):
         {
             "form": form,
             # 폐기된 토큰이 활성 토큰과 섞이면 살아 있는 것을 세기 어렵다
-            "tokens": request.user.tokens.filter(revoked_at__isnull=True),
-            "revoked_tokens": request.user.tokens.filter(revoked_at__isnull=False),
+            # 전사 서버 토큰은 내 PC 연결 화면에서 관리한다
+            "tokens": request.user.tokens.filter(revoked_at__isnull=True).exclude(scope="stt"),
+            "revoked_tokens": request.user.tokens.filter(revoked_at__isnull=False).exclude(
+                scope="stt"
+            ),
             "new_token": request.session.pop("new_token", None),
             "mcp_url": settings.MCP_URL,
             # 스킬 설치 명령. 설치 스크립트와 같은 정식 주소

@@ -156,6 +156,7 @@ IGNORE = {
     "projects_doc_attendees",
     "tasks_notice",
     "notes_voicetrack", "notes_transcriptionjob",  # 회의 녹음 내부(패널·목록에 안 나온다)
+    "notes_sttserver", "notes_sttdevicecode",  # 내 PC 전사 연결(개인 설정 화면만)
     "github_githubinstallation", "github_gitrelease", "github_gitevent", "github_githubteamlink",
     "api_integrationstatus", "ops_opsauditlog",
 }  # fmt: skip
