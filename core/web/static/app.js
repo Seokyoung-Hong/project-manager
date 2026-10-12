@@ -304,19 +304,21 @@
   });
 
   // 패널·다이얼로그 스왑 후 처리
-  body.addEventListener("htmx:afterSwap", function (e) {
+  function panelSwapped(panel) {
     var layout = document.querySelector(".layout");
-    if (e.target.id === "panel" && layout) {
-      var open = e.target.children.length > 0;
-      layout.classList.toggle("has-panel", open);
-      layout.classList.toggle("wide", open && localStorage.getItem("panel-wide") === "1");
-      var w = e.target.querySelector("[data-action='toggle-wide']");
-      if (w) w.textContent = layout.classList.contains("wide") ? "패널 좁히기" : "패널 넓히기";
-      var f = e.target.querySelector("[data-focus]");
-      if (!f && open && panelOpening) f = e.target.querySelector("select, button, input:not([type=hidden]), textarea, a[href]");
-      if (f) f.focus({ preventScroll: true });
-      panelOpening = false;
-    }
+    if (!layout) return;
+    var open = panel.children.length > 0;
+    layout.classList.toggle("has-panel", open);
+    layout.classList.toggle("wide", open && localStorage.getItem("panel-wide") === "1");
+    var w = panel.querySelector("[data-action='toggle-wide']");
+    if (w) w.textContent = layout.classList.contains("wide") ? "패널 좁히기" : "패널 넓히기";
+    var f = panel.querySelector("[data-focus]");
+    if (!f && open && panelOpening) f = panel.querySelector("select, button, input:not([type=hidden]), textarea, a[href]");
+    if (f) f.focus({ preventScroll: true });
+    panelOpening = false;
+  }
+  body.addEventListener("htmx:afterSwap", function (e) {
+    if (e.target.id === "panel") panelSwapped(e.target);
     if (e.target.id === "dialog" && e.target.children.length) e.target.showModal();
     requestAnimationFrame(syncAllBoardNavigation);
   });
@@ -464,6 +466,105 @@
       },
     });
   });
+
+  // ---------- 태스크 패널 미리 받기 ----------
+  // 화면에 보이는(또는 마우스·초점이 간) 태스크의 패널을 미리 받아 두고, 열 때는 받아 둔 것을 바로 넣는다.
+  // 넣은 직후 최신본을 다시 받아, 그사이 바뀌었고 아직 손대지 않았으면 갈아 끼운다.
+  // 태스크가 바뀌었다는 이벤트(task-changed·task-updated, SSE 포함)가 오면 그 태스크 것을 버리고 다시 받는다.
+  // ponytail: 캐시는 페이지 수명 동안 메모리에만 둔다. 화면에 나온 태스크 수만큼만 쌓인다.
+  (function () {
+    var panel = document.getElementById("panel");
+    if (!panel || !window.fetch) return;
+    var RE = /^\/tasks\/\d+\/panel$/;
+    var cache = {}, gen = {}, queue = [], busy = 0, touched = false;
+    // 폼마다 새로 섞이는 CSRF 값은 비교에서 뺀다
+    function same(a, b) {
+      var strip = function (h) { return h.replace(/name="csrfmiddlewaretoken" value="[^"]*"/g, ""); };
+      return strip(a) === strip(b);
+    }
+    function urlOf(el) {
+      var u = el.getAttribute && (el.getAttribute("data-panel") || el.getAttribute("hx-get"));
+      return u && RE.test(u) ? u : null;
+    }
+    function load(url) {
+      var g = gen[url] || 0;
+      return fetch(url, { headers: { "HX-Request": "true" }, credentials: "same-origin" })
+        .then(function (r) { if (!r.ok || r.redirected) throw r; return r.text(); })
+        .then(function (html) { if ((gen[url] || 0) === g) cache[url] = html; return html; });
+    }
+    function pump() {
+      while (busy < 2 && queue.length) {
+        var url = queue.shift();
+        if (cache[url]) continue;
+        busy++;
+        load(url).catch(function () {}).then(function () { busy--; pump(); });
+      }
+    }
+    function want(url, first) {
+      if (!url || cache[url]) return;
+      var i = queue.indexOf(url);
+      if (i >= 0) { if (!first) return; queue.splice(i, 1); }
+      if (first) queue.unshift(url); else queue.push(url);
+      pump();
+    }
+    var seen = window.IntersectionObserver && new IntersectionObserver(function (entries) {
+      entries.forEach(function (en) { if (en.isIntersecting) want(urlOf(en.target)); });
+    }, { rootMargin: "200px 0px" });
+    function scan(root) {
+      if (!seen) return;
+      (root || document).querySelectorAll("[data-panel], [hx-get$='/panel']").forEach(function (el) {
+        if (!panel.contains(el) && urlOf(el)) { seen.unobserve(el); seen.observe(el); }
+      });
+    }
+    var idle = window.requestIdleCallback || function (f) { setTimeout(f, 300); };
+    idle(function () { scan(); });
+    body.addEventListener("htmx:afterSettle", function (e) { if (e.target !== panel) scan(e.target); });
+    // 누르기 직전(마우스 올림·초점)이면 줄 맨 앞으로
+    ["pointerover", "focusin"].forEach(function (type) {
+      body.addEventListener(type, function (e) {
+        var el = e.target.closest && e.target.closest("[data-panel], [hx-get$='/panel']");
+        if (el && !panel.contains(el)) want(urlOf(el), true);
+      }, { passive: true });
+    });
+    function drop(e) {
+      var id = e.detail && e.detail.id;
+      if (id == null) { Object.keys(cache).forEach(function (u) { gen[u] = (gen[u] || 0) + 1; }); cache = {}; scan(); return; }
+      var url = "/tasks/" + id + "/panel";
+      gen[url] = (gen[url] || 0) + 1; delete cache[url];
+      if (document.querySelector('[data-panel="' + url + '"], [hx-get="' + url + '"]')) want(url);
+    }
+    body.addEventListener("task-changed", drop);
+    body.addEventListener("task-updated", drop);
+    ["input", "pointerdown", "keydown"].forEach(function (type) {
+      panel.addEventListener(type, function () { touched = true; });
+    });
+    function shown(url) { return panel.firstElementChild && panel.firstElementChild.getAttribute("hx-get") === url; }
+    function put(html) { panel.innerHTML = html; htmx.process(panel); panelSwapped(panel); requestAnimationFrame(syncAllBoardNavigation); }
+    // 밖에서 패널을 여는 GET(행·버튼·달력·openPanel)만 가로챈다. 패널 안 새로고침과 ?block=1 같은 변형은 그대로 보낸다.
+    body.addEventListener("htmx:beforeRequest", function (e) {
+      var d = e.detail || {}, cfg = d.requestConfig || {}, url = d.pathInfo && d.pathInfo.requestPath;
+      if (!d.target || d.target !== panel || cfg.verb !== "get" || !RE.test(url || "") || panel.contains(d.elt)) return;
+      var html = cache[url];
+      if (!html) return;
+      e.preventDefault();
+      var push = d.elt && d.elt.getAttribute && d.elt.getAttribute("hx-push-url");
+      if (push && push !== "false") history.pushState(null, "", push);
+      touched = false;
+      put(html);
+      load(url).then(function (fresh) {
+        if (touched || !shown(url) || same(fresh, html)) return;
+        var top = panel.scrollTop, focused = panel.contains(document.activeElement);
+        panelOpening = focused;
+        put(fresh);
+        panel.scrollTop = top;
+      }).catch(function () {});
+    });
+    // 네트워크로 연 패널도 받아 둔다
+    body.addEventListener("htmx:afterRequest", function (e) {
+      var d = e.detail || {}, url = d.pathInfo && d.pathInfo.requestPath;
+      if (d.successful && d.target === panel && RE.test(url || "") && d.xhr) cache[url] = d.xhr.responseText;
+    });
+  })();
 
   // ---------- 실시간 반영 (SSE) ----------
   // 서버(/events)가 방금 바뀐 태스크 id를 흘려보내면, 이미 쓰고 있는 HTMX 이벤트로 바꿔 쏜다.
