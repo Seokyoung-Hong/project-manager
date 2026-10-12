@@ -303,6 +303,7 @@ urlpatterns = [
     path("notes/<int:note_id>/audio", notes.note_audio, name="note_audio"),
     path("notes/<int:note_id>/audio/upload", notes.note_audio_upload, name="note_audio_upload"),
     path("notes/<int:note_id>/transcribe", notes.note_transcribe, name="note_transcribe"),
+    path("notes/<int:note_id>/tracks.zip", notes.note_tracks_zip, name="note_tracks_zip"),
     path("notes/<int:note_id>/tracks/<str:discord_user_id>", notes.note_track, name="note_track"),
     path("tasks/<int:task_id>/notes", notes.task_note_link, name="task_note_link"),
     path(

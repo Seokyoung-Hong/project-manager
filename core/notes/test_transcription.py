@@ -475,3 +475,42 @@ def test_panel_offers_audio_and_track_downloads(client, enabled, admin, member, 
     body = client.get(f"/orgs/{enabled.pk}/transcribe/recordings/{rec.pk}/panel").content.decode()
     assert f'href="/notes/{rec.note.pk}/audio"' in body
     assert f'href="/notes/{rec.note.pk}/tracks/h"' in body
+    assert f'href="/notes/{rec.note.pk}/tracks.zip"' in body
+
+
+def test_tracks_zip_names_permission_and_expiry(client, enabled, admin, member, other_member, bot):
+    import io
+    import zipfile
+
+    rec, _ = _drafted(enabled, member, bot)  # 트랙 h 하나
+    VoiceTrack.objects.create(
+        recording=rec, discord_user_id="a", audio=ContentFile(b"ogg2", name="t.ogg"), audio_size=4
+    )
+    # 두 참여자 이름이 같으면 -2로 구분한다
+    rec.participants = [
+        {"discord_user_id": "h", "display_name": "홍길동"},
+        {"discord_user_id": "a", "display_name": "홍길동"},
+    ]
+    rec.save()
+    url = f"/notes/{rec.note_id}/tracks.zip"
+    client.force_login(member)
+    r = client.get(url)
+    assert r.status_code == 200 and r["X-Content-Type-Options"] == "nosniff"
+    assert (
+        f"회의록-{rec.note_id}-" in r["Content-Disposition"]
+        or "filename*" in r["Content-Disposition"]
+    )
+    zf = zipfile.ZipFile(io.BytesIO(b"".join(r.streaming_content)))
+    names = zf.namelist()
+    assert names == [f"회의록-{rec.note_id}-홍길동.ogg", f"회의록-{rec.note_id}-홍길동-2.ogg"]
+    assert zf.read(names[1]) == b"ogg2" and zf.infolist()[0].compress_type == zipfile.ZIP_STORED
+    client.force_login(other_member)  # 초안은 진행자·관리자만
+    assert client.get(url).status_code == 404
+    rec.audio_expires_at = timezone.now() - timedelta(days=1)
+    rec.save()
+    client.force_login(member)
+    assert client.get(url).status_code == 404
+    rec.audio_expires_at = None
+    rec.save()
+    rec.tracks.all().delete()
+    assert client.get(url).status_code == 404

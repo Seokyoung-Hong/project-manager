@@ -354,7 +354,12 @@ def audio_ctx(rec):
             }
             for t in rec.tracks.exclude(audio="").order_by("pk")
         ]
-    return {"audio_state": state, "audio_expired_text": ts_notes.AUDIO_EXPIRED, "tracks": tracks}
+    return {
+        "audio_state": state,
+        "audio_expired_text": ts_notes.AUDIO_EXPIRED,
+        "tracks": tracks,
+        "tracks_size": sum(t["size"] for t in tracks),
+    }
 
 
 def _track_name(rec, discord_user_id):
@@ -362,23 +367,75 @@ def _track_name(rec, discord_user_id):
     return (p.get("display_name") or discord_user_id).removesuffix(ts_notes.UNLINKED_MARK)
 
 
-@login_required
-def note_track(request, note_id, discord_user_id):
-    """참여자별 녹음 내려받기. 권한은 note_audio와 같다."""
+def _tracks_or_404(request, note_id):
+    """참여자별 녹음 관문(note_track·note_tracks_zip 공용). 권한은 note_audio와 같다."""
     note = _note_or_404(request.user, note_id)
     rec = getattr(note, "recording", None)
     if rec is None or ts_notes.audio_expired(rec):
         raise Http404
-    track = rec.tracks.filter(discord_user_id=discord_user_id).exclude(audio="").first()
+    return note, rec, rec.tracks.exclude(audio="").order_by("pk")
+
+
+def _track_file(note, rec, discord_user_id) -> str:
+    name = re.sub(r"[^\w-]+", "_", _track_name(rec, discord_user_id)).strip("_") or "참여자"
+    return f"회의록-{note.pk}-{name}.ogg"
+
+
+@login_required
+def note_track(request, note_id, discord_user_id):
+    """참여자별 녹음 내려받기. 권한은 note_audio와 같다."""
+    note, rec, tracks = _tracks_or_404(request, note_id)
+    track = tracks.filter(discord_user_id=discord_user_id).first()
     if track is None:
         raise Http404
     try:
         fh = track.audio.open("rb")
     except FileNotFoundError:
         raise Http404 from None
-    name = re.sub(r"[^\w-]+", "_", _track_name(rec, discord_user_id)).strip("_") or "참여자"
     r = FileResponse(
-        fh, as_attachment=True, filename=f"회의록-{note.pk}-{name}.ogg", content_type="audio/ogg"
+        fh,
+        as_attachment=True,
+        filename=_track_file(note, rec, discord_user_id),
+        content_type="audio/ogg",
+    )
+    r["X-Content-Type-Options"] = "nosniff"
+    return r
+
+
+@login_required
+def note_tracks_zip(request, note_id):
+    """참여자별 녹음을 zip 하나로. ogg는 이미 압축이라 저장만(ZIP_STORED), 메모리 대신 임시 파일에 쓴다."""
+    import shutil
+    import tempfile
+    import zipfile
+
+    note, rec, tracks = _tracks_or_404(request, note_id)
+    tracks = list(tracks)
+    if not tracks:
+        raise Http404
+    tmp = tempfile.SpooledTemporaryFile(max_size=8 << 20)  # noqa: SIM115 — FileResponse가 닫는다
+    used = set()
+    with zipfile.ZipFile(tmp, "w", zipfile.ZIP_STORED) as zf:
+        for t in tracks:
+            base = _track_file(note, rec, t.discord_user_id).removesuffix(".ogg")
+            name, n = f"{base}.ogg", 1
+            while name in used:  # 이름이 겹치면 -2, -3 …
+                n += 1
+                name = f"{base}-{n}.ogg"
+            used.add(name)
+            try:
+                with t.audio.open("rb") as src, zf.open(name, "w", force_zip64=True) as dst:
+                    shutil.copyfileobj(src, dst)
+            except FileNotFoundError:
+                used.discard(name)
+    if not used:
+        raise Http404
+    tmp.seek(0)
+    r = FileResponse(
+        tmp,
+        as_attachment=True,
+        filename=f"회의록-{note.pk}-참여자별.zip",
+        content_type="application/zip",
     )
     r["X-Content-Type-Options"] = "nosniff"
     return r
