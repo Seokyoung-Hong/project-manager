@@ -817,8 +817,8 @@ SPECS: dict[str, Spec] = {
             False,
             "meeting",
             "로컬 전사 서버 주소",
-            "OpenAI 호환 전사 서버 주소입니다(예: http://172.30.1.50:8000). 비우면 OpenAI로 "
-            "전사합니다. http는 사설 대역 주소에만 쓸 수 있습니다.",
+            "OpenAI 호환 전사 서버 주소입니다(예: http://172.30.1.50:8000). 비우면 OpenAI 키로 "
+            "전사하고, 키도 없으면 녹음만 합니다. http는 사설 대역 주소에만 쓸 수 있습니다.",
             hi=200,
             validate=validate_stt_url,
         ),
@@ -854,6 +854,18 @@ SPECS: dict[str, Spec] = {
             "meeting",
             "로컬 전사 서버 키",
             "로컬 서버의 Bearer 키입니다. 암호화해 저장하며 화면에는 설정 여부만 보입니다.",
+        ),
+        Spec(
+            "meeting.openai_api_key",
+            "secret",
+            SECRET_UNSET,
+            "org",
+            False,
+            "meeting",
+            "OpenAI 키",
+            "로컬 전사 서버가 없을 때 이 키로 OpenAI whisper에 전사를 맡깁니다. 둘 다 없으면 "
+            "녹음만 하고, 회의록 화면에서 녹음을 내려받아 직접 전사합니다. 암호화해 저장하며 "
+            "화면에는 설정 여부만 보입니다.",
         ),
         # --- 4.6 개인 설정 ---
         Spec(

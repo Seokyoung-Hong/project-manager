@@ -410,9 +410,13 @@ def update_recording(
                 note.body_md = DRAFT_BODY.format(id=note.pk)
                 note.version += 1
                 note.save(update_fields=["body_md", "version", "updated_at"])
+            engine = (stats if stats is not None else rec.stats or {}).get("engine")
             _notify_owner(
                 rec,
-                f"회의록 초안(전사문)이 준비되었습니다. `/pm-meeting {note.pk}`로 정리하거나 "
+                # 녹음만(전사 수단 없음, IMPL-PLAN-9-parallel §7). 실패가 아니다.
+                "녹음 파일이 준비되었습니다. 회의록 화면에서 내려받아 전사할 수 있습니다."
+                if engine == "none"
+                else f"회의록 초안(전사문)이 준비되었습니다. `/pm-meeting {note.pk}`로 정리하거나 "
                 "웹에서 작성해 주세요.",
             )
         elif status == "failed":
@@ -441,6 +445,47 @@ def update_recording(
         rec.transcript_md = transcript_md
     rec.save()
     return rec
+
+
+AUDIO_MAX_BYTES = 300 * 1024 * 1024  # IMPL-PLAN-9-parallel §7
+AUDIO_EXPIRED = "보관 기간이 지나 녹음을 삭제했습니다."
+
+
+def audio_expired(rec) -> bool:
+    return rec.audio_expires_at is not None and rec.audio_expires_at <= timezone.now()
+
+
+@transaction.atomic
+def save_audio(rec, upload) -> VoiceRecording:
+    """봇이 올린 혼합 녹음(Ogg). 같은 회의에 다시 올리면 바꾼다. 옛 파일은 커밋 뒤에 지운다."""
+    if upload.size > AUDIO_MAX_BYTES:
+        raise ServiceError({"file": "녹음 파일이 너무 큽니다 (300MB 상한)."})
+    head = upload.read(4)
+    upload.seek(0)
+    if head != b"OggS":
+        raise ServiceError({"file": "Ogg 녹음 파일만 올릴 수 있습니다."})
+    rec = VoiceRecording.objects.select_for_update().select_related("note").get(pk=rec.pk)
+    old = rec.audio.name
+    rec.audio.save("meeting.ogg", upload, save=False)
+    rec.audio_size = upload.size
+    rec.save(update_fields=["audio", "audio_size"])
+    if old:
+        storage = rec.audio.storage
+        transaction.on_commit(lambda: storage.delete(old))
+    return rec
+
+
+def purge_expired_audio() -> int:
+    """보관 기간(audio_expires_at)이 지난 녹음 파일을 지운다. audio_size는 남긴다(화면의 "삭제함" 표시)."""
+    storage = VoiceRecording._meta.get_field("audio").storage
+    n = 0
+    for rec in VoiceRecording.objects.filter(audio_expires_at__lte=timezone.now()).exclude(
+        audio=""
+    ):
+        storage.delete(rec.audio.name)
+        VoiceRecording.objects.filter(pk=rec.pk).update(audio="")
+        n += 1
+    return n
 
 
 @transaction.atomic

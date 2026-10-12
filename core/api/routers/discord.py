@@ -9,8 +9,9 @@
 
 from datetime import date
 
-from ninja import Router, Schema
+from ninja import File, Router, Schema
 from ninja.errors import HttpError
+from ninja.files import UploadedFile
 
 from accounts.models import User
 from accounts.services import link_discord, unlink_discord_by_id, user_by_discord_id
@@ -601,6 +602,8 @@ def complete_request(request, request_id: int, payload: DiscordRequestAnswerIn):
 
 @router.get("/notices", response=list[dict])
 def notices(request):
+    # 발송 프로세스가 60초마다 부르는 곳이라 만료 녹음 정리를 여기에 얹는다(별도 스케줄러 없음).
+    notes_svc.purge_expired_audio()
     return [
         {
             "id": n.pk,
@@ -669,6 +672,8 @@ def _stt(org) -> dict:
         "model": org_settings.effective("meeting.stt_model", org=org),
         "timeout_s": org_settings.effective("meeting.stt_timeout_s", org=org),
         "api_key": org_settings.secret_value("meeting.stt_api_key", org),
+        # 로컬 서버가 없을 때 whisper로 전사할 조직 키. 둘 다 없으면 봇은 녹음만 한다(§7).
+        "openai_api_key": org_settings.secret_value("meeting.openai_api_key", org),
     }
 
 
@@ -763,6 +768,19 @@ def meeting_update(request, recording_id: int, payload: DiscordMeetingPatchIn):
         stats=payload.stats,
     )
     return _recording_out(rec)
+
+
+@router.put("/meetings/{int:recording_id}/audio", response=dict)
+def meeting_audio(request, recording_id: int, file: UploadedFile = File(...)):  # noqa: B008
+    """혼합 녹음(`meeting.ogg`, multipart `file`, 300MB 상한)을 올린다. 다시 올리면 바꾼다.
+
+    보관 기간(`audio_expires_at`)이 지난 회의는 410.
+    """
+    rec = _recording(recording_id)
+    if notes_svc.audio_expired(rec):
+        raise HttpError(410, notes_svc.AUDIO_EXPIRED)
+    rec = notes_svc.save_audio(rec, file)
+    return {"ok": True, "size": rec.audio_size}
 
 
 @router.get("/meetings/{int:recording_id}/names", response=dict)

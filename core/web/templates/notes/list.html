@@ -123,6 +123,11 @@
       <button id="doc-submit" class="btn sm primary">회의록 저장</button>
     </form>
 
+    {% if audio_state == "ready" %}
+    <p class="t13"><a href="{% url 'note_audio' note.pk %}" download>녹음 내려받기</a> <span class="muted">· {{ recording.audio_size|filesizeformat }}{% if recording.audio_expires_at %} · {{ recording.audio_expires_at|date:"n월 j일" }}까지 보관{% endif %}</span></p>
+    {% elif audio_state == "expired" %}
+    <p class="t13 muted">{{ audio_expired_text }}</p>
+    {% endif %}
     {% if recording and recording.transcript_md %}
     <details>
       <summary>전사문</summary>
