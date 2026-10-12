@@ -1,6 +1,6 @@
 {# 상위·하위 태스크 칸(IMPL-PLAN-12 §5.2). 패널의 독립 구역 — tasks/_projects.html 옆에 같은 방식으로 붙는다. #}
 {% if sub.show %}
-<details class="section fold" id="task-subtasks"{% if sub_msg %} open{% endif %}>
+<details class="section fold" id="task-subtasks" data-section="subtasks"{% if sub_msg %} open{% endif %}>
   <summary>하위 태스크 {{ sub.done }}/{{ sub.total }}</summary>
   {% if sub.total %}<div class="bar" role="img" aria-label="하위 {{ sub.done }}/{{ sub.total }} 완료"><i style="width: {% widthratio sub.done sub.total 100 %}%"></i></div>{% endif %}
   {% if sub_msg %}<p class="muted t13" role="status">{{ sub_msg }}</p>{% endif %}

@@ -470,7 +470,7 @@
   // ---------- 태스크 패널 미리 받기 ----------
   // 화면에 보이는(또는 마우스·초점이 간) 태스크의 패널을 미리 받아 두고, 열 때는 받아 둔 것을 바로 넣는다.
   // 넣은 직후 최신본인지 다시 묻고, 그사이 바뀌었고 아직 손대지 않았으면 갈아 끼운다.
-  // 태스크가 바뀌었다는 이벤트(task-changed·task-updated, SSE 포함)가 오면 그 태스크 것을 낡음으로 표시하고 다시 묻는다.
+  // 태스크가 바뀌었다는 이벤트(task-changed·task-updated·실시간 rt-stale)가 오면 그 태스크 것을 낡음으로 표시하고 다시 묻는다.
   // 물을 때는 가진 것의 해시(If-None-Match)를 보내, 같으면 서버가 본문 없이 304만 돌려준다.
   // ponytail: 캐시는 페이지 수명 동안 메모리에만 둔다. 화면에 나온 태스크 수만큼만 쌓인다.
   (function () {
@@ -518,7 +518,11 @@
       pump();
     }
     var seen = window.IntersectionObserver && new IntersectionObserver(function (entries) {
-      entries.forEach(function (en) { if (en.isIntersecting) want(urlOf(en.target)); });
+      entries.forEach(function (en) {
+        if (en.isIntersecting) want(urlOf(en.target));
+        // 실시간 구독(realtime.js)도 보이는 행을 이 관찰자로 안다
+        body.dispatchEvent(new CustomEvent("rt-row", { detail: { el: en.target, on: en.isIntersecting } }));
+      });
     }, { rootMargin: "200px 0px" });
     function scan(root) {
       if (!seen) return;
@@ -545,6 +549,7 @@
     }
     body.addEventListener("task-changed", drop);
     body.addEventListener("task-updated", drop);
+    body.addEventListener("rt-stale", drop);   // 실시간 T: 이벤트(접힌 섹션이라 다시 받지 않을 때도)
     ["input", "pointerdown", "keydown"].forEach(function (type) {
       panel.addEventListener(type, function () { touched = true; });
     });
@@ -575,50 +580,6 @@
       if (!(d.successful && d.target === panel && RE.test(url || "") && d.xhr)) return;
       cache[url] = d.xhr.responseText; tags[url] = d.xhr.getResponseHeader("ETag"); delete stale[url];
     });
-  })();
-
-  // ---------- 실시간 반영 (SSE) ----------
-  // 서버(/events)가 방금 바뀐 태스크 id를 흘려보내면, 이미 쓰고 있는 HTMX 이벤트로 바꿔 쏜다.
-  // 행·패널·오늘 목록은 그 이벤트를 이미 듣고 있으므로 템플릿은 건드릴 것이 없다.
-  (function () {
-    if (!window.EventSource || !body.dataset.live) return;
-    var mine = {};   // 내가 방금 바꾼 것: 되돌아온 메아리는 무시한다
-    var held = {};   // 패널에 타이핑 중이면 덮어쓰지 않고 쥐고 있는다
-
-    body.addEventListener("htmx:afterRequest", function (e) {
-      var m = /\/tasks\/(\d+)\//.exec((e.detail && e.detail.pathInfo && e.detail.pathInfo.requestPath) || "");
-      if (m) { mine[m[1]] = Date.now(); }
-    });
-
-    function typingInPanel() {
-      var panel = document.getElementById("panel");
-      var el = document.activeElement;
-      return panel && el && panel.contains(el) && /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName);
-    }
-
-    function apply(id) {
-      htmx.trigger(body, "task-changed", { id: id });
-      htmx.trigger(body, "task-updated", { id: id });
-    }
-
-    function onChange(id) {
-      var t = mine[id];
-      if (t && Date.now() - t < 5000) return;      // 내가 낸 변경이 SSE로 돌아온 것
-      if (typingInPanel()) { held[id] = true; return; }
-      apply(id);
-    }
-
-    body.addEventListener("focusout", function () {
-      setTimeout(function () {
-        if (typingInPanel()) return;
-        Object.keys(held).forEach(function (id) { apply(id); delete held[id]; });
-      }, 0);
-    });
-
-    var es = new EventSource("/events");
-    es.onmessage = function (ev) {
-      try { onChange(String(JSON.parse(ev.data).id)); } catch (err) { /* 형식이 아니면 무시 */ }
-    };
   })();
 
   // 문서 트리: 서버는 현재 문서까지 가는 가지만 펴서 보낸다. 사용자가 펴고 접은 가지는 브라우저가 기억한다.

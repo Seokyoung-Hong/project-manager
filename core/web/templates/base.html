@@ -11,7 +11,7 @@
   <link rel="stylesheet" href="{% static 'app.css' %}">
   <script src="{% static 'vendor/htmx.min.js' %}"></script>
 </head>
-<body hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}' data-page-url="{% block page_url %}{{ page_url }}{% endblock %}" data-org="{{ current_org.pk|default:'' }}"{% if user.is_authenticated and current_org %} data-live="1"{% endif %}>
+<body hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}' data-page-url="{% block page_url %}{{ page_url }}{% endblock %}" data-org="{{ current_org.pk|default:'' }}"{% if user.is_authenticated and current_org %} data-live="1"{% if rt_keys %} data-rt-keys="{{ rt_keys }}"{% endif %}{% endif %}>
 <a class="skip-link" href="#main-content">본문으로 건너뛰기</a>
 <header class="header">
   {% if user.is_authenticated %}
@@ -148,6 +148,7 @@
   </form>
 </dialog>
 <script src="{% static 'app.js' %}"></script>
+{% if user.is_authenticated and current_org %}<script src="{% static 'realtime.js' %}"></script>{% endif %}
 <script type="module" src="{% static 'md-field.js' %}"></script>
 <script type="module" src="{% static 'doc-tiptap.js' %}"></script>
 {% if user.is_authenticated %}{# WebMCP: 브라우저 안의 AI 에이전트에게 태스크 도구를 넘긴다 #}
