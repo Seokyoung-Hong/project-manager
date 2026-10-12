@@ -62,3 +62,13 @@
 - 기존 `discord-bot`은 재시작 1회(새 명령 sync). 음성 서비스 장애는 명령·DM에 영향 없음.
 - 메모리: Node 대기 ≈85MB·녹음 ≈130MB(IMPL-PLAN-9 §8). 운영 LXC 가용 ≈190MB(10-12 측정) — `mem_limit 256m`, 녹음 중 `docker stats` 관찰.
 - 전사 수단: 운영 `.env.discord`에 `OPENAI_API_KEY` 없음, 조직 `meeting.stt_url` 확인 필요. 없으면 녹음은 되지만 회의록은 `failed`.
+
+## 7. 변경(10-12 사용자 결정 4) — 기본은 녹음만, 내려받아 직접 전사. OpenAI 키는 조직 선택
+> "기본적으로는 녹음만 시행하고 그걸 다운로드 받아서 직접 전사할 수 있는 환경을 마련하고, 또 OpenAI 키를 넣어서 로컬 서버 대신 이 키로 whisper를 호출할 수도 있는 옵션을 제공하자." 조직·사용자별 로컬 전사 서버 이미지는 **나중에 별도**로 만든다.
+
+§4 전사·§2 env를 이렇게 바꾼다.
+- **녹음 파일**: 회의가 끝나면 Node가 구간들을 회의 시작 기준 시각에 맞춰 **하나의 혼합 음성 파일**(`meeting.ogg`, Opus 모노 32kbps 안팎)로 만든다(ffmpeg, 메모리 256MB 안에서 — 입력이 많으면 묶음 단위로 나눠 섞는다). core 봇 API `PUT /api/integrations/discord/meetings/{id}/audio`(multipart `file`)로 올린다. 올리기에 성공하면 Node 로컬 구간은 지운다(실패하면 재시도, 7일 정리는 그대로 안전망).
+- **엔진 선택**: ① 조직 설정 `meeting.stt_url`(기존, 로컬 서버) ② 조직 설정 **`meeting.openai_api_key`**(신설, `meeting.stt_api_key`와 같은 Fernet 암호화·마스킹) → OpenAI `whisper-1`(env `OPENAI_TRANSCRIBE_MODEL`로만 바꿈) ③ 둘 다 없으면 **녹음만**. `.env.discord`의 `OPENAI_API_KEY`는 쓰지 않는다.
+- **녹음만일 때**: core PATCH `status=draft, transcript_md="", stats{engine:"none", …}`. 실패가 아니다. 진행자 알림 문구는 "녹음 파일이 준비되었습니다. 회의록 화면에서 내려받아 전사할 수 있습니다." 계열(core가 `stats.engine`으로 고른다).
+- **core**: 오디오는 `MEDIA_ROOT` 아래 공개 URL이 없는 경로에 저장하고, 회의록 화면에 **[녹음 내려받기]**(회의록을 볼 수 있는 사람 — 초안이면 진행자·조직 관리자). `audio_expires_at`이 지나면 파일을 지우고 버튼 대신 "보관 기간(N일)이 지나 삭제되었습니다". 업로드 상한 300MB.
+- `/회의시작`은 전사 수단이 없어도 거절하지 않는다(IMPL-PLAN-9 §3.2 마지막 줄 폐기).
