@@ -25,8 +25,11 @@
 {% elif row.spec.kind == "secret" %}
 <input id="setting-{{ row.spec.key }}" class="input setting-text" type="password" name="{{ row.spec.key }}" value="" autocomplete="new-password" placeholder="{{ row.display }} · 바꿀 때만 입력"{% if row.spec.help %} aria-describedby="setting-help-{{ row.spec.key }}"{% endif %}>
 {% if row.display == "설정됨" %}<label class="setting-option"><input type="checkbox" name="clear__{{ row.spec.key }}"><span>지우기</span></label>{% endif %}
+{% elif row.spec.key == "meeting.stt_model" and org %}
+{% include "orgs/_stt_model_select.html" with current=row.value %}
+<button type="button" class="btn sm" hx-post="{% url 'org_stt_apply' org.pk %}" hx-target="#stt-test-result" hx-include="closest form">모델 적용</button>
 {% else %}
 <input id="setting-{{ row.spec.key }}" class="input setting-text" name="{{ row.spec.key }}" value="{{ row.value }}"{% if row.spec.help %} aria-describedby="setting-help-{{ row.spec.key }}"{% endif %}>
-{% if row.spec.key == "meeting.stt_url" and org %}<button type="button" class="btn sm" hx-post="{% url 'org_stt_test' org.pk %}" hx-include="#setting-meeting\.stt_url" hx-target="#stt-test-result">연결 시험</button>
-<div id="stt-test-result" aria-live="polite"></div>{% endif %}
+{% if row.spec.key == "meeting.stt_url" and org %}<button type="button" class="btn sm" hx-post="{% url 'org_stt_test' org.pk %}" hx-target="#stt-test-result" hx-include="closest form">연결 시험</button>
+<div id="stt-test-result" aria-live="polite"{% if row.value %} hx-post="{% url 'org_stt_test' org.pk %}" hx-trigger="load" hx-include="closest form"{% endif %}></div>{% endif %}
 {% endif %}
