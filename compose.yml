@@ -145,6 +145,21 @@ services:
     ports:
       - "${MCP_PORT:-127.0.0.1:8080}:8080"   # 기본은 루프백만. 밖에 공개하려면 .env에서 포트만 쓴다
 
+  frps:                          # 전사 서버(NAT 뒤 PC) 중계. NPM stt.sio2.kr → 7080, 같은 호스트 /~!frp → 7000(frpc 제어 websocket)
+    profiles: ["relay"]          # 켜려면 --profile relay 또는 COMPOSE_PROFILES에 relay. .env의 FRP_TOKEN 필수
+    image: fatedier/frps:v0.71.0
+    # 전사 응답이 60초를 넘을 수 있어 응답 헤더 대기를 300초로 둔다(NPM client_body_timeout과 같게)
+    environment:
+      FRP_TOKEN: ${FRP_TOKEN:-}
+    # 토큰이 비면 인증 없이 열리므로 기동을 거부한다(${FRP_TOKEN:?}는 프로필을 꺼도 compose 전체를 막아 쓰지 않는다)
+    entrypoint: ["sh", "-c", '[ -n "$$FRP_TOKEN" ] || { echo "FRP_TOKEN 없음" >&2; exit 1; }; exec frps -p 7000 --vhost-http-port 7080 --vhost-http-timeout 300 -t "$$FRP_TOKEN"']
+    ports:
+      - "7000:7000"
+      - "7080:7080"
+    mem_limit: 64m
+    restart: unless-stopped
+    logging: *logging
+
   cloudflared:
     profiles: ["tunnel"]         # TUNNEL_TOKEN 없이는 기동에 실패한다 → 기본에서 뺀다
     image: cloudflare/cloudflared:latest
