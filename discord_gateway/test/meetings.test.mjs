@@ -10,6 +10,9 @@ import { createCore } from '../src/core.mjs';
 import { Meetings, HttpErr } from '../src/meetings.mjs';
 import { createControl } from '../src/control.mjs';
 import * as texts from '../src/texts.mjs';
+import { mix } from '../src/mix.mjs';
+import { OggOpusWriter } from '../src/ogg.mjs';
+import { execFileSync } from 'node:child_process';
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const json = (data, status = 200) => new Response(JSON.stringify(data), { status, headers: { 'Content-Type': 'application/json' } });
@@ -40,7 +43,7 @@ function fakeCore(handler = () => undefined) {
   const calls = [];
   const fetch = async (url, opts) => {
     const path = new URL(url).pathname.replace('/api/integrations/discord', '');
-    const body = opts.body ? JSON.parse(opts.body) : undefined;
+    const body = typeof opts.body === 'string' ? JSON.parse(opts.body) : opts.body;
     calls.push({ method: opts.method, path, body, auth: opts.headers.Authorization });
     const r = handler(opts.method, path, body);
     if (r) return json(r[1], r[0]);
@@ -51,17 +54,19 @@ function fakeCore(handler = () => undefined) {
       return json({ id: 7, status: body.status ?? 'recording', audio_expires_at: body.status ? '2026-10-19T00:00:00Z' : null,
         channel_notice: body.end_reason === 'host_left' ? '회의 진행자가 나가서 회의를 종료하였습니다.' : '' });
     }
+    if (opts.method === 'PUT' && path.endsWith('/audio')) return json({ ok: true });
     if (path.endsWith('/names')) return json({ names: [{ discord_user_id: 'h', display_name: '홍길동' }], stt: {}, glossary: '' });
     return json({ detail: 'nope' }, 404);
   };
   return { core: createCore({ url: 'http://web:8000/', token: 'tok', fetch }), calls };
 }
 
-function setup({ handler, discord, env = {}, minuteMs = 60000 } = {}) {
+function setup({ handler, discord, env = {}, minuteMs = 60000, ffmpeg } = {}) {
   const dataDir = mkdtempSync(join(tmpdir(), 'voice-'));
   const { core, calls } = fakeCore(handler);
   const d = discord ?? fakeDiscord();
-  const m = new Meetings({ core, discord: d, dataDir, env, minuteMs, debounceMs: 10, retryDelayMs: 1, convert: async () => Buffer.from('a') });
+  const m = new Meetings({ core, discord: d, dataDir, env, minuteMs, debounceMs: 10, retryDelayMs: 1, convert: async () => Buffer.from('a'),
+    backoff: () => 5, ...(ffmpeg ? { ffmpeg } : {}), log: process.env.DBG ? (...a) => console.log(...a) : undefined });
   return { m, d, calls, dataDir };
 }
 const startBody = { guild_id: '1', discord_user_id: 'h', project_id: 5, team_id: null, title: '주간' };
@@ -212,12 +217,12 @@ test('재시작 복구: recording은 restart로 마감 후 남은 구간 전사,
     const path = new URL(url).pathname.replace('/api/integrations/discord', '');
     const body = opts.body ? JSON.parse(opts.body) : undefined;
     calls.push({ method: opts.method, path, body });
-    if (path.endsWith('/names')) return json({ names: [], stt: {}, glossary: '' });
+    if (path.endsWith('/names')) return json({ names: [], stt: { openai_api_key: 'sk' }, glossary: '' });
     return json({ status: body?.status, audio_expires_at: '2026-10-19T00:00:00Z' });
   };
   const d = fakeDiscord();
   const m = new Meetings({ core: createCore({ url: 'http://web:8000', token: 't', fetch }), discord: d, dataDir,
-    env: { OPENAI_API_KEY: 'sk' }, fetch, convert: async () => Buffer.from('a'), retryDelayMs: 1 });
+    fetch, convert: async () => Buffer.from('a'), retryDelayMs: 1 });
   await m.recover();
   await m.idle();
   const p = calls.filter((c) => c.method === 'PATCH');
@@ -268,4 +273,100 @@ test('control: healthz는 인증 없음, 나머지는 Bearer 아니면 401, 형�
   } finally {
     server.close();
   }
+});
+
+// 가짜 ffmpeg: 마지막 인자(출력 경로)에 파일을 만들고 인자를 기록한다
+const fakeFfmpeg = (runs = []) => Object.assign(async (args) => { runs.push(args); writeFileSync(args.at(-1), 'ogg'); }, { runs });
+const inputsOf = (args) => args.filter((_, i) => args[i - 1] === '-i');
+
+test('혼합: 40개 넘으면 묶음별 중간 트랙(시작 기준 지연) 뒤 다시 섞고, 결과만 32kbps', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'mix-'));
+  const run = fakeFfmpeg();
+  const inputs = Array.from({ length: 85 }, (_, i) => ({ path: `s${i}.ogg`, delay_ms: i * 1000 }));
+  await mix(inputs, join(dir, 'meeting.ogg'), { run });
+  assert.equal(run.runs.length, 4);
+  assert.deepEqual(run.runs.slice(0, 3).map((a) => inputsOf(a).length), [40, 40, 5]);
+  assert.match(run.runs[1].join(' '), /\[0:a\]adelay=40000:all=1/); // 두 번째 묶음 첫 입력 = 40초
+  assert.deepEqual(run.runs.slice(0, 3).map((a) => a[a.indexOf('-b:a') + 1]), ['64k', '64k', '64k']);
+  const last = run.runs[3];
+  assert.equal(inputsOf(last).length, 3);
+  assert.match(last.join(' '), /adelay=0:all=1.*amix=inputs=3/);
+  assert.equal(last[last.indexOf('-b:a') + 1], '32k');
+  assert.ok(existsSync(join(dir, 'meeting.ogg')));
+  assert.ok(!existsSync(join(dir, 'mix-0-0.ogg'))); // 중간 파일은 지운다
+});
+
+test('혼합: 실제 ffmpeg로 지연을 반영한 모노 Opus 하나', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'mix-'));
+  const seg = (name) => { const w = new OggOpusWriter(join(dir, name)); for (let i = 0; i < 50; i++) w.write(Buffer.from([0xf8, 0xff, 0xfe])); w.end(); return join(dir, name); };
+  await mix([{ path: seg('a.ogg'), delay_ms: 0 }, { path: seg('b.ogg'), delay_ms: 3000 }, { path: seg('c.ogg'), delay_ms: 1000 }], join(dir, 'meeting.ogg'), { batch: 2 }); // 묶음 2개 → 다시 섞기
+  const info = JSON.parse(execFileSync('ffprobe', ['-v', 'error', '-show_streams', '-show_format', '-of', 'json', join(dir, 'meeting.ogg')]));
+  assert.equal(info.streams[0].codec_name, 'opus');
+  assert.equal(info.streams[0].channels, 1);
+  assert.ok(Math.abs(Number(info.format.duration) - 4) < 0.2, info.format.duration);
+});
+
+// 말한 구간이 있는 회의를 시작·종료한다(패킷 0인 구간 하나 포함)
+async function endedWithSegments(opts) {
+  const s = setup(opts);
+  await s.m.start(startBody);
+  const dir = join(s.dataDir, 'meetings', '7');
+  writeFileSync(join(dir, 'seg', 'a.ogg'), 'x');
+  writeFileSync(join(dir, 'segments.jsonl'), [{ seq: 1, user_id: 'h', start_ms: 1000, duration_ms: 3000, packets: 150, file: 'seg/a.ogg' },
+    { seq: 2, user_id: 'a', start_ms: 0, duration_ms: 0, packets: 0, file: 'seg/b.ogg' }].map((x) => JSON.stringify(x)).join('\n') + '\n');
+  await s.m.stop(7, 'h');
+  await s.m.idle();
+  return { ...s, dir };
+}
+
+test('녹음만: 올리기 → 빈 전사문 draft(engine none) → 로컬 구간·혼합 파일 삭제', async () => {
+  const run = fakeFfmpeg();
+  const { calls, dir } = await endedWithSegments({ ffmpeg: run });
+  assert.equal(inputsOf(run.runs[0]).length, 1); // 패킷 0인 구간은 섞지 않는다
+  assert.match(run.runs[0].join(' '), /adelay=1000:all=1/);
+  const seq = calls.filter((c) => c.method !== 'PATCH' || c.body.status).map((c) => c.method + ' ' + c.path);
+  assert.deepEqual(seq.slice(1), ['PATCH /meetings/7', 'PUT /meetings/7/audio', 'GET /meetings/7/names', 'PATCH /meetings/7']);
+  const put = calls.find((c) => c.method === 'PUT');
+  assert.equal(put.auth, 'Bearer tok');
+  assert.equal(put.body.get('file').name, 'meeting.ogg');
+  const draft = patches(calls).at(-1);
+  assert.equal(draft.status, 'draft');
+  assert.equal(draft.transcript_md, '');
+  assert.equal(draft.stats.engine, 'none');
+  assert.equal(draft.participants.length, 2);
+  assert.ok(!existsSync(join(dir, 'seg')));
+  assert.ok(!existsSync(join(dir, 'meeting.ogg')));
+  assert.equal(JSON.parse(readFileSync(join(dir, 'state.json'))).uploaded, true);
+});
+
+test('올리기 실패: 전사·PATCH는 진행하고 백오프 재시도, 성공하면 그때 정리', async () => {
+  let fails = 2;
+  const { m, calls, dir } = await endedWithSegments({ ffmpeg: fakeFfmpeg(), handler: (me) => (me === 'PUT' && fails-- > 0 ? [503, { detail: 'busy' }] : undefined) });
+  assert.equal(patches(calls).at(-1).status, 'draft'); // 올리기 실패와 무관하게 회의록 PATCH
+  assert.ok(existsSync(join(dir, 'seg', 'a.ogg'))); // 아직 못 올렸으니 남긴다
+  await sleep(40);
+  await m.idle();
+  assert.equal(calls.filter((c) => c.method === 'PUT').length, 3);
+  assert.equal(patches(calls).filter((b) => b.status === 'draft').length, 1);
+  assert.ok(!existsSync(join(dir, 'seg')));
+  const st = JSON.parse(readFileSync(join(dir, 'state.json')));
+  assert.deepEqual([st.uploaded, st.retries], [true, 0]);
+});
+
+test('자동 종료 PATCH가 실패하면 재시도 큐로 다시 보내 recording으로 남지 않는다', async () => {
+  let down = true;
+  const { m, calls } = setup({ ffmpeg: fakeFfmpeg(), handler: (me, p, b) => (down && b?.end_reason === 'empty' ? [502, {}] : undefined) });
+  await m.start(startBody);
+  m.onVoiceState({ guildId: '1', userId: 'h', from: 'vc', to: null });
+  m.onVoiceState({ guildId: '1', userId: 'a', from: 'vc', to: null });
+  await sleep(5);
+  await m.idle();
+  assert.equal(m.count, 0); // 로컬 회의는 끝났다
+  down = false;
+  await sleep(40);
+  await m.idle();
+  const ps = patches(calls).filter((b) => b.status);
+  assert.ok(ps.length >= 3); // 실패 1회 이상 뒤 재전송 성공, 그다음 draft
+  assert.ok(ps.slice(0, -1).every((b) => b.status === 'transcribing' && b.end_reason === 'empty'));
+  assert.equal(ps.at(-1).status, 'draft');
 });

@@ -29,7 +29,3 @@ export const noMeeting = () => '진행 중인 회의가 없습니다.';
 export const unauthorized = () => '인증이 필요합니다.';
 export const badRequest = () => '요청 형식이 올바르지 않습니다.';
 export const notFound = () => '찾을 수 없는 경로입니다.';
-
-// 회의록 stats.reason(전사를 못 했을 때)
-export const noEngine = () => '전사 수단이 설정되지 않았습니다.';
-export const allFailed = () => '모든 구간의 전사에 실패했습니다.';

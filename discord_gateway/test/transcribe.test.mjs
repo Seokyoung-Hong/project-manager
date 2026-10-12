@@ -43,29 +43,29 @@ test('로컬 헬스 통과면 로컬 전사, 1.5초 미만 생략, start_ms 순 
   assert.equal(tx[0].prompt, '유달리, 산돌이');
   assert.equal(tx[0].auth, 'Bearer k');
   assert.deepEqual(out.stats, {
-    engines: [{ engine: 'local', host: 'stt.local:8000', model: 'Systran/faster-whisper-small', segments: 2, failed: 0 }],
+    engine: 'local', engines: [{ engine: 'local', host: 'stt.local:8000', model: 'Systran/faster-whisper-small', segments: 2, failed: 0 }],
     segments: 3, skipped: 1, failed: 0, minutes: 62,
   });
 });
 
-test('로컬 헬스 실패 + OPENAI_API_KEY → OpenAI(기본 gpt-transcribe)', async () => {
+test('엔진 ②: 로컬 헬스 실패 + 조직 OpenAI 키 → OpenAI(기본 whisper-1), .env OPENAI_API_KEY는 무시', async () => {
   const { fetch, calls } = fakeFetch((url) => {
     if (url.startsWith(LOCAL)) throw new TypeError('fetch failed');
     return json({ text: '안녕하세요' });
   });
-  const out = await transcribeMeeting({ ...base, fetch, env: { OPENAI_API_KEY: 'sk' }, stt: { url: LOCAL }, segments: [seg(1, 'u1', 0)] });
+  const out = await transcribeMeeting({ ...base, fetch, env: { OPENAI_API_KEY: 'env-key' }, stt: { url: LOCAL, openai_api_key: 'sk' }, segments: [seg(1, 'u1', 0)] });
   assert.equal(out.transcript_md, '[00:00:00] 홍길동: 안녕하세요');
   const oa = calls.find((c) => c.url.includes('api.openai.com'));
-  assert.equal(oa.model, 'gpt-transcribe');
+  assert.equal(oa.model, 'whisper-1');
   assert.equal(oa.auth, 'Bearer sk');
+  assert.equal(out.stats.engine, 'openai');
   assert.equal(out.stats.engines[0].engine, 'openai');
 });
 
-test('전사 수단이 없으면 즉시 failed, stats에 사유', async () => {
+test('엔진 ③: 로컬·조직 키 둘 다 없으면 녹음만 — 실패가 아니라 빈 전사문 draft, engine none', async () => {
   const { fetch, calls } = fakeFetch(() => json({}));
-  const out = await transcribeMeeting({ ...base, fetch, env: {}, stt: {}, segments: [seg(1, 'u1', 0)] });
-  assert.equal(out.status, 'failed');
-  assert.equal(out.stats.reason, '전사 수단이 설정되지 않았습니다.');
+  const out = await transcribeMeeting({ ...base, fetch, env: { OPENAI_API_KEY: 'env-key' }, stt: {}, segments: [seg(1, 'u1', 0), seg(2, 'u1', 9000, 500)], minutes: 3 });
+  assert.deepEqual(out, { status: 'draft', transcript_md: '', stats: { engine: 'none', engines: [], segments: 2, skipped: 1, failed: 0, minutes: 3 } });
   assert.equal(calls.length, 0);
 });
 
@@ -102,7 +102,7 @@ test('로컬 연결 실패 2회면 그 구간부터 OpenAI', async () => {
     return json({ text: 'oa' });
   });
   const out = await transcribeMeeting({
-    ...base, fetch, env: { OPENAI_API_KEY: 'sk', OPENAI_TRANSCRIBE_MODEL: 'm2' }, stt: { url: LOCAL },
+    ...base, fetch, env: { OPENAI_TRANSCRIBE_MODEL: 'm2' }, stt: { url: LOCAL, openai_api_key: 'sk' },
     segments: [seg(1, 'u1', 0), seg(2, 'u1', 5000), seg(3, 'u1', 9000), seg(4, 'u1', 12000)],
   });
   assert.equal(out.stats.failed, 0);
@@ -112,16 +112,19 @@ test('로컬 연결 실패 2회면 그 구간부터 OpenAI', async () => {
   assert.equal(out.stats.engines[0].engine, 'openai');
 });
 
-test('일부 실패는 [전사 실패] 줄로 draft, 전부 실패면 failed', async () => {
+test('일부·전부 실패 모두 [전사 실패] 줄로 draft, engine은 시도한 엔진', async () => {
   const { fetch } = fakeFetch((url, c) => (c.prompt && url.includes('openai') && calls2.n++ === 0 ? json({ text: '첫 구간' }) : json({ error: 'x' }, 400)));
   const calls2 = { n: 0 };
-  const out = await transcribeMeeting({ ...base, fetch, env: { OPENAI_API_KEY: 'sk' }, stt: {}, segments: [seg(1, 'u1', 0), seg(2, 'u2', 61_000)] });
+  const out = await transcribeMeeting({ ...base, fetch, env: {}, stt: { openai_api_key: 'sk' }, segments: [seg(1, 'u1', 0), seg(2, 'u2', 61_000)] });
   assert.equal(out.status, 'draft');
   assert.equal(out.stats.failed, 1);
   assert.match(out.transcript_md, /\[전사 실패\]/);
   const { fetch: f2 } = fakeFetch(() => json({}, 500));
-  const all = await transcribeMeeting({ ...base, fetch: f2, env: { OPENAI_API_KEY: 'sk' }, stt: {}, segments: [seg(1, 'u1', 0)] });
-  assert.equal(all.status, 'failed');
+  const all = await transcribeMeeting({ ...base, fetch: f2, env: {}, stt: { openai_api_key: 'sk' }, segments: [seg(1, 'u1', 0)] });
+  assert.equal(all.status, 'draft'); // 전부 실패해도 draft(녹음 파일로 직접 전사)
+  assert.equal(all.transcript_md, '[00:00:00] 홍길동: [전사 실패]');
+  assert.equal(all.stats.engine, 'openai');
+  assert.equal(all.stats.failed, 1);
   assert.equal(all.stats.engines[0].failed, 1);
 });
 
@@ -129,7 +132,7 @@ test('재개: cached 구간은 다시 전사하지 않는다', async () => {
   const { fetch, calls } = fakeFetch(() => json({ text: '새로' }));
   const cached = new Map([[1, { seq: 1, user_id: 'u1', start_ms: 0, text: '예전', engine: 'openai' }]]);
   const saved = [];
-  const out = await transcribeMeeting({ ...base, fetch, env: { OPENAI_API_KEY: 'sk' }, stt: {}, cached, onResult: (r) => saved.push(r),
+  const out = await transcribeMeeting({ ...base, fetch, env: {}, stt: { openai_api_key: 'sk' }, cached, onResult: (r) => saved.push(r),
     segments: [seg(1, 'u1', 0), seg(2, 'u1', 3000)] });
   assert.equal(out.transcript_md, '[00:00:00] 홍길동: 예전\n[00:00:03] 홍길동: 새로');
   assert.equal(calls.length, 1);

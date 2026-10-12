@@ -71,8 +71,9 @@ export async function transcribeMeeting({
 }) {
   const url = (stt.url || '').replace(/\/$/, '');
   const localModel = stt.model || 'whisper-1';
-  const openaiKey = env.OPENAI_API_KEY || '';
-  const openaiModel = env.OPENAI_TRANSCRIBE_MODEL || 'gpt-transcribe';
+  // 엔진 순서(parallel §7): ① 로컬(stt.url) ② 조직 OpenAI 키(stt.openai_api_key) ③ 녹음만. .env의 OPENAI_API_KEY는 읽지 않는다
+  const openaiKey = stt.openai_api_key || '';
+  const openaiModel = env.OPENAI_TRANSCRIBE_MODEL || 'whisper-1';
   const s = { localOk: url ? await localHealthy({ url, apiKey: stt.api_key, fetch }) : false, wav: false, noPrompt: false, connFails: 0 };
   if (url && !s.localOk) log('로컬 전사 서버 헬스 실패, OpenAI로 대체', { host: new URL(url).host });
 
@@ -88,11 +89,13 @@ export async function transcribeMeeting({
       e.segments++;
       if (r.failed) e.failed++;
     }
-    return { engines: Object.values(eng), segments: segments.length, skipped, failed: rows.filter((r) => r.failed).length, minutes, ...extra };
+    // stats.engine = 주로 쓴 엔진(구간 수 최다). 쓴 구간이 없으면 고른 엔진, 고를 게 없으면 none
+    const main = Object.values(eng).sort((a, b) => b.segments - a.segments)[0]?.engine
+      ?? (s.localOk ? 'local' : openaiKey ? 'openai' : 'none');
+    return { engine: main, engines: Object.values(eng), segments: segments.length, skipped, failed: rows.filter((r) => r.failed).length, minutes, ...extra };
   };
-  if (todo.length && !s.localOk && !openaiKey) {
-    return { status: 'failed', transcript_md: '', stats: stats([], { reason: texts.noEngine() }) };
-  }
+  // 녹음만: 실패가 아니라 빈 전사문의 초안(녹음 파일을 내려받아 직접 전사)
+  if (!s.localOk && !openaiKey) return { status: 'draft', transcript_md: '', stats: stats([]) };
 
   async function viaLocal(g) {
     const sec = g.duration_ms / 1000;
@@ -175,9 +178,6 @@ export async function transcribeMeeting({
       rows.push(row);
     }
   }));
-  const failed = rows.filter((r) => r.failed).length;
-  if (rows.length && failed === rows.length) {
-    return { status: 'failed', transcript_md: '', stats: stats(rows, { reason: texts.allFailed() }) };
-  }
+  // 전부 실패해도 draft: 녹음 파일은 이미 올라가 있어 내려받아 직접 전사할 수 있다(failed는 회의 자체 실패만)
   return { status: 'draft', transcript_md: formatTranscript(rows, names), stats: stats(rows) };
 }

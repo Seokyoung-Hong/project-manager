@@ -5,6 +5,7 @@ import { join } from 'node:path';
 import { Recorder } from './recorder.mjs';
 import { CoreError } from './core.mjs';
 import { transcribeMeeting } from './transcribe.mjs';
+import { mix, runFfmpeg } from './mix.mjs';
 import * as texts from './texts.mjs';
 
 export class HttpErr extends Error {
@@ -16,12 +17,13 @@ const readJsonl = (p) => (existsSync(p) ? readFileSync(p, 'utf8').split('\n').fi
 
 export class Meetings {
   constructor({ core, discord, dataDir, siteUrl = '', env = process.env, fetch = globalThis.fetch,
-    convert, now = Date.now, minuteMs = 60000, debounceMs = DEBOUNCE_MS, retryDelayMs, log = () => {} }) {
-    Object.assign(this, { core, discord, siteUrl, env, fetch, convert, now, minuteMs, debounceMs, retryDelayMs, log });
+    convert, ffmpeg = runFfmpeg, backoff = (n) => Math.min(60000 * 2 ** (n - 1), 3600000),
+    now = Date.now, minuteMs = 60000, debounceMs = DEBOUNCE_MS, retryDelayMs, log = () => {} }) {
+    Object.assign(this, { core, discord, siteUrl, env, fetch, convert, ffmpeg, backoff, now, minuteMs, debounceMs, retryDelayMs, log });
     this.root = join(dataDir, 'meetings');
     mkdirSync(this.root, { recursive: true });
     this.byGuild = new Map(); // guild_id -> 진행 중인 회의(phase=recording)
-    this.queue = Promise.resolve(); // 전사는 한 번에 회의 하나(메모리 상한)
+    this.queue = Promise.resolve();
   }
 
   get count() { return this.byGuild.size; }
@@ -148,23 +150,26 @@ export class Meetings {
     return { ok: true };
   }
 
-  /** core PATCH(transcribing) → 성공하면 음성 퇴장·닉네임 복구·종료 고지·전사 큐. command·host_left는 core가 거절하면 계속한다. */
+  /** core PATCH(transcribing) → 음성 퇴장·닉네임 복구·종료 고지·후처리 큐. command·host_left는 core가 거절하면 계속한다.
+   * 자동 종료(empty·max_length·failed)의 PATCH가 실패하면 end_pending으로 남겨 후처리 큐가 재시도한다(recording으로 남지 않게). */
   async end(m, reason, by = '', notice = null) {
     if (m.ending) return null;
     m.ending = true;
     const s = m.state;
     const endedAt = new Date(this.now()).toISOString();
     const participants = s.participants.map((p) => ({ ...p, left_at: p.left_at ?? endedAt }));
+    const body = { status: 'transcribing', end_reason: reason, discord_user_id: by, ended_at: endedAt, participants };
     let rec = null;
     try {
-      rec = await this.core.patchMeeting(s.recording_id, { status: 'transcribing', end_reason: reason, discord_user_id: by, ended_at: endedAt, participants });
+      rec = await this.core.patchMeeting(s.recording_id, body);
     } catch (e) {
       if (reason === 'command' || reason === 'host_left') {
         m.ending = false;
         this.log('회의 계속', { recording_id: s.recording_id, reason, error: e.message });
         throw toHttp(e);
       }
-      this.log('종료 PATCH 실패, 로컬 종료는 진행', { recording_id: s.recording_id, reason, error: e.message });
+      this.log('종료 PATCH 실패, 재시도 큐에 넣음', { recording_id: s.recording_id, reason, error: e.message });
+      s.end_pending = body;
     }
     for (const t of Object.values(m.timers)) clearTimeout(t);
     m.recorder?.stop();
@@ -180,15 +185,79 @@ export class Meetings {
     return rec;
   }
 
+  dir(state) { return join(this.root, String(state.recording_id)); }
+
+  // 후처리는 한 번에 회의 하나(메모리 상한): 종료 PATCH 재시도 → 녹음 파일 올리기 → 전사 → draft PATCH → 로컬 오디오 삭제
   enqueue(state) {
-    this.queue = this.queue.then(() => this.transcribe(state)).catch((e) => this.log('전사 작업 오류', { recording_id: state.recording_id, error: e.message }));
+    this.queue = this.queue.then(() => this.process(state)).catch((e) => this.log('후처리 오류', { recording_id: state.recording_id, error: e.message }));
     return this.queue;
   }
 
   idle() { return this.queue; }
 
+  async process(st) {
+    if (!existsSync(join(this.dir(st), 'state.json'))) return; // 7일 정리로 이미 지워짐
+    if (st.end_pending) {
+      try {
+        const rec = await this.core.patchMeeting(st.recording_id, st.end_pending);
+        st.audio_expires_at = rec.audio_expires_at ?? st.audio_expires_at;
+      } catch (e) {
+        if (retryable(e)) return this.retry(st, '종료 PATCH', e);
+        this.log('종료 PATCH 거절, 넘어감', { recording_id: st.recording_id, error: e.message });
+      }
+      delete st.end_pending;
+      this.save(st);
+    }
+    const uploaded = st.uploaded || (await this.upload(st)); // 올리기가 실패해도 전사·PATCH는 진행
+    if (st.phase === 'transcribing') {
+      try {
+        await this.transcribe(st);
+      } catch (e) {
+        if (retryable(e)) return this.retry(st, '전사·회의록 PATCH', e);
+        this.log('회의록 PATCH 거절, 넘어감', { recording_id: st.recording_id, error: e.message });
+        st.phase = 'done';
+        this.save(st);
+      }
+    }
+    if (!uploaded) return this.retry(st, '녹음 파일 올리기');
+    rmSync(join(this.dir(st), 'seg'), { recursive: true, force: true });
+    rmSync(join(this.dir(st), 'meeting.ogg'), { force: true });
+    st.retries = 0;
+    this.save(st);
+  }
+
+  retry(st, what, e) {
+    st.retries = (st.retries ?? 0) + 1;
+    this.save(st);
+    const ms = this.backoff(st.retries);
+    this.log('후처리 재시도 예약', { recording_id: st.recording_id, what, retries: st.retries, in_ms: ms, error: e?.message });
+    setTimeout(() => this.enqueue(st), ms).unref?.();
+  }
+
+  /** 구간들을 회의 시작 기준으로 섞어 meeting.ogg를 만들고 core에 올린다. 성공 여부를 돌려준다. */
+  async upload(st) {
+    const dir = this.dir(st);
+    const segs = readJsonl(join(dir, 'segments.jsonl'))
+      .filter((g) => g.packets > 0 && existsSync(join(dir, g.file)))
+      .sort((a, b) => a.start_ms - b.start_ms);
+    try {
+      if (segs.length) {
+        const out = join(dir, 'meeting.ogg');
+        if (!existsSync(out)) await mix(segs.map((g) => ({ path: join(dir, g.file), delay_ms: g.start_ms })), out, { run: this.ffmpeg });
+        await this.core.uploadAudio(st.recording_id, out);
+        this.log('녹음 파일 올림', { recording_id: st.recording_id, segments: segs.length });
+      }
+      st.uploaded = true; // 말한 구간이 없으면 올릴 것도 없다
+      this.save(st);
+      return true;
+    } catch (e) {
+      this.log('녹음 파일 올리기 실패', { recording_id: st.recording_id, error: e.message });
+      return false;
+    }
+  }
+
   async transcribe(state) {
-    const dir = join(this.root, String(state.recording_id));
+    const dir = this.dir(state);
     const { names = [], stt, glossary } = await this.core.names(state.recording_id);
     const nameMap = Object.fromEntries(names.map((n) => [n.discord_user_id, n.display_name]));
     for (const p of state.participants) nameMap[p.discord_user_id] ??= p.discord_name;
@@ -200,34 +269,27 @@ export class Meetings {
       ...(this.retryDelayMs != null ? { retryDelayMs: this.retryDelayMs } : {}),
       onResult: (r) => appendFileSync(join(dir, 'results.jsonl'), JSON.stringify(r) + '\n'), log: this.log,
     });
-    const body = out.status === 'failed'
-      ? { status: 'failed', stats: out.stats, participants: state.participants }
-      : { status: 'draft', transcript_md: out.transcript_md, stats: out.stats, participants: state.participants };
-    const rec = await this.core.patchMeeting(state.recording_id, body);
+    const rec = await this.core.patchMeeting(state.recording_id,
+      { status: 'draft', transcript_md: out.transcript_md, stats: out.stats, participants: state.participants });
     Object.assign(state, { phase: 'done', audio_expires_at: rec.audio_expires_at ?? state.audio_expires_at });
     this.save(state);
-    this.log('전사 완료', { recording_id: state.recording_id, status: out.status, ...out.stats, engines: out.stats.engines.length });
+    this.log('전사 완료', { recording_id: state.recording_id, status: out.status, engine: out.stats.engine, segments: out.stats.segments, failed: out.stats.failed });
   }
 
-  /** 기동 시: recording이던 회의는 재접속 없이 restart로 끝내고, transcribing은 전사를 이어 간다. */
+  /** 기동 시: recording이던 회의는 재접속 없이 restart로 끝내고(종료 PATCH는 후처리 큐가 재시도까지 맡는다),
+   * 남은 후처리(종료 PATCH·올리기·전사)를 이어 간다. */
   async recover() {
     for (const st of this.states()) {
       if (st.phase === 'recording') {
         const endedAt = new Date(this.now()).toISOString();
         st.participants = st.participants.map((p) => ({ ...p, left_at: p.left_at ?? endedAt }));
-        try {
-          const rec = await this.core.patchMeeting(st.recording_id, { status: 'transcribing', end_reason: 'restart', ended_at: endedAt, participants: st.participants });
-          st.audio_expires_at = rec.audio_expires_at ?? null;
-        } catch (e) {
-          this.log('restart PATCH 실패', { recording_id: st.recording_id, error: e.message });
-          if (e instanceof CoreError && e.status >= 400 && e.status < 500) { st.phase = 'done'; this.save(st); continue; }
-        }
-        Object.assign(st, { phase: 'transcribing', ended_at: endedAt, end_reason: 'restart', started_at: st.started_at ?? endedAt });
+        Object.assign(st, { phase: 'transcribing', ended_at: endedAt, end_reason: 'restart', started_at: st.started_at ?? endedAt,
+          end_pending: { status: 'transcribing', end_reason: 'restart', ended_at: endedAt, participants: st.participants } });
         this.save(st);
         await this.discord.setNick(st.guild_id, st.prev_nick).catch(() => {});
         this.send(st, texts.restarted());
         this.enqueue(st);
-      } else if (st.phase === 'transcribing') this.enqueue(st);
+      } else if (st.phase === 'transcribing' || st.end_pending || (st.phase === 'done' && !st.uploaded)) this.enqueue(st);
     }
   }
 
@@ -239,11 +301,11 @@ export class Meetings {
     return out;
   }
 
-  /** audio_expires_at이 지난 폴더 삭제. 값이 없는 끝난 회의는 ended_at + 7일. */
+  /** 안전망: audio_expires_at이 지난 폴더 삭제(올리기·전사가 끝내 안 된 것 포함). 값이 없으면 ended_at + 7일. */
   cleanup() {
     const now = this.now();
     for (const st of this.states()) {
-      if (st.phase === 'recording' || st.phase === 'transcribing') continue;
+      if (st.phase === 'recording') continue;
       const exp = st.audio_expires_at ? Date.parse(st.audio_expires_at) : Date.parse(st.ended_at || 0) + 7 * 86400000;
       if (exp < now) {
         rmSync(join(this.root, String(st.recording_id)), { recursive: true, force: true });
@@ -252,6 +314,8 @@ export class Meetings {
     }
   }
 }
+
+const retryable = (e) => !(e instanceof CoreError) || e.status === 0 || e.status === 429 || e.status >= 500;
 
 function toHttp(e) {
   if (e instanceof HttpErr) return e;
