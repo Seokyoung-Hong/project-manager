@@ -767,3 +767,34 @@ def test_git_issue_does_not_steal_other_tasks_issue(gh, client, conn, task, proj
     client.post(f"/tasks/{task.pk}/git/issue", {"number": "70"})
     assert RepoIssue.objects.get(connection=conn, number=70).task == other
     assert not TaskGitLink.objects.filter(task=task, issue_number=70).exists()
+
+
+def test_panel_304_yields_to_due_github_sync(gh, client, conn, task, member, monkeypatch):
+    """패널 ETag가 같아도 GitHub 동기화 차례면 304를 주지 않고 그려서 바로 동기화한다."""
+    from web import data_version
+
+    monkeypatch.setattr(data_version, "current", lambda: "1-1-1")
+    synced = []
+    monkeypatch.setattr(ghs, "sync_issues", lambda c: synced.append(c.pk))
+    monkeypatch.setattr(ghs, "sync_repos", lambda i: synced.append("repos"))
+    ident = GitHubIdentity.objects.create(
+        user=member, github_id=321, login="m", repos=["o/r"], repos_checked_at=timezone.now()
+    )
+    conn.issues_synced_at = timezone.now()
+    conn.save(update_fields=["issues_synced_at"])
+    client.login(username="member1", password="pw12345678")
+    url = f"/tasks/{task.pk}/panel"
+    etag = client.get(url)["ETag"]
+    assert client.get(url, headers={"If-None-Match": etag}).status_code == 304
+    # 이슈 동기화 10분이 지났다 → 그리면서 동기화
+    conn.issues_synced_at = timezone.now() - ghs.ISSUE_TTL * 2
+    conn.save(update_fields=["issues_synced_at"])
+    assert client.get(url, headers={"If-None-Match": etag}).status_code == 200
+    assert synced == [conn.pk]
+    # 저장소 권한 재확인 6시간이 지났다 → 그리면서 재확인
+    conn.issues_synced_at = timezone.now()
+    conn.save(update_fields=["issues_synced_at"])
+    ident.repos_checked_at = timezone.now() - ghs.REPO_TTL * 2
+    ident.save(update_fields=["repos_checked_at"])
+    assert client.get(url, headers={"If-None-Match": etag}).status_code == 200
+    assert synced[-1] == "repos"
