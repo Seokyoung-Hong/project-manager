@@ -33,4 +33,18 @@
   {% empty %}<li class="muted">변경 이력 없음</li>{% endfor %}
   </ul>
 </section>
+{% if is_admin %}
+<section class="card form-card" aria-labelledby="org-delete-title">
+  <h2 id="org-delete-title">위험 구역</h2>
+  <p class="notice warn">⚠ 조직 삭제는 되돌릴 수 없습니다.</p>
+  <ul class="t13">
+    <li>프로젝트·태스크·결정 기록·문서·회의록·첨부·팀·멤버십·초대 링크를 모두 지웁니다. 구성원 계정은 남습니다.</li>
+    <li>GitHub 앱 설치와 Discord 연결은 유달리 쪽 기록만 지웁니다. GitHub에서 앱 설치는 따로 해제해야 합니다.</li>
+  </ul>
+  <form method="post" action="{% url 'org_delete' org.pk %}" class="stack" data-confirm="조직 &lsquo;{{ org.name }}&rsquo;과 그 안의 모든 데이터를 지웁니다. GitHub 앱 설치는 GitHub에서 따로 해제해야 합니다." data-confirm-ok="조직 삭제">{% csrf_token %}
+    <label class="field">확인을 위해 조직 이름 <code>{{ org.name }}</code>을 입력해 주세요<input class="input" name="confirm_name" required autocomplete="off" spellcheck="false"></label>
+    <div><button class="btn danger">조직 삭제</button></div>
+  </form>
+</section>
+{% endif %}
 {% endblock %}
