@@ -72,7 +72,7 @@ def test_skill_filter_intersection(logged, org, admin, member):
 
 def test_roadmap_tabs_visible_to_member(logged, org):
     body = logged.get(f"/orgs/{org.pk}").content.decode()
-    assert "부하 현황" in body
+    assert "사람별 할 일 양" in body
     assert "로드맵" in body
     assert logged.get(f"/orgs/{org.pk}/roadmap").status_code == 200
 

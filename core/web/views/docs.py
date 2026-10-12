@@ -1,6 +1,6 @@
 """문서 화면(IMPL-PLAN-11 §4.6). 조직 탭 "문서"와 프로젝트 탭 "문서"가 같은 화면을 쓴다.
 
-편집기(notes.js)·저장 규약(X-Note-Version)은 회의록과 같다. 이전 버전·연결·파일 묶음(`docs/_extras.html`)은
+편집기(doc-tiptap.js)·저장 규약(X-Note-Version)은 회의록과 같다. 이전 버전·연결·파일 묶음(`docs/_extras.html`)은
 회의록 화면도 그대로 쓴다. 규칙은 전부 projects.docs에 있고 여기는 부르기만 한다.
 """
 
@@ -146,12 +146,18 @@ def _page(request, *, org, project=None):
         + [(f"t{t.pk}", f"팀 · {t.name}") for t in teams],
         "templates": ts_docs.visible_docs(user, org).filter(is_template=True, kind="doc"),
         "here": request.get_full_path(),
+        # 모바일은 문서를 고른 경우에만 본문을 연다. 첫 문서 자동 선택은 데스크톱 오른쪽 칸을 채우는 용도라
+        # 이것까지 열면 ‘목록으로’를 눌러도 목록이 다시 숨는다.
+        "editor_open": doc is not None and bool(picked),
+        "open_ids": set(),
     }
     if project is not None:
         ctx["project_files"] = attachments_of(project)
     if doc is not None:
         ctx.update(extras_ctx(user, doc))
         ctx["path"] = _ancestors(user, doc)
+        # 트리는 접어 두고 현재 문서까지 가는 가지만 편다(나머지 펼침은 브라우저가 기억한다).
+        ctx["open_ids"] = {p.pk for p in ctx["path"]} | {doc.pk}
         ctx["doc_scope"] = (
             f"p{doc.project_id}" if doc.project_id else f"t{doc.team_id}" if doc.team_id else ""
         )
@@ -263,7 +269,7 @@ def _import(request, org, default_project=None):
         else reverse("org_docs", args=[org.pk])
     )
     if not files:
-        messages.error(request, "가져올 Markdown 파일(.md) 또는 ZIP을 선택하세요.")
+        messages.error(request, "가져올 Markdown 파일(.md) 또는 ZIP을 선택해 주세요.")
         return _back(request, fallback=fallback)
     parent = _parent_from_post(request)
     if "scope" in request.POST:
@@ -298,7 +304,7 @@ def _import(request, org, default_project=None):
 @login_required
 @require_POST
 def doc_save(request, doc_id):
-    """편집기(notes.js)가 부르는 자동 저장. 204 + X-Note-Version."""
+    """편집기(doc-tiptap.js)가 부르는 자동 저장. 204 + X-Note-Version."""
     doc = _doc_or_404(request.user, doc_id)
     try:
         doc = ts_docs.update_doc(
@@ -410,7 +416,7 @@ def doc_attachment_add(request, doc_id):
     upload = request.FILES.get("file")
     try:
         if upload is None:
-            raise ServiceError({"file": "파일을 고르세요."})
+            raise ServiceError({"file": "파일을 골라 주세요."})
         at.add_attachment(
             actor=request.user, upload=upload, doc=doc, note=request.POST.get("note", "")
         )
@@ -432,7 +438,7 @@ def task_doc_link(request, task_id):
     try:
         doc = _doc_or_404(request.user, int(request.POST.get("doc", "")))
     except (TypeError, ValueError, Http404):
-        return _refs(request, task, error="문서를 선택하세요.")
+        return _refs(request, task, error="문서를 선택해 주세요.")
     try:
         ts_docs.link_task(doc, task, request.user, as_output=request.POST.get("as_output") == "1")
     except ServiceError as e:
@@ -468,7 +474,7 @@ def doc_task_link(request, doc_id):
     )
     if task is None:
         messages.error(
-            request, "연결할 태스크를 찾지 못했습니다. 태스크 번호(TASK-n)를 확인하세요."
+            request, "연결할 태스크를 찾지 못했습니다. 태스크 번호(TASK-n)를 확인해 주세요."
         )
         return _back(request, doc)
     try:

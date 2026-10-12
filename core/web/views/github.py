@@ -16,6 +16,8 @@ from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_POST
 
 from accounts.auth import login_user
+from accounts.consents import NOTICES
+from accounts.services import consent_active, give_consent, has_consent
 from common.errors import ConflictError, ServiceError
 from github import client
 from github import hooks as gh_hooks
@@ -28,6 +30,7 @@ from projects.services import visible_projects
 from tasks import services as ts
 from tasks.models import Task
 
+from .auth import landing
 from .common import (
     CONFLICT_MSG,
     can_admin,
@@ -39,6 +42,7 @@ from .common import (
 )
 from .integrations import clear_problem, record_problem
 from .projects import _can_edit_project_settings
+from .settings import consent_redirect
 from .tasks import _panel
 
 
@@ -72,7 +76,7 @@ CAP_FEATURES = [  # (app_capabilities 키, 기능, 꺼지면 사라지는 것)
     ("ci_status", "CI 배지 · Commit statuses", "외부 CI(status API)의 결과 배지"),
     ("review", "PR 리뷰 상태", "리뷰 '승인 n · 변경 요청 n' 요약과 변경 요청 → 진행 중"),
     ("milestone", "마일스톤 동기화", "GitHub 마일스톤 → 로드맵 마일스톤"),
-    ("release", "릴리스", "결과 선반의 릴리스 띠와 로드맵 릴리스 칩"),
+    ("release", "릴리스", "끝난 일의 릴리스 띠와 로드맵 릴리스 칩"),
 ]
 
 
@@ -130,7 +134,7 @@ def github_install(request, org_id):
         return denied
     if getattr(request.user, "github", None) is None:
         # 돌아왔을 때 GET /user/installations로 설치 소유를 확인하므로 계정 연결이 먼저다.
-        messages.error(request, "먼저 GitHub 계정을 연결하세요.")
+        messages.error(request, "먼저 GitHub 계정을 연결해 주세요.")
         return redirect("org_github", org_id=org.pk)
     request.session["gh_install_org"] = org.pk
     state = secrets.token_urlsafe(16)
@@ -151,23 +155,32 @@ def github_installed(request):
         return denied
     iid = request.GET.get("installation_id", "")
     if not iid.isdecimal():
-        messages.error(request, "설치를 확인하지 못했습니다.")
+        messages.error(
+            request,
+            "GitHub 앱 설치를 확인하지 못했습니다. 조직 설정의 GitHub 화면에서 설치를 다시 시작해 주세요.",
+        )
         return redirect("org_github", org_id=org.pk)
     try:
         gh_services.save_installation(org, int(iid), actor=request.user)
         messages.success(request, "GitHub 앱을 설치했습니다.")
     except (ServiceError, GitHubError) as e:
         msg = " ".join(e.errors.values()) if isinstance(e, ServiceError) else e.message
-        messages.error(request, msg or "설치를 확인하지 못했습니다.")
+        messages.error(
+            request,
+            msg
+            or "GitHub 앱 설치를 확인하지 못했습니다. 조직 설정의 GitHub 화면에서 설치를 다시 시작해 주세요.",
+        )
     return redirect("org_github", org_id=org.pk)
 
 
 # ---------- 사용자: 계정 연결 ----------
 
 
-def _authorize(request):
+def _authorize(request, connect_next: str = ""):
+    """OAuth를 새로 시작한다. 연결 뒤 갈 곳은 state와 함께 매번 새로 적어, 취소한 이전 시도의 목적지가 남지 않게 한다."""
     state = secrets.token_urlsafe(16)
     request.session["gh_oauth_state"] = state
+    request.session["gh_connect_next"] = connect_next
     q = urlencode(
         {
             "client_id": settings.GITHUB_CLIENT_ID,
@@ -181,7 +194,22 @@ def _authorize(request):
 @login_required
 def github_connect(request):
     _gh_enabled_or_404()
-    return _authorize(request)
+    nxt = request.GET.get("next", "")
+    if not url_has_allowed_host_and_scheme(nxt, allowed_hosts={request.get_host()}):
+        nxt = ""
+    if not has_consent(request.user, "github"):
+        # 동의하고 돌아올 주소에 목적지를 실어 보낸다(세션에 남겨 두지 않는다)
+        return consent_redirect("github", _connect_url(nxt))
+    # 조직 GitHub 탭에서 왔으면 연결한 뒤 프로필이 아니라 앱 설치로 곧바로 이어 간다
+    return _authorize(request, nxt)
+
+
+def _connect_url(nxt: str) -> str:
+    return (
+        f"{reverse('github_connect')}?{urlencode({'next': nxt})}"
+        if nxt
+        else reverse("github_connect")
+    )
 
 
 def github_login(request):
@@ -195,12 +223,14 @@ def github_login(request):
     return _authorize(request)
 
 
-def _finish_login(request, data: dict, info: dict):
+def _finish_login(request, data: dict, info: dict, consented: bool = False):
     try:
         identity, created = gh_services.login_with_github(info, data)
     except ServiceError as e:
         messages.error(request, " ".join(e.errors.values()))
         return redirect("login")
+    if consented:
+        give_consent(identity.user, "github")
     try:
         gh_services.sync_repos(identity)
     except (GitHubError, ServiceError):
@@ -208,34 +238,48 @@ def _finish_login(request, data: dict, info: dict):
     login_user(request, identity.user, "github")
     nxt = request.session.pop("gh_login_next", "")
     if created:
-        messages.info(request, "가입되었습니다. 조직을 만들거나 초대 링크로 참여하세요.")
+        messages.info(request, "가입되었습니다. 조직을 만들거나 초대 링크로 참여해 주세요.")
     # 갓 가입한 사람은 조직이 없다 — signup과 같이 조직 목록으로 보낸다.
-    return redirect(nxt or ("org_list" if created else "today"))
+    dest = nxt or reverse("org_list" if created else landing(identity.user))
+    if not consent_active(identity.user, "github"):
+        # 유예가 끝났는데 동의가 없다. GitHub로만 가입한 사람이 갇히지 않게 로그인은 시키고 동의 화면으로 보낸다.
+        return consent_redirect("github", dest)
+    return redirect(dest)
 
 
 def github_login_confirm(request):
-    """같은 아이디·이메일의 기존 계정이 있을 때 신규 가입을 한 번 더 확인한다."""
+    """GitHub로 처음 가입할 때 만 14세 이상인지, (있으면) 기존 계정과 헷갈리지 않았는지 확인한다."""
     _gh_enabled_or_404()
     raw = request.session.get("gh_pending")
     if request.user.is_authenticated or not raw:
         return redirect("login")
+    ctx = {"lookalike": request.session.get("gh_lookalike", False), "notice": NOTICES["github"]}
     if request.method == "POST":
+        if not request.POST.get("age_ok"):
+            ctx["age_error"] = "만 14세 미만은 가입할 수 없습니다."
+            return render(request, "auth/github_confirm.html", ctx)
+        if not request.POST.get("consent_ok"):
+            ctx["consent_error"] = "국외 이전에 동의하지 않으면 GitHub로 가입할 수 없습니다."
+            return render(request, "auth/github_confirm.html", ctx)
+        request.session.pop("gh_lookalike", None)
         text = decrypt(request.session.pop("gh_pending"))
         if not text:  # 키를 갈아 복호화가 안 되면 처음부터 다시
             return redirect("login")
         pending = json.loads(text)
-        return _finish_login(request, pending["data"], pending["info"])
-    return render(request, "auth/github_confirm.html")
+        return _finish_login(request, pending["data"], pending["info"], consented=True)
+    return render(request, "auth/github_confirm.html", ctx)
 
 
 def github_callback(request):
     _gh_enabled_or_404()
     failed = "profile" if request.user.is_authenticated else "login"
+    # 성공·실패·취소 어느 쪽이든 이 시도의 목적지는 여기서 끝난다
+    connect_next = request.session.pop("gh_connect_next", "")
     if not _state_ok(request, "gh_oauth_state"):
         record_problem(request, "oauth", "콜백 상태 검증 실패")
         messages.error(
             request,
-            "GitHub 인증 확인 세션이 만료됐거나 일치하지 않습니다. 인증을 다시 시작하거나 해결 절차를 확인하세요.",
+            "GitHub 인증 확인 세션이 만료됐거나 일치하지 않습니다. 인증을 다시 시작하거나 해결 절차를 확인해 주세요.",
             extra_tags="integration-help",
         )
         return redirect(failed)
@@ -250,20 +294,28 @@ def github_callback(request):
         record_problem(request, "oauth", "승인 코드 확인" if not code else "계정 인증", error)
         messages.error(
             request,
-            "GitHub 계정 인증을 완료하지 못했습니다. 연결을 다시 시작하거나 해결 절차를 확인하세요.",
+            "GitHub 계정 인증을 완료하지 못했습니다. 연결을 다시 시작하거나 해결 절차를 확인해 주세요.",
             extra_tags="integration-help",
         )
         return redirect(failed)
     if not request.user.is_authenticated:
         info["email"] = gh_services.github_email(info, data["access_token"])
-        new = not GitHubIdentity.objects.filter(github_id=info["id"]).exists()
-        if new and gh_services.lookalike_exists(info["login"], info["email"]):
-            # 기존 계정 주인이 실수로 새 계정을 만들지 않게 한 번 묻는다. 토큰이 있으니 암호화해 둔다.
+        if not GitHubIdentity.objects.filter(github_id=info["id"]).exists():
+            # 처음 가입하면 만 14세 이상인지 확인받는다. 같은 아이디·이메일의 기존 계정이 있으면
+            # 그 주인이 실수로 새 계정을 만들지 않게 함께 묻는다. 토큰이 있으니 암호화해 둔다.
             request.session["gh_pending"] = encrypt(json.dumps({"data": data, "info": info}))
+            request.session["gh_lookalike"] = gh_services.lookalike_exists(
+                info["login"], info["email"]
+            )
             return redirect("github_login_confirm")
         return _finish_login(request, data, info)
+    if not has_consent(request.user, "github"):
+        return consent_redirect("github", _connect_url(connect_next))
     if GitHubIdentity.objects.filter(github_id=info["id"]).exclude(user=request.user).exists():
-        messages.error(request, "이 GitHub 계정은 이미 다른 사용자에게 연결되어 있습니다.")
+        messages.error(
+            request,
+            "이 GitHub 계정은 다른 사용자에게 연결되어 있습니다. 기존 계정의 연결을 해제하거나 다른 GitHub 계정으로 연결해 주세요.",
+        )
         return redirect("profile")
     identity, _ = GitHubIdentity.objects.update_or_create(
         user=request.user,
@@ -276,14 +328,14 @@ def github_callback(request):
         record_problem(request, "oauth", "연결 후 저장소 목록 조회", error)
         messages.warning(
             request,
-            "GitHub 계정은 연결됐지만 저장소 목록을 확인하지 못했습니다. 프로필에서 접근 가능한 저장소를 다시 확인하세요.",
+            "GitHub 계정은 연결됐지만 저장소 목록을 확인하지 못했습니다. 프로필에서 접근 가능한 저장소를 다시 확인해 주세요.",
             extra_tags="integration-help",
         )
     else:
         clear_problem(request, "oauth")
     gh_services.backfill_actor(identity)
     messages.success(request, "GitHub를 연결했습니다.")
-    return redirect("profile")
+    return redirect(connect_next or "profile")
 
 
 @login_required
@@ -301,7 +353,7 @@ def github_refresh(request):
         record_problem(request, "oauth", "접근 가능한 저장소 다시 확인", error)
         messages.error(
             request,
-            "접근 가능한 저장소를 다시 확인하지 못했습니다. 기존 목록은 유지됩니다. 해결 절차를 확인하세요.",
+            "접근 가능한 저장소를 다시 확인하지 못했습니다. 기존 목록은 유지됩니다. 해결 절차를 확인해 주세요.",
             extra_tags="integration-help",
         )
     return redirect("profile")
@@ -368,8 +420,10 @@ def project_repo(request, project_id):
     }
     if state["state"] == "none":
         if getattr(project.org, "github", None) is None:
-            ctx["repo_choices_status"] = (
-                "이 조직에 GitHub 앱이 설치되지 않았습니다. 조직 관리자에게 설치를 요청하세요."
+            ctx["repo_choices_status"] = "이 조직에 GitHub 앱이 설치되지 않았습니다. " + (
+                "조직 설정의 GitHub 화면에서 앱을 설치해 주세요."
+                if ctx["is_admin"]
+                else "조직 관리자에게 설치를 요청해 주세요."
             )
             ctx["org_repos"] = []
         else:
@@ -378,7 +432,7 @@ def project_repo(request, project_id):
                 ctx["repo_choices_status"] = (
                     "저장소 목록을 확인했습니다."
                     if ctx["org_repos"]
-                    else "조회는 성공했지만 앱에 보이는 저장소가 없습니다. 설치 대상 저장소를 확인하세요."
+                    else "조회는 성공했지만 앱에 보이는 저장소가 없습니다. 설치 대상 저장소를 확인해 주세요."
                 )
                 clear_problem(request, "repositories")
             except GitHubError as error:
@@ -512,7 +566,7 @@ def repo_issues_sync(request, project_id):
         record_problem(request, "issues", "프로젝트 이슈 동기화", error, target=conn.full_name)
         messages.error(
             request,
-            "이슈 동기화에 실패했습니다. 기존 태스크는 유지됩니다. 설치·저장소 범위와 조회 상태를 확인한 뒤 다시 시도하세요.",
+            "이슈를 불러오지 못했습니다. 기존 태스크는 유지됩니다. 앱 설치와 저장소 접근 권한을 확인한 뒤 다시 시도해 주세요.",
             extra_tags="integration-help",
         )
     return redirect("project_repo", project_id=project.pk)
@@ -585,7 +639,7 @@ def org_issues_sync(request, org_id):
         record_problem(request, "issues", "조직 이슈 동기화 일부 또는 전체 실패", target=names)
         messages.warning(
             request,
-            "확인하지 못한 저장소: " + names + ". 해당 프로젝트에서 다시 동기화하세요.",
+            "확인하지 못한 저장소: " + names + ". 해당 프로젝트에서 다시 동기화해 주세요.",
             extra_tags="integration-help",
         )
     if failed:
@@ -634,7 +688,7 @@ def repo_event_link(request, project_id, event_id):
     task_id = request.POST.get("task_id", "")
     task = project.tasks.filter(pk=task_id).first() if task_id.isdecimal() else None
     if task is None:
-        messages.error(request, "연결할 태스크를 고르세요.")
+        messages.error(request, "연결할 태스크를 골라 주세요.")
     else:
         try:
             gh_services.link_event(event, task, actor=request.user)
@@ -687,7 +741,7 @@ def project_issues_sync(request, project_id):
         record_problem(request, "issues", "프로젝트 이슈 동기화", error, target=conn.full_name)
         messages.error(
             request,
-            "이슈 동기화에 실패했습니다. 기존 태스크는 유지됩니다. 설치·저장소 범위와 조회 상태를 확인한 뒤 다시 시도하세요.",
+            "이슈를 불러오지 못했습니다. 기존 태스크는 유지됩니다. 앱 설치와 저장소 접근 권한을 확인한 뒤 다시 시도해 주세요.",
             extra_tags="integration-help",
         )
     back = f"{reverse('project_issues', args=[project.pk])}?{request.POST.get('back', '')}"

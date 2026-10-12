@@ -3,6 +3,7 @@
 {% include "orgs/_tabs.html" %}
 <div class="card">
   <h2>설치 상태</h2>
+  <p>저장소를 연결하면 이슈·브랜치·PR이 태스크와 이어지고, PR이 열리고 병합될 때 태스크 상태가 저절로 바뀝니다.</p>
   {% if install %}
   <p class="conn"><span class="conn-state on">연결됨</span> <code>{{ install.account_login }}</code>
     <span class="badge">{% if install.account_type == "User" %}개인 계정{% else %}GitHub 조직{% endif %}</span>
@@ -12,7 +13,7 @@
   {% if install.account_type == "User" %}
   <a class="btn sm" target="_blank" rel="noopener"
      href="https://github.com/settings/installations/{{ install.installation_id }}">GitHub에서 설정</a>
-  <p class="notice"><span class="grow">개인 계정 설치입니다. GitHub 조직 멤버·팀 관리와 이슈 자동 가져오기는 쓰지 않습니다. 이슈는 저장소 탭에서 손으로 가져오세요.</span></p>
+  <p class="notice"><span class="grow">개인 계정 설치입니다. GitHub 조직 멤버·팀 관리와 이슈 자동 가져오기는 쓰지 않습니다. 이슈는 저장소 탭에서 손으로 가져와 주세요.</span></p>
   {% else %}
   <a class="btn sm" target="_blank" rel="noopener"
      href="https://github.com/organizations/{{ install.account_login }}/settings/installations/{{ install.installation_id }}">GitHub에서 설정</a>
@@ -23,8 +24,8 @@
   {% if identity %}
   <a class="btn primary" href="{% url 'github_install' org.pk %}">GitHub 앱 설치</a>
   {% else %}
-  <p class="muted t13">먼저 GitHub 계정을 연결하세요. 설치를 마치고 돌아오면 내 계정으로 그 설치에 접근할 수 있는지 확인합니다.</p>
-  <a class="btn primary" href="{% url 'profile' %}">프로필에서 GitHub 연결</a>
+  <p class="muted t13">설치하려면 내 GitHub 계정 연결이 먼저 필요합니다. 연결을 마치면 이어서 앱 설치 화면으로 갑니다.</p>
+  <a class="btn primary" href="{% url 'github_connect' %}?next={% url 'github_install' org.pk %}">GitHub 계정 연결하고 앱 설치</a>
   {% endif %}
   {% endif %}
   <p class="muted t13">이 앱이 할 수 있는 것: 저장소 내용 읽기·브랜치 만들기 · 이슈 읽기·쓰기 · PR 읽기{% if install.account_type != "User" %} · 조직 멤버와 팀 관리{% endif %}</p>
@@ -62,7 +63,7 @@
   <p class="muted t13">확인 후 내 프로필 화면으로 이동합니다.</p>
   {% else %}
   <p class="conn"><span class="conn-state off">미연결</span> <span class="muted t13">GitHub 계정을 연결하지 않았습니다.</span></p>
-  <a class="btn sm" href="{% url 'profile' %}">프로필에서 연결</a>
+  <a class="btn sm" href="{% url 'github_connect' %}?next={% url 'org_github' org.pk %}">GitHub 계정 연결</a>
   {% endif %}
 </div>
 <div class="card">

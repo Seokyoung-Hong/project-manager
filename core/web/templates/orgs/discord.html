@@ -9,12 +9,12 @@
     {{ org.discord_linked_at|date:"Y-m-d H:i" }} 연결{% if org.discord_linked_by %} · {{ org.discord_linked_by.display_name }}{% endif %}
   </p>
   <form method="post" action="{% url 'discord_unlink' org.pk %}"
-        onsubmit="return confirm('이 조직의 Discord 서버 연결을 해제합니다. 알림이 멈춥니다.')">
+        data-confirm="이 조직의 Discord 서버 연결을 해제합니다. 알림이 멈춥니다." data-confirm-ok="Discord 연결 해제">
     {% csrf_token %}<button class="btn sm danger">연결 해제</button>
   </form>
   {% else %}
   <p class="conn"><span class="conn-state off">미연결</span></p>
-  <p class="muted t13">이 조직에 아직 Discord 서버가 연결되지 않았습니다. 마감 알림과 주간 보고가 나가지 않습니다.</p>
+  <p class="muted t13">이 조직에 아직 Discord 서버가 연결되지 않았습니다. 기한 알림과 주간 보고가 나가지 않습니다.</p>
   <a class="btn primary" href="{% url 'discord_connect' org.pk %}">Discord 서버 연결</a>
   <p class="muted t13">연결 화면에서 서버를 고를 수 있는 사람은 그 서버의 관리 권한자뿐입니다.</p>
   {% endif %}
@@ -84,11 +84,11 @@
   <p class="muted t13">주간 보고와 'DM을 보낼 수 없습니다' 통보가 이 채널로 갑니다.</p>
   {% else %}
   <p class="conn"><span class="conn-state off">미지정</span></p>
-  <p class="muted t13">아직 정해지지 않았습니다. 개인 마감 DM은 채널 없이도 갑니다.</p>
+  <p class="muted t13">아직 정해지지 않았습니다. 개인 기한 DM은 채널 없이도 갑니다.</p>
   {% endif %}
   <p class="muted t13">
     채널은 이 화면에서 고르지 않습니다. 연결한 서버에서 원하는 채널에 들어가
-    <code>/알림채널</code>을 실행하세요. 선택한 채널로 조직 알림을 보냅니다.
+    <code>/알림채널</code>을 실행해 주세요. 선택한 채널로 조직 알림을 보냅니다.
   </p>
 </div>
 {% endblock %}

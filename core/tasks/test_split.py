@@ -232,7 +232,7 @@ def test_web_panel_hint_and_split_dialog(client, project, member, people, org):
     t = _task(project, member, description="김철수와 이영희가 함께 합니다")
     r = client.get(f"/tasks/{t.pk}/panel")
     html = r.content.decode()
-    assert "여러 사람이 맡는 것처럼 보입니다" in html and "사람별로 나누기" in html
+    assert "여러 사람이 맡는 것처럼 보입니다" in html and "담당자별 태스크로 나누기" in html
     plain = _task(project, member)
     assert "여러 사람이 맡는 것처럼" not in client.get(f"/tasks/{plain.pk}/panel").content.decode()
     r = client.get(f"/tasks/{t.pk}/split", headers={"HX-Request": "true"})

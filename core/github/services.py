@@ -19,6 +19,7 @@ from django.db import transaction
 from django.db.models import Q
 from django.utils import timezone
 
+from accounts.services import consent_active, paused_message
 from common.errors import ConflictError, ServiceError
 from orgs.models import TeamMembership
 from orgs.services import ai_denied, is_member, orgs_of
@@ -123,12 +124,16 @@ def save_installation(org, installation_id: int, *, actor) -> GitHubInstallation
     """
     identity = getattr(actor, "github", None)
     if identity is None:
-        raise ServiceError({"installation": "먼저 GitHub 계정을 연결하세요."})
+        raise ServiceError({"installation": "먼저 GitHub 계정을 연결해 주세요."})
     other = (
         GitHubInstallation.objects.filter(installation_id=installation_id).exclude(org=org).exists()
     )
     if other:
-        raise ServiceError({"installation": "이 설치는 이미 다른 조직이 사용하고 있습니다."})
+        raise ServiceError(
+            {
+                "installation": "이 GitHub 앱 설치는 다른 조직에 연결되어 있습니다. 기존 조직의 연결을 해제하거나 다른 설치를 선택해 주세요."
+            }
+        )
     data = client.request("GET", f"/app/installations/{installation_id}", client.app_jwt())
     account = data.get("account") or {}
     if not _owns_account(identity, account):
@@ -242,13 +247,17 @@ def _store_tokens(identity, data: dict):
 
 
 def user_token(identity) -> str:
-    """살아 있는 사용자 토큰. 만료됐으면 refresh 토큰으로 갱신한다."""
+    """살아 있는 사용자 토큰. 만료됐으면 refresh 토큰으로 갱신한다.
+
+    사용자 이름으로 하는 GitHub 호출은 모두 여기를 지난다 — 동의 없이 멈춘 연결은 여기서 막는다."""
+    if not consent_active(identity.user, "github"):
+        raise ServiceError({"github": paused_message("github")})
     now = timezone.now()
     if identity.token_expires_at and identity.token_expires_at > now + timedelta(minutes=2):
         return decrypt(identity.token_enc)
     refresh = decrypt(identity.refresh_enc)
     if not refresh or (identity.refresh_expires_at and identity.refresh_expires_at <= now):
-        raise ServiceError({"github": "GitHub 연결이 만료됐습니다. 프로필에서 다시 연결하세요."})
+        raise ServiceError({"github": "GitHub 연결이 만료됐습니다. 프로필에서 다시 연결해 주세요."})
     data = client.refresh_user_token(refresh)
     _store_tokens(identity, data)
     return decrypt(identity.token_enc)
@@ -360,7 +369,7 @@ def login_with_github(info: dict, token_data: dict) -> tuple:
     github_id, login = info["id"], (info.get("login") or "")[:100]
     user = resolve("github", str(github_id))  # 비활성 사용자는 None
     if user is None and GitHubIdentity.objects.filter(github_id=github_id).exists():
-        raise ServiceError({"github": "비활성화된 계정입니다. 조직 관리자에게 문의해 주세요."})
+        raise ServiceError({"github": "정지된 계정입니다. 조직 관리자에게 문의해 주세요."})
     identity = user.github if user else None
     created = identity is None
     if not created:
@@ -434,7 +443,7 @@ def parse_repo_url(url: str) -> str:
     m = REPO_RE.search((url or "").strip())
     if not m:
         raise ServiceError(
-            {"url": "GitHub 저장소 주소를 넣으세요. 예: https://github.com/owner/repo.git"}
+            {"url": "GitHub 저장소 주소를 입력해 주세요. 예: https://github.com/owner/repo.git"}
         )
     return f"{m.group(1)}/{m.group(2)}"
 
@@ -480,11 +489,11 @@ def connect_repo(
     require_level(actor, project, effective("project.settings_by", org=project.org), "url")
     _check_ai_manage_repo(project.org, source)
     if not is_member(actor, project.org):
-        raise ServiceError({"org": "이 조직의 멤버가 아닙니다."})
+        raise ServiceError({"org": "이 조직에 속해 있지 않아 작업할 수 없습니다."})
     full_name = parse_repo_url(url)
     if not can_view_repo(actor, full_name):
         raise ServiceError(
-            {"url": "그 저장소에 접근할 수 없습니다. GitHub 연결과 권한을 확인하세요."}
+            {"url": "그 저장소에 접근할 수 없습니다. GitHub 연결과 권한을 확인해 주세요."}
         )
     if not confirm_shared and (warning := shared_repo_warning(project, full_name)):
         raise ServiceError({"confirm_shared": warning})
@@ -543,7 +552,11 @@ def link_event(event, task, *, actor, source: str = "web") -> None:
     require_level(actor, project, effective("project.settings_by", org=project.org), "task_id")
     git_project = effective_git_project(task)
     if git_project is None or git_project.pk != project.pk:
-        raise ServiceError({"task_id": "이 태스크의 연동 프로젝트가 아닙니다."})
+        raise ServiceError(
+            {
+                "task_id": "태스크의 연동 프로젝트와 다릅니다. 태스크에서 연동 프로젝트를 확인해 주세요."
+            }
+        )
     event.task = task
     event.save(update_fields=["task"])
 
@@ -1072,9 +1085,9 @@ def _on_pr(conn, delivery, payload):
     link.save()
     url = pr.get("html_url") or ""
     if action == "opened":
-        gh_notify.channel(conn, "pr_opened", f"🔀 PR #{number} 열림", task, url)
+        gh_notify.channel(conn, "pr_opened", f"PR #{number} 열림", task, url)
     elif merged:
-        gh_notify.channel(conn, "pr_merged", f"🔀 PR #{number} 병합", task, url)
+        gh_notify.channel(conn, "pr_merged", f"PR #{number} 병합", task, url)
     if not rule_on:
         record_event(
             conn,
@@ -1119,7 +1132,7 @@ def _pr_reviewer(task, payload, number, *, adding: bool) -> str:
     identity = GitHubIdentity.objects.filter(github_id=gid).select_related("user").first()
     user = identity.user if identity and identity.user.is_active else None
     if user is None:
-        return "PM 사용자 아님"
+        return "유달리 사용자 아님"
     if (task.reviewer_id == user.pk) == adding:
         return "변경 없음"
     try:
@@ -1135,7 +1148,7 @@ def _pr_reviewer(task, payload, number, *, adding: bool) -> str:
         return _reason(e)
     if not adding:
         return "검토자 해제"
-    gh_notify.dm(task, user, f"👀 PR #{number} 리뷰 요청")
+    gh_notify.dm(task, user, f"PR #{number} 리뷰 요청")
     return f"검토자 {user.display_name}"
 
 
@@ -1309,7 +1322,7 @@ def reopen_as_new(conn, delivery, payload, *, old, kind: str) -> Task | None:
             actor_login=login,
         )
     _task_log(old, "reopened_as", "", new.number, actor, "gh", note=note, external_actor=login)
-    head = f"🔁 {label} #{number} 재개 → {new.number} 생성"
+    head = f"{label} #{number} 재개 → {new.number} 생성"
     if actor != new.assignee:
         # 원 담당자가 다시 맡을지 정한다. 담당 요청 알림 하나에 재개 안내를 담으므로 재개 DM은 따로 없다.
         wr.request_assign(new, new.assignee, actor, "gh", note=f"{note} — {old.number}에서 이어짐")
@@ -1429,7 +1442,7 @@ def _on_issues(conn, delivery, payload):
                 link.save(update_fields=["issue_number", "issue_title", "issue_state"])
                 result = f"태스크 {task.number} 생성"
                 gh_notify.channel(
-                    conn, "issue_imported", f"📥 이슈 #{number} → {task.number} 가져옴", task
+                    conn, "issue_imported", f"이슈 #{number} → {task.number} 가져옴", task
                 )
     if row.task:
         link = TaskGitLink.objects.filter(task=row.task).first()
@@ -1459,7 +1472,11 @@ def sync_issues(conn) -> int:
     """
     inst = getattr(conn.project.org, "github", None)
     if inst is None:
-        raise ServiceError({"github": "조직에 GitHub 앱이 설치되지 않았습니다."})
+        raise ServiceError(
+            {
+                "github": "조직에 GitHub 앱이 설치되지 않았습니다. 조직 설정의 GitHub 화면에서 앱을 설치해 주세요."
+            }
+        )
     token = client.installation_token(inst.installation_id)
     seen = set()
     for item in client.paginate(f"/repos/{conn.full_name}/issues?state=open", token):
@@ -1581,7 +1598,11 @@ def sync_issues_if_stale(conn):
 def link_issue(task, issue):
     """이미 동기화된 이슈를 태스크에 손으로 잇는다. 다른 태스크의 이슈는 빼앗지 않는다."""
     if issue.task_id not in (None, task.pk):
-        raise ServiceError({"issue": f"이미 {issue.task.number}에 연결된 이슈입니다."})
+        raise ServiceError(
+            {
+                "issue": f"이미 {issue.task.number}에 연결된 이슈입니다. 기존 태스크에서 이슈 연결을 확인해 주세요."
+            }
+        )
     link = getattr(task, "git", None)
     if link is not None and link.issue_number and link.issue_number != issue.number:
         unlink(task, "issue")  # 전에 잇던 이슈를 놓아 다른 태스크가 가져갈 수 있게 한다

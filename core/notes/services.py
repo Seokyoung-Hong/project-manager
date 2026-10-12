@@ -1,3 +1,4 @@
+import logging
 import re
 from collections import Counter
 from datetime import timedelta
@@ -15,6 +16,8 @@ from projects import docs
 from projects.services import can_view_project, visible_projects
 
 from .models import MeetingNote, VoiceRecording
+
+log = logging.getLogger(__name__)
 
 MAX_BODY = 256 * 1024  # 256KB. 회의록 한 편이 이보다 클 이유가 없다.
 
@@ -39,9 +42,17 @@ def get_visible_note(user, note_id: int):
 
 def _check_project(org, project, actor):
     if project is not None and project.org_id != org.pk:
-        raise ServiceError({"project": "같은 조직의 프로젝트여야 합니다."})
+        raise ServiceError(
+            {
+                "project": "다른 조직의 프로젝트는 선택할 수 없습니다. 같은 조직의 프로젝트를 선택해 주세요."
+            }
+        )
     if project is not None and not can_view_project(actor, project):
-        raise ServiceError({"project": "볼 수 없는 프로젝트입니다."})
+        raise ServiceError(
+            {
+                "project": "프로젝트를 볼 권한이 없습니다. 프로젝트 관리자에게 접근 권한을 요청해 주세요."
+            }
+        )
 
 
 def create_note(
@@ -49,7 +60,7 @@ def create_note(
 ):
     """웹·API에서 만든 회의록은 처음부터 확정(final)이다. 만들기는 문서 서비스가 한다."""
     if not is_member(actor, org):
-        raise ServiceError({"org": "이 조직의 멤버가 아닙니다."})
+        raise ServiceError({"org": "이 조직에 속해 있지 않아 작업할 수 없습니다."})
     return docs.create_doc(
         org=org,
         actor=actor,
@@ -71,7 +82,7 @@ def _is_owner(note, user) -> bool:
 
 def _check_edit(note, actor, source: str):
     if not is_member(actor, note.org):
-        raise ServiceError({"org": "이 조직의 멤버가 아닙니다."})
+        raise ServiceError({"org": "이 조직에 속해 있지 않아 작업할 수 없습니다."})
     if note.status == "draft" and not _is_owner(note, actor):
         raise Forbidden({"note": "초안은 진행자나 조직 관리자만 고칠 수 있습니다."})
     # AI 편집은 태스크 본문과 같은 정책(ai.edit_text)을 탄다. 새 키를 만들지 않는다.
@@ -93,7 +104,7 @@ def update_note(note, field: str, value, *, actor, expected_version: int, source
 def upload_note(*, org, actor, filename: str, raw: bytes, project=None):
     """.md 본문 텍스트만 읽어 새 회의록을 만든다. 파일은 저장하지 않는다."""
     if not is_member(actor, org):
-        raise ServiceError({"org": "이 조직의 멤버가 아닙니다."})
+        raise ServiceError({"org": "이 조직에 속해 있지 않아 작업할 수 없습니다."})
     return docs.upload_doc(
         org=org, actor=actor, filename=filename, raw=raw, kind="meeting", project=project
     )
@@ -103,22 +114,32 @@ def delete_note(note, actor):
     """작성자 본인이거나 조직 관리자만."""
     if note.status == "draft":
         if not _is_owner(note, actor):
-            raise ServiceError({"note": "초안은 진행자나 조직 관리자만 지울 수 있습니다."})
+            raise ServiceError(
+                {
+                    "note": "회의록 초안은 진행자나 조직 관리자만 삭제할 수 있습니다. 해당 담당자에게 삭제를 요청해 주세요."
+                }
+            )
     elif note.created_by_id != actor.pk and not is_admin(actor, note.org):
-        raise ServiceError({"note": "작성자나 조직 관리자만 지울 수 있습니다."})
+        raise ServiceError(
+            {
+                "note": "작성자나 조직 관리자만 삭제할 수 있습니다. 해당 담당자에게 삭제를 요청해 주세요."
+            }
+        )
     note.delete()
 
 
 def link_task(note, task, actor, source: str = "web"):
     _check_edit(note, actor, source)
     if task.project.org_id != note.org_id:
-        raise ServiceError({"task": "같은 조직의 태스크여야 합니다."})
+        raise ServiceError(
+            {"task": "다른 조직의 태스크는 연결할 수 없습니다. 같은 조직의 태스크를 선택해 주세요."}
+        )
     note.tasks.add(task)
 
 
 def unlink_task(note, task, actor):
     if not is_member(actor, note.org):
-        raise ServiceError({"org": "이 조직의 멤버가 아닙니다."})
+        raise ServiceError({"org": "이 조직에 속해 있지 않아 작업할 수 없습니다."})
     note.tasks.remove(task)
 
 
@@ -128,14 +149,22 @@ def finalize_note(note, *, actor, source: str, project=None, team=None) -> Meeti
     if source == "mcp":
         raise Forbidden({"ai": "회의록 확정은 웹 회의록 화면에서 사람이 합니다."})
     if note.status != "draft":
-        raise ServiceError({"note": "이미 확정된 회의록입니다."})
+        raise ServiceError(
+            {"note": "이미 확정된 회의록입니다. 내용을 바꾸려면 회의록을 수정해 주세요."}
+        )
     if not _is_owner(note, actor):
         raise Forbidden({"note": "진행자나 조직 관리자만 확정할 수 있습니다."})
     rec = getattr(note, "recording", None)
     if rec is not None and rec.status in ("recording", "transcribing"):
-        raise ServiceError({"note": "녹음·전사가 끝난 뒤에 확정할 수 있습니다."})
+        raise ServiceError(
+            {
+                "note": "녹음·전사가 진행 중이라 확정할 수 없습니다. 작업이 끝난 뒤 회의록을 확정해 주세요."
+            }
+        )
     if project is not None and team is not None:
-        raise ServiceError({"scope": "프로젝트와 팀 중 하나만 고를 수 있습니다."})
+        raise ServiceError(
+            {"scope": "프로젝트와 팀을 함께 선택할 수 없습니다. 공개 범위를 하나만 선택해 주세요."}
+        )
     _check_project(note.org, project, actor)
     _check_team(note.org, team, actor)
     note.project, note.team, note.status = project, team, "final"
@@ -170,15 +199,19 @@ def _check_team(org, team, actor):
     if team is None:
         return
     if team.org_id != org.pk or not visible_teams(actor, org).filter(pk=team.pk).exists():
-        raise ServiceError({"team": "볼 수 없는 팀입니다."})
+        raise ServiceError(
+            {"team": "팀을 볼 권한이 없습니다. 조직 관리자에게 팀 참여를 요청해 주세요."}
+        )
 
 
 def meeting_scope(*, org, actor, project=None, team=None) -> dict:
     """녹음을 시작해도 되는가. 되면 봇이 쓸 실효 설정을 돌려준다(아니면 ServiceError/Forbidden)."""
     if not is_member(actor, org):
-        raise Forbidden({"org": "이 조직의 멤버가 아닙니다."})
+        raise Forbidden({"org": "이 조직에 속해 있지 않아 작업할 수 없습니다."})
     if project is not None and team is not None:
-        raise ServiceError({"scope": "프로젝트와 팀 중 하나만 고를 수 있습니다."})
+        raise ServiceError(
+            {"scope": "프로젝트와 팀을 함께 선택할 수 없습니다. 공개 범위를 하나만 선택해 주세요."}
+        )
     _check_project(org, project, actor)
     _check_team(org, team, actor)
     if not org_settings.effective("meeting.recording_enabled", org=org, project=project):
@@ -198,7 +231,11 @@ def start_recording(
     # 봇은 길드당 음성 연결 하나다. 동시에 온 시작 요청은 조직 행 잠금으로 줄 세운다(길드 ↔ 조직 1:1).
     Organization.objects.select_for_update().filter(pk=org.pk).first()
     if VoiceRecording.objects.filter(guild_id=guild_id, status="recording").exists():
-        raise ServiceError({"meeting": "이 Discord 서버에서는 이미 회의가 진행 중입니다."})
+        raise ServiceError(
+            {
+                "meeting": "이 Discord 서버에서는 이미 회의가 진행 중입니다. 현재 회의를 종료한 뒤 새 회의를 시작해 주세요."
+            }
+        )
     now = now_kst()
     note = MeetingNote.objects.create(
         org=org,
@@ -388,7 +425,12 @@ def update_recording(
     if status is not None and status != rec.status:
         _close_pending(rec, "cancelled")  # 회의가 끝나면 대기 중인 넘겨받기 요청은 취소
         if status not in _NEXT.get(rec.status, set()):
-            raise ServiceError({"status": f"{rec.status}에서 {status}(으)로 바꿀 수 없습니다."})
+            log.warning("녹음 %s 상태 전이 거절: %s → %s", rec.pk, rec.status, status)
+            raise ServiceError(
+                {
+                    "status": "현재 녹음 상태에서는 요청한 상태로 바꿀 수 없습니다. 녹음 상태를 다시 확인해 주세요."
+                }
+            )
         if status == "transcribing":
             if end_reason == "command" and not (
                 stopped_by is not None
@@ -424,7 +466,9 @@ def update_recording(
             _notify_owner(rec, "회의록을 만들지 못했습니다. 녹음 상태를 확인해 주세요.")
     if end_reason:
         if end_reason not in dict(VoiceRecording.END_REASONS):
-            raise ServiceError({"end_reason": "알 수 없는 종료 사유입니다."})
+            raise ServiceError(
+                {"end_reason": "종료 사유가 올바르지 않습니다. 지원하는 종료 사유를 선택해 주세요."}
+            )
         rec.end_reason = end_reason
     if participants is not None:
         # 봇이 준 Discord 닉네임은 discord_name으로 남기고, 표시 이름·user_id는 core가 정한다.
@@ -442,7 +486,11 @@ def update_recording(
     if transcript_md is not None:
         transcript_md = transcript_md.replace("\r\n", "\n")
         if len(transcript_md.encode()) > MAX_BODY:
-            raise ServiceError({"transcript_md": "전사문이 너무 깁니다 (256KB 상한)."})
+            raise ServiceError(
+                {
+                    "transcript_md": "전사문이 용량 한도 256KB를 넘었습니다. 전사문을 줄여 다시 보내 주세요."
+                }
+            )
         rec.transcript_md = transcript_md
     rec.save()
     return rec
@@ -541,7 +589,11 @@ def transfer_host(rec, *, by, to_discord_user_id: str, participants: list | None
         .get(pk=rec.pk)
     )
     if rec.status != "recording":
-        raise ServiceError({"meeting": "회의가 진행 중일 때만 진행자를 넘길 수 있습니다."})
+        raise ServiceError(
+            {
+                "meeting": "진행 중인 회의가 없어 진행자를 변경할 수 없습니다. 회의를 시작한 뒤 다시 요청해 주세요."
+            }
+        )
     if by is None or by.pk != rec.host_id:
         raise Forbidden({"meeting": "지금 진행자만 진행자를 넘길 수 있습니다."})
     row = _present_linked(rec, to_discord_user_id, "참여자에게만 넘길")
@@ -575,10 +627,14 @@ def _present_linked(rec, discord_user_id: str, verb: str) -> dict:
         None,
     )
     if row is None:
-        raise ServiceError({"meeting": f"음성 채널에 있는 {verb} 수 있습니다."})
+        raise ServiceError(
+            {
+                "meeting": f"음성 채널에 있는 {verb} 수 있습니다. 해당 음성 채널에 참여한 뒤 다시 요청해 주세요."
+            }
+        )
     if not row.get("user_id"):
         raise ServiceError(
-            {"meeting": f"PM 계정을 연결한 {verb} 수 있습니다. 웹 설정에서 연결해 주세요."}
+            {"meeting": f"유달리 계정을 연결한 {verb} 수 있습니다. 웹 설정에서 연결해 주세요."}
         )
     return row
 
@@ -631,7 +687,11 @@ def request_host(rec, *, requester_discord_user_id: str, participants: list | No
         rec = update_recording(rec, participants=participants)
     rec, now = _locked(rec), timezone.now()
     if rec.status != "recording":
-        raise ServiceError({"meeting": "회의가 진행 중일 때만 넘겨받기 요청을 보낼 수 있습니다."})
+        raise ServiceError(
+            {
+                "meeting": "진행 중인 회의가 없어 넘겨받기를 요청할 수 없습니다. 회의를 시작한 뒤 다시 요청해 주세요."
+            }
+        )
     row = _present_linked(rec, requester_discord_user_id, "참여자만 넘겨받기 요청을 보낼")
     if row["user_id"] == rec.host_id:
         raise ServiceError({"meeting": "이미 회의 진행자입니다."})
@@ -674,7 +734,9 @@ def _answer_host_request(rec, request_id, by_discord_user_id, approve):
     rec, now = _locked(rec), timezone.now()
     req = next((r for r in rec.host_requests or [] if r["id"] == request_id), None)
     if req is None:
-        raise ServiceError({"meeting": "넘겨받기 요청을 찾을 수 없습니다."})
+        raise ServiceError(
+            {"meeting": "넘겨받기 요청을 찾지 못했습니다. 요청 목록을 새로 확인해 주세요."}
+        )
     if req["status"] != "pending":
         key = req["status"] if req["status"] in ("expired", "cancelled") else None
         raise ServiceError(

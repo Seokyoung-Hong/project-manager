@@ -2,7 +2,8 @@
 (function () {
   var body = document.body;
   var t1, t2;
-  var panelReturnScroll = 0;
+  // 패널은 흐름 밖(고정)에 뜬다. 연 요소를 기억해 닫을 때 초점만 돌려준다 — 스크롤은 건드리지 않는다.
+  var panelOpener = null, panelOpening = false;
 
   function flash(text, after) {
     var el = document.getElementById("save-status");
@@ -10,7 +11,7 @@
     clearTimeout(t1); clearTimeout(t2);
     el.textContent = text;
     if (after) t1 = setTimeout(function () { el.textContent = after; }, 400);
-    t2 = setTimeout(function () { el.textContent = ""; }, 2500);
+    t2 = setTimeout(function () { el.textContent = el.dataset.idle || ""; }, 2500);
   }
 
   // 수동 복사 창을 열거나 취소한 것은 클립보드 복사 성공이 아니다.
@@ -22,33 +23,31 @@
       flash(successLabel || "복사됨");
       return true;
     }, function () {
-      prompt("아래 내용을 선택해 직접 복사하세요.", text);
+      prompt("아래 내용을 선택해 직접 복사해 주세요.", text);
       return false;
     });
   };
 
-  function updateDueSuggestion() {
-    var form = document.getElementById("quick-form");
-    if (!form) return;
-    var select = form.querySelector("[data-due-suggestions]");
-    var box = form.querySelector("[data-quick-due-suggestion]");
-    if (!select || !box) return;
-    var option = select.options[select.selectedIndex];
-    var date = option ? option.dataset.dueSuggestion : "";
-    box.hidden = !date;
-    box.dataset.date = date || "";
-    box.querySelector("[data-due-suggestion-label]").textContent = date ? "설정에 따른 제안: " + date + " (월~금 기준)" : "";
-  }
-  updateDueSuggestion();
-  body.addEventListener("htmx:afterSwap", updateDueSuggestion);
-  body.addEventListener("change", function (e) {
-    if (e.target.matches("[data-due-suggestions]")) updateDueSuggestion();
+  // 생성 폼 기본값(시스템화 D): 프로젝트를 바꾸면, 손대지 않은 기한을 그 프로젝트의 제안 기한으로 바꾼다.
+  body.addEventListener("focusin", function (e) {
+    if (e.target.matches("[data-due-suggestions]")) e.target.dataset.prev = (e.target.selectedOptions[0] || {}).value || "";
   });
-  body.addEventListener("click", function (e) {
-    var button = e.target.closest('[data-action="use-due-suggestion"]');
-    if (!button) return;
-    var form = button.closest("form"), box = button.closest("[data-quick-due-suggestion]");
-    form.querySelector('[name="due_date"]').value = box.dataset.date;
+  body.addEventListener("change", function (e) {
+    var select = e.target;
+    if (!select.matches("[data-due-suggestions]")) return;
+    var due = select.form && select.form.querySelector("[data-due-input]");
+    if (!due) return;
+    var prev = select.querySelector('option[value="' + (select.dataset.prev || "") + '"]');
+    var option = select.selectedOptions[0];
+    if (!due.value || (prev && due.value === prev.dataset.dueSuggestion)) due.value = option ? option.dataset.dueSuggestion || "" : "";
+    select.dataset.prev = option ? option.value : "";
+  });
+
+  // 버튼 모양 파일 입력: 고른 파일 이름을 옆에 보인다.
+  body.addEventListener("change", function (e) {
+    if (!e.target.matches("input[type=file][data-file-name]")) return;
+    var label = e.target.closest("form").querySelector("[data-file-name-label]");
+    if (label) label.textContent = e.target.files.length ? e.target.files[0].name : "선택한 파일 없음";
   });
 
   function requestError(e, network) {
@@ -63,9 +62,51 @@
         reason = typeof data.detail === "string" ? data.detail : typeof data.error === "string" ? data.error : "";
       } catch (err) { /* HTML 오류 페이지는 표시하지 않는다. */ }
     }
-    alert(message + (network ? " 네트워크 연결을 확인하고 다시 시도하세요." :
-      (reason ? " " + reason : " 다시 시도하세요.")));
+    alert(message + (network ? " 네트워크 연결을 확인하고 다시 시도해 주세요." :
+      (reason ? " " + reason : " 다시 시도해 주세요.")));
   }
+
+  // ---------- 공용 확인 창 (DESIGN.md 3절 "확인 창") ----------
+  // data-confirm="결과 문장" data-confirm-ok="행동 버튼 문구"[, data-confirm-cancel]을 폼·제출 버튼·HTMX 요소에 단다.
+  // 행동 버튼은 누른 버튼이 .danger(또는 data-confirm-danger)면 위험 스타일, 아니면 주 버튼. 초점은 [그대로 두기]에서 시작한다.
+  var confirmDlg = document.getElementById("confirm");
+  function askConfirm(el, styleFrom, then) {
+    var msg = el.dataset.confirm;
+    if (!confirmDlg || typeof confirmDlg.showModal !== "function") {
+      if (window.confirm(msg)) then();  // ponytail: <dialog>를 못 쓰는 옛 브라우저만 기본 창
+      return;
+    }
+    confirmDlg.querySelector("#confirm-text").textContent = msg;
+    var ok = confirmDlg.querySelector("[value=ok]");
+    ok.textContent = el.dataset.confirmOk || "계속하기";
+    ok.className = "btn " + (styleFrom && styleFrom.matches(".danger, [data-confirm-danger]") ? "danger" : "primary");
+    confirmDlg.querySelector("[value=cancel]").textContent = el.dataset.confirmCancel || "그대로 두기";
+    confirmDlg.returnValue = "";
+    confirmDlg.onclose = function () { if (confirmDlg.returnValue === "ok") then(); };
+    confirmDlg.showModal();
+  }
+  // 바깥(배경)을 누르면 [그대로 두기]와 같다. 창에 안쪽 여백이 있어 target만으로는 안쪽 클릭과 구별되지 않으므로 좌표로 본다.
+  if (confirmDlg) confirmDlg.addEventListener("click", function (e) {
+    if (e.target !== confirmDlg) return;
+    var r = confirmDlg.getBoundingClientRect();
+    if (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom) confirmDlg.close("cancel");
+  });
+  // 일반 폼: 캡처 단계에서 먼저 막아 htmx·편집기 저장보다 앞선다. 확인 뒤 같은 제출 버튼으로 다시 보낸다.
+  window.addEventListener("submit", function (e) {
+    var form = e.target, sub = e.submitter;
+    var el = sub && sub.hasAttribute("data-confirm") ? sub : form.hasAttribute("data-confirm") ? form : null;
+    if (!el) return;
+    if (form.dataset.confirmed) { delete form.dataset.confirmed; return; }
+    e.preventDefault(); e.stopImmediatePropagation();
+    askConfirm(el, sub || el, function () { form.dataset.confirmed = "1"; form.requestSubmit(sub || null); });
+  }, true);
+  // HTMX 요소(폼 밖 hx-post 버튼 등): 요청을 멈췄다가 확인하면 그대로 보낸다.
+  body.addEventListener("htmx:confirm", function (e) {
+    var el = e.detail.elt;
+    if (!el.hasAttribute("data-confirm") || el.tagName === "FORM") return;
+    e.preventDefault();
+    askConfirm(el, el, function () { e.detail.issueRequest(true); });
+  });
 
   function openPanel(url, pushUrl) {
     htmx.ajax("GET", url, { target: "#panel", swap: "innerHTML" });
@@ -136,30 +177,22 @@
   window.addEventListener("resize", syncAllBoardNavigation);
   requestAnimationFrame(syncAllBoardNavigation);
 
-  // 고급 필터는 넓은 화면에서 항상 보이고, 모바일 첫 진입에서만 접힌다.
-  // 적용 중인 조건이 있으면 모바일에서도 열어 두어 현재 상태를 숨기지 않는다.
-  var meFilters = document.querySelector(".me-filter-details");
-  if (meFilters) {
-    var mobileFilters = window.matchMedia("(max-width: 700px)");
-    var mobileFilterOpen = meFilters.dataset.filterActive === "1";
-    function syncMeFilters(query) {
-      meFilters.open = query.matches ? mobileFilterOpen : true;
-    }
-    syncMeFilters(mobileFilters);
-    meFilters.addEventListener("toggle", function () {
-      if (mobileFilters.matches) mobileFilterOpen = meFilters.open;
-    });
-    if (mobileFilters.addEventListener) mobileFilters.addEventListener("change", syncMeFilters);
-  }
-
   // 자동 저장 상태 표시
   body.addEventListener("htmx:beforeRequest", function (e) {
-    if (e.detail && e.detail.target && e.detail.target.id === "panel" && !e.detail.target.children.length) {
-      panelReturnScroll = window.scrollY;
+    // 패널 밖에서 연 요청(행·버튼)만 연 요소로 기억한다. 패널 안 저장·상태 변경은 제외.
+    var t = e.detail && e.detail.target, a = document.activeElement;
+    if (t && t.id === "panel" && !(a && t.contains(a))) {
+      panelOpener = a && a !== body ? a : null;
+      panelOpening = true;
     }
     if (e.target.hasAttribute && e.target.hasAttribute("data-autosave")) flash("저장 중…");
   });
-  body.addEventListener("saved", function () { flash("자동 저장됨"); });
+  // 저장 표시는 사라지지 않는다 — 저장한 뒤로는 "저장됨"이 남는다(b-workspace 중-12).
+  body.addEventListener("saved", function () {
+    var el = document.getElementById("save-status");
+    if (el) el.dataset.idle = "저장됨";
+    flash("저장됨 · 방금");
+  });
 
   // 설정 섹션 목차의 현재 위치 표시(스크롤 스파이). 화면 위쪽 3분의 1을 지난 마지막 섹션이 현재다.
   function markSettingsJump(link) {
@@ -186,7 +219,7 @@
 
   // 완료 순간 피드백: '완료'로 바꾸는 요청이 성공하면 새싹 알림을 3초 띄운다.
   var toastTimer;
-  function celebrate() {
+  function celebrate(undo) {
     var old = document.querySelector(".toast");
     if (old) old.remove();
     var t = document.createElement("div");
@@ -194,16 +227,34 @@
     t.innerHTML = '<svg viewBox="0 0 40 40" aria-hidden="true"><ellipse class="art-pot" cx="20" cy="31" rx="9" ry="7"/>' +
       '<g class="leaf"><path class="art-leaf" d="M20 25Q8 25 7 13Q18 11 20 25"/><path class="art-leaf-2" d="M20 22Q22 9 33 10Q34 21 20 22"/></g></svg>' +
       "<span>완료했습니다. 화분이 한 뼘 자랐습니다.</span>";
+    if (undo) {
+      // 되돌리기: 완료 전 상태로 다시 보낸다. 오늘 화면 머리를 새로 그린다.
+      var u = document.createElement("button");
+      u.type = "button"; u.className = "btn sm"; u.textContent = "되돌리기";
+      u.addEventListener("click", function () {
+        t.remove();
+        htmx.ajax("POST", undo.url, { target: "#today-head", swap: "outerHTML",
+          values: { status: undo.undo_status, version: undo.version, from: "head" } });
+      });
+      t.appendChild(u);
+    }
     body.appendChild(t);
     clearTimeout(toastTimer);
-    toastTimer = setTimeout(function () { t.classList.add("leaving"); setTimeout(function () { t.remove(); }, 250); }, 3000);
+    toastTimer = setTimeout(function () { t.classList.add("leaving"); setTimeout(function () { t.remove(); }, 250); }, undo ? 6000 : 3000);
   }
   body.addEventListener("htmx:afterRequest", function (e) {
     var d = e.detail || {}, cfg = d.requestConfig || {};
     if (!d.successful || !/\/tasks\/\d+\/status/.test((d.pathInfo && d.pathInfo.requestPath) || "")) return;
     var fd = cfg.formData, status = fd && fd.get ? fd.get("status") : (cfg.parameters || {}).status;
     var trig = (d.xhr && d.xhr.getResponseHeader("HX-Trigger")) || "";
-    if (status === "done" && /task-(updated|changed)/.test(trig)) celebrate();
+    if (status === "done" && /task-(updated|changed)/.test(trig)) {
+      var undo = null;
+      try {
+        var info = JSON.parse(trig)["task-updated"];
+        if (info && info.undo_status) { undo = info; undo.url = d.pathInfo.requestPath; }
+      } catch (err) { /* 이벤트 이름만 온 응답 */ }
+      celebrate(undo);
+    }
   });
   body.addEventListener("htmx:responseError", function (e) {
     requestError(e, false);
@@ -253,18 +304,21 @@
   });
 
   // 패널·다이얼로그 스왑 후 처리
-  body.addEventListener("htmx:afterSwap", function (e) {
+  function panelSwapped(panel) {
     var layout = document.querySelector(".layout");
-    if (e.target.id === "panel" && layout) {
-      var open = e.target.children.length > 0;
-      layout.classList.toggle("has-panel", open);
-      layout.classList.toggle("wide", open && localStorage.getItem("panel-wide") === "1");
-      var w = e.target.querySelector("[data-action='toggle-wide']");
-      if (w) w.textContent = layout.classList.contains("wide") ? "패널 좁히기" : "패널 넓히기";
-      var f = e.target.querySelector("[data-focus]");
-      if (f) f.focus();
-      else if (open && window.matchMedia("(max-width: 1150px)").matches) window.scrollTo(0, 0);
-    }
+    if (!layout) return;
+    var open = panel.children.length > 0;
+    layout.classList.toggle("has-panel", open);
+    layout.classList.toggle("wide", open && localStorage.getItem("panel-wide") === "1");
+    var w = panel.querySelector("[data-action='toggle-wide']");
+    if (w) w.textContent = layout.classList.contains("wide") ? "패널 좁히기" : "패널 넓히기";
+    var f = panel.querySelector("[data-focus]");
+    if (!f && open && panelOpening) f = panel.querySelector("select, button, input:not([type=hidden]), textarea, a[href]");
+    if (f) f.focus({ preventScroll: true });
+    panelOpening = false;
+  }
+  body.addEventListener("htmx:afterSwap", function (e) {
+    if (e.target.id === "panel") panelSwapped(e.target);
     if (e.target.id === "dialog" && e.target.children.length) e.target.showModal();
     requestAnimationFrame(syncAllBoardNavigation);
   });
@@ -278,10 +332,12 @@
     if (a === "close-panel") {
       panel.innerHTML = ""; layout.classList.remove("has-panel", "wide");
       history.replaceState(null, "", body.dataset.pageUrl || "/today");
-      requestAnimationFrame(function () {
-        window.scrollTo(0, panelReturnScroll);
-        syncAllBoardNavigation();
-      });
+      // 목록이 다시 그려졌으면 같은 번호의 행을 찾는다
+      var back = panelOpener && (panelOpener.isConnected ? panelOpener
+        : panelOpener.id && document.getElementById(panelOpener.id));
+      if (back) back.focus({ preventScroll: true });
+      panelOpener = null;
+      requestAnimationFrame(syncAllBoardNavigation);
     } else if (a === "toggle-wide") {
       var on = !layout.classList.contains("wide");
       layout.classList.toggle("wide", on); localStorage.setItem("panel-wide", on ? "1" : "0");
@@ -312,6 +368,14 @@
       var el = document.querySelector(b.dataset.target);
       el.hidden = !el.hidden;
       if (b.dataset.alt) { var t = b.textContent; b.textContent = b.dataset.alt; b.dataset.alt = t; }
+      // 여는 버튼이 주 버튼이면 열린 동안 숨긴다 — 폼 안의 제출 버튼이 주 버튼 하나로 남는다(주 버튼 규칙).
+      document.querySelectorAll('[data-hide-open][data-target="' + b.dataset.target + '"]').forEach(function (o) { o.hidden = !el.hidden; });
+      if (el.hasAttribute("data-nodue")) {
+        // [기한 없이 만들기]: 기한을 비우고 사유 칸을 연다. 다시 [기한 정하기]면 기한을 되살리고 사유를 비운다.
+        var dueInput = el.closest("form").querySelector("[data-due-input]");
+        if (!el.hidden) { dueInput.dataset.prev = dueInput.value; dueInput.value = ""; }
+        else { dueInput.value = dueInput.dataset.prev || ""; el.querySelector("input").value = ""; }
+      }
       if (!el.hidden) { var i = el.querySelector("input:not([type=hidden]), textarea"); if (i) i.focus(); }
     } else if (a === "toggle-subtasks") {
       // 프로젝트 목록 보기: 상위 행 "하위 n/m"이 그 아래 하위 행을 접고 편다. 상태는 저장하지 않는다.
@@ -338,7 +402,7 @@
   if (dlg) dlg.addEventListener("click", function (e) { if (e.target === dlg) { dlg.close(); dlg.innerHTML = ""; } });
   document.addEventListener("keydown", function (e) {
     var panel = document.getElementById("panel");
-    if (e.key === "Escape" && panel && panel.children.length && !(dlg && dlg.open)) {
+    if (e.key === "Escape" && panel && panel.children.length && !(dlg && dlg.open) && !(confirmDlg && confirmDlg.open)) {
       var close = panel.querySelector("[data-action='close-panel']");
       if (close) close.click();
     }
@@ -403,6 +467,116 @@
     });
   });
 
+  // ---------- 태스크 패널 미리 받기 ----------
+  // 화면에 보이는(또는 마우스·초점이 간) 태스크의 패널을 미리 받아 두고, 열 때는 받아 둔 것을 바로 넣는다.
+  // 넣은 직후 최신본인지 다시 묻고, 그사이 바뀌었고 아직 손대지 않았으면 갈아 끼운다.
+  // 태스크가 바뀌었다는 이벤트(task-changed·task-updated, SSE 포함)가 오면 그 태스크 것을 낡음으로 표시하고 다시 묻는다.
+  // 물을 때는 가진 것의 해시(If-None-Match)를 보내, 같으면 서버가 본문 없이 304만 돌려준다.
+  // ponytail: 캐시는 페이지 수명 동안 메모리에만 둔다. 화면에 나온 태스크 수만큼만 쌓인다.
+  (function () {
+    var panel = document.getElementById("panel");
+    if (!panel || !window.fetch) return;
+    var RE = /^\/tasks\/\d+\/panel$/;
+    var cache = {}, tags = {}, stale = {}, gen = {}, queue = [], busy = 0, touched = false;
+    // 폼마다 새로 섞이는 CSRF 값은 비교에서 뺀다
+    function same(a, b) {
+      var strip = function (h) { return h.replace(/name="csrfmiddlewaretoken" value="[^"]*"/g, ""); };
+      return strip(a) === strip(b);
+    }
+    function urlOf(el) {
+      var u = el.getAttribute && (el.getAttribute("data-panel") || el.getAttribute("hx-get"));
+      return u && RE.test(u) ? u : null;
+    }
+    function fresh(url) { return cache[url] && !stale[url]; }
+    function load(url) {
+      var g = gen[url] || 0, headers = { "HX-Request": "true" };
+      if (cache[url] && tags[url]) headers["If-None-Match"] = tags[url];
+      return fetch(url, { headers: headers, credentials: "same-origin" }).then(function (r) {
+        var mine = (gen[url] || 0) === g;   // 받는 사이 또 바뀌었으면 결과를 믿지 않는다
+        if (r.status === 304) { if (mine) delete stale[url]; return cache[url]; }
+        if (!r.ok || r.redirected) throw r;
+        var tag = r.headers.get("ETag");
+        return r.text().then(function (html) {
+          if (mine) { cache[url] = html; tags[url] = tag; delete stale[url]; }
+          return html;
+        });
+      });
+    }
+    function pump() {
+      while (busy < 2 && queue.length) {
+        var url = queue.shift();
+        if (fresh(url)) continue;
+        busy++;
+        load(url).catch(function () {}).then(function () { busy--; pump(); });
+      }
+    }
+    function want(url, first) {
+      if (!url || fresh(url)) return;
+      var i = queue.indexOf(url);
+      if (i >= 0) { if (!first) return; queue.splice(i, 1); }
+      if (first) queue.unshift(url); else queue.push(url);
+      pump();
+    }
+    var seen = window.IntersectionObserver && new IntersectionObserver(function (entries) {
+      entries.forEach(function (en) { if (en.isIntersecting) want(urlOf(en.target)); });
+    }, { rootMargin: "200px 0px" });
+    function scan(root) {
+      if (!seen) return;
+      (root || document).querySelectorAll("[data-panel], [hx-get$='/panel']").forEach(function (el) {
+        if (!panel.contains(el) && urlOf(el)) { seen.unobserve(el); seen.observe(el); }
+      });
+    }
+    var idle = window.requestIdleCallback || function (f) { setTimeout(f, 300); };
+    idle(function () { scan(); });
+    body.addEventListener("htmx:afterSettle", function (e) { if (e.target !== panel) scan(e.target); });
+    // 누르기 직전(마우스 올림·초점)이면 줄 맨 앞으로
+    ["pointerover", "focusin"].forEach(function (type) {
+      body.addEventListener(type, function (e) {
+        var el = e.target.closest && e.target.closest("[data-panel], [hx-get$='/panel']");
+        if (el && !panel.contains(el)) want(urlOf(el), true);
+      }, { passive: true });
+    });
+    function drop(e) {
+      var id = e.detail && e.detail.id;
+      if (id == null) { Object.keys(cache).forEach(function (u) { gen[u] = (gen[u] || 0) + 1; stale[u] = true; }); scan(); return; }
+      var url = "/tasks/" + id + "/panel";
+      gen[url] = (gen[url] || 0) + 1; stale[url] = true;
+      if (document.querySelector('[data-panel="' + url + '"], [hx-get="' + url + '"]')) want(url);
+    }
+    body.addEventListener("task-changed", drop);
+    body.addEventListener("task-updated", drop);
+    ["input", "pointerdown", "keydown"].forEach(function (type) {
+      panel.addEventListener(type, function () { touched = true; });
+    });
+    function shown(url) { return panel.firstElementChild && panel.firstElementChild.getAttribute("hx-get") === url; }
+    function put(html) { panel.innerHTML = html; htmx.process(panel); panelSwapped(panel); requestAnimationFrame(syncAllBoardNavigation); }
+    // 밖에서 패널을 여는 GET(행·버튼·달력·openPanel)만 가로챈다. 패널 안 새로고침과 ?block=1 같은 변형은 그대로 보낸다.
+    body.addEventListener("htmx:beforeRequest", function (e) {
+      var d = e.detail || {}, cfg = d.requestConfig || {}, url = d.pathInfo && d.pathInfo.requestPath;
+      if (!d.target || d.target !== panel || cfg.verb !== "get" || !RE.test(url || "") || panel.contains(d.elt)) return;
+      var html = cache[url];
+      if (!html) return;
+      e.preventDefault();
+      var push = d.elt && d.elt.getAttribute && d.elt.getAttribute("hx-push-url");
+      if (push && push !== "false") history.pushState(null, "", push);
+      touched = false;
+      put(html);
+      load(url).then(function (latest) {
+        if (touched || !shown(url) || same(latest, html)) return;
+        var top = panel.scrollTop, focused = panel.contains(document.activeElement);
+        panelOpening = focused;
+        put(latest);
+        panel.scrollTop = top;
+      }).catch(function () {});
+    });
+    // 네트워크로 연 패널도 받아 둔다
+    body.addEventListener("htmx:afterRequest", function (e) {
+      var d = e.detail || {}, url = d.pathInfo && d.pathInfo.requestPath;
+      if (!(d.successful && d.target === panel && RE.test(url || "") && d.xhr)) return;
+      cache[url] = d.xhr.responseText; tags[url] = d.xhr.getResponseHeader("ETag"); delete stale[url];
+    });
+  })();
+
   // ---------- 실시간 반영 (SSE) ----------
   // 서버(/events)가 방금 바뀐 태스크 id를 흘려보내면, 이미 쓰고 있는 HTMX 이벤트로 바꿔 쏜다.
   // 행·패널·오늘 목록은 그 이벤트를 이미 듣고 있으므로 템플릿은 건드릴 것이 없다.
@@ -445,5 +619,27 @@
     es.onmessage = function (ev) {
       try { onChange(String(JSON.parse(ev.data).id)); } catch (err) { /* 형식이 아니면 무시 */ }
     };
+  })();
+
+  // 문서 트리: 서버는 현재 문서까지 가는 가지만 펴서 보낸다. 사용자가 펴고 접은 가지는 브라우저가 기억한다.
+  (function () {
+    var tree = document.querySelector(".doc-tree");
+    if (!tree) return;
+    var KEY = "udally.docTreeOpen";
+    var open = {};
+    try { open = JSON.parse(localStorage.getItem(KEY) || "{}") || {}; } catch (err) { open = {}; }
+    tree.querySelectorAll("details[data-doc]").forEach(function (d) {
+      if (open[d.dataset.doc] === true) d.open = true;
+    });
+    // 사용자가 직접 펴고 접은 것만 기억한다(서버가 펴 준 조상 가지까지 쌓이지 않게).
+    tree.addEventListener("click", function (e) {
+      var s = e.target.closest("summary");
+      if (!s || e.target.closest("a")) return;
+      var d = s.parentElement;
+      setTimeout(function () {
+        if (d.open) open[d.dataset.doc] = true; else delete open[d.dataset.doc];
+        try { localStorage.setItem(KEY, JSON.stringify(open)); } catch (err) { /* 저장소를 못 쓰면 이번 화면에서만 */ }
+      }, 0);
+    });
   })();
 })();

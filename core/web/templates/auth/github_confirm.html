@@ -1,10 +1,20 @@
 {% extends "base.html" %}{% block title %}GitHub로 가입{% endblock %}
 {% block auth %}
 <h1 class="t24">GitHub로 가입</h1>
-<div class="notice bad"><span aria-hidden="true">⚠</span><span class="grow">동일한 아이디 또는 이메일로 가입되어 GitHub와 연결되지 않은 계정이 존재합니다.<br>정말 신규로 가입하시겠습니까?</span></div>
+{% if lookalike %}
+<div class="notice bad"><span aria-hidden="true">⚠</span><span class="grow">같은 아이디 또는 이메일을 쓰는 계정이 있지만 GitHub에 연결되어 있지 않습니다.<br>새 계정으로 가입할지 확인해 주세요.</span></div>
 <p class="t13 muted">본인의 기존 계정이라면 그 계정으로 로그인한 뒤 프로필에서 GitHub를 연결해 주세요.</p>
+{% endif %}
 <form method="post" class="stack">{% csrf_token %}
-  <button class="btn primary">신규로 가입</button>
+  <label class="check"><input type="checkbox" name="age_ok" value="1" required> 만 14세 이상입니다</label>
+  {% if age_error %}<div class="error">{{ age_error }}</div>{% endif %}
+  <p class="t13">{{ notice.value }}</p>
+  <h2 class="t16">개인정보 국외 이전(제3자 제공) 동의</h2>
+  {% include "settings/_consent_notice.html" %}
+  <label class="check"><input type="checkbox" name="consent_ok" value="1" required> 위 국외 이전에 동의합니다</label>
+  {% if consent_error %}<div class="error">{{ consent_error }}</div>{% endif %}
+  <a class="t13" href="{% url 'privacy' %}"><strong>개인정보 처리방침</strong></a>
+  <button class="btn primary">새 계정 만들기</button>
   <a class="btn" href="{% url 'login' %}">기존 계정으로 로그인</a>
 </form>
 {% endblock %}

@@ -65,7 +65,7 @@ def test_milestone_created_edited_closed_deleted(client, conn, project):
 def test_new_milestone_without_due_is_rejected(client, conn, project):
     signed(client, _ms_payload("created", due=None), "milestone", "m1")
     assert not Milestone.objects.exists()
-    assert "목표일" in _last(conn)
+    assert "기한" in _last(conn)
 
 
 def test_same_repo_two_projects_two_rows(client, conn, org, admin):
@@ -203,7 +203,7 @@ def test_release_published_links_milestone_and_posts_channel(client, conn, org, 
     ms.refresh_from_db()
     assert ms.status == "planned"  # 완료는 제안만
     notice = Notice.objects.get()
-    assert "🔖 릴리스 v1.0 발행" in notice.text and "완료로 표시" in notice.text
+    assert "릴리스 v1.0 발행" in notice.text and "완료로 표시" in notice.text
 
     signed(client, _rel_payload("edited", name="고친 이름"), "release", "r2")
     assert GitRelease.objects.get().name == "고친 이름"

@@ -1,8 +1,11 @@
+from pathlib import Path
+
 from django.contrib import messages
 from django.contrib.auth.forms import SetPasswordForm
 from django.contrib.auth.tokens import default_token_generator
 from django.shortcuts import redirect, render
 from django.utils.http import url_has_allowed_host_and_scheme, urlsafe_base64_decode
+from django.utils.safestring import mark_safe
 from django.views.decorators.http import require_POST
 
 from accounts.auth import (
@@ -17,7 +20,7 @@ from accounts.auth import (
 )
 from accounts.models import User
 from common.errors import ServiceError
-from orgs.services import invite_org, join_by_token
+from orgs.services import invite_org, join_by_token, orgs_of
 
 from ..forms import LoginForm, SignupForm
 
@@ -32,13 +35,36 @@ def _safe_next(request, nxt: str) -> str:
     return nxt if ok else ""
 
 
+PRIVACY_HTML = Path(__file__).resolve().parent.parent / "content" / "privacy.html"
+
+
+def privacy(request):
+    """개인정보 처리방침. 로그인 없이, JS 없이 본다.
+
+    원문은 content/privacy.md이고, 개발 때 만든 HTML 조각(privacy.html)을 그대로 넣는다.
+    만드는 명령은 privacy.md 맨 위 주석에 있다. 저장소 파일이라 mark_safe 한다.
+    """
+    body = mark_safe(PRIVACY_HTML.read_text(encoding="utf-8"))
+    return render(request, "privacy.html", {"body": body})
+
+
+def landing(user) -> str:
+    """로그인한 사람이 처음 갈 화면. 조직이 없으면 오늘 화면은 할 일이 없으니 조직 목록([조직 만들기])으로."""
+    if not orgs_of(user).exists():
+        return "org_list"
+    return "me" if user.settings.get("user.start_page") == "me" else "today"
+
+
 def root(request):
-    return redirect("today" if request.user.is_authenticated else "login")
+    """로그인했으면 처음 화면으로, 아니면 소개(랜딩) 페이지."""
+    if request.user.is_authenticated:
+        return redirect(landing(request.user))
+    return render(request, "landing.html")
 
 
 def login_view(request):
     if request.user.is_authenticated:
-        return redirect(_safe_next(request, request.GET.get("next", "")) or "today")
+        return redirect(_safe_next(request, request.GET.get("next", "")) or landing(request.user))
     form = LoginForm(request.POST or None)
     if request.method == "POST" and form.is_valid():
         try:
@@ -49,11 +75,12 @@ def login_view(request):
             form.add_error(None, _too_many(e))
         else:
             if user is None:
-                form.add_error(None, "아이디 또는 비밀번호가 맞지 않습니다.")
+                form.add_error(
+                    None, "아이디 또는 비밀번호가 일치하지 않습니다. 비밀번호를 다시 입력해 주세요."
+                )
             else:
                 login_user(request, user, "password")
-                start = "me" if user.settings.get("user.start_page") == "me" else "today"
-                return redirect(_safe_next(request, request.POST.get("next", "")) or start)
+                return redirect(_safe_next(request, request.POST.get("next", "")) or landing(user))
     return render(request, "auth/login.html", {"form": form})
 
 
@@ -77,7 +104,7 @@ def signup(request):
         user = form.save()
         record_failure("signup_ip", ip)  # 실패가 아니라 생성 횟수를 센다
         login_user(request, user, "password")
-        messages.info(request, "가입되었습니다. 조직을 만들거나 초대 링크로 참여하세요.")
+        messages.info(request, "가입되었습니다. 조직을 만들거나 초대 링크로 참여해 주세요.")
         # 갓 가입한 사람은 조직이 없다. 오늘 화면은 빈 목록뿐이라 다음에 뭘 해야 하는지 안 보인다.
         # 조직 목록은 [조직 만들기]가 있는 화면이다(초대로 온 사람은 next를 타고 그대로 간다).
         return redirect(_safe_next(request, request.GET.get("next", "")) or "org_list")

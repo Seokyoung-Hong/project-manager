@@ -171,7 +171,7 @@ def test_team_reviewer_and_unknown_login_are_only_recorded(client, conn, task, r
     ev = _send(client, _pr(task, "review_requested", requested_team={"id": 1}))
     assert ev.result == "팀 리뷰어 무시"
     ev = _send(client, _pr(task, "review_requested", requested_reviewer={"id": 77}))
-    assert ev.result == "PM 사용자 아님"
+    assert ev.result == "유달리 사용자 아님"
 
 
 def test_review_rule_off_records_only(client, conn, task, reviewer):

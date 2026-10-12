@@ -1,5 +1,6 @@
 import ipaddress
 import json
+import logging
 import socket
 from datetime import date
 from urllib.error import URLError
@@ -100,7 +101,11 @@ def set_visibility(project, visibility: str, *, actor, source="web", token=None)
     require_admin(actor, project.org)
     require_ai_enabled(project.org, source, "공개 범위 바꾸기")
     if visibility not in dict(Project.VISIBILITIES):
-        raise ServiceError({"visibility": "알 수 없는 공개 범위입니다."})
+        raise ServiceError(
+            {
+                "visibility": "공개 범위가 올바르지 않습니다. 조직 전체 또는 담당 팀만 중에서 선택해 주세요."
+            }
+        )
     if visibility == project.visibility:
         return project
     old = project.visibility
@@ -121,9 +126,13 @@ def require_level(actor, project, level: str, key: str):
     if is_admin(actor, project.org):
         return
     if level == "admin":
-        raise ServiceError({key: "이 작업은 조직 관리자만 할 수 있습니다."})
+        raise ServiceError(
+            {key: "이 작업은 조직 관리자만 할 수 있습니다. 조직 관리자에게 요청해 주세요."}
+        )
     if level == "owner" and not is_owner(actor, project):
-        raise ServiceError({key: "이 작업은 프로젝트 관리자만 할 수 있습니다."})
+        raise ServiceError(
+            {key: "이 작업은 프로젝트 관리자만 할 수 있습니다. 프로젝트 관리자에게 요청해 주세요."}
+        )
 
 
 def _check_ai_delete(org, source: str):
@@ -137,13 +146,15 @@ def _check_ai_delete(org, source: str):
 def _validate(org, name, owners, status):
     errors = {}
     if not name or not name.strip():
-        errors["name"] = "프로젝트 이름을 입력하세요."
+        errors["name"] = "프로젝트 이름을 입력해 주세요."
     for u in owners:
         if not u.is_active or not is_member(u, org):
-            errors["owners"] = "관리자는 이 조직의 활성 멤버여야 합니다."
+            errors["owners"] = (
+                "관리자가 조직의 활성 멤버가 아닙니다. 현재 활동 중인 조직 멤버를 선택해 주세요."
+            )
             break
     if status not in dict(Project.STATUSES):
-        errors["status"] = "알 수 없는 상태입니다."
+        errors["status"] = "상태가 올바르지 않습니다. 화면에 표시된 상태 중에서 선택해 주세요."
     if errors:
         raise ServiceError(errors)
 
@@ -164,27 +175,39 @@ def create_project(
     visibility: str = "org",
 ):
     if not is_member(actor, org):
-        raise ServiceError({"org": "이 조직의 멤버가 아닙니다."})
+        raise ServiceError({"org": "이 조직에 속해 있지 않아 작업할 수 없습니다."})
     if visibility not in dict(Project.VISIBILITIES):
-        raise ServiceError({"visibility": "알 수 없는 공개 범위입니다."})
+        raise ServiceError(
+            {
+                "visibility": "공개 범위가 올바르지 않습니다. 조직 전체 또는 담당 팀만 중에서 선택해 주세요."
+            }
+        )
     if visibility != "org":
         require_admin(actor, org)
     if effective("project.create_by", org=org) == "admin" and not is_admin(actor, org):
-        raise ServiceError({"org": "프로젝트 생성은 조직 관리자만 할 수 있습니다."})
+        raise ServiceError(
+            {"org": "프로젝트는 조직 관리자만 만들 수 있습니다. 조직 관리자에게 요청해 주세요."}
+        )
     owners = list(owners)
     teams = list(teams)
     require_ai_enabled(org, source, "프로젝트 만들기")
     if effective("project.owner_required", org=org) and not owners:
-        raise ServiceError({"owners": "프로젝트 관리자가 최소 1명 있어야 합니다."})
+        raise ServiceError(
+            {"owners": "프로젝트 관리자가 없습니다. 관리자를 한 명 이상 지정해 주세요."}
+        )
     _validate(org, name, owners, status)
     for t in teams:
         if t.org_id != org.pk:
-            raise ServiceError({"teams": "다른 조직의 팀은 담당으로 지정할 수 없습니다."})
+            raise ServiceError(
+                {
+                    "teams": "다른 조직의 팀은 담당으로 지정할 수 없습니다. 같은 조직의 팀을 선택해 주세요."
+                }
+            )
     # 저장할 값과 같은 값으로 검사해야 한다. 자르기 전 값으로 검사하면
     # 앞 100자가 같은 두 이름이 둘 다 통과해 INSERT에서 unique 제약에 걸린다.
     name = name.strip()[:100]
     if Project.objects.filter(org=org, name=name).exists():
-        raise ServiceError({"name": "같은 이름의 프로젝트가 이미 있습니다."})
+        raise ServiceError({"name": "같은 이름의 프로젝트가 있습니다. 다른 이름을 입력해 주세요."})
     # dev_tools가 None이면 조직 기본값을 따른다. 조직 값과 다를 때만 프로젝트 설정에 남는다.
     proj_settings = {}
     if dev_tools is not None:
@@ -209,11 +232,16 @@ def update_project(
     project, changes: dict, *, actor, source="web", token=None, expected_version: int
 ):
     if not is_member(actor, project.org):
-        raise ServiceError({"org": "이 조직의 멤버가 아닙니다."})
+        raise ServiceError({"org": "이 조직에 속해 있지 않아 작업할 수 없습니다."})
     require_ai_enabled(project.org, source, "프로젝트 고치기")
     unknown = set(changes) - EDITABLE
     if unknown:
-        raise ServiceError({k: "수정할 수 없는 항목입니다." for k in sorted(unknown)})
+        raise ServiceError(
+            {
+                k: "직접 수정할 수 없는 항목이 포함되어 있습니다. 수정할 항목을 다시 선택해 주세요."
+                for k in sorted(unknown)
+            }
+        )
     if "teams" in changes and project.visibility != "org":
         # 비공개 프로젝트의 담당 팀 = 보는 팀이라 담당 팀 편집이 곧 View 권한 편집이다.
         require_admin(actor, project.org)
@@ -232,7 +260,9 @@ def update_project(
         and not new_owners
         and effective("project.owner_required", org=project.org)
     ):
-        raise ServiceError({"owners": "프로젝트 관리자가 최소 1명 있어야 합니다."})
+        raise ServiceError(
+            {"owners": "프로젝트 관리자가 없습니다. 관리자를 한 명 이상 지정해 주세요."}
+        )
     old_teams = list(project.teams.all())
     new_teams = list(changes.get("teams", old_teams))
     new = {f: changes.get(f, getattr(project, f)) for f in ("name", "purpose", "status")}
@@ -244,14 +274,18 @@ def update_project(
     )
     for t in new_teams:
         if t.org_id != project.org_id:
-            raise ServiceError({"teams": "다른 조직의 팀은 담당으로 지정할 수 없습니다."})
+            raise ServiceError(
+                {
+                    "teams": "다른 조직의 팀은 담당으로 지정할 수 없습니다. 같은 조직의 팀을 선택해 주세요."
+                }
+            )
     new["name"] = new["name"].strip()[:100]
     new["purpose"] = (new["purpose"] or "").strip()[:200]
     if (
         new["name"] != project.name
         and Project.objects.filter(org=project.org, name=new["name"]).exists()
     ):
-        raise ServiceError({"name": "같은 이름의 프로젝트가 이미 있습니다."})
+        raise ServiceError({"name": "같은 이름의 프로젝트가 있습니다. 다른 이름을 입력해 주세요."})
     old = {f: getattr(project, f) for f in ("name", "purpose", "status")}
     fields = {f: v for f, v in new.items() if v != old[f]}
     owners_changed = {u.pk for u in new_owners} != {u.pk for u in old_owners}
@@ -358,7 +392,11 @@ def delete_project(project, *, actor, source: str = "web"):
     require_admin(actor, project.org)
     _check_ai_delete(project.org, source)
     if not project.is_archived:
-        raise ServiceError({"project": "먼저 보관한 뒤에 지울 수 있습니다."})
+        raise ServiceError(
+            {
+                "project": "보관하지 않은 프로젝트는 삭제할 수 없습니다. 프로젝트를 먼저 보관해 주세요."
+            }
+        )
     from tasks.models import ChangeLog, Task, TaskDecisionRecord
 
     if TaskDecisionRecord.objects.filter(task__project=project).exists():
@@ -412,7 +450,7 @@ def set_project_settings(project, data: dict, *, actor, source="web", token=None
         raise ServiceError(
             {
                 "project.dev_tools": "저장소가 연결된 프로젝트는 개발 도구를 끌 수 없습니다. "
-                "먼저 저장소 연결을 해제하세요."
+                "먼저 저장소 연결을 해제해 주세요."
             }
         )
     locked = locked_keys(project.org)
@@ -445,7 +483,11 @@ def set_governance_extra(project, text: str, *, actor) -> Project:
     )
     text = (text or "").strip()
     if len(text) > 5000:
-        raise ServiceError({"governance_extra": "5000자를 넘을 수 없습니다."})
+        raise ServiceError(
+            {
+                "governance_extra": "프로젝트의 추가 업무 규칙이 너무 깁니다. 5000자 이내로 줄여 주세요."
+            }
+        )
     project.governance_extra = text
     project.save(update_fields=["governance_extra"])
     return project
@@ -559,19 +601,19 @@ def _add_month(d: date, n: int) -> date:
 def _validate_milestone(name, target_date, start_date, status) -> dict:
     errors = {}
     if not (name or "").strip():
-        errors["name"] = "마일스톤 이름을 입력하세요."
+        errors["name"] = "마일스톤 이름을 입력해 주세요."
     if target_date is None:
-        errors["target_date"] = "목표일을 선택하세요."
+        errors["target_date"] = "기한을 선택해 주세요."
     if start_date and target_date and start_date > target_date:
-        errors["start_date"] = "시작일은 목표일보다 앞이어야 합니다."
+        errors["start_date"] = "시작일이 기한보다 늦습니다. 기한 이전의 날짜를 선택해 주세요."
     if status not in dict(Milestone.STATUSES):
-        errors["status"] = "알 수 없는 상태입니다."
+        errors["status"] = "상태가 올바르지 않습니다. 화면에 표시된 상태 중에서 선택해 주세요."
     return errors
 
 
 def create_milestone(*, project, name, target_date, actor, start_date=None, status="planned"):
     if not can_view_project(actor, project):
-        raise ServiceError({"org": "이 조직의 멤버가 아닙니다."})
+        raise ServiceError({"org": "이 조직에 속해 있지 않아 작업할 수 없습니다."})
     require_level(actor, project, effective("project.roadmap_by", org=project.org), "roadmap")
     errors = _validate_milestone(name, target_date, start_date, status)
     if errors:
@@ -589,7 +631,7 @@ def create_milestone(*, project, name, target_date, actor, start_date=None, stat
 def update_milestone(ms, changes: dict, *, actor):
     """마일스톤에는 version이 없다(동시 편집이 문제가 될 만큼 자주 고치지 않는다)."""
     if not can_view_project(actor, ms.project):
-        raise ServiceError({"org": "이 조직의 멤버가 아닙니다."})
+        raise ServiceError({"org": "이 조직에 속해 있지 않아 작업할 수 없습니다."})
     require_level(actor, ms.project, effective("project.roadmap_by", org=ms.project.org), "roadmap")
     name = changes.get("name", ms.name)
     target_date = changes.get("target_date", ms.target_date)
@@ -627,7 +669,11 @@ def sync_milestone(
             ms.save(update_fields=["gh_number"])
     if ms is None:
         if target_date is None:
-            raise ServiceError({"target_date": "GitHub 마일스톤에 목표일이 없습니다."})
+            raise ServiceError(
+                {
+                    "target_date": "GitHub 마일스톤에 기한이 없습니다. GitHub에서 기한을 정한 뒤 다시 가져와 주세요."
+                }
+            )
         ms = Milestone.objects.create(
             project=project,
             name=name,
@@ -656,23 +702,33 @@ def sync_milestone(
 
 def delete_milestone(ms, actor):
     if not can_view_project(actor, ms.project):
-        raise ServiceError({"org": "이 조직의 멤버가 아닙니다."})
+        raise ServiceError({"org": "이 조직에 속해 있지 않아 작업할 수 없습니다."})
     require_level(actor, ms.project, effective("project.roadmap_by", org=ms.project.org), "roadmap")
     ms.delete()
 
 
 def create_dependency(*, from_project, to_project, actor, note="", is_blocking=False):
     if not (can_view_project(actor, from_project) and can_view_project(actor, to_project)):
-        raise ServiceError({"org": "이 조직의 멤버가 아닙니다."})
+        raise ServiceError({"org": "이 조직에 속해 있지 않아 작업할 수 없습니다."})
     require_level(
         actor, from_project, effective("project.roadmap_by", org=from_project.org), "roadmap"
     )
     if to_project.org_id != from_project.org_id:
-        raise ServiceError({"to_project": "같은 조직의 프로젝트만 연결할 수 있습니다."})
+        raise ServiceError(
+            {
+                "to_project": "다른 조직의 프로젝트는 연결할 수 없습니다. 같은 조직의 프로젝트를 선택해 주세요."
+            }
+        )
     if to_project.pk == from_project.pk:
-        raise ServiceError({"to_project": "자기 자신에게는 의존할 수 없습니다."})
+        raise ServiceError(
+            {
+                "to_project": "같은 프로젝트에 의존성을 만들 수 없습니다. 다른 프로젝트를 선택해 주세요."
+            }
+        )
     if ProjectDependency.objects.filter(from_project=from_project, to_project=to_project).exists():
-        raise ServiceError({"to_project": "이미 있는 의존성입니다."})
+        raise ServiceError(
+            {"to_project": "이미 연결된 의존성입니다. 다른 프로젝트를 선택해 주세요."}
+        )
     # ponytail: 순환은 막지 않는다. 표시만 하는 목록이라 해가 없다. 자동 일정 계산이
     # 생기면 그때 검사한다.
     return ProjectDependency.objects.create(
@@ -686,7 +742,7 @@ def create_dependency(*, from_project, to_project, actor, note="", is_blocking=F
 
 def delete_dependency(dep, actor):
     if not (can_view_project(actor, dep.from_project) and can_view_project(actor, dep.to_project)):
-        raise ServiceError({"org": "이 조직의 멤버가 아닙니다."})
+        raise ServiceError({"org": "이 조직에 속해 있지 않아 작업할 수 없습니다."})
     require_level(
         actor,
         dep.from_project,
@@ -754,13 +810,23 @@ def roadmap(org, today=None, *, viewer=None) -> dict:
 
 def parse_spec(raw: bytes, *, source: str) -> dict:
     if len(raw) > SPEC_MAX:
-        raise ServiceError({"spec": "스펙이 너무 큽니다 (5MB 상한)."})
+        raise ServiceError(
+            {"spec": "API 명세가 용량 한도 5MB를 넘었습니다. 명세 용량을 줄여 올려 주세요."}
+        )
     try:
         spec = json.loads(raw.decode("utf-8"))
     except (UnicodeDecodeError, json.JSONDecodeError):
-        raise ServiceError({"spec": f"{source}를 JSON으로 읽지 못했습니다."}) from None
+        raise ServiceError(
+            {
+                "spec": f"{source}를 JSON으로 읽지 못했습니다. JSON 형식과 UTF-8 인코딩을 확인해 주세요."
+            }
+        ) from None
     if not isinstance(spec, dict) or not isinstance(spec.get("paths"), dict):
-        raise ServiceError({"spec": "OpenAPI 문서가 아닙니다 (paths 없음)."})
+        raise ServiceError(
+            {
+                "spec": "API 경로가 없어 명세를 읽을 수 없습니다. 경로가 포함된 OpenAPI 문서를 올려 주세요."
+            }
+        )
     return spec
 
 
@@ -773,15 +839,21 @@ def _check_public(url: str) -> str:
     """
     parsed = urlparse((url or "").strip())
     if parsed.scheme not in ("http", "https") or not parsed.hostname:
-        raise ServiceError({"spec": "http:// 또는 https:// 주소를 입력하세요."})
+        raise ServiceError({"spec": "http:// 또는 https:// 주소를 입력해 주세요."})
     try:
         infos = socket.getaddrinfo(parsed.hostname, parsed.port or 0, proto=socket.IPPROTO_TCP)
     except OSError:
-        raise ServiceError({"spec": "주소를 찾지 못했습니다."}) from None
+        raise ServiceError(
+            {"spec": "주소를 찾지 못했습니다. 주소가 맞는지와 외부에서 열리는지 확인해 주세요."}
+        ) from None
     for info in infos:
         ip = ipaddress.ip_address(info[4][0])
         if not ip.is_global or ip.is_multicast:
-            raise ServiceError({"spec": "사내·사설 주소는 받아 올 수 없습니다."})
+            raise ServiceError(
+                {
+                    "spec": "외부에 공개되지 않은 주소의 명세는 가져올 수 없습니다. 공개 주소를 입력하거나 JSON 파일을 올려 주세요."
+                }
+            )
     return url
 
 
@@ -807,16 +879,22 @@ def fetch_spec(url: str) -> dict:
             raw = r.read(SPEC_MAX + 1)
     except ServiceError:
         raise
-    except URLError as e:
-        raise ServiceError({"spec": f"주소를 읽지 못했습니다: {e.reason}"}) from None
-    except OSError as e:
-        raise ServiceError({"spec": f"주소를 읽지 못했습니다: {e}"}) from None
+    except URLError:
+        logging.getLogger(__name__).warning("API 명세 주소 연결 실패", exc_info=True)
+        raise ServiceError(
+            {"spec": "주소에 연결하지 못했습니다. 주소가 맞는지와 외부에서 열리는지 확인해 주세요."}
+        ) from None
+    except OSError:
+        logging.getLogger(__name__).warning("API 명세 주소 읽기 실패", exc_info=True)
+        raise ServiceError(
+            {"spec": "주소의 내용을 읽지 못했습니다. 연결 상태를 확인한 뒤 다시 시도해 주세요."}
+        ) from None
     return parse_spec(raw, source=url)
 
 
 def set_api_spec(project, spec: dict, *, source_url: str, actor, source: str = "web") -> ApiSpec:
     if not is_member(actor, project.org):
-        raise ServiceError({"org": "이 조직의 멤버가 아닙니다."})
+        raise ServiceError({"org": "이 조직에 속해 있지 않아 작업할 수 없습니다."})
     require_ai_enabled(project.org, source, "API 문서 등록")
     obj, _ = ApiSpec.objects.update_or_create(
         project=project,

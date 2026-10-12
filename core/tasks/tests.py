@@ -358,7 +358,7 @@ def test_extend_sets_due_when_none(project, member):
     )
     assert t.due_date == today_kst() + timedelta(days=1)
     assert t.no_due_reason == ""
-    assert _logs(t, "due_date").last().note.startswith("목표일 지정: ")
+    assert _logs(t, "due_date").last().note.startswith("기한 지정: ")
 
 
 def test_extend_closed_rejected(task, member):
@@ -538,14 +538,14 @@ def test_me_view_groups_by_due(five, member, project):
     v = me_view(member)
     titles = [g["title"] for g in v["groups"]]
     sunday_is_today = today_kst() == week_bounds()[1]
-    expected = ["기한 초과", "오늘 마감"]
+    expected = ["기한 초과", "오늘까지"]
     if not sunday_is_today:
-        expected.append("이번 주 마감")
+        expected.append("이번 주 기한")
     expected.extend(["그 이후", "기한 미정"])
     assert titles == expected
     counts = {g["title"]: g["count"] for g in v["groups"]}
-    assert counts["오늘 마감"] == (2 if sunday_is_today else 1)
-    assert all(count == 1 for title, count in counts.items() if title != "오늘 마감")
+    assert counts["오늘까지"] == (2 if sunday_is_today else 1)
+    assert all(count == 1 for title, count in counts.items() if title != "오늘까지")
     overdue = v["groups"][0]
     assert overdue["projects"][0]["project"] == project
     assert "total" in overdue["projects"][0] and "done" in overdue["projects"][0]
@@ -557,28 +557,28 @@ def test_me_view_omits_empty_week_group_on_sunday(project, member, monkeypatch):
     monkeypatch.setattr(ts, "overdue_before", lambda org, project=None: sunday)
     create_task(
         project=project,
-        title="일요일 마감 A",
+        title="일요일 기한 A",
         actor=member,
         source="web",
         due_date=sunday,
     )
     create_task(
         project=project,
-        title="일요일 마감 B",
+        title="일요일 기한 B",
         actor=member,
         source="web",
         due_date=sunday,
     )
     create_task(
         project=project,
-        title="다음 주 마감",
+        title="다음 주 기한",
         actor=member,
         source="web",
         due_date=sunday + timedelta(days=3),
     )
 
     groups = me_view(member)["groups"]
-    assert [g["title"] for g in groups] == ["오늘 마감", "그 이후"]
+    assert [g["title"] for g in groups] == ["오늘까지", "그 이후"]
     assert groups[0]["count"] == 2
 
 

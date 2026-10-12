@@ -232,7 +232,7 @@ def team_member_add(request, team_id):
     user_id = request.POST.get("user")
     user = team.org.members.filter(pk=user_id or 0).first()
     if user is None:
-        messages.error(request, "조직 멤버를 선택하세요.")
+        messages.error(request, "조직 멤버를 선택해 주세요.")
         return redirect("team_detail", team_id=team.pk)
     try:
         osv.add_team_member(team, user, request.user)
@@ -300,9 +300,12 @@ def team_github_link(request, team_id):
     gid, _, rest = raw.partition(":")
     slug, _, name = rest.partition(":")
     if not gid.isdecimal() or not slug:
-        messages.error(request, "GitHub 팀을 선택하세요.")
+        messages.error(request, "GitHub 팀을 선택해 주세요.")
     elif GitHubTeamLink.objects.filter(github_team_id=int(gid)).exclude(team=team).exists():
-        messages.error(request, "그 GitHub 팀은 이미 다른 팀에 연결되어 있습니다.")
+        messages.error(
+            request,
+            "이 GitHub 팀은 다른 팀에 연결되어 있습니다. 다른 GitHub 팀을 선택하거나 기존 연결을 해제해 주세요.",
+        )
     else:
         GitHubTeamLink.objects.get_or_create(
             team=team, defaults={"github_team_id": int(gid), "slug": slug, "name": name}
@@ -321,7 +324,7 @@ def team_github_create(request, team_id):
         record_problem(request, "writes", "GitHub 팀 생성", e, target=team.name)
         messages.error(
             request,
-            "GitHub 팀을 만들고 연결하지 못했습니다. 다시 만들기 전에 GitHub에 같은 팀이 이미 생성됐는지 확인하세요.",
+            "GitHub 팀을 만들고 연결하지 못했습니다. 다시 만들기 전에 GitHub에 같은 팀이 이미 생성됐는지 확인해 주세요.",
             extra_tags="integration-help",
         )
         return redirect("team_detail", team_id=team.pk)

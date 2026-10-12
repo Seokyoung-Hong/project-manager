@@ -65,7 +65,7 @@ def test_new_request_error_shown(logged, org):
     r = logged.post(
         "/requests/new", {"org": org.pk, "kind": "general", "target": "team", "title": ""}
     )
-    assert r.status_code == 200 and "제목을 입력하세요" in r.content.decode()
+    assert r.status_code == 200 and "제목을 입력해 주세요" in r.content.decode()
 
 
 def test_accept_work_creates_task(logged, req_to_team, project, member):

@@ -125,8 +125,8 @@ def test_issue_markdown_is_readonly_and_escaped(client, gh, org, conn, issue, me
     response = client.get(f"/{scope}/{pk}/issues")
     body = response.content.decode()
     assert response.status_code == 200
-    assert 'data-readonly="1"' in body
-    assert 'class="doc-src input" readonly' in body
+    assert 'class="md-view md issue-markdown"' in body
+    assert 'class="md-src input" readonly' in body
     assert "Markdown 원문 보기" in body
     assert "&lt;script&gt;alert(1)&lt;/script&gt;" in body
     assert "<script>alert(1)</script>" not in body

@@ -1,5 +1,6 @@
 import os
 import sys
+from datetime import date
 from pathlib import Path
 
 import dj_database_url
@@ -22,6 +23,11 @@ MCP_URL = os.environ.get("MCP_URL", SITE_URL).rstrip("/")
 # WebMCP는 크롬 149·엣지 150에서 아직 오리진 트라이얼이라 도메인마다 토큰을 받아야 켜진다.
 # 토큰이 있으면 <meta http-equiv="origin-trial">로 실어 보낸다. 없으면 기능만 조용히 빠진다.
 WEBMCP_ORIGIN_TRIAL = os.environ.get("WEBMCP_ORIGIN_TRIAL", "")
+# 동의 화면 전에 연결한 사람의 30일 유예가 시작되는 날(YYYY-MM-DD). 배포일에 운영자가 넣는다.
+# 비어 있으면 아무 연결도 멈추지 않는다(accounts/services.consent_active).
+CONSENT_GRACE_START = (
+    date.fromisoformat(v) if (v := os.environ.get("CONSENT_GRACE_START", "").strip()) else None
+)
 
 INSTALLED_APPS = [
     "django.contrib.admin",

@@ -62,7 +62,7 @@ def _due_text(due) -> str:
     if due is None:
         return "기한 없음"
     delta = (due - today_kst()).days
-    tag = f"D-{delta}" if delta > 0 else "오늘 마감" if delta == 0 else f"{-delta}일 초과"
+    tag = f"D-{delta}" if delta > 0 else "오늘까지" if delta == 0 else f"{-delta}일 초과"
     return f"{fmt_md(due)}({tag})"
 
 
@@ -73,7 +73,7 @@ def notify_assigned(task, actor):
     title = task.title.replace("[", "\\[").replace("]", "\\]")
     notify(
         task.project.org,
-        f"📌 {who}님이 담당자로 지정했습니다.\n"
+        f"{who}님이 담당자로 지정했습니다.\n"
         f"**{task.project.name}**\n"
         f"• [{task.number} {title}](<{_link(f'/tasks/{task.pk}')}>) · {_due_text(task.due_date)}"
         f" · {task.get_status_display()}",
@@ -82,7 +82,9 @@ def notify_assigned(task, actor):
 
 
 def _notify_new(req, posted_in: str = ""):
-    head = f"📨 {req.requested_by.display_name}님의 {req.get_kind_display()} **{req.number}** {req.title}"
+    head = (
+        f"{req.requested_by.display_name}님의 {req.get_kind_display()} **{req.number}** {req.title}"
+    )
     link = _link(req.path)
     if req.to_user_id:
         # GitHub 재개처럼 담당 요청에 사유(body)가 있으면 알림에 함께 담는다.
@@ -169,23 +171,35 @@ def create_request(
     """posted_in: Discord에서 명령을 친 채널. 받는 팀의 채널이면 봇이 거기 이미 알렸다."""
     ts._ai_check(org, "ai.create_request", "요청 보내기", source, "request")
     if kind not in ("work", "general"):
-        raise ServiceError({"kind": "작업 요청이나 일반 요청만 직접 만들 수 있습니다."})
+        raise ServiceError(
+            {"kind": "담당 요청은 직접 만들 수 없습니다. 태스크의 담당자를 바꿔 요청해 주세요."}
+        )
     if not is_member(actor, org):
-        raise ServiceError({"org": "이 조직의 멤버가 아닙니다."})
+        raise ServiceError({"org": "이 조직에 속해 있지 않아 작업할 수 없습니다."})
     title = (title or "").strip()[:200]
     if not title:
-        raise ServiceError({"title": "제목을 입력하세요."})
+        raise ServiceError({"title": "제목을 입력해 주세요."})
     if (team is None) == (to_user is None):
-        raise ServiceError({"target": "받을 팀이나 사람 중 하나를 고르세요."})
+        raise ServiceError({"target": "받을 팀이나 사람 중 하나를 골라 주세요."})
     if team is not None and team.org_id != org.pk:
-        raise ServiceError({"team": "이 조직의 팀이 아닙니다."})
+        raise ServiceError(
+            {"team": "다른 조직의 팀에는 요청할 수 없습니다. 현재 조직의 팀을 선택해 주세요."}
+        )
     if to_user is not None:
         if not to_user.is_active or not is_member(to_user, org):
-            raise ServiceError({"to_user": "받는 사람은 이 조직의 활성 멤버여야 합니다."})
+            raise ServiceError(
+                {
+                    "to_user": "받는 사람이 조직의 활성 멤버가 아닙니다. 현재 활동 중인 조직 멤버를 선택해 주세요."
+                }
+            )
         if to_user == actor:
-            raise ServiceError({"to_user": "자기 자신에게는 요청할 수 없습니다."})
+            raise ServiceError(
+                {"to_user": "자기 자신에게는 요청할 수 없습니다. 다른 사람이나 팀을 선택해 주세요."}
+            )
     if due_date is not None and due_date < today_kst():
-        raise ServiceError({"due_date": "희망 기한은 오늘 이후여야 합니다."})
+        raise ServiceError(
+            {"due_date": "희망 기한이 지났습니다. 오늘 또는 이후의 날짜를 선택해 주세요."}
+        )
     body = (body or "").strip()
     same = WorkRequest.objects.filter(
         org=org,
@@ -220,7 +234,11 @@ def request_assign(task, to_user, actor, source: str, note: str = "") -> WorkReq
     """tasks/services.py가 부른다. 같은 사람에게 이미 대기 중인 요청이 있으면 그걸 돌려준다."""
     org = task.project.org
     if not to_user.is_active or not is_member(to_user, org):
-        raise ServiceError({"assignee": "담당자는 이 조직의 활성 멤버여야 합니다."})
+        raise ServiceError(
+            {
+                "assignee": "담당자가 조직의 활성 멤버가 아닙니다. 현재 활동 중인 조직 멤버를 선택해 주세요."
+            }
+        )
     existing = WorkRequest.objects.filter(
         task=task, kind="assign", to_user=to_user, status="pending"
     ).first()
@@ -269,9 +287,15 @@ def _lock_open(req, actor) -> WorkRequest:
         .get(pk=req.pk)
     )
     if not req.is_open:
-        raise ServiceError({"request": "이미 처리된 요청입니다."})
+        raise ServiceError(
+            {"request": "이미 처리된 요청입니다. 요청 목록에서 결과를 확인해 주세요."}
+        )
     if not can_respond(actor, req):
-        raise ServiceError({"request": "받는 사람(팀원)만 답할 수 있습니다."})
+        raise ServiceError(
+            {
+                "request": "요청을 받은 사람이나 팀원만 답할 수 있습니다. 해당 담당자에게 응답을 요청해 주세요."
+            }
+        )
     return req
 
 
@@ -303,7 +327,11 @@ def accept(
 def _accept_assign(req, actor, source):
     task = req.task
     if task is None:
-        raise ServiceError({"request": "태스크가 지워져 넘겨받을 수 없습니다."})
+        raise ServiceError(
+            {
+                "request": "태스크가 삭제되어 넘겨받을 수 없습니다. 요청한 사람에게 새 태스크를 요청해 주세요."
+            }
+        )
     if task.assignee_id != actor.pk:
         ts.update_task(
             task,
@@ -317,9 +345,11 @@ def _accept_assign(req, actor, source):
 
 def _task_from_request(req, actor, source, project, assignee, due_date):
     if project is None:
-        raise ServiceError({"project": "태스크를 둘 프로젝트를 고르세요."})
+        raise ServiceError({"project": "태스크를 둘 프로젝트를 골라 주세요."})
     if project.org_id != req.org_id:
-        raise ServiceError({"project": "이 조직의 프로젝트가 아닙니다."})
+        raise ServiceError(
+            {"project": "다른 조직의 프로젝트입니다. 현재 조직의 프로젝트를 선택해 주세요."}
+        )
     due_date = due_date or req.due_date  # 수락자가 비우면 요청자의 희망 기한
     footer = f"({req.number} · {req.requested_by.display_name}님의 요청)"
     return ts.create_task(
@@ -348,9 +378,13 @@ def cancel(req, actor, *, source: str = "web") -> WorkRequest:
     ts._ai_check(req.org, "ai.create_request", "요청 취소", source, "request")
     req = WorkRequest.objects.select_for_update().get(pk=req.pk)
     if req.requested_by_id != actor.pk:
-        raise ServiceError({"request": "요청한 사람만 취소할 수 있습니다."})
+        raise ServiceError(
+            {"request": "요청한 사람만 취소할 수 있습니다. 요청자에게 취소를 요청해 주세요."}
+        )
     if not req.is_open:
-        raise ServiceError({"request": "이미 처리된 요청입니다."})
+        raise ServiceError(
+            {"request": "이미 처리된 요청입니다. 요청 목록에서 결과를 확인해 주세요."}
+        )
     _close(req, actor, "cancelled")
     return req
 
@@ -361,9 +395,17 @@ def complete(req, actor, note: str = "", *, source: str = "web") -> WorkRequest:
     ts._ai_check(req.org, "ai.answer_request", "요청 완료", source, "request")
     req = WorkRequest.objects.select_for_update(of=("self",)).select_related("team").get(pk=req.pk)
     if req.kind != "general" or req.status != "accepted":
-        raise ServiceError({"request": "수락한 일반 요청만 완료할 수 있습니다."})
+        raise ServiceError(
+            {
+                "request": "수락한 일반 요청만 완료할 수 있습니다. 요청 종류와 수락 상태를 확인해 주세요."
+            }
+        )
     if not can_respond(actor, req):
-        raise ServiceError({"request": "받는 사람(팀원)만 완료할 수 있습니다."})
+        raise ServiceError(
+            {
+                "request": "요청을 받은 사람이나 팀원만 완료할 수 있습니다. 해당 담당자에게 완료 처리를 요청해 주세요."
+            }
+        )
     req.status = "done"
     if note:
         req.response_note = note.strip()[:RESPONSE_MAX]

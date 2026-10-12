@@ -147,7 +147,7 @@ def test_api_and_web_select(client, admin, task, two):
         {"project": "", "version": task.version},
         headers={"HX-Request": "true"},
     )
-    assert r.status_code == 200 and "연동 프로젝트를 선택하세요" in r.content.decode()
+    assert r.status_code == 200 and "연동 프로젝트를 선택해 주세요" in r.content.decode()
     task.refresh_from_db()
     assert task.git_project_id is None
 

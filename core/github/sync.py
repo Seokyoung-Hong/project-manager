@@ -95,7 +95,7 @@ def on_release(conn, delivery, payload):
             extra = rel.get("html_url") or ""
             if ms and ms.status != "done":
                 extra += f"\n마일스톤 '{ms.name}'를 완료로 표시할 수 있습니다."
-            notify.channel(conn, "release", f"🔖 릴리스 {tag} 발행", extra=extra.strip())
+            notify.channel(conn, "release", f"릴리스 {tag} 발행", extra=extra.strip())
     else:
         result = "무시"
     record_event(conn, delivery, kind="release", payload=payload, summary=summary, result=result)

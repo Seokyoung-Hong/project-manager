@@ -50,7 +50,11 @@ INLINE = {"image/png", "image/jpeg", "image/gif", "image/webp", "application/pdf
 def _target(task, project, doc) -> dict:
     given = {k: v for k, v in (("task", task), ("project", project), ("doc", doc)) if v is not None}
     if len(given) != 1:
-        raise ServiceError({"target": "태스크·프로젝트·문서 중 하나에만 붙일 수 있습니다."})
+        raise ServiceError(
+            {
+                "target": "파일을 붙일 대상이 없거나 여러 개입니다. 태스크·프로젝트·문서 중 하나만 선택해 주세요."
+            }
+        )
     return given
 
 
@@ -66,14 +70,18 @@ def org_usage_bytes(org) -> int:
 def _check_room(target, org, incoming: int, replaces) -> None:
     """개수·할당량·버전 분기 검사. 저장 전(incoming=올릴 크기)과 저장 뒤(incoming=0) 두 번 부른다."""
     if Attachment.objects.filter(**target).count() + (1 if incoming else 0) > MAX_PER_TARGET:
-        raise ServiceError({"file": f"한 곳에 {MAX_PER_TARGET}개까지 붙일 수 있습니다."})
+        raise ServiceError(
+            {
+                "file": f"한 곳에 {MAX_PER_TARGET}개까지 붙일 수 있습니다. 기존 파일을 정리한 뒤 올려 주세요."
+            }
+        )
     quota = effective("org.attachment_quota_mb", org=org) * 1024 * 1024
     if org_usage_bytes(org) + incoming > quota:
         raise ServiceError(
-            {"file": "조직의 첨부 파일 용량을 넘습니다. 조직 관리자에게 문의하세요."}
+            {"file": "조직의 첨부 파일 용량을 넘습니다. 조직 관리자에게 문의해 주세요."}
         )
     if replaces is not None and replaces.replaced_by.exists():
-        raise ServiceError({"replaces": "이미 새 버전이 있습니다. 최신 버전에서 올리세요."})
+        raise ServiceError({"replaces": "이미 새 버전이 있습니다. 최신 버전에서 올려 주세요."})
 
 
 def can_download(user, att) -> bool:
@@ -117,24 +125,42 @@ def add_attachment(
         target_project, org = project, project.org
         sees = can_view_project(actor, project)
     if not is_member(actor, org) or not sees:
-        raise ServiceError({"project": "이 프로젝트에 파일을 올릴 수 없습니다."})
+        raise ServiceError(
+            {
+                "project": "이 프로젝트에 파일을 올릴 권한이 없습니다. 프로젝트 관리자에게 권한을 요청해 주세요."
+            }
+        )
     if target_project is not None and target_project.is_archived:
-        raise ServiceError({"project": "보관된 프로젝트에는 파일을 올릴 수 없습니다."})
+        raise ServiceError(
+            {
+                "project": "보관된 프로젝트에는 파일을 올릴 수 없습니다. 프로젝트 관리자에게 보관 해제를 요청해 주세요."
+            }
+        )
     # 크기는 읽기 전에 본다. 업로드 핸들러가 이미 임시 파일로 받았더라도 해시·저장은 하지 않는다.
     if upload.size > MAX_BYTES:
-        raise ServiceError({"file": f"파일은 {MAX_BYTES // (1024 * 1024)}MB까지 올릴 수 있습니다."})
+        raise ServiceError(
+            {
+                "file": f"파일은 {MAX_BYTES // (1024 * 1024)}MB까지 올릴 수 있습니다. 파일 용량을 줄여 주세요."
+            }
+        )
     name = PurePath(upload.name or "").name.strip()[:200]
     ext = PurePath(name).suffix.lower()
     if ext not in ALLOWED:
         raise ServiceError({"file": f"올릴 수 없는 형식입니다({ext or '확장자 없음'})."})
     if kind not in dict(Attachment.KINDS):
-        raise ServiceError({"kind": "알 수 없는 종류입니다."})
+        raise ServiceError(
+            {"kind": "종류가 올바르지 않습니다. 화면에 표시된 종류 중에서 선택해 주세요."}
+        )
     if replaces is not None and (replaces.task_id, replaces.project_id, replaces.doc_id) != (
         getattr(task, "pk", None),
         getattr(project, "pk", None),
         getattr(doc, "pk", None),
     ):
-        raise ServiceError({"replaces": "같은 곳에 붙은 파일의 새 버전만 올릴 수 있습니다."})
+        raise ServiceError(
+            {
+                "replaces": "다른 곳에 첨부된 파일은 바꿀 수 없습니다. 현재 태스크·프로젝트·문서에 첨부된 파일을 선택해 주세요."
+            }
+        )
     # 같은 조직의 업로드를 조직 행 잠금으로 줄 세운다(할당량·개수·버전 검사와 저장이 한 덩어리).
     # 대상(태스크·프로젝트)과 원본 첨부 행도 잠근다. SQLite에서는 잠금이 없으므로 아래에서
     # 저장 뒤 다시 센다 — 끼어든 요청이 있어도 넘친 쪽이 롤백된다.
@@ -168,7 +194,9 @@ def add_attachment(
                 att.save()
         except IntegrityError:
             raise ServiceError(
-                {"replaces": "다른 사람이 먼저 새 버전을 올렸습니다. 최신 버전에서 다시 올리세요."}
+                {
+                    "replaces": "다른 사람이 먼저 새 버전을 올렸습니다. 최신 버전에서 다시 올려 주세요."
+                }
             ) from None
         _check_room(target, org, 0, None)  # 저장 뒤 재확인(자기 행 포함)
     except Exception:
@@ -176,7 +204,7 @@ def add_attachment(
         raise
     # ponytail: 이 함수가 돌아간 뒤 바깥 트랜잭션이 롤백되면 파일만 남는다(웹·API는 바깥 트랜잭션이
     # 없다). 쌓이면 DB에 없는 파일을 지우는 관리 명령을 둔다.
-    log.info("첨부 업로드: %s (%d bytes, %s)", name, upload.size, source)
+    log.info("첨부 올리기: %s (%d bytes, %s)", name, upload.size, source)
     return att
 
 
@@ -184,7 +212,11 @@ def delete_attachment(att, *, actor) -> None:
     """올린 사람 또는 조직 관리자(문서와 같은 규칙). 파일도 지운다."""
     org = Organization.objects.get(pk=att.target_org_id)
     if att.created_by_id != actor.pk and not is_admin(actor, org):
-        raise ServiceError({"attachment": "올린 사람이나 조직 관리자만 지울 수 있습니다."})
+        raise ServiceError(
+            {
+                "attachment": "파일을 올린 사람이나 조직 관리자만 삭제할 수 있습니다. 해당 담당자에게 삭제를 요청해 주세요."
+            }
+        )
     purge_files([att])
     att.delete()
     log.info("첨부 삭제: %s", att.name)

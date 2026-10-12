@@ -92,9 +92,11 @@ def _stale(message):
 def _apply(request, row, org):
     inst = getattr(org, "github", None)
     if (inst.installation_id if inst else None) != row["installation_id"]:
-        _stale("앱 설치 정보를 다시 확인하세요.")
+        _stale("앱 설치 정보를 다시 확인해 주세요.")
     if inst.account_type == "User":
-        _stale("개인 계정 설치에서는 GitHub 조직·팀 기능을 쓸 수 없습니다.")
+        _stale(
+            "개인 계정에 설치한 앱으로는 GitHub 조직·팀 기능을 사용할 수 없습니다. 조직 관리자가 GitHub 조직에 앱을 설치해 주세요."
+        )
     kind = row["kind"]
     actor = request.user
     if kind == "invite":
@@ -104,7 +106,7 @@ def _apply(request, row, org):
             or not invite.is_usable
             or (invite.max_uses and invite.use_count >= invite.max_uses)
         ):
-            _stale("PM 초대가 만료되거나 폐기됐습니다.")
+            _stale("유달리 초대가 만료되거나 폐기됐습니다.")
         # 이미 가입했거나 초대가 대기 중이면 역할을 member로 덮어쓰지 않는다.
         try:
             client.request(
@@ -125,7 +127,7 @@ def _apply(request, row, org):
             or writes._login_of(user) != row["login"]
             or OrgMembership.objects.filter(org=org, user=user).exists()
         ):
-            _stale("대상 계정이 바뀌었거나 PM 조직에 다시 가입했습니다.")
+            _stale("대상 계정이 바뀌었거나 유달리 조직에 다시 가입했습니다.")
         writes.remove_from_org(org, row["login"], actor=actor)
         return
     team = Team.objects.filter(pk=row["team_id"], org=org).first()
@@ -139,14 +141,18 @@ def _apply(request, row, org):
             or writes._login_of(user) != row["login"]
             or team.members.filter(pk=user.pk).exists() != row["add"]
         ):
-            _stale("대상 계정 또는 PM 팀 멤버 상태가 바뀌었습니다.")
+            _stale("대상 계정 또는 유달리 팀 멤버 상태가 바뀌었습니다.")
     # 이름 변경으로 slug가 바뀌어도 변하지 않는 GitHub 팀 ID로 다시 찾는다.
     teams = list(
         client.paginate(f"/orgs/{writes._org_login(org)}/teams", writes._actor_token(actor))
     )
     remote = next((item for item in teams if item["id"] == link.github_team_id), None)
     if remote is None:
-        raise ServiceError({"github": "연결된 GitHub 팀을 현재 계정으로 찾지 못했습니다."})
+        raise ServiceError(
+            {
+                "github": "현재 계정으로 연결된 GitHub 팀을 찾지 못했습니다. GitHub 조직 관리자에게 팀 접근 권한을 확인해 달라고 요청해 주세요."
+            }
+        )
     link.slug = remote["slug"]
     link.save(update_fields=["slug"])
     if kind == "rename":
@@ -184,14 +190,14 @@ def retry_write(request, retry_id):
     try:
         _apply(request, row, org)
         completed = True
-        messages.success(request, "GitHub 반영을 완료했습니다. PM 작업은 반복하지 않았습니다.")
+        messages.success(request, "GitHub 반영을 완료했습니다. 유달리 작업은 반복하지 않았습니다.")
     except (ServiceError, GitHubError) as error:
         completed = isinstance(error, ServiceError) and "retry" in error.errors
         record_problem(request, "writes", row["label"], error, target=row["target"])
         text = (
             " ".join(error.errors.values())
             if completed
-            else "GitHub 재시도에 실패했습니다. PM 변경은 유지됩니다. 해결 절차에서 조회 상태를 확인하세요."
+            else "GitHub 재시도에 실패했습니다. 유달리 변경은 유지됩니다. 해결 절차에서 조회 상태를 확인해 주세요."
         )
         messages.warning(request, text, extra_tags="integration-help")
     if completed:

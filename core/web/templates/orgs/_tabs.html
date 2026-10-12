@@ -2,10 +2,10 @@
 <nav class="tabs org-tabs" aria-label="조직 메뉴">
   <a href="{% url 'org_detail' org.pk %}" {% if tab == "overview" %}aria-current="page"{% endif %}>개요</a>
   <a href="{% url 'org_teams' org.pk %}" {% if tab == "teams" %}aria-current="page"{% endif %}>팀</a>
-  <a href="{% url 'org_capacity' org.pk %}" {% if tab == "capacity" %}aria-current="page"{% endif %}>부하 현황</a>
+  <a href="{% url 'org_capacity' org.pk %}" {% if tab == "capacity" %}aria-current="page"{% endif %}>사람별 할 일 양</a>
   <a href="{% url 'org_roadmap' org.pk %}" {% if tab == "roadmap" %}aria-current="page"{% endif %}>로드맵</a>
   <!-- V2-05: 회의록 -->
-  <a href="{% url 'org_governance' org.pk %}" {% if tab == "governance" %}aria-current="page"{% endif %}>업무 거버넌스</a>
+  <a href="{% url 'org_governance' org.pk %}" {% if tab == "governance" %}aria-current="page"{% endif %}>업무 규칙</a>
   <a href="{% url 'org_docs' org.pk %}" {% if tab == "docs" %}aria-current="page"{% endif %}>문서</a>
   <a href="{% url 'org_notes' org.pk %}" {% if tab == "notes" %}aria-current="page"{% endif %}>회의록</a>
   {% if github_enabled and org.github %}<a href="{% url 'org_issues' org.pk %}" {% if tab == "issues" %}aria-current="page"{% endif %}>이슈</a>{% endif %}

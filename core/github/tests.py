@@ -731,8 +731,9 @@ def test_installed_callback_rejects_install_the_user_does_not_own(
 def test_install_button_needs_github_identity(gh, client, org, admin):
     _login(client)
     body = client.get(f"/orgs/{org.pk}/github").content.decode()
-    assert "먼저 GitHub 계정을 연결하세요" in body
-    assert f"/orgs/{org.pk}/github/install" not in body
+    # 계정 연결로 먼저 보내고, 연결이 끝나면 설치로 이어 간다(next)
+    assert f'href="/settings/github?next=/orgs/{org.pk}/github/install"' in body
+    assert f'href="/orgs/{org.pk}/github/install"' not in body
     r = client.get(f"/orgs/{org.pk}/github/install")
     assert r.status_code == 302 and "github.com" not in r["Location"]
 
@@ -832,7 +833,7 @@ def test_github_login_resolves_identity_and_keeps_inactive_message(gh, member):
     member.save(update_fields=["is_active"])
     with pytest.raises(ServiceError) as e:
         ghs.login_with_github({"id": 5, "login": "new"}, {})
-    assert "비활성" in e.value.errors["github"]
+    assert "정지된 계정" in e.value.errors["github"]
     assert GitHubIdentity.objects.count() == 1  # 비활성 사람 대신 새 계정을 만들지 않는다
     _, created = ghs.login_with_github({"id": 6, "login": "newbie"}, {})
     assert created

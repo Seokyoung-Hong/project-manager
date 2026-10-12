@@ -1,0 +1,6 @@
+{% extends "base.html" %}{% block title %}탈퇴 완료{% endblock %}
+{% block auth %}
+<h1 class="t24">탈퇴를 마쳤습니다</h1>
+<p>그동안 유달리를 이용해 주셔서 감사합니다. 계정 정보는 지웠고, 모든 기기에서 로그아웃됐습니다.</p>
+<p class="t13"><a href="{% url 'login' %}">로그인 화면으로 가기</a></p>
+{% endblock %}

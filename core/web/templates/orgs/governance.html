@@ -1,4 +1,4 @@
-{% extends "base.html" %}{% block title %}업무 거버넌스{% endblock %}
+{% extends "base.html" %}{% block title %}업무 규칙{% endblock %}
 {% block main %}
 {% include "orgs/_tabs.html" %}
 {% include "orgs/_pending_requests.html" %}
@@ -16,38 +16,28 @@
 {% endif %}
 <section class="card">
   <div class="card-head">
-    <h2>업무 거버넌스</h2>
+    <h2>업무 규칙</h2>
     <span class="badge{% if is_default %}{% else %} primary{% endif %}">{% if is_default %}기본안{% else %}우리 조직 규칙{% endif %}</span>
   </div>
   <p class="muted t13">
-    이 문서는 사람과 AI가 따를 합의입니다. 앱이 자동으로 적용하는 제한은 설정에서 확인하세요.
+    이 문서는 사람과 AI가 따를 합의입니다. 앱이 자동으로 적용하는 제한은 설정에서 확인해 주세요.
     {% if is_default %}지금은 기본 제안을 그대로 쓰고 있습니다. 조직에 맞게 고쳐 주세요.{% endif %}
   </p>
   {% if is_admin %}
   <form method="post">{% csrf_token %}
-    <textarea name="text" class="textarea" rows="28" aria-label="거버넌스 본문">{{ text }}</textarea>
+    <textarea name="text" class="textarea" rows="28" data-md data-toolbar="top" aria-label="업무 규칙 본문">{{ text }}</textarea>
     {% if error %}<div class="error">{{ error }}</div>{% endif %}
     <div class="row mt-2">
-      <button class="btn primary">거버넌스 저장</button>
+      <button class="btn primary">업무 규칙 저장</button>
       {% if not is_default %}
-      <button class="btn" name="reset" value="1" onclick="return confirm('기본안으로 되돌릴까요? 지금 내용은 지워집니다.')">기본안으로 되돌리기</button>
+      <button class="btn" name="reset" value="1" data-confirm="기본안으로 되돌립니다. 지금 내용은 지워집니다." data-confirm-ok="기본안으로 되돌리기">기본안으로 되돌리기</button>
       {% endif %}
     </div>
   </form>
   <p class="muted t13">마크다운으로 씁니다. 2만 자까지. 비워서 저장하면 기본안으로 되돌아갑니다.</p>
-  <details>
-    <summary>미리보기</summary>
-    <div id="doc" class="doc" data-readonly="1">
-      <div id="doc-body"></div>
-      <textarea id="doc-src" rows="4">{{ text }}</textarea>
-    </div>
-  </details>
   {% else %}
-  {# 회의록과 같은 파서로 그린다 — 마크다운 원문을 그대로 보이는 화면은 읽기 어렵다 #}
-  <div id="doc" class="doc" data-readonly="1">
-    <div id="doc-body"></div>
-    <textarea id="doc-src" rows="16">{{ text }}</textarea>
-  </div>
+  {# 문서·회의록과 같은 렌더러(Tiptap)로 그린다 — 마크다운 원문을 그대로 보이는 화면은 읽기 어렵다 #}
+  <div class="md-view md"><textarea class="md-src textarea" rows="16" readonly aria-label="업무 규칙 Markdown">{{ text }}</textarea></div>
   <p class="muted t13">조직 관리자만 고칠 수 있습니다.</p>
   {% endif %}
 </section>

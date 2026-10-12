@@ -14,7 +14,14 @@ from ninja.errors import HttpError
 from ninja.files import UploadedFile
 
 from accounts.models import User
-from accounts.services import link_discord, unlink_discord_by_id, user_by_discord_id
+from accounts.services import (
+    consent_active,
+    discord_dm_id,
+    link_discord,
+    paused_message,
+    unlink_discord_by_id,
+    user_by_discord_id,
+)
 from github import hooks as gh_hooks
 from notes import services as notes_svc
 from notes.models import VoiceRecording
@@ -72,13 +79,15 @@ from ..serialize import request_out, task_out
 
 router = Router(tags=["discord"], auth=BotTokenAuth())
 
-UNLINKED = "연결되지 않은 Discord 계정입니다. 웹 설정 → 프로필에서 연결 코드를 받으세요."
+UNLINKED = "연결되지 않은 Discord 계정입니다. 웹 설정 → 프로필에서 연결 코드를 받아 주세요."
 
 
 def _actor(discord_user_id: str):
     user = user_by_discord_id(discord_user_id)
     if user is None:
         raise HttpError(404, UNLINKED)
+    if not consent_active(user, "discord"):
+        raise HttpError(403, paused_message("discord"))
     return user
 
 
@@ -209,7 +218,7 @@ def org_members(request, org_id: int):
             {
                 "id": u.pk,
                 "display_name": u.display_name,
-                "discord_user_id": u.discord_user_id,
+                "discord_user_id": discord_dm_id(u),
                 "role": m.role,
                 "notify_dm": org_settings.effective("user.notify_dm", user=u),
                 "notify_kinds": list(org_settings.effective("user.notify_kinds", user=u)),
@@ -221,7 +230,7 @@ def org_members(request, org_id: int):
 
 def _people(users) -> list[dict]:
     return [
-        {"id": u.pk, "display_name": u.display_name, "discord_user_id": u.discord_user_id}
+        {"id": u.pk, "display_name": u.display_name, "discord_user_id": discord_dm_id(u)}
         for u in users
     ]
 
@@ -356,7 +365,7 @@ def note(request, task_id: int, payload: DiscordNoteIn):
     task = _task(actor, task_id)
     text = payload.text.strip()
     if not text:
-        raise HttpError(400, "메모 내용을 입력하세요.")
+        raise HttpError(400, "메모 내용을 입력해 주세요.")
     notes = f"{task.notes}\n{text}" if task.notes else text
     task = update_text(task, "notes", notes, actor=actor)
     return {"task": task_out(task, actor)}
@@ -442,7 +451,9 @@ def channel_check(request, payload: DiscordChannelCheckIn):
     else:
         raise HttpError(400, "kind는 team 또는 project여야 합니다.")
     if obj is None:
-        raise HttpError(404, "대상을 찾을 수 없습니다.")
+        raise HttpError(
+            404, "대상이 삭제되었거나 접근할 수 없습니다. 목록에서 대상을 다시 선택해 주세요."
+        )
     viewers = None if payload.viewers is None else [v.dict() for v in payload.viewers]
     return org_channels.connect(
         payload.kind,
@@ -607,7 +618,7 @@ def notices(request):
     return [
         {
             "id": n.pk,
-            "discord_user_id": n.user.discord_user_id if n.user_id else None,
+            "discord_user_id": discord_dm_id(n.user) if n.user_id else None,
             "channel_id": n.channel_id,
             "text": n.text,
         }

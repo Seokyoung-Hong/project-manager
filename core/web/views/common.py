@@ -28,7 +28,7 @@ from tasks.services import (
     visible_tasks,
 )
 
-CONFLICT_MSG = "다른 사람이 먼저 수정했습니다. 최신 내용을 다시 확인하세요."
+CONFLICT_MSG = "다른 사람이 먼저 수정했습니다. 최신 내용을 다시 확인해 주세요."
 
 
 def task_or_404(user, task_id):
@@ -166,8 +166,8 @@ def due_label(task) -> str:
     if not task.due_date:
         return "기한 미정"
     if task.is_closed:
-        return f"목표일 {fmt_md(task.due_date)}"
-    label = "오늘 마감" if task.due_date == today_kst() else fmt_md(task.due_date)
+        return f"기한 {fmt_md(task.due_date)}"
+    label = "오늘까지" if task.due_date == today_kst() else fmt_md(task.due_date)
     return label + " 초과" if _overdue(task) else label
 
 
@@ -208,7 +208,7 @@ FIELD_LABELS = {
     "projects": "연결 프로젝트",
     "git_project": "연동 프로젝트",
     "group": "상위 태스크",
-    "split": "사람별로 나누기",
+    "split": "담당자별 태스크로 나누기",
 }
 
 
@@ -268,7 +268,18 @@ def history_rows(logs, viewer=None) -> list[dict]:
 
 # ---------- 태스크 행 ----------
 
-ROW_OPTS = ("next", "move", "noassignee", "notoday", "ro", "today", "board", "sub", "fold")
+ROW_OPTS = (
+    "next",
+    "move",
+    "noassignee",
+    "noproject",
+    "notoday",
+    "ro",
+    "today",
+    "board",
+    "sub",
+    "fold",
+)
 
 
 def attach_subtasks(tasks, viewer) -> None:
@@ -330,8 +341,9 @@ def _add_opt(r, opt):
 def row_ctx(user, task, opts: str = "", membership: dict | None = None, selected_id=None) -> dict:
     """tasks/_row.html 렌더링 context.
     opts: 쉼표 구분. next(다음 행동 표시) move(↑↓) noassignee(담당자 숨김) notoday(오늘 버튼 숨김)
-          ro(상태 select 비활성) today(오늘 화면 안: 목록 전체를 갱신, 자기 갱신 없음)
-          board(칸반 드래그, 자기 갱신 없음)."""
+          noproject(프로젝트 이름 숨김 — 프로젝트 화면 안) ro(상태 select 비활성)
+          today(오늘 화면 안: 목록 전체를 갱신, 자기 갱신 없음, '자동 추가' 표시는 여기서만)
+          board(칸반 드래그, 자기 갱신 없음, 상태는 열이 말하므로 상태 칸 없음)."""
     o = {x for x in opts.split(",") if x in ROW_OPTS}
     m = membership or today_membership(user)
     flag = today_flag(task, m)
@@ -346,6 +358,7 @@ def row_ctx(user, task, opts: str = "", membership: dict | None = None, selected
         "show_next": "next" in o and bool(task.next_action),
         "show_move": "move" in o and flag == "manual",
         "hide_assignee": "noassignee" in o,
+        "hide_project": "noproject" in o,
         "hide_today": "notoday" in o,
         "read_only": "ro" in o,
         "in_today_page": "today" in o,
@@ -353,6 +366,8 @@ def row_ctx(user, task, opts: str = "", membership: dict | None = None, selected
         "row_target": "#today-list" if "today" in o else f"#task-{task.pk}",
         "in_today": flag != "",
         "auto_pulled": flag == "auto",
+        # '자동 추가'는 오늘 목록 기준의 말이라 오늘 화면에서만 보인다(b-workspace 중-3).
+        "show_auto_mark": flag == "auto" and "today" in o,
         "selected": task.pk == selected_id,
         "checklist_done": sum(1 for i in items if i.is_done),
         "checklist_total": len(items),

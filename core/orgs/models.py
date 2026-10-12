@@ -20,7 +20,7 @@ class Organization(models.Model):
     name = models.CharField("이름", max_length=100)
     purpose = models.CharField("목적", max_length=200, blank=True)
     # 개발 거버넌스(마크다운). 비어 있으면 governance.DEFAULT_GOVERNANCE를 쓴다.
-    governance = models.TextField("개발 거버넌스", blank=True)
+    governance = models.TextField("업무 규칙", blank=True)
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="+"
     )
@@ -161,7 +161,7 @@ class ChangeRequest(models.Model):
     사람이 링크를 열어 전후를 보고 허용한다. 허용은 로그인 세션에서만 된다(토큰으로는 못 한다).
     """
 
-    KINDS = [("settings", "조직 설정"), ("governance", "개발 거버넌스")]
+    KINDS = [("settings", "조직 설정"), ("governance", "업무 규칙")]
     STATUSES = [("pending", "대기"), ("approved", "허용"), ("rejected", "거절"), ("stale", "무효")]
 
     org = models.ForeignKey(Organization, on_delete=models.CASCADE, related_name="change_requests")

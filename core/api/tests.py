@@ -3,7 +3,7 @@ from datetime import timedelta
 import pytest
 
 from accounts.models import ApiToken, User
-from accounts.services import issue_link_code
+from accounts.services import give_consent, issue_link_code
 from api.models import IntegrationStatus
 from common.dates import last_week_start, today_kst, week_bounds
 from orgs.models import OrgMembership
@@ -443,7 +443,7 @@ def test_extend_not_past_the_current_due_date_is_400(client, task, bot_token):
     body = {**BODY, "due_date": task.due_date.isoformat(), "reason": "QA 지연"}
     r = _post(client, bot_token, url, body)
     assert r.status_code == 400
-    assert r.json()["detail"]["due_date"] == "현재 목표일보다 뒤의 날짜를 선택하세요."
+    assert r.json()["detail"]["due_date"] == "현재 기한보다 뒤의 날짜를 선택해 주세요."
     task.refresh_from_db()
     assert task.version == 1
 
@@ -454,6 +454,7 @@ def test_extend_not_past_the_current_due_date_is_400(client, task, bot_token):
 
 
 def test_link_and_unlink_need_the_bot_scope(client, admin, read_token, write_token, bot_token):
+    give_consent(admin, "discord")
     code = issue_link_code(admin)
     body = {"code": code, "discord_user_id": "222"}
     for raw in (read_token, write_token):
@@ -856,7 +857,7 @@ def test_group_api(api, task, project, member, admin):
         "/api/tasks",
         {"project_id": project.pk, "title": "손자", "due_date": due, "group_id": sub["id"]},
     )
-    assert r.status_code == 400 and "한 겹" in str(r.json())
+    assert r.status_code == 400 and "하위 태스크 아래" in str(r.json())
     # 떼어내기 → 넣기(PATCH, set_group을 거친다)
     r = api.patch(f"/api/tasks/{sub['id']}", {"version": sub["version"], "group_id": None})
     assert r.status_code == 200 and r.json()["group_id"] is None and r.json()["group"] is None

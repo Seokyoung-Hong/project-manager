@@ -217,7 +217,10 @@ def _repo_or_error(request, project):
         raise HttpError(404, "GitHub 연동이 꺼져 있습니다.")
     state = gh_services.repo_state(request.auth, project)
     if state["state"] == "none":
-        raise HttpError(404, "프로젝트에 연결된 저장소가 없습니다.")
+        raise HttpError(
+            404,
+            "프로젝트에 저장소가 연결되지 않았습니다. 프로젝트의 GitHub 화면에서 저장소를 연결해 주세요.",
+        )
     if state["state"] != "ok":
         raise HttpError(403, "이 저장소를 볼 권한이 없거나 GitHub 계정이 연결되지 않았습니다.")
     return state["conn"]
@@ -253,7 +256,9 @@ def import_issue(request, project_id: int, number: int):
     conn = _repo_or_error(request, _project_or_404(request, project_id))
     issue = conn.issues.filter(number=number).first()
     if issue is None:
-        raise HttpError(404, "이슈를 찾을 수 없습니다. 저장소 이슈를 새로 고친 뒤 다시 시도하세요.")
+        raise HttpError(
+            404, "이슈를 찾을 수 없습니다. 저장소 이슈를 새로 고친 뒤 다시 시도해 주세요."
+        )
     if issue.task_id is not None:
         # 가져온 뒤 비공개 프로젝트로 옮겨졌을 수 있다 — 지금 볼 수 있을 때만 돌려준다.
         if get_visible_task(request.auth, issue.task_id) is None:

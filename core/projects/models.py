@@ -4,14 +4,14 @@ from django.db import models
 
 class Project(models.Model):
     STATUSES = [
-        ("preparing", "🧪 준비 중"),
-        ("on_hold", "🕓 보류 중"),
-        ("waiting", "🗂️ 대기 중"),
-        ("active", "🚧 진행 중"),
-        ("paused", "⏸️ 일시 중단"),
-        ("done", "✅ 완료"),
-        ("stopped", "🛑 정지"),
-        ("eol", "⚰️ 지원 종료"),
+        ("preparing", "준비 중"),
+        ("on_hold", "보류 중"),
+        ("waiting", "대기 중"),
+        ("active", "진행 중"),
+        ("paused", "일시 중단"),
+        ("done", "완료"),
+        ("stopped", "정지"),
+        ("eol", "지원 종료"),
     ]
     STATUS_DESC = {
         "preparing": "기획/기초 구상 중",
@@ -47,7 +47,7 @@ class Project(models.Model):
     )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    governance_extra = models.TextField("프로젝트 거버넌스", blank=True)
+    governance_extra = models.TextField("프로젝트 추가 업무 규칙", blank=True)
     # settings.AUTH_USER_MODEL을 쓰는 필드들 뒤에 온다(orgs.Organization.settings와 같은 이유).
     settings = models.JSONField("설정", default=dict, blank=True)
 
@@ -84,7 +84,7 @@ class Milestone(models.Model):
     project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name="milestones")
     name = models.CharField("이름", max_length=100)
     start_date = models.DateField("시작일", null=True, blank=True)
-    target_date = models.DateField("목표일")
+    target_date = models.DateField("기한")
     status = models.CharField("상태", max_length=7, choices=STATUSES, default="planned")
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="+"

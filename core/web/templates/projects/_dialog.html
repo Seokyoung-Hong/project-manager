@@ -19,7 +19,7 @@
   {% if can_set_visibility %}
   <fieldset class="choice-fieldset">
     <legend>공개 범위</legend>
-    <div class="radios">{% for code, label in visibility_options %}<label class="radio-card"><input type="radio" name="visibility" value="{{ code }}"{% if code == visibility_value %} checked{% endif %}><b>{% if code == "teams" %}🔒 {% endif %}{{ label }}</b><span>{% if code == "teams" %}조직 관리자·프로젝트 관리자·담당 팀 멤버만 봅니다.{% else %}조직 멤버 모두가 봅니다.{% endif %}</span></label>{% endfor %}</div>
+    <div class="radios">{% for code, label in visibility_options %}<label class="radio-card"><input type="radio" name="visibility" value="{{ code }}"{% if code == visibility_value %} checked{% endif %}><b>{% if code == "teams" %}비공개 · {% endif %}{{ label }}</b><span>{% if code == "teams" %}조직 관리자·프로젝트 관리자·담당 팀 멤버만 봅니다.{% else %}조직 멤버 모두가 봅니다.{% endif %}</span></label>{% endfor %}</div>
   </fieldset>
   {% endif %}
   {% if not project %}
@@ -34,6 +34,6 @@
   {% for f in form %}{% for e in f.errors %}<div class="error">{{ f.label }}: {{ e }}</div>{% endfor %}{% endfor %}
   <div class="row">
     <button class="btn primary">{% if project %}변경 내용 저장{% else %}프로젝트 만들기{% endif %}</button>
-    <button type="button" class="btn" data-action="close-dialog">취소</button>
+    <button type="button" class="btn" data-action="close-dialog">닫기</button>
   </div>
 </form>

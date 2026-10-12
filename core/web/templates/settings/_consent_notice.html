@@ -1,0 +1,13 @@
+{% comment %}국외 이전(제3자 제공) 법정 고지. 내용은 accounts/consents.py 한 곳에서 온다.
+좁은 카드(가입 확인, OAuth 허용)에서도 잘리지 않게 표 대신 받는 자별 정의 목록으로 그린다.{% endcomment %}
+{% for r in notice.rows %}
+<dl class="consent-recipient">
+  <dt>받는 자</dt><dd>{{ r.recipient }} · <a href="{{ r.contact }}" rel="noopener" target="_blank">개인정보 문의</a></dd>
+  <dt>국가</dt><dd>{{ r.country }}</dd>
+  <dt>항목</dt><dd>{{ r.items }}</dd>
+  <dt>목적</dt><dd>{{ r.purpose }}</dd>
+  <dt>시기·방법</dt><dd>{{ r.when }}</dd>
+  <dt>보유 기간</dt><dd>{{ r.retention }}</dd>
+</dl>
+{% endfor %}
+<p class="t13">동의를 거부할 수 있습니다. {{ notice.refusal }} 동의는 설정 → 개인정보 동의에서 언제든 철회할 수 있습니다.</p>

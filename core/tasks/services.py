@@ -34,15 +34,15 @@ LOCKED_FIELDS = {
 EDITABLE = LOCKED_FIELDS | set(TEXT_FIELDS)
 TRACKED = ("assignee", "due_date", "project", "priority", "stop_reason", "reviewer", "git_project")
 
-NO_DUE_FOR_DOING = "목표 기한이 없어 진행 중으로 바꿀 수 없습니다. 기한을 먼저 정해 주세요."
+NO_DUE_FOR_DOING = "기한이 없어 진행 중으로 바꿀 수 없습니다. 기한을 먼저 정해 주세요."
 
 # 내 태스크 화면 필터 값. (코드, 화면 표기)
 DUE_FILTERS = [
     ("", "모든 기한"),
     ("overdue", "기한 초과"),
-    ("today", "오늘 마감"),
-    ("week", "이번 주 남은 마감"),
-    ("this_week", "이번 주 전체 마감"),
+    ("today", "오늘까지"),
+    ("week", "이번 주 남은 기한"),
+    ("this_week", "이번 주 전체 기한"),
     ("later", "그 이후"),
     ("none", "기한 미정"),
 ]
@@ -52,12 +52,12 @@ STATUS_FILTERS = (
     + [("done_today", "오늘 완료"), ("done_7d", "지난 7일 완료")]
 )
 PRIORITY_FILTERS = [("", "모든 중요도")] + Task.TIER_LABELS
-# "없음"을 명시적으로 둔다 — 눌린 버튼이 하나도 없는 상태를 "분류 안 함"으로 읽어내게 하지 않는다.
+# "묶지 않음"을 명시적으로 둔다 — 눌린 버튼이 하나도 없는 상태를 "분류 안 함"으로 읽어내게 하지 않는다.
 GROUP_OPTIONS = [
     ("due", "기한별"),
     ("project", "프로젝트별"),
     ("status", "상태별"),
-    ("none", "없음"),
+    ("none", "묶지 않음"),
 ]
 SORT_OPTIONS = [("due", "기한"), ("priority", "중요도"), ("updated", "최근 수정")]
 
@@ -103,15 +103,23 @@ def _require_member(actor, project):
     if actor is None:
         return
     if not is_member(actor, project.org):
-        raise ServiceError({"project": "이 조직의 멤버가 아닙니다."})
+        raise ServiceError(
+            {
+                "project": "이 조직에 속해 있지 않아 작업할 수 없습니다. 조직 관리자에게 초대를 요청해 주세요."
+            }
+        )
     if not can_view_project(actor, project):
-        raise ServiceError({"project": "볼 수 없는 프로젝트입니다."})
+        raise ServiceError(
+            {
+                "project": "프로젝트를 볼 권한이 없습니다. 프로젝트 관리자에게 접근 권한을 요청해 주세요."
+            }
+        )
 
 
-ASSIGNEE_CANT_SEE = "담당자가 볼 수 없는 프로젝트입니다. 담당 팀에 넣거나 공개 범위를 바꾸세요."
+ASSIGNEE_CANT_SEE = "담당자가 프로젝트를 볼 권한이 없습니다. 프로젝트 관리자에게 담당 팀이나 공개 범위를 확인해 달라고 요청해 주세요."
 
 
-REVIEWER_CANT_SEE = "검토자가 볼 수 없는 프로젝트입니다. 담당 팀에 넣거나 공개 범위를 바꾸세요."
+REVIEWER_CANT_SEE = "검토자가 프로젝트를 볼 권한이 없습니다. 프로젝트 관리자에게 담당 팀이나 공개 범위를 확인해 달라고 요청해 주세요."
 
 
 def can_see(user, project) -> bool:
@@ -162,15 +170,19 @@ def _validate(
     """
     errors = {}
     if not title or not title.strip():
-        errors["title"] = "제목을 입력하세요."
+        errors["title"] = "제목을 입력해 주세요."
     if project.is_archived:
-        errors["project"] = "보관된 프로젝트에는 태스크를 둘 수 없습니다."
+        errors["project"] = (
+            "보관된 프로젝트에는 태스크를 만들 수 없습니다. 다른 프로젝트를 선택해 주세요."
+        )
     if assignee is None:
-        errors["assignee"] = "담당자를 지정하세요."
+        errors["assignee"] = "담당자를 지정해 주세요."
     elif check_assignee and (not assignee.is_active or not is_member(assignee, project.org)):
-        errors["assignee"] = "담당자는 이 조직의 활성 멤버여야 합니다."
+        errors["assignee"] = (
+            "담당자가 조직의 활성 멤버가 아닙니다. 현재 활동 중인 조직 멤버를 선택해 주세요."
+        )
     if not isinstance(priority, int) or isinstance(priority, bool) or not 1 <= priority <= 10:
-        errors["priority"] = "중요도는 1~10 사이의 정수여야 합니다."
+        errors["priority"] = "중요도가 범위를 벗어났습니다. 1~10 사이의 정수를 입력해 주세요."
     elif check_priority:
         # 바꾸지 않은 중요도에는 상한을 다시 묻지 않는다. 관리자가 9로 둔 태스크의 기한을
         # 일반 멤버가 고치는 것까지 막히기 때문이다(담당자의 check_assignee와 같은 이유).
@@ -188,17 +200,21 @@ def _validate(
         errors["due_date"] = NO_DUE_FOR_DOING
     elif status in Task.OPEN and due_date is None:
         if not is_template and effective("task.due_required", org=project.org, project=project):
-            errors["due_date"] = "기한을 반드시 정해야 합니다. 기한 미정 사유로 대신할 수 없습니다."
+            errors["due_date"] = "이 프로젝트는 기한이 필수입니다. 사유 대신 기한을 지정해 주세요."
         elif not (no_due_reason or "").strip():
-            errors["no_due_reason"] = "기한이 없으면 사유를 입력하세요."
+            errors["no_due_reason"] = "기한이 없으면 사유를 입력해 주세요."
     reason = (stop_reason or "").strip()
     if status == "blocked" and not reason:
-        errors["stop_reason"] = "막힘 사유를 입력하세요."
+        errors["stop_reason"] = "막힘 사유를 입력해 주세요."
     if status not in Task.STOPPED and reason:
-        errors["stop_reason"] = "일시정지·막힘 상태에서만 사유를 둘 수 있습니다."
+        errors["stop_reason"] = (
+            "현재 상태에는 사유를 저장할 수 없습니다. 사유를 지우거나 일시정지·막힘으로 변경해 주세요."
+        )
     if reviewer is not None:
         if check_reviewer and (not reviewer.is_active or not is_member(reviewer, project.org)):
-            errors["reviewer"] = "검토자는 이 조직의 활성 멤버여야 합니다."
+            errors["reviewer"] = (
+                "검토자가 조직의 활성 멤버가 아닙니다. 현재 활동 중인 조직 멤버를 선택해 주세요."
+            )
         elif check_reviewer and not (
             can_see(reviewer, project) if task is None else _sees_task(reviewer, task, project)
         ):
@@ -206,7 +222,9 @@ def _validate(
         elif reviewer == assignee and not effective(
             "task.self_review", org=project.org, project=project
         ):
-            errors["reviewer"] = "본인 검토가 꺼져 있어 담당자를 검토자로 지정할 수 없습니다."
+            errors["reviewer"] = (
+                "본인 검토가 꺼져 있어 담당자를 검토자로 지정할 수 없습니다. 다른 검토자를 지정해 주세요."
+            )
     if errors:
         raise ServiceError(errors)
 
@@ -408,9 +426,13 @@ def _require_task(actor, task):
     if actor is None:
         return
     if not is_member(actor, task.project.org):
-        raise ServiceError({"project": "이 조직의 멤버가 아닙니다."})
+        raise ServiceError({"project": "이 조직에 속해 있지 않아 작업할 수 없습니다."})
     if task.project.visibility != "org" and not can_view_task(actor, task):
-        raise ServiceError({"project": "볼 수 없는 프로젝트입니다."})
+        raise ServiceError(
+            {
+                "project": "프로젝트를 볼 권한이 없습니다. 프로젝트 관리자에게 접근 권한을 요청해 주세요."
+            }
+        )
 
 
 def _sees_task(user, task, project) -> bool:
@@ -427,8 +449,8 @@ def by_due(t):
 
 # ---------- 상위·하위 태스크(한 겹, IMPL-PLAN-12) ----------
 
-ONE_LEVEL = "태스크 중첩은 한 겹까지입니다."
-SUB_SAME_PROJECT = "하위 태스크는 상위와 같은 프로젝트에 있어야 합니다. 먼저 떼어내세요."
+ONE_LEVEL = "하위 태스크 아래에는 하위를 넣을 수 없습니다. 하위가 없는 태스크를 최상위 태스크 아래에 넣어 주세요."
+SUB_SAME_PROJECT = "하위 태스크는 상위와 같은 프로젝트에 있어야 합니다. 먼저 떼어내 주세요."
 
 
 def subtask_progress(task) -> tuple[int, int]:
@@ -478,15 +500,29 @@ def subtask_view(viewer, task) -> dict:
 def _check_group(task, group, project):
     """task(None이면 새로 만들 태스크)를 group 아래에 둘 수 있는가. 호출부가 행을 잠근 뒤 부른다."""
     if task is not None and task.pk == group.pk:
-        raise ServiceError({"group": "자기 자신의 하위로 넣을 수 없습니다."})
+        raise ServiceError(
+            {
+                "group": "자기 자신의 하위 태스크로 넣을 수 없습니다. 다른 상위 태스크를 선택해 주세요."
+            }
+        )
     if group.is_template or (task is not None and task.is_template):
-        raise ServiceError({"group": "템플릿은 상위·하위로 묶을 수 없습니다."})
+        raise ServiceError(
+            {"group": "템플릿은 상위·하위 태스크로 묶을 수 없습니다. 회차를 만든 뒤 묶어 주세요."}
+        )
     if project.pk != group.project_id:
-        raise ServiceError({"group": "하위는 상위와 같은 프로젝트에 있어야 합니다."})
+        raise ServiceError(
+            {
+                "group": "하위 태스크의 프로젝트가 상위와 다릅니다. 같은 프로젝트의 태스크를 선택해 주세요."
+            }
+        )
     if group.group_id is not None or (task is not None and task.subtasks.exists()):
         raise ServiceError({"group": ONE_LEVEL})
     if group.is_closed:
-        raise ServiceError({"group": "완료·취소된 태스크 아래에는 넣을 수 없습니다."})
+        raise ServiceError(
+            {
+                "group": "완료·취소된 태스크에는 하위를 넣을 수 없습니다. 상위를 다시 열거나 다른 태스크를 선택해 주세요."
+            }
+        )
 
 
 def _lock(*tasks):
@@ -605,7 +641,11 @@ def create_task(
             hit.delete()  # 대상이 지워진 키는 새로 만든다
     if group is not None:
         if project.pk != group.project_id:
-            raise ServiceError({"project_id": "하위는 상위와 같은 프로젝트에 만듭니다."})
+            raise ServiceError(
+                {
+                    "project_id": "하위 태스크는 상위와 같은 프로젝트에만 만들 수 있습니다. 상위 태스크의 프로젝트를 선택해 주세요."
+                }
+            )
         _require_task(actor, group)
         (group,) = _lock(group)
         _check_group(None, group, project)
@@ -621,7 +661,7 @@ def create_task(
         effective("task.require_done_when", org=project.org, project=project)
         and not (done_when or "").strip()
     ):
-        raise ServiceError({"done_when": "완료 조건을 입력해야 합니다."})
+        raise ServiceError({"done_when": "완료 조건이 없습니다. 완료 조건을 입력해 주세요."})
     _validate(
         project=project,
         assignee=assignee,
@@ -674,7 +714,11 @@ def create_task(
     for pid in dict.fromkeys(linked_project_ids or ()):
         target = Project.objects.filter(pk=pid, org_id=project.org_id).first()
         if target is None:
-            raise ServiceError({"linked_project_ids": f"프로젝트 {pid}을(를) 찾을 수 없습니다."})
+            raise ServiceError(
+                {
+                    "linked_project_ids": f"프로젝트 {pid}을(를) 찾을 수 없습니다. 프로젝트 목록에서 다시 선택해 주세요."
+                }
+            )
         link_project(
             task, target, actor=actor, source=source, token=token, confirm_widening=confirm_widening
         )
@@ -687,13 +731,17 @@ def update_text(task, field: str, value: str, *, actor, source: str = "web") -> 
     """
     _require_task(actor, task)
     if field not in TEXT_FIELDS:
-        raise ServiceError({field: "수정할 수 없는 항목입니다."})
+        raise ServiceError(
+            {
+                field: "직접 수정할 수 없는 항목이 포함되어 있습니다. 수정할 항목을 다시 선택해 주세요."
+            }
+        )
     _ai_check(task.project.org, "ai.edit_text", "본문 고치기", source, field)
     value = value or ""
     if field == "title":
         value = value.strip()
         if not value:
-            raise ServiceError({"title": "제목을 입력하세요."})
+            raise ServiceError({"title": "제목을 입력해 주세요."})
     if field in TEXT_MAX:
         value = value[: TEXT_MAX[field]]
     Task.objects.filter(pk=task.pk).update(**{field: value}, updated_at=timezone.now())
@@ -732,7 +780,12 @@ def update_task(
     _require_task(actor, task)
     unknown = set(changes) - EDITABLE
     if unknown:
-        raise ServiceError({k: "수정할 수 없는 항목입니다." for k in sorted(unknown)})
+        raise ServiceError(
+            {
+                k: "직접 수정할 수 없는 항목이 포함되어 있습니다. 수정할 항목을 다시 선택해 주세요."
+                for k in sorted(unknown)
+            }
+        )
     for f in TEXT_FIELDS:
         if f in changes:
             update_text(task, f, changes[f], actor=actor, source=source)
@@ -744,12 +797,12 @@ def update_task(
         _ai_check(task.project.org, "ai.change_assignee", "담당자 바꾸기", source, "assignee")
         needs = effective("task.assignee_change_reason", org=task.project.org, project=task.project)
         if needs and not reason:
-            raise ServiceError({"reason": "담당자 변경 사유를 입력하세요."})
+            raise ServiceError({"reason": "담당자 변경 사유를 입력해 주세요."})
     if "due_date" in changes:
         _ai_check(task.project.org, "ai.change_due", "기한 바꾸기", source, "due_date")
         needs = effective("task.due_change_reason", org=task.project.org, project=task.project)
         if needs and not reason:
-            raise ServiceError({"reason": "기한 변경 사유를 입력하세요."})
+            raise ServiceError({"reason": "기한 변경 사유를 입력해 주세요."})
     if "priority" in changes:
         _ai_check(task.project.org, "ai.change_priority", "중요도 바꾸기", source, "priority")
     ask = None
@@ -778,16 +831,24 @@ def update_task(
         for sub in subs:
             if not can_see(sub.assignee, new["project"]):
                 raise ServiceError(
-                    {"project": f"하위 {sub.number}의 담당자가 볼 수 없는 프로젝트입니다."}
+                    {
+                        "project": f"하위 {sub.number}의 담당자가 볼 수 없는 프로젝트입니다. 담당 팀이나 공개 범위를 확인해 주세요."
+                    }
                 )
             if sub.reviewer_id and not can_see(sub.reviewer, new["project"]):
                 raise ServiceError(
-                    {"project": f"하위 {sub.number}의 검토자가 볼 수 없는 프로젝트입니다."}
+                    {
+                        "project": f"하위 {sub.number}의 검토자가 볼 수 없는 프로젝트입니다. 검토자의 팀과 공개 범위를 확인해 주세요."
+                    }
                 )
     if "project" in changes:
         _require_member(actor, new["project"])
         if new["project"].org_id != task.project.org_id:
-            raise ServiceError({"project": "다른 조직의 프로젝트로 옮길 수 없습니다."})
+            raise ServiceError(
+                {
+                    "project": "다른 조직의 프로젝트로 옮길 수 없습니다. 같은 조직의 프로젝트를 선택해 주세요."
+                }
+            )
         if new["assignee"] is not None:
             _require_viewer(new["assignee"], new["project"])
         # 검토자도 담당자와 같은 규칙: 옮길 프로젝트를 못 보면 이동을 거부한다.
@@ -888,24 +949,32 @@ def transition(
     """
     _require_task(actor, task)
     if task.is_template:
-        raise ServiceError({"status": "템플릿은 상태를 바꾸지 않습니다. 회차를 만들어 진행하세요."})
+        raise ServiceError(
+            {"status": "템플릿은 상태를 바꾸지 않습니다. 회차를 만들어 진행해 주세요."}
+        )
     labels = dict(Task.STATUSES)
     if new_status not in labels:
-        raise ServiceError({"status": "알 수 없는 상태입니다."})
+        raise ServiceError(
+            {"status": "상태가 올바르지 않습니다. 화면에 표시된 상태 중에서 선택해 주세요."}
+        )
     if new_status == task.status:
         return task
     if task.is_closed and new_status not in ("todo", "doing"):
         raise ServiceError(
             {
                 "status": f"{labels[task.status]}에서 {labels[new_status]}(으)로 바꿀 수 없습니다. "
-                "먼저 시작 전이나 진행 중으로 다시 여세요."
+                "먼저 시작 전이나 진행 중으로 다시 열어 주세요."
             }
         )
     org = task.project.org
     reopening = task.is_closed and new_status in ("todo", "doing")
     closing = new_status in ("done", "cancelled")
     if reopening and task.project.is_archived:
-        raise ServiceError({"status": "보관된 프로젝트의 태스크는 다시 열 수 없습니다."})
+        raise ServiceError(
+            {
+                "status": "보관된 프로젝트의 태스크는 다시 열 수 없습니다. 프로젝트 관리자에게 보관 해제를 요청해 주세요."
+            }
+        )
     if reopening:
         _ai_check(org, "ai.reopen_task", "완료·취소 되돌리기", source, "status")
     elif closing:
@@ -915,13 +984,13 @@ def transition(
     reason = (reason or "").strip()[:300]
     if reopening and effective("task.reopen_reason_required", org=org, project=task.project):
         if not reason:
-            raise ServiceError({"reason": "재개 사유를 입력하세요."})
+            raise ServiceError({"reason": "재개 사유를 입력해 주세요."})
     rejecting = task.status == "review" and new_status in ("todo", "doing")
     if rejecting and actor is not None and not can_reject(actor, task):
         raise ServiceError(
             {
                 "status": f"검토자 {task.reviewer.display_name}님 또는 프로젝트 관리자만 "
-                "반려할 수 있습니다."
+                "반려할 수 있습니다. 검토자나 프로젝트 관리자에게 반려를 요청해 주세요."
             }
         )
     if (
@@ -929,7 +998,7 @@ def transition(
         and effective("task.reject_reason_required", org=org, project=task.project)
         and not reason
     ):
-        raise ServiceError({"reason": "반려 사유를 입력하세요."})
+        raise ServiceError({"reason": "반려 사유를 입력해 주세요."})
     if new_status == "doing" and task.due_date is None:
         raise ServiceError({"due_date": NO_DUE_FOR_DOING})
     if new_status == "doing":
@@ -956,7 +1025,7 @@ def transition(
             raise ServiceError(
                 {
                     "status": f"하위 태스크 {n}건이 아직 열려 있습니다. "
-                    "먼저 끝내거나 취소하거나 떼어내세요."
+                    "먼저 끝내거나 취소하거나 떼어내 주세요."
                 }
             )
     if reopening and group is not None and group.is_closed:
@@ -964,20 +1033,24 @@ def transition(
         raise ServiceError(
             {
                 "status": f"상위 {group.number if shown else '태스크'}이 완료·취소 상태입니다. "
-                "상위를 먼저 다시 열거나 떼어내세요."
+                "상위를 먼저 다시 열거나 떼어내 주세요."
             }
         )
     if new_status == "blocked" and not reason:
-        raise ServiceError({"stop_reason": "막힘 사유를 입력하세요."})
+        raise ServiceError({"stop_reason": "막힘 사유를 입력해 주세요."})
     if new_status == "cancelled":
         if effective("task.cancel_reason_required", org=org, project=task.project) and not reason:
-            raise ServiceError({"reason": "취소 사유를 입력하세요."})
+            raise ServiceError({"reason": "취소 사유를 입력해 주세요."})
     if new_status == "done":
         if (
             effective("task.review_required", org=org, project=task.project)
             and task.status != "review"
         ):
-            raise ServiceError({"status": "검토 대기를 거쳐야 완료할 수 있습니다."})
+            raise ServiceError(
+                {
+                    "status": "검토를 거치지 않아 완료할 수 없습니다. 검토 대기로 바꾼 뒤 검토를 요청해 주세요."
+                }
+            )
         if (
             task.status == "review"
             and actor is not None
@@ -985,7 +1058,9 @@ def transition(
             and not effective("task.self_review", org=org, project=task.project)
         ):
             raise ServiceError(
-                {"status": "본인이 담당한 태스크는 본인이 검토를 완료 처리할 수 없습니다."}
+                {
+                    "status": "본인 검토가 허용되지 않아 완료 처리할 수 없습니다. 검토자나 프로젝트 관리자에게 검토를 요청해 주세요."
+                }
             )
         # 지정 검토자가 있으면 그 사람이나 관리자만 완료한다. actor가 None(GitHub 머지)이면
         # 검토는 PR에서 끝난 것이므로 막지 않는다.
@@ -1000,7 +1075,7 @@ def transition(
             raise ServiceError(
                 {
                     "status": f"검토자 {task.reviewer.display_name}님 또는 프로젝트 관리자만 "
-                    "완료 처리할 수 있습니다."
+                    "완료 처리할 수 있습니다. 검토자나 프로젝트 관리자에게 완료 처리를 요청해 주세요."
                 }
             )
     # 같은 상태 재요청은 위에서 돌아갔다. 검토 대기 경과일은 이 시각부터 잰다.
@@ -1135,10 +1210,16 @@ def set_template(task, on: bool, *, actor, source="web", token=None) -> Task:
     if on == task.is_template:
         return task
     if on and task.status != "todo":
-        raise ServiceError({"is_template": "시작 전 상태에서만 템플릿으로 바꿀 수 있습니다."})
+        raise ServiceError(
+            {
+                "is_template": "시작 전 태스크만 템플릿으로 바꿀 수 있습니다. 시작 전 상태로 바꾼 뒤 다시 요청해 주세요."
+            }
+        )
     if on and (task.group_id or task.subtasks.exists()):
         raise ServiceError(
-            {"is_template": "상위·하위 관계가 있는 태스크는 템플릿으로 둘 수 없습니다."}
+            {
+                "is_template": "상위·하위 태스크는 템플릿으로 바꿀 수 없습니다. 상위·하위 관계를 해제한 뒤 다시 요청해 주세요."
+            }
         )
     fields = {"is_template": on}
     if on:
@@ -1165,17 +1246,21 @@ def extend_due(
     _require_task(actor, task)
     _ai_check(task.project.org, "ai.change_due", "기한 바꾸기", source, "due_date")
     if not task.is_open:
-        raise ServiceError({"due_date": "완료·취소된 태스크의 기한은 바꿀 수 없습니다."})
+        raise ServiceError(
+            {
+                "due_date": "완료·취소된 태스크의 기한은 바꿀 수 없습니다. 태스크를 다시 연 뒤 기한을 변경해 주세요."
+            }
+        )
     if new_date is None:
-        raise ServiceError({"due_date": "새 목표일을 선택하세요."})
+        raise ServiceError({"due_date": "새 기한을 선택해 주세요."})
     if task.due_date is not None and new_date <= task.due_date:
-        raise ServiceError({"due_date": "현재 목표일보다 뒤의 날짜를 선택하세요."})
+        raise ServiceError({"due_date": "현재 기한보다 뒤의 날짜를 선택해 주세요."})
     reason = (reason or "").strip()
     if not reason:
-        raise ServiceError({"reason": "연장 사유를 입력하세요."})
+        raise ServiceError({"reason": "연장 사유를 입력해 주세요."})
     old = task.due_date
     _apply(task, expected_version, {"due_date": new_date, "no_due_reason": ""})
-    note = f"연장: {reason}" if old else f"목표일 지정: {reason}"
+    note = f"연장: {reason}" if old else f"기한 지정: {reason}"
     _log(
         task,
         "due_date",
@@ -1224,18 +1309,28 @@ def delete_task(task, *, actor, source: str = "web") -> None:
 
 def add_link(*, actor, title, url, kind="doc", task=None, project=None) -> Link:
     if (task is None) == (project is None):
-        raise ServiceError({"target": "태스크 또는 프로젝트 중 하나에만 연결합니다."})
+        raise ServiceError(
+            {
+                "target": "연결 대상이 없거나 여러 개입니다. 태스크 또는 프로젝트 중 하나만 선택해 주세요."
+            }
+        )
     if task is not None:
         _require_task(actor, task)
     else:
         _require_member(actor, project)
     title, url = (title or "").strip(), (url or "").strip()
     if not title or not url:
-        raise ServiceError({"url": "제목과 URL을 입력하세요."})
+        raise ServiceError({"url": "제목과 URL을 입력해 주세요."})
     if not url.startswith(("http://", "https://")):
-        raise ServiceError({"url": "http:// 또는 https:// 로 시작해야 합니다."})
+        raise ServiceError(
+            {
+                "url": "주소 형식이 올바르지 않습니다. http:// 또는 https://로 시작하는 주소를 입력해 주세요."
+            }
+        )
     if kind not in dict(Link.KINDS):
-        raise ServiceError({"kind": "알 수 없는 종류입니다."})
+        raise ServiceError(
+            {"kind": "종류가 올바르지 않습니다. 화면에 표시된 종류 중에서 선택해 주세요."}
+        )
     return Link.objects.create(
         task=task, project=project, title=title[:100], url=url[:500], kind=kind, created_by=actor
     )
@@ -1263,7 +1358,11 @@ def replace_checklist(
     for i, item in enumerate(items):
         text = (item.get("text") or "").strip()
         if not text:
-            raise ServiceError({"checklist": f"{i + 1}번째 항목의 내용이 비어 있습니다."})
+            raise ServiceError(
+                {
+                    "checklist": f"{i + 1}번째 항목의 내용이 비어 있습니다. 체크 항목 내용을 입력해 주세요."
+                }
+            )
         cleaned.append(
             ChecklistItem(task=task, text=text[:200], is_done=bool(item.get("is_done")), position=i)
         )
@@ -1276,7 +1375,7 @@ def checklist_add(task, text: str, *, actor) -> ChecklistItem:
     _require_task(actor, task)
     text = (text or "").strip()
     if not text:
-        raise ServiceError({"text": "내용을 입력하세요."})
+        raise ServiceError({"text": "내용을 입력해 주세요."})
     pos = (task.checklist.aggregate(m=Max("position"))["m"] or 0) + 1
     return ChecklistItem.objects.create(task=task, text=text[:200], position=pos)
 
@@ -1380,7 +1479,11 @@ def today_restore_excluded(user, day: date | None = None):
 
 def today_set_auto_pull(user, days: int):
     if days not in dict(User.AUTO_PULL_CHOICES):
-        raise ServiceError({"auto_pull_days": "0, 1, 3, 5, 7, 14 중 하나여야 합니다."})
+        raise ServiceError(
+            {
+                "auto_pull_days": "자동 담기 기간이 올바르지 않습니다. 0·1·3·5·7·14일 중에서 선택해 주세요."
+            }
+        )
     user.auto_pull_days = days
     user.save(update_fields=["auto_pull_days"])
 
@@ -1592,8 +1695,8 @@ def me_view(
     else:
         groups = [
             grp("기한 초과", preds["overdue"], "기한 초과 태스크 없음"),
-            grp("오늘 마감", preds["today"], "오늘 마감 태스크 없음"),
-            grp("이번 주 마감", preds["week"], "이번 주 마감 태스크 없음"),
+            grp("오늘까지", preds["today"], "오늘까지 태스크 없음"),
+            grp("이번 주 기한", preds["week"], "이번 주 기한 태스크 없음"),
             grp("그 이후", preds["later"]),
             grp("기한 미정", preds["none"]),
         ]
@@ -1618,12 +1721,15 @@ def me_view(
         title = "조직 전체 태스크"
     else:
         title = f"{member.display_name}의 태스크"
-    hint = f"{'완료' if completion else '미완료'} {base.count()}건 · 결과 {len(tasks)}건"
+    total = base.count()
+    hint = f"{'완료' if completion else '미완료'} {total}건 · 결과 {len(tasks)}건"
     if member is not None:
         hint += " · 보기 전용"
     return {
         "title": title,
         "hint": hint,
+        # 필터를 걸기 전 전체 건수. 0이면 화면은 필터 줄 대신 빈 상태를 그린다(b-workspace 상-2).
+        "total": total,
         "groups": groups,
         "read_only": member is not None,
         "completion": completion,
@@ -1757,11 +1863,21 @@ def _drop_stale_git_project(task, actor, source="web", token=None):
 def _check_link_target(actor, task, project):
     _require_task(actor, task)
     if project.pk == task.project_id:
-        raise ServiceError({"project": "주 프로젝트는 연결할 수 없습니다."})
+        raise ServiceError(
+            {"project": "주 프로젝트는 이미 태스크에 속해 있습니다. 다른 프로젝트를 선택해 주세요."}
+        )
     if project.org_id != task.project.org_id:
-        raise ServiceError({"project": "다른 조직의 프로젝트는 연결할 수 없습니다."})
+        raise ServiceError(
+            {
+                "project": "다른 조직의 프로젝트는 연결할 수 없습니다. 같은 조직의 프로젝트를 선택해 주세요."
+            }
+        )
     if not can_view_project(actor, project):
-        raise ServiceError({"project": "볼 수 없는 프로젝트입니다."})
+        raise ServiceError(
+            {
+                "project": "프로젝트를 볼 권한이 없습니다. 프로젝트 관리자에게 접근 권한을 요청해 주세요."
+            }
+        )
 
 
 @transaction.atomic
@@ -1774,7 +1890,11 @@ def link_project(task, project, *, actor, source="web", token=None, confirm_wide
     """
     _check_link_target(actor, task, project)
     if project.is_archived:
-        raise ServiceError({"project": "보관된 프로젝트에는 연결할 수 없습니다."})
+        raise ServiceError(
+            {
+                "project": "보관된 프로젝트에는 연결할 수 없습니다. 다른 프로젝트를 선택하거나 관리자에게 보관 해제를 요청해 주세요."
+            }
+        )
     existing = TaskProject.objects.filter(task=task, project=project).first()
     if existing is not None:
         return existing
@@ -1804,7 +1924,7 @@ def link_project(task, project, *, actor, source="web", token=None, confirm_wide
         note=f"연결 승인 요청: 열람자 {len(users)}명 늘어남",
     )
     text = (
-        f"🔐 {actor.display_name}님이 {task.number} {task.title}을(를) "
+        f"{actor.display_name}님이 {task.number} {task.title}을(를) "
         f"'{project.name}' 프로젝트에 연결하려 합니다. 열람자 {len(users)}명이 늘어납니다.\n"
         f"승인·거절: {wr._link(f'/tasks/{task.pk}')}"
     )
@@ -1819,7 +1939,9 @@ def unlink_project(task, project, *, actor, source="web", token=None) -> Task:
     _check_link_target(actor, task, project)
     link = TaskProject.objects.filter(task=task, project=project).first()
     if link is None:
-        raise ServiceError({"project": "연결된 프로젝트가 아닙니다."})
+        raise ServiceError(
+            {"project": "태스크에 연결되지 않은 프로젝트입니다. 연결된 프로젝트를 선택해 주세요."}
+        )
     link.delete()
     note = "승인 요청 취소" if link.status == "pending" else "연결 해제"
     _log(task, "projects", project.pk, "", actor, source, token, note=note)
@@ -1839,7 +1961,9 @@ def _decide(link, actor, source):
         )
         raise Forbidden({"approve": msg})
     if link.status != "pending":
-        raise ServiceError({"approve": "승인 대기 중인 연결이 아닙니다."})
+        raise ServiceError(
+            {"approve": "승인 대기 중인 연결이 아닙니다. 연결 상태를 새로고침해 확인해 주세요."}
+        )
 
 
 @transaction.atomic
@@ -1928,9 +2052,13 @@ def _check_git_project(task, project):
             }
         )
     if project.pk != task.project_id and project.pk not in links:
-        raise ServiceError({"git_project": "주 프로젝트나 연결된 프로젝트 중에서 고르세요."})
+        raise ServiceError({"git_project": "주 프로젝트나 연결된 프로젝트 중에서 골라 주세요."})
     if getattr(project, "repo", None) is None:
-        raise ServiceError({"git_project": "저장소가 연결된 프로젝트만 고를 수 있습니다."})
+        raise ServiceError(
+            {
+                "git_project": "저장소가 연결되지 않은 프로젝트입니다. 저장소를 먼저 연결하거나 다른 프로젝트를 선택해 주세요."
+            }
+        )
 
 
 def git_project_choices(task, viewer) -> list:

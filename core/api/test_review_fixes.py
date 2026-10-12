@@ -128,6 +128,7 @@ def test_signup_next_must_stay_on_site(client):
             "display_name": "새 사람",
             "password1": "pw12345678",
             "password2": "pw12345678",
+            "age_ok": "on",
         },
     )
     assert r.status_code == 302

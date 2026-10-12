@@ -41,7 +41,7 @@
       <label class="field">라벨 필터<input class="input" name="import_label" value="{{ repo_state.conn.import_label }}" placeholder="task"></label>
     </div>
     {% if project.org.github.account_type == "User" %}
-    <p class="muted t12">개인 계정 설치 조직은 이슈를 자동으로 가져오지 않습니다. GitHub 탭에서 손으로 가져오세요.</p>
+    <p class="muted t12">개인 계정 설치 조직은 이슈를 자동으로 가져오지 않습니다. GitHub 탭에서 손으로 가져와 주세요.</p>
     {% else %}
     <label class="row"><input type="checkbox" name="auto_import" {% if repo_state.conn.auto_import %}checked{% endif %}> 새 이슈 자동 가져오기</label>
     {% endif %}
@@ -77,7 +77,7 @@
   <hr>
   <p class="muted t13">삭제는 되돌릴 수 없습니다. 태스크·마일스톤·문서가 함께 사라집니다.</p>
   <form method="post" action="{% url 'project_delete' project.pk %}"
-        onsubmit="return prompt('되돌릴 수 없습니다. 확인을 위해 프로젝트 이름을 입력하세요.') === '{{ project.name|escapejs }}'">
+        onsubmit="return prompt('되돌릴 수 없습니다. 확인을 위해 프로젝트 이름을 입력해 주세요.') === '{{ project.name|escapejs }}'">
     {% csrf_token %}<button class="btn danger">프로젝트 삭제</button>
   </form>
   {% else %}
@@ -87,11 +87,11 @@
   </p>
   <div class="row wrap gap">
     <form method="post" action="{% url 'project_archive' project.pk %}"
-          onsubmit="return confirm('{{ project.name|escapejs }} 프로젝트를 보관할까요? 미완료 태스크가 있으면 보관할 수 없습니다. 데이터는 유지됩니다.')">
+          data-confirm="{{ project.name }} 프로젝트를 보관합니다. 미완료 태스크가 있으면 보관할 수 없습니다. 데이터는 유지됩니다." data-confirm-ok="프로젝트 보관">
       {% csrf_token %}<button class="btn">프로젝트 보관</button>
     </form>
     <form method="post" action="{% url 'project_archive' project.pk %}"
-          onsubmit="return confirm('{{ project.name|escapejs }} 프로젝트의 미완료 태스크 {{ open_task_count }}건을 모두 취소하고 보관할까요? 태스크와 프로젝트 데이터는 유지됩니다.')">
+          data-confirm="{{ project.name }} 프로젝트의 미완료 태스크 {{ open_task_count }}건을 모두 취소하고 보관합니다. 태스크와 프로젝트 데이터는 유지됩니다." data-confirm-ok="미완료 취소하고 보관">
       {% csrf_token %}<input type="hidden" name="cancel_open" value="1">
       <button class="btn danger">미완료 태스크를 모두 취소하고 프로젝트 보관</button>
     </form>
@@ -102,16 +102,16 @@
 {% endif %}
 
 <section class="card">
-  <h2>프로젝트 거버넌스 추가 문단</h2>
-  <p class="muted t13">조직 거버넌스에 이 프로젝트만의 규칙을 덧붙입니다. 5000자까지 씁니다.</p>
+  <h2>프로젝트 업무 규칙 추가 문단</h2>
+  <p class="muted t13">조직 업무 규칙에 이 프로젝트만의 규칙을 덧붙입니다. 5000자까지 씁니다.</p>
   {% if editable %}
   <form method="post" class="stack">{% csrf_token %}
     <input type="hidden" name="action" value="governance_extra">
-    <textarea name="governance_extra" class="textarea" rows="8">{{ governance_extra }}</textarea>
-    <button class="btn primary">거버넌스 저장</button>
+    <textarea name="governance_extra" class="textarea" rows="8" data-md data-toolbar="top" aria-label="프로젝트 업무 규칙 추가 문단" placeholder="이 프로젝트에만 적용할 규칙을 적습니다.">{{ governance_extra }}</textarea>
+    <button class="btn primary">업무 규칙 저장</button>
   </form>
   {% else %}
-  <p class="t13">{{ governance_extra|default:"없음" }}</p>
+  {% if governance_extra %}<div class="md-view md"><textarea class="md-src textarea" rows="8" readonly aria-label="프로젝트 업무 규칙 추가 문단">{{ governance_extra }}</textarea></div>{% else %}<p class="t13">없음</p>{% endif %}
   {% endif %}
 </section>
 {% endblock %}

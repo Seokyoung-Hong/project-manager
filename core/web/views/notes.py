@@ -133,14 +133,14 @@ def note_upload(request, org_id):
     if raw_project:
         project = project_or_404(request.user, raw_project)
     if f is None:
-        messages.error(request, "업로드할 Markdown 파일(.md 또는 .markdown)을 선택하세요.")
+        messages.error(request, "올릴 Markdown 파일(.md 또는 .markdown)을 선택해 주세요.")
         return redirect("org_notes", org_id=org.pk)
     try:
         note = ts_notes.upload_note(
             org=org, actor=request.user, filename=f.name, raw=f.read(), project=project
         )
     except ServiceError as e:
-        messages.error(request, "회의록을 업로드하지 못했습니다. " + " ".join(e.errors.values()))
+        messages.error(request, "회의록을 올리지 못했습니다. " + " ".join(e.errors.values()))
         return redirect("org_notes", org_id=org.pk)
     return redirect(f"{reverse('org_notes', args=[org.pk])}?note={note.pk}")
 
@@ -202,7 +202,7 @@ def task_note_link(request, task_id):
     try:
         note = _note_or_404(request.user, int(request.POST.get("note", "")))
     except (TypeError, ValueError):
-        return _refs(request, task, error="회의록을 선택하세요.")
+        return _refs(request, task, error="회의록을 선택해 주세요.")
     try:
         ts_notes.link_task(note, task, request.user)
     except ServiceError as e:

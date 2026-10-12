@@ -1,21 +1,24 @@
 from datetime import date, timedelta
 from urllib.parse import parse_qs, urlencode, urlparse
 
+from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db.models import Count
 from django.shortcuts import render
 from django.urls import reverse
 from django.views.decorators.http import require_POST
 
-from accounts.models import User
 from common.dates import fmt_md
 from common.errors import ServiceError
+from orgs.services import is_admin, orgs_of
+from projects.services import visible_projects
 from tasks import services as ts
 from tasks.models import Task
 
 from ..forms import QuickTaskForm
 from .common import (
     apply_service_error,
+    current_org,
     dialog,
     due_class,
     due_label,
@@ -46,7 +49,7 @@ def _ctx(request):
     v = ts.today_view(request.user)
     day = v["date"]
     v["date_label"] = f"{day.year}년 {day.month}월 {day.day}일 ({WEEKDAYS[day.weekday()]})"
-    v["today_hint"] = f"오늘 목록 {v['counts']['today']}건" if v["focus"] else "오늘 목록 비어 있음"
+    v["setup"] = _setup(request)
     v["schedule_open"] = _request_param(request, "schedule") == "1"
     state = {"schedule": "1"} if v["schedule_open"] else {}
     if v["schedule_open"]:
@@ -60,12 +63,44 @@ def _ctx(request):
         row["today_state_query"] = v["today_state_query"]
         if v["today_state_query"]:
             row["row_query"] = f"{row['row_query']}&{v['today_state_query']}"
-    v["auto_pull_choices"] = [
-        (n, f"{n}일 이내" if n else "사용 안 함") for n, _ in User.AUTO_PULL_CHOICES
-    ]
     v["focus_due"] = due_label(v["focus"]) if v["focus"] else ""
     v["focus_due_class"] = due_class(v["focus"]) if v["focus"] else ""
     return v
+
+
+def _setup(request) -> dict | None:
+    """오늘 목록이 비었을 때 다음 행동 하나(빈 상태 부품 _empty.html의 값). 준비가 끝났으면 None.
+
+    조직 없음 → 조직 만들기, 프로젝트 없음 → 첫 프로젝트(관리자) 또는 기다림(멤버),
+    내 미완료 태스크 없음 → 태스크 만들기. 원인 순서대로 하나만 고른다.
+    """
+    user = request.user
+    orgs = list(orgs_of(user).order_by("name"))
+    if not orgs:
+        return {
+            "what": "아직 속한 조직이 없습니다.",
+            "why": "조직을 만들면 프로젝트와 할 일을 팀과 함께 정리할 수 있습니다.",
+            "href": reverse("org_new"),
+            "label": "조직 만들기",
+        }
+    if not visible_projects(user).filter(is_archived=False).exists():
+        org = current_org(request, orgs)
+        return {
+            "what": "아직 프로젝트가 없습니다.",
+            "why": "프로젝트를 만들면 할 일을 모아 오늘 목록으로 가져올 수 있습니다.",
+            "hx_get": f"{reverse('project_new')}?org={org.pk}",
+            "label": "첫 프로젝트 만들기",
+            "locked": not is_admin(user, org),
+            "locked_text": "관리자가 프로젝트를 만들면 여기에 표시됩니다.",
+        }
+    if not ts.visible_tasks(user).filter(assignee=user, status__in=Task.OPEN).exists():
+        return {
+            "what": "맡은 태스크가 없습니다.",
+            "why": "태스크를 만들면 오늘 목록에 바로 담깁니다.",
+            "quick": True,
+            "label": "태스크 만들기",
+        }
+    return None
 
 
 def _schedule(request, day: date) -> dict:
@@ -104,11 +139,11 @@ def _schedule(request, day: date) -> dict:
     this_m = day.replace(day=1)
 
     if not sel_in_month:
-        sel_label = "날짜를 누르면 그날 마감이 보입니다"
+        sel_label = "날짜를 누르면 그날 기한이 보입니다"
     elif sel_tasks:
-        sel_label = f"{fmt_md(sel)} 마감 {len(sel_tasks)}건"
+        sel_label = f"{fmt_md(sel)} 기한 {len(sel_tasks)}건"
     else:
-        sel_label = f"{fmt_md(sel)} 마감 없음"
+        sel_label = f"{fmt_md(sel)} 기한 없음"
 
     return {
         "cal_title": f"{month.year}년 {month.month}월",
@@ -125,7 +160,7 @@ def _schedule(request, day: date) -> dict:
                 "sel": sel_in_month and d == sel,
                 "url": url(d),
                 "aria": (
-                    f"{d.month}월 {d.day}일 마감 {counts.get(d, 0)}건"
+                    f"{d.month}월 {d.day}일 기한 {counts.get(d, 0)}건"
                     f"{' · 오늘' if d == day else ''}"
                     f"{' · 선택됨' if sel_in_month and d == sel else ''}"
                 ),
@@ -149,7 +184,7 @@ def today(request):
         v.update(_schedule(request, v["date"]))
         return render(request, "today/_schedule.html", v)
     v["quick_open"] = request.GET.get("quick") == "1"
-    v["form"] = QuickTaskForm(user=request.user, initial={"idem": new_idem(), "priority": 5})
+    v["form"] = _quick_form(request, request.GET.get("project"))
     if v["schedule_open"]:
         v.update(_schedule(request, v["date"]))
     return render(request, "today.html", v)
@@ -173,9 +208,41 @@ def _after_change(request, task):
     return trigger(render_row(request, task), "today-changed")
 
 
+def _quick_form(request, project_id=None) -> QuickTaskForm:
+    """빠른 추가 폼. 프로젝트 기본값: 보던 프로젝트(?project=) → 마지막으로 빠른 추가에 쓴 프로젝트
+    → 마지막으로 본 프로젝트. 목표일 기본값은 그 프로젝트 설정의 제안 목표일이다."""
+    form = QuickTaskForm(user=request.user, initial={"idem": new_idem(), "priority": 5})
+    projects = {str(p.pk): p for p in form.fields["project"].queryset}
+    for pid in (
+        project_id,
+        request.session.get("quick_project"),
+        request.session.get("project_id"),
+    ):
+        if str(pid) in projects:
+            project = projects[str(pid)]
+            break
+    else:
+        project = next(iter(projects.values()), None)
+    if project is not None:
+        form.initial.update(project=project.pk, due_date=project.suggested_due_date)
+    return form
+
+
+def _back_url(request) -> str:
+    """대화상자로 연 빠른 추가가 끝나면 보던 화면으로 돌아간다(같은 사이트 경로만)."""
+    current = urlparse(request.headers.get("HX-Current-URL", ""))
+    if current.path.startswith("/") and not current.path.startswith("//"):
+        return current.path + (f"?{current.query}" if current.query else "")
+    return reverse("today")
+
+
 @login_required
-@require_POST
 def quick_add(request):
+    """GET: 다른 화면의 [빠른 추가] 대화상자. POST: 만들고 오늘 목록에 담는다."""
+    if request.method != "POST":
+        ctx = {"form": _quick_form(request, request.GET.get("project")), "in_dialog": True}
+        return dialog(request, "today/_quick.html", ctx)
+    in_dialog = request.POST.get("in_dialog") == "1"
     form = QuickTaskForm(request.POST, user=request.user)
     if form.is_valid():
         d = form.cleaned_data
@@ -192,10 +259,15 @@ def quick_add(request):
                 idempotency_key=d["idem"] or None,
             )
             ts.today_add(request.user, task)
+            request.session["quick_project"] = task.project_id
+            if in_dialog:
+                messages.success(request, f"{task.number}을 만들고 오늘 목록에 담았습니다.")
+                return hx_redirect(request, _back_url(request))
             return hx_redirect(request, reverse("today"))
         except ServiceError as e:
             apply_service_error(form, e)
-    return dialog(request, "today/_quick.html", {"form": form, "quick_open": True})
+    ctx = {"form": form, "quick_open": True, "in_dialog": in_dialog}
+    return dialog(request, "today/_quick.html", ctx)
 
 
 @login_required
@@ -226,13 +298,3 @@ def restore(request):
 def move(request, task_id, direction):
     ts.today_move(request.user, task_or_404(request.user, task_id), direction)
     return _list(request)
-
-
-@login_required
-@require_POST
-def auto_pull(request):
-    try:
-        ts.today_set_auto_pull(request.user, int(request.POST.get("auto_pull_days", "5")))
-    except (ValueError, ServiceError):
-        pass
-    return trigger(_list(request), "today-changed")

@@ -85,7 +85,9 @@ def _is_operator(user) -> bool:
 
 def _require_superuser(request) -> None:
     if not request.user.is_superuser:
-        raise ServiceError({"permission": "최고 운영자만 할 수 있습니다."})
+        raise ServiceError(
+            {"permission": "최고 운영자만 할 수 있는 작업입니다. 최고 운영자에게 요청해 주세요."}
+        )
 
 
 def _set_user(request, user, action, field, value, reason, before) -> None:
@@ -145,7 +147,11 @@ def issue_reset_link(request, user, reason, confirm) -> str:
     reason = _reason(reason)
     _confirm(confirm, user.username)
     if not user.is_active:
-        raise ServiceError({"permission": "정지된 사용자에게는 재설정 링크를 발급할 수 없습니다."})
+        raise ServiceError(
+            {
+                "permission": "계정이 정지되어 재설정 링크를 발급할 수 없습니다. 계정을 재활성한 뒤 발급해 주세요."
+            }
+        )
     if _is_operator(user):
         _require_superuser(request)
     path = reverse(

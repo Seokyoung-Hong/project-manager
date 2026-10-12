@@ -1,6 +1,21 @@
 {% extends "base.html" %}{% block title %}조직{% endblock %}
 {% block main %}
 {% include "orgs/_tabs.html" %}
+{% if getting_started %}
+<section class="card getting-started" aria-labelledby="getting-started-title">
+  <h2 id="getting-started-title">시작하기</h2>
+  <p class="muted t13">프로젝트를 만들고 팀원을 초대해 할 일을 함께 관리해 주세요. 저장소와 Discord도 연결할 수 있습니다.</p>
+  <ol class="git-steps">
+    {% for s in getting_started %}
+    <li class="{% if s.done %}done{% endif %}">
+      <span class="dot">{% if s.done %}&#10003;{% else %}{{ forloop.counter }}{% endif %}</span>
+      <span class="grow"><b>{{ s.label }}</b>{% if s.done %} <span class="muted">· 완료</span>{% endif %}<br><span class="muted">{{ s.value }}</span></span>
+      {% if not s.done %}{% if s.url %}<a class="btn sm" href="{{ s.url }}">{{ s.label }}</a>{% else %}<button type="button" class="btn sm" hx-get="{% url 'project_new' %}?org={{ org.pk }}" hx-target="#dialog" hx-swap="innerHTML">{{ s.label }}</button>{% endif %}{% endif %}
+    </li>
+    {% endfor %}
+  </ol>
+</section>
+{% endif %}
 <div class="card org-summary-card">
   <div class="tiles org-kpis" tabindex="0" role="region" aria-label="조직 태스크 요약">
     {% for label, value, url, danger in tiles %}<a class="tile{% if danger and value %} danger{% endif %}" href="{{ url }}"><b>{{ value }}</b><span>{{ label }}</span></a>{% endfor %}
@@ -14,14 +29,14 @@
       <button type="button" class="btn primary" hx-get="{% url 'project_new' %}?org={{ org.pk }}" hx-target="#dialog" hx-swap="innerHTML">새 프로젝트</button>
     </form>
   </div>
-  <p class="table-scroll-hint" id="project-table-hint">표를 좌우로 밀어 전체 항목을 확인하세요.</p>
+  <p class="table-scroll-hint" id="project-table-hint">표를 좌우로 밀어 전체 항목을 확인해 주세요.</p>
   <div class="table-scroll" tabindex="0" role="region" aria-label="프로젝트 현황 표, 좌우로 스크롤 가능" aria-describedby="project-table-hint">
   <table class="grid project-table">
     <thead><tr><th>이름</th><th>관리자</th><th>담당 팀</th><th>상태</th><th class="num">미완료</th><th class="num">완료</th></tr></thead>
     <tbody>
     {% for p, st in project_rows %}
     <tr>
-      <td><a href="{% url 'project_detail' p.pk %}">{{ p.name }}</a>{% if p.visibility == "teams" %} <span class="badge" title="담당 팀만">🔒 비공개</span>{% endif %}{% if p.is_archived %} <span class="badge">보관</span>{% endif %}<div class="muted t13">{{ p.purpose }}</div></td>
+      <td><a href="{% url 'project_detail' p.pk %}">{{ p.name }}</a>{% if p.visibility == "teams" %} <span class="badge" title="담당 팀만">비공개</span>{% endif %}{% if p.is_archived %} <span class="badge">보관</span>{% endif %}<div class="muted t13">{{ p.purpose }}</div></td>
       <td>{% for u in p.owners.all %}{{ u.display_name }}{% if not forloop.last %}, {% endif %}{% empty %}<span class="warning">미지정</span>{% endfor %}</td>
       <td>{% for t in p.teams.all %}<span class="badge">{{ t.name }}</span> {% endfor %}</td>
       <td><span class="badge">{{ p.status_label }}</span><div class="muted t13 ellipsis-2">{{ p.status_desc }}</div></td>
@@ -36,7 +51,7 @@
 </section>
 <section class="card">
   <h2>담당자별</h2>
-  <p class="table-scroll-hint" id="assignee-table-hint">표를 좌우로 밀어 전체 항목을 확인하세요.</p>
+  <p class="table-scroll-hint" id="assignee-table-hint">표를 좌우로 밀어 전체 항목을 확인해 주세요.</p>
   <div class="table-scroll" tabindex="0" role="region" aria-label="담당자별 현황 표, 좌우로 스크롤 가능" aria-describedby="assignee-table-hint">
   <table class="grid assignee-table">
     <thead><tr><th>이름</th><th class="num">미완료</th><th class="num">기한 초과</th><th class="num">검토 대기</th><th class="num">막힘</th></tr></thead>

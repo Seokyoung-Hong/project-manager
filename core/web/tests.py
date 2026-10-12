@@ -20,10 +20,31 @@ def logged(client, member):
     return client
 
 
-def test_root_redirects(client, member):
-    assert client.get("/").headers["Location"] == "/login"
+def test_root_shows_landing_to_anonymous(client, member, org):
+    r = client.get("/")
+    assert r.status_code == 200
+    body = r.content.decode()
+    assert "편한 팀의 한 주" in body and "무료로 시작하기" in body
+    assert 'href="/signup"' in body and 'href="/login"' in body and 'href="/privacy"' in body
+    assert 'role="tablist"' in body and "<details>" in body
+    assert "팀의 할 일과 AI 협업 기록을 함께 관리합니다." in body  # 공용 바닥글, 랜딩용 소개 문장
+    assert '<header class="header">' not in body and 'id="panel"' not in body  # 앱 셸 없음
+
+
+def test_root_redirects_logged_in(client, member, org):
     client.login(username="member1", password="pw12345678")
     assert client.get("/").headers["Location"] == "/today"
+
+
+def test_landing_has_no_external_resources(client):
+    body = client.get("/").content.decode()
+    # 외부로 나가는 건 mailto뿐이다. 글꼴·스크립트·이미지는 모두 자체 호스팅.
+    external = re.findall(r'(?:src|href)="((?:https?:)?//[^"]*)"', body)
+    assert external == []
+    assert "fonts.googleapis" not in body and "fonts.gstatic" not in body
+    static = Path(settings.BASE_DIR) / "web/static"
+    for name in ("landing.css", "landing.js"):
+        assert "http" not in (static / name).read_text(encoding="utf8")
 
 
 def test_today_page_renders(logged, org, project, task):
@@ -80,7 +101,7 @@ def test_panel_contains_sections(logged, task):
         "변경 이력",
         'id="checklist"',
         "진행 메모",
-        "목표일",
+        "기한",
         'class="panel-mobile-context"',
         'aria-label="태스크 상세 닫기"',
     ):
@@ -138,7 +159,7 @@ def test_project_dialog_and_create(client, org, admin):
     assert "/projects/" in r.headers["HX-Redirect"]
     r = client.post("/projects/new", {"org": org.pk, "status": "active"}, headers=HX)
     assert r.status_code == 200
-    assert "이름을 입력하세요" in r.content.decode()
+    assert "이름을 입력해 주세요" in r.content.decode()
 
 
 def test_project_inline_task_create(logged, project, member):
@@ -233,7 +254,7 @@ def test_events_needs_login(client):
 
 
 def test_me_group_buttons_mark_one(logged, task):
-    """묶음은 '없음'까지 포함해 항상 하나만 눌려 있다(눌림 없음 = 분류 없음이 아니다)."""
+    """묶음은 '묶지 않음'까지 포함해 항상 하나만 눌려 있다(눌림 없음 = 분류 없음이 아니다)."""
     pressed = 'aria-pressed="true"'
 
     def group_row(body):
@@ -247,7 +268,7 @@ def test_me_group_buttons_mark_one(logged, task):
         assert "<h2>미완료 <" not in body
     body = logged.get("/me?member=0&group=none").content.decode()
     assert group_row(body).count(pressed) == 1
-    assert 'value="none" aria-pressed="true">없음' in body
+    assert 'value="none" aria-pressed="true">묶지 않음' in body
     assert "<h2>미완료 <" in body and "<h2>기한 초과 <" not in body
 
 
@@ -255,13 +276,14 @@ def test_me_omits_empty_due_groups_and_marks_advanced_filters(logged, task):
     body = logged.get("/me").content.decode()
     assert task.title in body
     assert "<h2>기한 초과 <" not in body
-    assert "<h2>오늘 마감 <" not in body
-    assert 'data-filter-active="0"' in body
-    assert "기한 · 프로젝트 · 상태 · 중요도" in body
+    assert "<h2>오늘까지 <" not in body
+    # 필터는 [필터] 하나로 접혀 있고, 걸린 필터만 칩으로 보인다(b-workspace 중-7).
+    assert '<details class="me-filter-details">' in body
+    assert "기한 · 프로젝트 · 상태 · 중요도" in body and "filter-chip" not in body
 
     filtered = logged.get("/me?priority=high").content.decode()
-    assert 'data-filter-active="1"' in filtered
-    assert "조건 적용됨" in filtered
+    assert filtered.count('class="chip filter-chip"') == 1
+    assert "기한 · 프로젝트 · 상태 · 중요도" not in filtered
 
 
 def test_me_sort_survives_filters(logged, task):
@@ -289,6 +311,7 @@ def test_signup_lands_on_org_list_with_create_button(client):
             "display_name": "새사람",
             "password1": "verysecret123",
             "password2": "verysecret123",
+            "age_ok": "on",
         },
     )
     assert r.status_code == 302
@@ -307,10 +330,11 @@ def test_ops_requires_staff(client, member):
 
 def test_export_json_has_no_secrets(client, member, admin, org, task):
     """백업에 비밀번호·초대 token·Discord 연결 코드가 들어가지 않는다."""
-    from accounts.services import issue_link_code
+    from accounts.services import give_consent, issue_link_code
     from orgs.services import create_invite
 
     invite = create_invite(org, admin)
+    give_consent(admin, "discord")
     code = issue_link_code(admin)
     User.objects.filter(pk=member.pk).update(is_staff=True, is_superuser=True)
     client.login(username="member1", password="pw12345678")
@@ -331,7 +355,10 @@ def test_healthz(client):
     assert r.json() == {"ok": True}
 
 
-def test_token_shown_once(logged):
+def test_token_shown_once(logged, member):
+    from accounts.services import give_consent
+
+    give_consent(member, "ai")
     r = logged.post("/settings/tokens", {"name": "t", "scope": "read", "purpose": "ai"})
     assert r.status_code == 302
     assert "pm_" in logged.get("/settings/tokens").content.decode()
@@ -341,7 +368,9 @@ def test_token_shown_once(logged):
 def test_token_purpose_is_chosen_at_issue(logged, member):
     """용도의 기본은 AI용이고, 사람용은 사람이 골라야 나온다. 봇 범위는 폼으로 만들 수 없다."""
     from accounts.models import ApiToken
+    from accounts.services import give_consent
 
+    give_consent(member, "ai")
     logged.post("/settings/tokens", {"name": "ai", "scope": "write", "purpose": "ai"})
     # 사람용은 "AI에 넣지 않겠다"는 확인 없이는 발급되지 않는다.
     r = logged.post("/settings/tokens", {"name": "확인없음", "scope": "write", "purpose": "person"})
@@ -413,8 +442,9 @@ def test_profile_has_no_discord_id_input(client, admin, member):
 
 def test_discord_link_code_is_shown_once_then_unlink_clears(client, admin):
     """코드는 발급 직후 한 번만 보인다(토큰 화면의 new_token과 같은 방식)."""
-    from accounts.services import link_discord
+    from accounts.services import give_consent, link_discord
 
+    give_consent(admin, "discord")
     client.login(username="admin1", password="pw12345678")
     assert client.post("/settings/profile/discord").status_code == 302
     admin.refresh_from_db()
@@ -808,9 +838,9 @@ def test_shelf_counts_filters_and_pages(logged, project, member):
     assert more.count('class="task-row') == 5 and "15 / 15건 표시" in more
     assert "더 보기" not in more
     recent = logged.get(url + "&period=30").content.decode()
-    assert "조건 일치 <b>12</b>건" in recent
+    assert "찾은 결과 <b>12</b>건" in recent
     found = logged.get(url + "&q=예전").content.decode()
-    assert "조건 일치 <b>3</b>건" in found
+    assert "찾은 결과 <b>3</b>건" in found
     cancelled = logged.get(url + "&shelf=cancelled").content.decode()
     assert cancelled.count('class="task-row') == 2
 
@@ -820,7 +850,7 @@ def test_shelf_closed_rows_show_neutral_due(logged, project, member):
     (t,) = _close(project, member, 1, days_ago=1)
     Task.objects.filter(pk=t.pk).update(due_date=today_kst() - timedelta(days=20))
     body = logged.get(f"/projects/{project.pk}?part=shelf").content.decode()
-    assert 'class="due closed">목표일 ' in body
+    assert 'class="due closed">기한 ' in body
     assert "초과" not in body
 
 
@@ -942,11 +972,7 @@ def test_schedule_state_survives_htmx_partial_refreshes(logged, task):
         in body
     )
 
-    body = logged.post(
-        "/today/settings",
-        {"auto_pull_days": 3},
-        headers=headers,
-    ).content.decode()
+    body = logged.post("/today/restore", headers=headers).content.decode()
     assert 'aria-expanded="true"' in body
     assert "일정 닫기" in body
 
@@ -1003,17 +1029,17 @@ def test_schedule_labels(logged, project, member):
     create_task(project=project, title="라벨용", actor=member, source="web", due_date=due)
 
     body = logged.get(f"/today?schedule=1&month={due:%Y-%m}&day={due.isoformat()}").content.decode()
-    assert "마감 1건" in body
+    assert "기한 1건" in body
 
     empty_day = due + timedelta(days=1)
     body = logged.get(
         f"/today?schedule=1&month={empty_day:%Y-%m}&day={empty_day.isoformat()}"
     ).content.decode()
-    assert "마감 없음" in body
+    assert "기한 없음" in body
 
     other_month_day = (today_kst().replace(day=1) - timedelta(days=40)).isoformat()
     body = logged.get(f"/today?schedule=1&day={other_month_day}").content.decode()
-    assert "날짜를 누르면 그날 마감이 보입니다" in body
+    assert "날짜를 누르면 그날 기한이 보입니다" in body
 
 
 def test_schedule_counts_exclude_closed(logged, project, member):
@@ -1068,8 +1094,8 @@ def test_note_click_shows_selected_body(logged, org, member):
 
     body = logged.get(f"/orgs/{org.pk}/notes?scope=all&note={n2.pk}").content.decode()
     assert 'class="notes-columns note-editor-open"' in body
-    assert 'class="doc"' in body
-    assert 'id="doc-src"' in body
+    assert 'class="md-editor md"' in body
+    assert 'class="md-src textarea"' in body
     assert 'class="card note-editor-card" id="note-editor"' in body
     assert 'class="btn sm note-back"' in body
     assert 'class="note-save-status" data-state="saved"' in body
@@ -1221,7 +1247,7 @@ def test_spec_upload_json_only(logged, project):
         f"/projects/{project.pk}/api",
         {"file": SimpleUploadedFile("spec.txt", b"not json", content_type="text/plain")},
     )
-    assert "json 파일만" in r.content.decode()
+    assert "JSON 파일(.json)" in r.content.decode()
     assert not hasattr(project, "api_spec") or project.api_spec is None
 
 
@@ -1277,7 +1303,7 @@ def test_panel_survives_changelog_without_actor(logged, task):
 def test_governance_page(client, org, admin, member):
     client.force_login(admin)
     r = client.get(f"/orgs/{org.pk}/governance")
-    assert r.status_code == 200 and "업무 거버넌스" in r.content.decode()
+    assert r.status_code == 200 and "업무 규칙" in r.content.decode()
     assert client.post(f"/orgs/{org.pk}/governance", {"text": "# 우리 규칙"}).status_code == 302
     org.refresh_from_db()
     assert org.governance == "# 우리 규칙"
@@ -1372,6 +1398,43 @@ def test_docs_first_one_opens_by_default(logged, project):
     assert 'id="doc-editor"' in body and "개요" in body
 
 
+def test_doc_screen_uses_tiptap_editor(logged, project):
+    """문서 화면은 Tiptap 편집기(doc-tiptap.js)로 보고 쓴다. 예전 편집기(notes.js)는 없다."""
+    from projects.docs import create_doc
+
+    doc = create_doc(project=project, actor=project.created_by, title="개요", body_md="# 배경")
+    r = logged.get(f"/projects/{project.pk}/docs?doc={doc.pk}")
+    body = r.content.decode()
+    assert r.status_code == 200
+    assert "doc-tiptap.js" in body and "notes.js" not in body
+    assert 'class="md-editor md"' in body and "# 배경</textarea>" in body
+    assert 'class="notes-columns docs-columns note-editor-open"' in body
+
+
+def test_doc_list_back_link_shows_list_on_mobile(logged, project):
+    """고르지 않고 들어오면 첫 문서를 오른쪽에 보이되, 모바일에서 목록을 숨기는 표시(note-editor-open)는 없다."""
+    from projects.docs import create_doc
+
+    create_doc(project=project, actor=project.created_by, title="개요", body_md="배경")
+    body = logged.get(f"/projects/{project.pk}/docs").content.decode()
+    assert 'id="doc-editor"' in body and "note-editor-open" not in body
+
+
+def test_doc_tree_opens_only_the_current_branch(logged, project):
+    from projects.docs import create_doc
+
+    actor = project.created_by
+    a = create_doc(project=project, actor=actor, title="가지 A")
+    a1 = create_doc(project=project, actor=actor, title="A-1", parent=a)
+    create_doc(project=project, actor=actor, title="A-1-가", parent=a1)
+    b = create_doc(project=project, actor=actor, title="가지 B")
+    create_doc(project=project, actor=actor, title="B-1", parent=b)
+    body = logged.get(f"/projects/{project.pk}/docs?doc={a1.pk}").content.decode()
+    assert f'<details data-doc="{a.pk}" open>' in body
+    assert f'<details data-doc="{a1.pk}" open>' in body
+    assert f'<details data-doc="{b.pk}">' in body
+
+
 # ---------- GitHub를 끈 상태 ----------
 
 
@@ -1428,7 +1491,10 @@ def test_task_refs_rejects_doc_from_another_project(logged, project, org, admin,
     doc = create_doc(project=other, actor=admin, title="남의 문서")
     r = logged.post(f"/tasks/{task.pk}/docs/link", {"doc": doc.pk}, headers=HX)
     assert r.status_code == 200
-    assert "같은 프로젝트의 태스크여야 합니다." in r.content.decode()
+    assert (
+        "다른 프로젝트의 태스크는 연결할 수 없습니다. 같은 프로젝트의 태스크를 선택해 주세요."
+        in r.content.decode()
+    )
     assert not task.docs.exists()
 
 
@@ -1536,7 +1602,7 @@ def test_settings_controls_have_programmatic_labels(client, member, admin, org, 
     project_page = client.get(f"/projects/{project.pk}/settings").content.decode()
     assert "{# 태스크 규칙" not in project_page
     assert "프로젝트 설정 저장" in project_page
-    assert "거버넌스 저장" in project_page
+    assert "업무 규칙 저장" in project_page
 
 
 def test_governance_shows_enforced_settings(as_admin, org):
@@ -1671,7 +1737,9 @@ def test_oauth_full_flow_issues_a_working_token(client, logged, member):
     }
     assert "허용" in logged.get("/oauth/authorize", params).content.decode()
 
-    r = logged.post("/oauth/authorize", {**params, "decision": "allow", "scope": "write"})
+    r = logged.post(
+        "/oauth/authorize", {**params, "decision": "allow", "scope": "write", "consent": "1"}
+    )
     assert r.status_code == 302
     location = r.headers["Location"]
     assert location.startswith("https://claude.ai/api/mcp/auth_callback?")
@@ -1727,6 +1795,7 @@ def test_oauth_token_needs_the_matching_verifier(client, logged):
             "code_challenge": challenge,
             "code_challenge_method": "S256",
             "decision": "allow",
+            "consent": "1",
         },
     )
     code = re.search(r"code=([^&]+)", r.headers["Location"]).group(1)
@@ -1791,7 +1860,7 @@ def _login(client, username="member1", password="pw12345678"):
     return client.post("/login", {"username": username, "password": password})
 
 
-def test_password_login_sets_auth_method_and_start_page(client, member):
+def test_password_login_sets_auth_method_and_start_page(client, member, org):
     member.settings = {"user.start_page": "me"}
     member.save(update_fields=["settings"])
     r = _login(client)
@@ -1799,7 +1868,7 @@ def test_password_login_sets_auth_method_and_start_page(client, member):
     assert client.session["auth_method"] == "password"
 
 
-def test_login_follows_safe_next_only(client, member):
+def test_login_follows_safe_next_only(client, member, org):
     r = client.post(
         "/login?next=/orgs", {"username": "member1", "password": "pw12345678", "next": "/orgs"}
     )
@@ -1814,7 +1883,7 @@ def test_login_follows_safe_next_only(client, member):
 def test_sixth_attempt_is_locked_even_with_right_password(client, member):
     for _ in range(5):
         body = _login(client, password="wrong").content.decode()
-        assert "아이디 또는 비밀번호가 맞지 않습니다." in body
+        assert "아이디 또는 비밀번호가 일치하지 않습니다. 비밀번호를 다시 입력해 주세요." in body
     r = _login(client)
     assert r.status_code == 200
     assert "로그인 시도가 너무 많습니다. 15분 뒤 다시 시도해 주세요." in r.content.decode()
@@ -1823,7 +1892,7 @@ def test_sixth_attempt_is_locked_even_with_right_password(client, member):
 
 def test_unknown_username_gets_the_same_message(client, db):
     body = _login(client, username="nobody").content.decode()
-    assert "아이디 또는 비밀번호가 맞지 않습니다." in body
+    assert "아이디 또는 비밀번호가 일치하지 않습니다. 비밀번호를 다시 입력해 주세요." in body
 
 
 def test_logout_needs_post(logged):
@@ -1831,6 +1900,53 @@ def test_logout_needs_post(logged):
     r = logged.post("/logout")
     assert r.status_code == 302 and r.headers["Location"] == "/login"
     assert "_auth_user_id" not in logged.session
+
+
+def test_signup_without_age_check_is_refused(client, db):
+    r = client.post(
+        "/signup",
+        {
+            "username": "kid",
+            "password1": "verysecret123",
+            "password2": "verysecret123",
+        },
+    )
+    assert r.status_code == 200 and "만 14세 미만은 가입할 수 없습니다." in r.content.decode()
+    assert not User.objects.filter(username="kid").exists()
+    assert 'href="/privacy"' in client.get("/signup").content.decode()
+
+
+def test_privacy_page_is_public_and_linked_from_footer(client, db):
+    r = client.get("/privacy")
+    body = r.content.decode()
+    # JS 없이도 본문이 보여야 한다(법적 고지문): 서버가 넣은 HTML, 원문 textarea가 아니다
+    assert r.status_code == 200 and "<textarea" not in body
+    assert "쿼넥트" in body and "Anthropic" in body
+    assert '<div class="table-scroll"><table>' in body
+    assert '<h2 id="제1조-개인정보-처리-목적과-근거">' in body
+    assert '<a href="mailto:contact@quanect.kr">' in body
+    assert (
+        '<a href="/privacy"><strong>개인정보 처리방침</strong></a>'
+        in body.split('<footer class="site-footer')[1]
+    )
+    # 사업자 정보는 모든 화면 바닥글에 보인다
+    assert '<address class="biz">' in body and "537-16-02777" in body
+
+
+def test_privacy_placeholder_warns_only_in_production(settings, tmp_path, monkeypatch):
+    from web import apps
+    from web.views import auth
+
+    page = tmp_path / "privacy.html"
+    monkeypatch.setattr(auth, "PRIVACY_HTML", page)
+    page.write_text("<p>시행일: {{시행일}}</p>", encoding="utf-8")
+    settings.DEBUG = False
+    assert [w.id for w in apps.privacy_placeholder_check(None)] == ["web.W001"]
+    settings.DEBUG = True
+    assert apps.privacy_placeholder_check(None) == []
+    settings.DEBUG = False
+    page.write_text("<p>시행일: 2026-10-20</p>", encoding="utf-8")
+    assert apps.privacy_placeholder_check(None) == []
 
 
 def test_eleventh_signup_from_one_ip_is_refused(client, db):
@@ -1842,6 +1958,7 @@ def test_eleventh_signup_from_one_ip_is_refused(client, db):
                 "display_name": "",
                 "password1": "verysecret123",
                 "password2": "verysecret123",
+                "age_ok": "on",
             },
         )
 
@@ -1978,7 +2095,7 @@ def test_task_link_out_kind(logged, task):
 def test_governance_default_is_generic(client, org, admin):
     client.force_login(admin)
     body = client.get(f"/orgs/{org.pk}/governance").content.decode()
-    assert "업무 거버넌스" in body and "비개발 프로젝트" in body
+    assert "업무 규칙" in body and "비개발 프로젝트" in body
 
 
 # ---------- 완료 조건 필수일 때 웹 생성 폼(SPEC-FUNCTIONAL 부록 A) ----------
@@ -2000,7 +2117,10 @@ def test_inline_task_form_done_when_required(logged, org, project, member):
         "no_due_reason": "미정",
     }
     r = logged.post(f"/projects/{project.pk}/tasks", data, headers=HX)
-    assert r.status_code == 200 and "완료 조건을 입력해야 합니다" in r.content.decode()
+    assert (
+        r.status_code == 200
+        and "완료 조건이 없습니다. 완료 조건을 입력해 주세요" in r.content.decode()
+    )
     r = logged.post(f"/projects/{project.pk}/tasks", {**data, "done_when": "게시 링크"}, headers=HX)
     assert r.status_code == 204
     assert Task.objects.get(title="카드뉴스").done_when == "게시 링크"
@@ -2011,7 +2131,10 @@ def test_quick_add_done_when_required(logged, org, project, member):
     assert 'name="done_when"' in logged.get("/today").content.decode()
     data = {"title": "빠른 카드뉴스", "project": project.pk, "priority": 5, "no_due_reason": "미정"}
     r = logged.post("/today/quick", data, headers=HX)
-    assert r.status_code == 200 and "완료 조건을 입력해야 합니다" in r.content.decode()
+    assert (
+        r.status_code == 200
+        and "완료 조건이 없습니다. 완료 조건을 입력해 주세요" in r.content.decode()
+    )
     r = logged.post("/today/quick", {**data, "done_when": "게시 링크"}, headers=HX)
     assert r.status_code == 204
     assert Task.objects.get(title="빠른 카드뉴스").done_when == "게시 링크"
@@ -2054,7 +2177,10 @@ def test_reviewer_select_and_reject_reason_panel(logged, org, admin, task, clien
         f"/tasks/{task.pk}/meta", {"reviewer": admin.pk, "version": task.version}, headers=HX
     )
     task.refresh_from_db()
-    assert task.reviewer == admin and "검토자 관리자" in r.content.decode()
+    body = r.content.decode()
+    # 옵션 문구에 라벨을 끼워 넣지 않고 보이는 라벨을 단다(b-workspace 중-1)
+    assert task.reviewer == admin and f'for="tp-reviewer-{task.pk}">검토자</label>' in body
+    assert f'<option value="{admin.pk}" selected>관리자</option>' in body
     org.settings = {"task.reject_reason_required": True}
     org.save()
     v = task.version
@@ -2109,3 +2235,12 @@ def test_admin_login_and_logout_use_our_session_path(client, admin):
     r = client.post("/admin/logout/")
     assert r.status_code == 302 and r.headers["Location"] == "/login"
     assert "_auth_user_id" not in client.session
+
+
+def test_no_external_font_requests(client, logged):
+    """글꼴은 자체 호스팅이다. 방문자 IP가 Google·jsDelivr로 나가면 안 된다."""
+    for page in (client.get("/login"), logged.get("/today")):
+        body = page.content.decode()
+        assert "fonts.googleapis" not in body and "jsdelivr" not in body
+    css = (Path(settings.BASE_DIR) / "web/static/fonts.css").read_text(encoding="utf8")
+    assert "url(http" not in css

@@ -109,7 +109,7 @@ def test_unlinked_actor_gets_404_on_lists(post):
 def test_create_task_passes_core_validation_through(post, project, member):
     r = post("/tasks", {"project_id": project.pk, "title": "새 일"})
     assert r.status_code == 400
-    assert r.json()["detail"]["no_due_reason"] == "기한이 없으면 사유를 입력하세요."
+    assert r.json()["detail"]["no_due_reason"] == "기한이 없으면 사유를 입력해 주세요."
     r = post("/tasks", {"project_id": project.pk, "title": "새 일", "no_due_reason": "미정"})
     assert r.status_code == 200
     t = r.json()["task"]
@@ -168,7 +168,7 @@ def test_note_appends_a_line(post, task):
 def test_status_transition_with_reason(post, task, member):
     r = post(f"/tasks/{task.pk}/status", {"status": "blocked"})
     assert r.status_code == 400
-    assert r.json()["detail"]["stop_reason"] == "막힘 사유를 입력하세요."
+    assert r.json()["detail"]["stop_reason"] == "막힘 사유를 입력해 주세요."
     r = post(f"/tasks/{task.pk}/status", {"status": "blocked", "reason": "API 대기"})
     assert r.status_code == 200
     assert r.json()["was"] == "시작 전"
@@ -183,7 +183,10 @@ def test_status_transition_with_reason(post, task, member):
 def test_channel_save_is_admin_only(post, team, project, org, member, admin):
     r = post(f"/teams/{team.pk}/channel", {"channel_id": "5551"})
     assert r.status_code == 400
-    assert r.json()["detail"]["org"] == "조직 관리자만 할 수 있습니다."
+    assert (
+        r.json()["detail"]["org"]
+        == "조직 관리자만 할 수 있는 작업입니다. 조직 관리자에게 요청해 주세요."
+    )
     assert post(f"/projects/{project.pk}/channel", {"channel_id": "5552"}).status_code == 400
     team.refresh_from_db()
     project.refresh_from_db()

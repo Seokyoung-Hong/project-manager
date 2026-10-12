@@ -4,8 +4,8 @@
   <h1 class="t24">조직 만들기</h1>
   <form method="post" class="stack">{% csrf_token %}
     {% for e in form.non_field_errors %}<div class="error">{{ e }}</div>{% endfor %}
-    {% for f in form %}<label class="field">{{ f.label }}{{ f }}</label>{% for e in f.errors %}<div class="error">{{ e }}</div>{% endfor %}{% endfor %}
-    <button class="btn primary">만들기</button>
+    {% include "_fields.html" %}
+    <button class="btn primary">조직 만들기</button>
   </form>
 </div>
 {% endblock %}

@@ -48,7 +48,7 @@ def test_org_tab_tree_and_template_new(logged, org, member):
     logged.post(f"/orgs/{org.pk}/docs/new", {"title": "환불", "parent": root.pk})
     body = logged.get(f"/orgs/{org.pk}/docs?doc={root.pk}").content.decode()
     assert 'aria-label="문서 트리"' in body and "환불" in body and ">문서</a>" in body
-    assert "이전 버전" in body and "백링크" in body and 'data-url="/docs/' in body
+    assert "이전 버전" in body and "이 문서를 가리키는 글" in body and 'data-url="/docs/' in body
 
 
 def test_hidden_team_doc_stays_hidden(logged, client, org, admin, member, other, team):

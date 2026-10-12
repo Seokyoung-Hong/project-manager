@@ -1,10 +1,15 @@
+import hashlib
 import json
+import os
+import re
+import time
 from datetime import date, timedelta
 
+from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db.models import Q
-from django.http import Http404, HttpResponse, JsonResponse
+from django.http import Http404, HttpResponse, HttpResponseNotModified, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.views.decorators.http import require_POST
@@ -26,6 +31,7 @@ from tasks.attachments import attachments_of
 from tasks.models import ChangeLog, ChecklistItem, Link
 from tasks.work_requests import pending_assignee
 
+from .. import data_version
 from ..forms import LinkForm
 from . import subtasks, task_projects
 from .common import (
@@ -144,6 +150,8 @@ def _panel_ctx(request, task, **extra):
         "extend_error": None,
         "extend_open": False,
     }
+    refs = [ctx["docs"], ctx["notes"], ctx["links"], ctx["attachments"]]
+    ctx["refs_count"] = sum(len(x) for x in refs)  # 3단 '참고 자료·첨부·산출물' 접힘 머리의 개수
     ctx.update(task_projects.panel_ctx(request.user, task))  # 연결 프로젝트 칸(§3.6)
     ctx.update(subtasks.panel_ctx(request.user, task))  # 상위·하위 칸(IMPL-PLAN-12 §5.2)
     sub = ctx["sub"]
@@ -233,13 +241,75 @@ def _respond(request, task, origin, error=None):
 
 @login_required
 def task_detail(request, task_id):
+    from .projects import board_context
+
     task = task_or_404(request.user, task_id)
-    return render(request, "tasks/detail.html", _panel_ctx(request, task, full_page=True))
+    ctx = _panel_ctx(request, task, full_page=True)
+    if not task.is_template:
+        ctx.update({**board_context(request, task.project), **ctx})  # 패널 값이 이긴다
+    return render(request, "tasks/detail.html", ctx)
+
+
+# 폼마다 새로 섞이는 CSRF 값은 해시에서 뺀다. 빼지 않으면 내용이 같아도 해시가 매번 달라진다.
+_CSRF_VALUE = re.compile(rb'name="csrfmiddlewaretoken" value="[^"]*"')
+
+
+def _code_stamp() -> str:
+    """배포본 표시: 코드·템플릿 파일 내용과 환경 변수의 해시. 배포·설정 변경으로 패널이 바뀌면 ETag도 바뀐다.
+    파일 시각이 아니라 내용을 본다(git archive는 커밋 시각을 쓰고, 부분 복사면 최대 시각이 그대로일 수 있다)."""
+    h = hashlib.blake2b(digest_size=12)
+    for root, dirs, files in sorted(os.walk(settings.BASE_DIR)):
+        dirs[:] = sorted(d for d in dirs if not d.startswith((".", "__")) and d != "node_modules")
+        for f in sorted(files):
+            if f.endswith((".py", ".html")):
+                with open(os.path.join(root, f), "rb") as fh:
+                    h.update(f.encode() + fh.read())
+    h.update(repr(sorted(os.environ.items())).encode())
+    return h.hexdigest()
+
+
+_CODE_STAMP = _code_stamp()
+
+
+def _tag(text: str | bytes) -> str:
+    raw = text.encode() if isinstance(text, str) else text
+    return f'"{hashlib.blake2b(raw, digest_size=12).hexdigest()}"'
+
+
+def task_panel(request, task_id):
+    """브라우저가 받아 둔 패널의 ETag(If-None-Match)가 지금 것과 같으면 본문 없이 304만 보낸다.
+
+    Postgres: ETag = 데이터 버전(web.data_version) + 보는 사람 + 오늘 날짜 + 10분 칸 + 주소 + 배포본.
+    패널 내용은 DB와 오늘 날짜로만 정해지므로(GitHub 상태도 DB 값) 그리지 않고 비교한다.
+    - 버전은 사용자·세션·태스크를 포함한 어떤 조회보다 먼저 읽는다(그래서 login_required 바깥이다).
+      READ COMMITTED라 뒤 조회가 더 새 데이터를 볼 수는 있어도(다음에 한 번 더 그릴 뿐), 낡은 데이터에 새 버전이 붙지는 않는다.
+    - 10분 칸: 패널을 그릴 때 GitHub 이슈 동기화(10분)·저장소 권한 재확인(6시간)이 함께 돈다.
+      304만 주면 이 기회가 사라지므로 10분마다 한 번은 그린다.
+    그 밖의 DB(로컬·테스트 SQLite): 그린 본문의 해시로 비교한다.
+    """
+    return _task_panel(request, task_id, data_version.current())
 
 
 @login_required
-def task_panel(request, task_id):
-    return _panel(request, task_or_404(request.user, task_id))
+def _task_panel(request, task_id, version):
+    task = task_or_404(request.user, task_id)
+    # 중간 프록시·gzip이 약한 ETag(W/)로 바꿔도 같은 것으로 본다
+    sent = request.headers.get("If-None-Match", "").removeprefix("W/")
+    if version is not None:
+        bucket = int(time.time() // 600)
+        etag = _tag(
+            f"{version}|{request.user.pk}|{today_kst()}|{bucket}|{request.get_full_path()}|{_CODE_STAMP}"
+        )
+        if sent == etag:
+            return HttpResponseNotModified(headers={"ETag": etag})
+        response = _panel(request, task)
+    else:
+        response = _panel(request, task)
+        etag = _tag(_CSRF_VALUE.sub(b"", response.content))
+        if sent == etag:
+            return HttpResponseNotModified(headers={"ETag": etag})
+    response["ETag"] = etag
+    return response
 
 
 @login_required
@@ -317,6 +387,7 @@ def task_meta(request, task_id):
 def task_status(request, task_id):
     task = task_or_404(request.user, task_id)
     origin = request.POST.get("from", "row")
+    before = task.status
     try:
         task = ts.transition(
             task,
@@ -340,7 +411,12 @@ def task_status(request, task_id):
     except ConflictError as e:
         return _respond(request, e.latest, origin, error=CONFLICT_MSG)
     event = "task-changed" if origin == "panel" else "task-updated"
-    return trigger(_respond(request, task, origin), event, task)
+    response = trigger(_respond(request, task, origin), event, task)
+    if origin == "head" and task.status == "done" and before != "done":
+        # '지금 할 한 가지'의 [완료로 표시]는 한 번에 끝난다 — 알림에 [되돌리기]를 붙인다(b-workspace 하-9).
+        detail = {"id": task.pk, "undo_status": before, "version": task.version}
+        response["HX-Trigger"] = json.dumps({event: detail})
+    return response
 
 
 @login_required

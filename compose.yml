@@ -1,3 +1,11 @@
+# 컨테이너 로그 회전 = 개인정보 처리방침의 "서버 접속 로그 90일"을 지키는 근사치.
+# ponytail: json-file은 날짜 회전이 없고 크기·개수로만 돈다. 2m x 3 = 서비스당 최대 약 6MB(gunicorn 접속 줄 약 200B면 약 3만 건).
+#   90일 평균이 하루 330건 이상이면 90일 안에 밀려난다. 그보다 한산하면 90일을 넘겨 남을 수 있다 -> 매월 `docker compose up -d --force-recreate`
+#   (컨테이너를 새로 만들면 이전 로그 파일이 지워진다, docs/OPERATIONS-DEPLOYMENT.md). 많이 몰리면 90일보다 일찍 사라진다(장애 추적은 그 한도).
+x-logging: &logging
+  driver: json-file
+  options: {max-size: "2m", max-file: "3"}
+
 services:
   db:
     image: postgres:16-alpine
@@ -13,6 +21,7 @@ services:
       timeout: 3s
       retries: 20
     restart: unless-stopped     # 없으면 호스트 재부팅 뒤 db만 내려가 web이 migrate에서 크래시 루프한다.
+    logging: *logging
     ports:
       - "127.0.0.1:5432:5432"   # 로컬 개발·테스트용. 서버에서는 이 두 줄을 지운다.
 
@@ -28,6 +37,7 @@ services:
       db:
         condition: service_healthy
     restart: unless-stopped
+    logging: *logging
     ports:
       # 0.0.0.0의 WEB_PORT(.env, 기본 8000). 다른 장비의 리버스 프록시(NginxProxyManager)가 여기로 붙는다.
       # 방화벽에서 프록시 장비 IP만 그 포트를 열어 둔다 — 직접 오는 요청은 평문 HTTP다.
@@ -43,6 +53,21 @@ services:
       retries: 30
       start_period: 30s
 
+  purge:                         # 개인정보 보관 기간 정리: 하루 한 번 purge_expired. web과 같은 이미지(새 이미지·cron 없음)
+    build: ./core
+    env_file: .env
+    environment:
+      DATABASE_URL: postgres://pm:${POSTGRES_PASSWORD:-pm}@db:5432/pm
+    entrypoint: ["sh", "-c"]     # web의 entrypoint.sh(migrate·gunicorn)를 건너뛴다
+    # ponytail: sleep 루프라 실행 시각이 기동 시각 기준으로 밀리고(정시 아님) 실패해도 알림이 없다(다음 날 다시 돈다).
+    #   작업별 결과·실패는 `docker compose logs purge`에 남는다. 정시·알림이 필요하면 호스트 cron이나 전용 스케줄러로.
+    command: ["while true; do python manage.py purge_expired || true; sleep 86400; done"]
+    depends_on:
+      web:
+        condition: service_healthy   # migrate가 끝난 뒤에 돈다
+    restart: unless-stopped
+    logging: *logging
+
   discord:                       # 발송(60초 틱): 마감 DM·주간 보고
     profiles: ["discord"]        # DISCORD_BOT_TOKEN 없이는 기동에 실패한다 → 기본에서 뺀다
     build: ./discord_service
@@ -56,6 +81,7 @@ services:
       web:
         condition: service_healthy
     restart: unless-stopped
+    logging: *logging
 
   discord-bot:                   # 수신(게이트웨이): DM 평문 명령. 같은 이미지, 리스너만 돈다
     profiles: ["discord"]
@@ -75,6 +101,7 @@ services:
     expose:
       - "8081"                    # MCP 내부 채널 관리 브리지. 호스트 포트로 공개하지 않는다.
     restart: unless-stopped
+    logging: *logging
 
   discord-voice:                 # 음성(같은 봇 토큰의 두 번째 게이트웨이 세션): 회의 녹음·전사. docs/IMPL-PLAN-9-parallel.md
     profiles: ["discord"]        # 명령·인터랙션은 discord-bot만 받는다. 이 서비스는 명령을 등록하지 않는다
@@ -110,6 +137,7 @@ services:
       web:
         condition: service_healthy
     restart: unless-stopped
+    logging: *logging
     ports:
       - "${MCP_PORT:-127.0.0.1:8080}:8080"   # 기본은 루프백만. 밖에 공개하려면 .env에서 포트만 쓴다
 
@@ -123,6 +151,7 @@ services:
       - web
       - mcp
     restart: unless-stopped
+    logging: *logging
 
 volumes:
   pgdata:

@@ -25,7 +25,9 @@ def is_admin(user, org) -> bool:
 
 def require_admin(user, org):
     if not is_admin(user, org):
-        raise ServiceError({"org": "조직 관리자만 할 수 있습니다."})
+        raise ServiceError(
+            {"org": "조직 관리자만 할 수 있는 작업입니다. 조직 관리자에게 요청해 주세요."}
+        )
 
 
 # AI용 토큰으로 막힌 사람에게 원인을 알려 준다. 기존 토큰은 전부 AI용으로 옮겨졌다(accounts 0004).
@@ -139,7 +141,7 @@ def set_locks(org, keys: list[str], actor) -> Organization:
 def create_org(name: str, purpose: str, actor) -> Organization:
     name = name.strip()
     if not name:
-        raise ServiceError({"name": "조직 이름을 입력하세요."})
+        raise ServiceError({"name": "조직 이름을 입력해 주세요."})
     org = Organization.objects.create(
         name=name[:100], purpose=purpose.strip()[:200], created_by=actor
     )
@@ -157,7 +159,9 @@ def create_invite(org, actor, days: int | None = None, *, source: str = "web") -
     if days is None:
         days = effective("org.invite_days", org=org)
     if not 1 <= days <= 90:
-        raise ServiceError({"days": "만료일은 1~90일 사이여야 합니다."})
+        raise ServiceError(
+            {"days": "초대 링크의 만료 기간이 범위를 벗어났습니다. 1~90일로 입력해 주세요."}
+        )
     expires_at = timezone.now() + timezone.timedelta(days=days)
     return Invite.objects.create(
         org=org,
@@ -184,9 +188,17 @@ def invite_org(token: str):
 def join_by_token(user, token: str) -> Organization:
     invite = Invite.objects.select_for_update().select_related("org").filter(token=token).first()
     if invite is None or not invite.is_usable:
-        raise ServiceError({"token": "초대 링크가 유효하지 않거나 만료되었습니다."})
+        raise ServiceError(
+            {
+                "token": "초대 링크가 만료되었거나 폐기되었습니다. 조직 관리자에게 새 초대 링크를 요청해 주세요."
+            }
+        )
     if invite.max_uses > 0 and invite.use_count >= invite.max_uses:
-        raise ServiceError({"token": "초대 링크가 유효하지 않거나 만료되었습니다."})
+        raise ServiceError(
+            {
+                "token": "초대 링크가 만료되었거나 폐기되었습니다. 조직 관리자에게 새 초대 링크를 요청해 주세요."
+            }
+        )
     _, created = OrgMembership.objects.get_or_create(
         org=invite.org, user=user, defaults={"role": "member"}
     )
@@ -200,10 +212,16 @@ def join_by_token(user, token: str) -> Organization:
 def change_role(membership, role: str, actor):
     require_admin(actor, membership.org)
     if role not in dict(OrgMembership.ROLES):
-        raise ServiceError({"role": "알 수 없는 역할입니다."})
+        raise ServiceError(
+            {"role": "역할이 올바르지 않습니다. 화면에 표시된 역할 중에서 선택해 주세요."}
+        )
     _lock_org(membership.org)
     if membership.role == "admin" and role != "admin" and _admin_count(membership.org) <= 1:
-        raise ServiceError({"role": "마지막 관리자의 역할은 바꿀 수 없습니다."})
+        raise ServiceError(
+            {
+                "role": "마지막 관리자의 역할은 바꿀 수 없습니다. 다른 멤버를 관리자로 지정한 뒤 변경해 주세요."
+            }
+        )
     membership.role = role
     membership.save(update_fields=["role"])
 
@@ -233,7 +251,11 @@ def remove_member(membership, actor):
     require_admin(actor, membership.org)
     _lock_org(membership.org)
     if membership.role == "admin" and _admin_count(membership.org) <= 1:
-        raise ServiceError({"member": "마지막 관리자는 제거할 수 없습니다."})
+        raise ServiceError(
+            {
+                "member": "마지막 관리자는 제거할 수 없습니다. 다른 멤버를 관리자로 지정한 뒤 제거해 주세요."
+            }
+        )
     TeamMembership.objects.filter(team__org=membership.org, user=membership.user).delete()
     membership.delete()
 
@@ -254,13 +276,13 @@ def _lock_org(org):
 def _validate_team_name(org, name: str, exclude_pk=None) -> str:
     name = (name or "").strip()
     if not name:
-        raise ServiceError({"name": "팀 이름을 입력하세요."})
+        raise ServiceError({"name": "팀 이름을 입력해 주세요."})
     name = name[:100]
     qs = Team.objects.filter(org=org, name=name)
     if exclude_pk is not None:
         qs = qs.exclude(pk=exclude_pk)
     if qs.exists():
-        raise ServiceError({"name": "같은 이름의 팀이 이미 있습니다."})
+        raise ServiceError({"name": "같은 이름의 팀이 있습니다. 다른 이름을 입력해 주세요."})
     return name
 
 
@@ -361,9 +383,15 @@ def add_team_member(team, user, actor, source: str = "") -> TeamMembership:
     if not self_join:
         require_admin(actor, team.org)
     if not is_member(user, team.org):
-        raise ServiceError({"user": "먼저 조직에 초대해야 합니다."})
+        raise ServiceError(
+            {"user": "조직에 속하지 않은 사람은 팀에 넣을 수 없습니다. 먼저 조직에 초대해 주세요."}
+        )
     if not user.is_active:
-        raise ServiceError({"user": "비활성 사용자는 팀에 넣을 수 없습니다."})
+        raise ServiceError(
+            {
+                "user": "정지된 사용자는 팀에 넣을 수 없습니다. 서비스 운영자에게 계정 상태를 문의해 주세요."
+            }
+        )
     membership, _ = TeamMembership.objects.get_or_create(team=team, user=user)
     return membership
 
@@ -380,7 +408,11 @@ def set_team_lead(team, user, is_lead: bool, actor) -> TeamMembership:
     require_admin(actor, team.org)
     membership = TeamMembership.objects.filter(team=team, user=user).first()
     if membership is None:
-        raise ServiceError({"user": "팀원만 팀장으로 정할 수 있습니다."})
+        raise ServiceError(
+            {
+                "user": "팀에 속하지 않은 사람은 팀장으로 지정할 수 없습니다. 팀에 먼저 추가해 주세요."
+            }
+        )
     membership.is_lead = is_lead
     membership.save(update_fields=["is_lead"])
     return membership
@@ -415,7 +447,7 @@ def set_governance(org, text: str, actor) -> Organization:
     require_admin(actor, org)
     text = (text or "").strip()
     if len(text) > 20000:
-        raise ServiceError({"governance": "2만 자를 넘을 수 없습니다."})
+        raise ServiceError({"governance": "업무 규칙이 너무 깁니다. 2만 자 이내로 줄여 주세요."})
     org.governance = text
     org.save(update_fields=["governance"])
     return org

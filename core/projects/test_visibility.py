@@ -123,7 +123,7 @@ def test_assignee_must_see_project(secret, member, other):
             source="web",
             due_date=today_kst(),
         )
-    assert "볼 수 없는" in e.value.errors["assignee"]
+    assert "볼 권한이 없습니다" in e.value.errors["assignee"]
 
 
 def test_visible_tasks_notes_requests(org, admin, other, member, secret, secret_task):
@@ -164,7 +164,7 @@ def test_web_paths_hide_private_project(client, org, other, project, secret, sec
 def test_web_member_sees_private_project_with_badge(client, member, secret, secret_task):
     c = _login(client, "member1")
     r = c.get(f"/projects/{secret.pk}")
-    assert r.status_code == 200 and "🔒" in r.content.decode()
+    assert r.status_code == 200 and "비공개" in r.content.decode()
     assert "극비태스크" in c.get("/search?q=극비").content.decode()
 
 
@@ -424,7 +424,7 @@ def test_reviewer_must_see_private_project(admin, other, secret_task):
             source="web",
             expected_version=secret_task.version,
         )
-    assert "볼 수 없는" in e.value.errors["reviewer"]
+    assert "볼 권한이 없습니다" in e.value.errors["reviewer"]
 
 
 def test_move_rejected_when_reviewer_cant_see(admin, member, other, project, secret):

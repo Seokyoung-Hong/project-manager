@@ -46,20 +46,34 @@ class LoginForm(forms.Form):
 
 
 class SignupForm(UserCreationForm):
+    # 가입 시각(date_joined)이 곧 확인 시각이다. 이 확인 없이는 계정이 만들어지지 않는다.
+    age_ok = forms.BooleanField(
+        label="만 14세 이상입니다",
+        error_messages={"required": "만 14세 미만은 가입할 수 없습니다."},
+    )
+
     class Meta:
         model = User
         fields = ("username", "display_name")
         labels = {"username": "아이디", "display_name": "표시 이름"}
-        help_texts = {"username": "영문·숫자와 @ . + - _ 만, 150자 이하"}
+        help_texts = {
+            "username": "영문·숫자와 @ . + - _ 만, 150자 이하",
+            "display_name": "팀원에게 표시되며 알림에 쓰이는 이름입니다.",
+        }
 
 
 class OrgForm(forms.Form):
     name = forms.CharField(label="조직 이름", max_length=100)
-    purpose = forms.CharField(label="목적 한 줄", max_length=200, required=False)
+    purpose = forms.CharField(
+        label="목적 한 줄",
+        max_length=200,
+        required=False,
+        help_text="조직 목록과 개요에 표시되는 소개입니다. 입력하지 않아도 됩니다.",
+    )
 
 
 class InviteForm(forms.Form):
-    days = forms.IntegerField(label="만료(일)", min_value=1, max_value=90, initial=7)
+    days = forms.IntegerField(label="링크 유효 기간(일)", min_value=1, max_value=90, initial=7)
     gh_invite = forms.BooleanField(label="GitHub 조직에도 초대", required=False)
     gh_login = forms.CharField(label="GitHub 로그인", max_length=100, required=False)
 

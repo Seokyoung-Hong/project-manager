@@ -252,7 +252,7 @@ def org_tasks(
     """
     org = org_or_404(request, org_id)
     if project is not None and not visible_projects(request.auth, org).filter(pk=project).exists():
-        raise HttpError(404, "이 조직의 프로젝트가 아닙니다.")
+        raise HttpError(404, "다른 조직의 프로젝트입니다. 현재 조직의 프로젝트를 선택해 주세요.")
     return list_tasks(
         request,
         org=org.pk,

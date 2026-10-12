@@ -3,12 +3,14 @@
 <div class="card">
   <div class="card-head">
     <div><h1 class="t24">{{ view.title }}</h1><div class="muted t13">{{ view.hint }}</div></div>
-    <select name="member" form="me-filter" class="select auto" aria-label="담당자" onchange="this.form.requestSubmit()">
+    <label class="field me-member">누구의 태스크
+    <select name="member" form="me-filter" class="select auto" onchange="this.form.requestSubmit()">
       <option value="0"{% if member_id == 0 %} selected{% endif %}>조직 전체</option>
       {% for m in members %}<option value="{{ m.pk }}"{% if m.pk == member_id %} selected{% endif %}>{% if m.pk == user.pk %}나{% else %}{{ m.display_name }}{% endif %}</option>{% endfor %}
-    </select>
+    </select></label>
   </div>
-  <form id="me-filter" method="get" class="me-filter">
+  {# 맡은 태스크가 하나도 없으면 필터 줄 대신 빈 상태를 그린다(b-workspace 상-2) #}
+  <form id="me-filter" method="get" class="me-filter"{% if view.total == 0 and not view.completion and not has_filter %} hidden{% endif %}>
     <input type="hidden" name="group" value="{{ group }}">
     <input type="hidden" name="sort" value="{{ sort }}">
     <div class="me-primary-controls">
@@ -21,10 +23,10 @@
         {% for code, label in sort_options %}<button class="btn sm" name="sort" value="{{ code }}" aria-pressed="{% if code == sort %}true{% else %}false{% endif %}">{{ label }}</button>{% endfor %}
       </span>
     </div>
-    <details class="me-filter-details" open data-filter-active="{% if has_filter %}1{% else %}0{% endif %}">
+    <details class="me-filter-details">
       <summary class="btn sm">
         <span>필터</span>
-        <span class="filter-summary">{% if has_filter %}조건 적용됨{% else %}기한 · 프로젝트 · 상태 · 중요도{% endif %}</span>
+        {% for a in active_filters %}<span class="chip filter-chip">{{ a }}</span>{% empty %}<span class="filter-summary">기한 · 프로젝트 · 상태 · 중요도</span>{% endfor %}
         <span class="filter-chevron" aria-hidden="true">⌄</span>
       </summary>
       <div class="filter-body">
@@ -32,16 +34,20 @@
         <select name="project" class="select auto" aria-label="프로젝트" onchange="this.form.requestSubmit()"><option value="">모든 프로젝트</option>{% for p in projects %}<option value="{{ p.pk }}"{% if p.pk|stringformat:"s" == f.project %} selected{% endif %}>{{ p.name }}</option>{% endfor %}</select>
         <select name="status" class="select auto" aria-label="상태" onchange="this.form.requestSubmit()">{% for code, label in status_options %}<option value="{{ code }}"{% if code == f.status %} selected{% endif %}>{{ label }}</option>{% endfor %}</select>
         <select name="priority" class="select auto" aria-label="중요도" onchange="this.form.requestSubmit()">{% for code, label in priority_options %}<option value="{{ code }}"{% if code == f.priority %} selected{% endif %}>{{ label }}</option>{% endfor %}</select>
-        {% if has_filter %}<a class="btn sm" href="{% url 'me' %}?member={{ member_id }}&group={{ group }}&sort={{ sort }}">추가 필터 지우기</a>{% endif %}
+        {% if has_filter %}<a class="btn sm" href="{% url 'me' %}?member={{ member_id }}&group={{ group }}&sort={{ sort }}">필터 초기화</a>{% endif %}
       </div>
     </details>
   </form>
 </div>
 <div class="card group-stack">
+{% if view.total == 0 and not view.completion and not has_filter %}
+  {% url 'today_quick' as quick_url %}
+  {% if member_id == user.pk %}{% include "_empty.html" with what="담당 중인 미완료 태스크가 없습니다." why="새 태스크를 만들면 기한별로 확인할 수 있습니다." hx_get=quick_url label="태스크 만들기" %}{% else %}{% include "_empty.html" with what="미완료 태스크가 없습니다." %}{% endif %}
+{% else %}
 {% for g in groups %}
 <section class="group">
   <h2>{{ g.title }} <span class="muted">{{ g.count }}</span></h2>
-  {% if g.count == 0 %}<p class="muted">{{ g.empty_text }}</p>
+  {% if g.count == 0 %}{% if has_filter %}<p class="muted">조건에 맞는 태스크가 없습니다. <a href="{% url 'me' %}?member={{ member_id }}&group={{ group }}&sort={{ sort }}">필터 초기화</a></p>{% else %}<p class="muted">{{ g.empty_text }}</p>{% endif %}
   {% elif g.flat %}<ul class="tasks">{% for r in g.rows %}{% task_row r %}{% endfor %}</ul>
   {% else %}
     {% for p in g.projects %}
@@ -57,5 +63,6 @@
   {% endif %}
 </section>
 {% endfor %}
+{% endif %}
 </div>
 {% endblock %}

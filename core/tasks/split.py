@@ -9,10 +9,12 @@ from .services import ONE_LEVEL, _log, _require_task, duplicate_task
 
 MIN_PEOPLE, MAX_PEOPLE = 2, 10
 ONE_ASSIGNEE = (
-    "담당자는 한 명입니다. 사람별로 나누려면 만든 뒤 POST /api/tasks/{id}/split 으로 "
-    "하위 태스크를 만드세요."
+    "담당자는 한 명입니다. 담당자별로 나누려면 만든 뒤 POST /api/tasks/{id}/split 으로 "
+    "하위 태스크를 만들어 주세요."
 )
-SPLIT_NOTE = "담당자는 한 명입니다. 사람별로 나누려면 웹에서 [사람별로 나누기]를 누르세요."
+SPLIT_NOTE = (
+    "담당자는 한 명입니다. 담당자별로 나누려면 웹에서 [담당자별 태스크로 나누기]를 눌러 주세요."
+)
 
 
 def looks_multi_assignee(title, description, org) -> list:
@@ -54,18 +56,30 @@ def split_by_assignees(
     _require_task(actor, task)
     users = list(dict.fromkeys(users))
     if task.is_template:
-        raise ServiceError({"task": "템플릿은 나눌 수 없습니다. 회차를 만든 뒤 나누세요."})
+        raise ServiceError({"task": "템플릿은 나눌 수 없습니다. 회차를 만든 뒤 나눠 주세요."})
     if task.group_id:
         raise ServiceError({"task": ONE_LEVEL})
     if task.is_closed:
-        raise ServiceError({"task": "완료·취소된 태스크는 나눌 수 없습니다."})
+        raise ServiceError(
+            {"task": "완료·취소된 태스크는 나눌 수 없습니다. 태스크를 다시 연 뒤 나눠 주세요."}
+        )
     if not MIN_PEOPLE <= len(users) <= MAX_PEOPLE:
-        raise ServiceError({"assignee_ids": f"{MIN_PEOPLE}명 이상 {MAX_PEOPLE}명 이하로 고르세요."})
+        raise ServiceError(
+            {"assignee_ids": f"{MIN_PEOPLE}명 이상 {MAX_PEOPLE}명 이하로 골라 주세요."}
+        )
     members = set(task.project.org.members.filter(is_active=True).values_list("pk", flat=True))
     if any(u.pk not in members for u in users):
-        raise ServiceError({"assignee_ids": "조직 멤버가 아닌 사람이 있습니다."})
+        raise ServiceError(
+            {
+                "assignee_ids": "조직에 속하지 않은 사람이 포함되어 있습니다. 현재 조직의 멤버만 선택해 주세요."
+            }
+        )
     if "{name}" not in title_pattern:
-        raise ServiceError({"title_pattern": "제목 규칙에 {name}이 있어야 합니다."})
+        raise ServiceError(
+            {
+                "title_pattern": "담당자 이름이 들어갈 자리가 없습니다. 제목 규칙에 {name}을 넣어 주세요."
+            }
+        )
     roles = roles or {}
     out = []
     for u in users:
@@ -75,7 +89,9 @@ def split_by_assignees(
             title = title_pattern.format(title=task.title, name=label)
         except (KeyError, IndexError, ValueError) as e:
             raise ServiceError(
-                {"title_pattern": "제목 규칙은 {title}과 {name}만 쓸 수 있습니다."}
+                {
+                    "title_pattern": "지원하지 않는 제목 규칙입니다. {title}과 {name}만 사용해 주세요."
+                }
             ) from e
         out.append(
             duplicate_task(

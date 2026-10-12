@@ -1,7 +1,7 @@
 {% extends "base.html" %}{% block title %}{% if project %}{{ project.name }}{% else %}{{ org.name }}{% endif %} · 문서{% endblock %}
 {% block main %}
 {% if project %}{% include "projects/_tabs.html" %}{% else %}{% include "orgs/_tabs.html" %}{% endif %}
-<div class="notes-columns{% if doc %} note-editor-open{% endif %}">
+<div class="notes-columns docs-columns{% if editor_open %} note-editor-open{% endif %}">
   <section class="card list note-list" id="doc-list">
     <div class="card-head">
       <h2>문서 <span class="muted">{{ docs|length }}</span></h2>
@@ -25,7 +25,7 @@
     </form>
     <div class="row">
       <button type="button" class="btn sm" onclick="document.getElementById('doc-import-dlg').showModal()">Markdown 올리기</button>
-      <a class="btn sm" href="{% url 'org_doc_export' org.pk %}{% if doc %}?root={{ doc.pk }}{% endif %}">{% if doc %}이 문서와 하위 ZIP{% else %}전체 ZIP 내보내기{% endif %}</a>
+      <a class="btn sm" href="{% url 'org_doc_export' org.pk %}{% if doc %}?root={{ doc.pk }}{% endif %}">{% if doc %}이 문서와 하위 문서 ZIP으로 내보내기{% else %}전체 ZIP 내보내기{% endif %}</a>
     </div>
 
     {% if hits is not None %}
@@ -36,12 +36,12 @@
         <b>{{ d.title }}</b>
         <span class="muted t13">{% if d.project %}{{ d.project.name }}{% elif d.team %}{{ d.team.name }}{% else %}조직 전체{% endif %} · v{{ d.version }} · {{ d.updated_at|date:"n/j" }}</span>
       </a>
-      {% empty %}<p class="empty compact">찾는 문서가 없습니다. 다른 낱말로 찾아보세요.</p>{% endfor %}
+      {% empty %}<p class="empty compact">찾는 문서가 없습니다. 다른 낱말로 찾아 주세요.</p>{% endfor %}
     </div>
     {% elif tree %}
     {% include "docs/_tree.html" with nodes=tree %}
     {% else %}
-    <p class="empty">아직 문서가 없습니다. 기획 배경·설계 결정·운영 절차처럼 태스크 하나에 담기 어려운 글을 남기세요.</p>
+    {% include "_empty.html" with what="아직 문서가 없습니다." why="기획 배경·설계 결정·운영 절차처럼 태스크 하나에 담기 어려운 글을 남기면 팀이 같은 내용을 다시 묻지 않습니다. 위의 [새 문서]로 시작해 주세요." %}
     {% endif %}
   </section>
 
@@ -54,26 +54,14 @@
       <span id="note-status" class="note-save-status" data-state="saved" aria-live="polite">저장됨 · v{{ doc.version }} · {{ doc.updated_at|date:"n/j H:i" }}</span>
     </div>
     <input class="title-input" data-note-field="title" value="{{ doc.title }}" aria-label="제목">
-    <div class="row t13 muted">
+    <div class="row t13 muted doc-meta">
       <span class="badge">{% if doc.project %}프로젝트 · {{ doc.project.name }}{% elif doc.team %}팀 · {{ doc.team.name }}{% else %}조직 전체{% endif %}</span>
       <span>만든 사람 {{ doc.created_by.display_name }}</span>
       {% if doc.updated_by %}<span>마지막 수정 {{ doc.updated_by.display_name }}{% if doc.updated_source != "web" %} <span class="badge">{{ doc.get_updated_source_display }}</span>{% endif %}</span>{% endif %}
     </div>
-    <div id="note-conflict" class="notice bad" hidden>⚠ 다른 사람이 먼저 수정해 저장하지 못했습니다. 작성 중인 내용을 복사한 뒤 새로고침하고, 아래 이전 버전에서 변경 내용을 확인하세요.</div>
+    <div id="note-conflict" class="notice bad" hidden>⚠ 다른 사람이 먼저 수정해 저장하지 못했습니다. 작성 중인 내용을 복사한 뒤 새로고침하고, 아래 이전 버전에서 변경 내용을 확인해 주세요.</div>
 
-    <form id="doc-form" method="post" action="{% url 'doc_save' doc.pk %}">{% csrf_token %}
-      <input type="hidden" name="field" value="body_md">
-      <input type="hidden" name="version" value="{{ doc.version }}">
-      <div class="doc-edit-toolbar">
-        <button type="button" class="btn sm doc-edit-start" aria-controls="doc-body">본문 편집</button>
-        <span class="muted t13">본문을 누르면 바로 씁니다. 입력을 멈추면 0.8초 뒤 저장됩니다. <code>/</code>로 블록 메뉴를 엽니다.</span>
-      </div>
-      <div id="doc" class="doc" data-url="{% url 'doc_save' doc.pk %}" data-version="{{ doc.version }}">
-        <div id="doc-body"></div>
-        <textarea id="doc-src" name="value" class="textarea" rows="16">{{ doc.body_md }}</textarea>
-      </div>
-      <button id="doc-submit" class="btn sm primary">문서 저장</button>
-    </form>
+    {% url 'doc_save' doc.pk as save_url %}{% include "docs/_editor.html" with version=doc.version body=doc.body_md %}
 
     {% include "docs/_extras.html" %}
 
@@ -104,12 +92,12 @@
     <div class="row t13 muted divider-top">
       <a class="btn sm" href="{% url 'doc_export_md' doc.pk %}">.md로 내려받기</a>
       <span class="grow"></span>
-      {% if can_delete %}<form method="post" action="{% url 'doc_delete' doc.pk %}" onsubmit="return confirm('이 문서를 삭제할까요?{% if doc.children.exists %} 하위 문서 {{ doc.children.count }}개가 함께 삭제됩니다.{% endif %} 되돌릴 수 없습니다.')">{% csrf_token %}<button class="btn sm danger">문서 삭제</button></form>{% endif %}
+      {% if can_delete %}<form method="post" action="{% url 'doc_delete' doc.pk %}" data-confirm="이 문서를 삭제합니다.{% if doc.children.exists %} 하위 문서 {{ doc.children.count }}개가 함께 삭제됩니다.{% endif %} 되돌릴 수 없습니다." data-confirm-ok="문서 삭제">{% csrf_token %}<button class="btn sm danger">문서 삭제</button></form>{% endif %}
     </div>
   </section>
   {% else %}
   <section class="card note-editor-card">
-    <p class="muted">목록에서 문서를 고르거나 새로 만드세요.</p>
+    <p class="muted">목록에서 문서를 고르거나 새로 만들어 주세요.</p>
     <p class="muted t13">템플릿(설계 문서)으로 시작하거나, Notion에서 내보낸 Markdown을 한 번에 올릴 수 있습니다.</p>
   </section>
   {% endif %}
@@ -151,7 +139,7 @@
         {% for t in templates %}<option value="{{ t.pk }}">{{ t.title }}</option>{% endfor %}
       </select>
     </label>
-    <div class="row"><button class="btn primary">만들기</button><button type="button" class="btn" onclick="this.closest('dialog').close()">취소</button></div>
+    <div class="row"><button class="btn primary">문서 만들기</button><button type="button" class="btn" onclick="this.closest('dialog').close()">닫기</button></div>
   </form>
 </dialog>
 
@@ -180,7 +168,7 @@
       </select>
     </label>
     {% endif %}
-    <div class="row"><button class="btn primary">가져오기</button><button type="button" class="btn" onclick="this.closest('dialog').close()">취소</button></div>
+    <div class="row"><button class="btn primary">문서 가져오기</button><button type="button" class="btn" onclick="this.closest('dialog').close()">닫기</button></div>
   </form>
 </dialog>
 {% endblock %}

@@ -1,0 +1,28 @@
+{
+  "name": "udally-tiptap-bundle",
+  "private": true,
+  "description": "Tiptap 시험 편집기 번들. 결과물은 core/web/static/vendor/tiptap.bundle.js",
+  "type": "module",
+  "scripts": {
+    "build": "node build.mjs"
+  },
+  "dependencies": {
+    "@tiptap/core": "3.31.4",
+    "@tiptap/extension-code-block": "3.31.4",
+    "@tiptap/extension-drag-handle": "3.31.4",
+    "@tiptap/extension-image": "3.31.4",
+    "@tiptap/extension-link": "3.31.4",
+    "@tiptap/extension-list": "3.31.4",
+    "@tiptap/extension-node-range": "3.31.4",
+    "@tiptap/extension-table": "3.31.4",
+    "@tiptap/extensions": "3.31.4",
+    "@tiptap/markdown": "3.31.4",
+    "@tiptap/pm": "3.31.4",
+    "@tiptap/starter-kit": "3.31.4",
+    "marked": "17.0.6"
+  },
+  "devDependencies": {
+    "esbuild": "0.25.10",
+    "happy-dom": "20.14.5"
+  }
+}

@@ -6,8 +6,7 @@
   <meta name="description" content="유달리 — 할 일을 정리해 팀이 자랄 여유를 만드는 업무 관리 서비스입니다. 일은 차근차근, 우리는 무럭무럭.">
   <title>{% block title %}유달리{% endblock %}</title>
   <link rel="icon" type="image/svg+xml" href="{% static 'brand/udally-icon.svg' %}">
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jua&display=swap">
+  <link rel="stylesheet" href="{% static 'fonts.css' %}">
   {% if webmcp_origin_trial %}<meta http-equiv="origin-trial" content="{{ webmcp_origin_trial }}">{% endif %}
   <link rel="stylesheet" href="{% static 'app.css' %}">
   <script src="{% static 'vendor/htmx.min.js' %}"></script>
@@ -51,7 +50,8 @@
   {% if nav == "today" %}
   <button type="button" class="btn sm tint" data-action="toggle" data-target="#quick" data-alt="닫기">빠른 추가</button>
   {% else %}
-  <a class="btn sm tint" href="{% url 'today' %}?quick=1">빠른 추가</a>
+  {# 보던 화면을 떠나지 않게 대화상자로 연다. 프로젝트 화면이면 그 프로젝트가 기본값이다(b-workspace 상-1). #}
+  <button type="button" class="btn sm tint" hx-get="{% url 'today_quick' %}{% if nav == 'project' and project.pk %}?project={{ project.pk }}{% endif %}" hx-target="#dialog" hx-swap="innerHTML">빠른 추가</button>
   {% endif %}
   {% endblock %}
   <details class="menu">
@@ -86,12 +86,12 @@
       {% for p in nav_projects %}
       <a href="{% url 'project_detail' p.pk %}"{% if p.pk == current_project_id %} aria-current="page"{% endif %}>
         <span class="initial">{{ p.name|initial }}</span>
-        <span class="label">{% if p.visibility == "teams" %}🔒 {% endif %}{{ p.name }}</span>
+        <span class="label">{% if p.visibility == "teams" %}비공개 · {% endif %}{{ p.name }}</span>
         <span class="count t12 muted">미완료 {{ p.open_count }}</span>
       </a>
       {% empty %}<span class="muted t13 project-picker-empty">프로젝트가 없습니다.</span>{% endfor %}
-      <button type="button" class="btn link project-picker-new"
-              hx-get="{% url 'project_new' %}?org={{ current_org.pk }}" hx-target="#dialog" hx-swap="innerHTML">＋ 새 프로젝트</button>
+      {% if nav_projects %}{# 프로젝트가 없으면 본문 빈 상태의 버튼 하나만 둔다 #}<button type="button" class="btn link project-picker-new"
+              hx-get="{% url 'project_new' %}?org={{ current_org.pk }}" hx-target="#dialog" hx-swap="innerHTML">＋ 새 프로젝트</button>{% endif %}
     </div>
   </details>
   <nav class="rail" aria-label="프로젝트" data-rail>
@@ -106,19 +106,21 @@
       <a href="{% url 'project_detail' p.pk %}" title="{{ p.name }}"
          {% if p.pk == current_project_id %}aria-current="page"{% endif %}>
         <span class="initial">{{ p.name|initial }}</span>
-        <span class="label">{% if p.visibility == "teams" %}🔒 {% endif %}{{ p.name }}</span>
+        <span class="label">{% if p.visibility == "teams" %}비공개 · {% endif %}{{ p.name }}</span>
         <span class="count t12 muted">{{ p.open_count }}</span>
       </a>
       {% empty %}<span class="muted t13 rail-only rail-empty">프로젝트 없음</span>{% endfor %}
     </div>
-    <button type="button" class="btn link rail-only rail-new"
-            hx-get="{% url 'project_new' %}?org={{ current_org.pk }}" hx-target="#dialog" hx-swap="innerHTML">＋ 새 프로젝트</button>
+    {% if nav_projects %}<button type="button" class="btn link rail-only rail-new"
+            hx-get="{% url 'project_new' %}?org={{ current_org.pk }}" hx-target="#dialog" hx-swap="innerHTML">＋ 새 프로젝트</button>{% endif %}
   </nav>
   {% endif %}
+  {# 바닥글은 레일을 뺀 본문 열 안에 둔다 — 좌우 끝선이 본문과 같다 #}
+  <div class="frame-main">
   <div class="layout{% block layout_class %}{% endblock %}">
     <main id="main-content" tabindex="-1">
-      {% for m in messages %}<div class="notice{% if m.tags == 'error' %} bad{% endif %}" role="status">
-        {% if m.tags == 'error' %}<span aria-hidden="true">⚠</span>{% endif %}
+      {% for m in messages %}<div class="notice{% if m.level_tag == 'error' %} bad{% elif m.level_tag == 'warning' %} warn{% endif %}" role="{% if m.level_tag == 'error' %}alert{% else %}status{% endif %}">
+        {% if m.level_tag == 'error' or m.level_tag == 'warning' %}<span aria-hidden="true">⚠</span>{% endif %}
         <span class="grow">{{ m }}</span>
         {% if 'integration-help' in m.tags %}<a href="{% url 'integration_help' %}" class="btn sm">해결 절차·질문 복사</a>{% endif %}
         <button type="button" class="btn link" data-action="dismiss" aria-label="닫기">✕</button>
@@ -127,13 +129,27 @@
     </main>
     <aside id="panel">{% block panel %}{% endblock %}</aside>
   </div>
+  {% include "_site_footer.html" %}
+  </div>
 </div>
 {% else %}
-<main id="main-content" class="layout auth-main" tabindex="-1"><div class="card auth-card">{% block auth %}{% endblock %}</div></main>
+<main id="main-content" class="layout auth-main" tabindex="-1"><div class="card {% block auth_card %}auth-card{% endblock %}">{% block auth %}{% endblock %}</div></main>
+{% include "_site_footer.html" %}
 {% endif %}
 <dialog id="dialog"></dialog>
+{# 공용 확인 창: data-confirm="결과 문장" data-confirm-ok="버튼 문구"를 단 폼·버튼을 app.js가 여기로 묻는다(DESIGN.md 3절) #}
+<dialog id="confirm" aria-labelledby="confirm-text">
+  <form method="dialog">
+    <p id="confirm-text"></p>
+    <div class="row">
+      <button class="btn" value="cancel" autofocus>그대로 두기</button>
+      <button class="btn danger" value="ok">계속하기</button>
+    </div>
+  </form>
+</dialog>
 <script src="{% static 'app.js' %}"></script>
-<script src="{% static 'notes.js' %}"></script>
+<script type="module" src="{% static 'md-field.js' %}"></script>
+<script type="module" src="{% static 'doc-tiptap.js' %}"></script>
 {% if user.is_authenticated %}{# WebMCP: 브라우저 안의 AI 에이전트에게 태스크 도구를 넘긴다 #}
 <script src="{% static 'webmcp.js' %}"></script>{% endif %}
 </body>

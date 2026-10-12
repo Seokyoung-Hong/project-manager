@@ -5,6 +5,7 @@ from django.utils import timezone
 
 from accounts.models import User
 from accounts.services import (
+    give_consent,
     issue_link_code,
     link_discord,
     set_user_settings,
@@ -14,6 +15,13 @@ from accounts.services import (
 from common.errors import ServiceError
 
 pytestmark = pytest.mark.django_db
+
+
+@pytest.fixture
+def admin(admin):
+    """연결 코드는 Discord 국외 이전에 동의한 사람만 받는다(test_consents.py)."""
+    give_consent(admin, "discord")
+    return admin
 
 
 def test_display_name_truncated_from_long_username():

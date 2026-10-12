@@ -20,11 +20,13 @@
 import math
 from datetime import timedelta
 
+from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout
 from django.db import transaction
 from django.utils import timezone
 
 from .models import LoginLock
+from .services import consent_deadline, missing_consents
 
 LOCK_POLICY = {  # kind: (실패 횟수, 창(분), 잠금(분))
     "user": (
@@ -104,6 +106,18 @@ def login_user(request, user, method: str) -> None:
     """
     login(request, user, backend="django.contrib.auth.backends.ModelBackend")
     request.session["auth_method"] = method
+    # 동의 화면 전에 연결한 사람. 유예 중에는 알리기만 하고, 유예가 끝나면 그 연결은 멈춘다.
+    if missing_consents(user):
+        text = "연결된 외부 서비스의 국외 이전 동의가 필요합니다."
+        deadline = consent_deadline()
+        if deadline:
+            left = (deadline - timezone.localdate()).days
+            text += (
+                f" 동의하지 않은 연결은 {deadline:%Y-%m-%d}부터 멈춥니다(남은 기간 {left}일)."
+                if left > 0
+                else " 동의하지 않은 연결은 멈춰 있습니다."
+            )
+        messages.info(request, text + " 설정 → 개인정보 동의에서 확인해 주세요.")
 
 
 def logout_user(request) -> None:

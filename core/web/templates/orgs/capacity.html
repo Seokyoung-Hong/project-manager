@@ -1,11 +1,11 @@
-{% extends "base.html" %}{% block title %}부하 현황{% endblock %}
+{% extends "base.html" %}{% block title %}사람별 할 일 양{% endblock %}
 {% block main %}
 {% include "orgs/_tabs.html" %}
 <div class="card org-summary-card">
   <div class="card-head">
-    <h2>부하 현황</h2>
+    <h2>사람별 할 일 양</h2>
     <form method="get" class="row">
-      <select class="select" name="team" onchange="this.form.requestSubmit()">
+      <select class="select" name="team" aria-label="팀" onchange="this.form.requestSubmit()">
         <option value="">전체 팀</option>
         {% for t in teams %}<option value="{{ t.pk }}"{% if team_id == t.pk|stringformat:"s" %} selected{% endif %}>{{ t.name }}</option>{% endfor %}
       </select>
@@ -54,7 +54,7 @@
     {% endfor %}
   </div>
   {% if not picked %}
-  <p class="muted">태그를 골라 담당 후보를 확인하세요.</p>
+  <p class="muted">태그를 골라 담당 후보를 확인해 주세요.</p>
   {% elif candidates %}
   <p>{{ picked|join:" · " }} → {% for c in candidates %}{{ c.user.display_name }}{% if not forloop.last %}, {% endif %}{% endfor %} ({{ candidates|length }}명)</p>
   {% else %}

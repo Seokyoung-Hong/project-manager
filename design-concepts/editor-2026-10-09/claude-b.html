@@ -1,0 +1,521 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>편집기 시안 B · 읽다가 그 자리에서</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jua&display=swap">
+<link rel="stylesheet" href="../../core/web/static/app.css">
+<style>
+/* 시안 전용. 값은 app.css 토큰만 쓴다. */
+:root { --header-h: 0px; } /* 시안에는 머리줄이 없다 */
+.cx { padding: var(--sp-8); display: flex; flex-direction: column; gap: var(--sp-6); }
+.cx-grid { display: grid; grid-template-columns: minmax(420px, 600px) minmax(0, 1fr); gap: var(--sp-6); align-items: start; }
+.cx-col { display: flex; flex-direction: column; gap: var(--sp-6); min-width: 0; }
+.cx-tag { font-size: var(--fs-xs); color: var(--c-muted); font-weight: 600; }
+.why { font-size: var(--fs-xs); line-height: 18px; color: var(--c-muted); border-left: 2px dashed var(--c-line); padding-left: var(--sp-2); }
+.why b { color: var(--c-ink); }
+
+.ed-field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.ed-label { display: flex; align-items: center; gap: var(--sp-2); min-height: 28px; font-size: var(--fs-sm); font-weight: 600; color: var(--c-muted); }
+.ed-status { margin-left: auto; font-size: var(--fs-xs); font-weight: 400; }
+.ed-label .btn.link { font-size: var(--fs-sm); }
+.ed-status + .btn.link { margin-left: var(--sp-2); }
+
+/* 읽기 상태: 테두리 없이 글만. 마우스를 올리면 고칠 수 있다는 면이 깔린다 */
+.ed { position: relative; border-radius: var(--r-md); }
+.ed-body { padding: var(--sp-2) var(--sp-3); margin: 0 calc(var(--sp-3) * -1); border-radius: var(--r-md); transition: background var(--dur-fast) var(--ease); }
+.ed-body.md .ProseMirror { font-size: var(--fs-md); line-height: 1.65; }
+.ed-body.md .ProseMirror > * + * { margin-top: var(--sp-2); }
+.ed[data-mode="rw"]:not(.editing) .ed-body { cursor: text; }
+.ed[data-mode="rw"]:not(.editing) .ed-body:hover { background: var(--c-soft); }
+.ed-empty { color: var(--c-muted); font-size: var(--fs-md); }
+/* 쓰기 상태: 왼쪽 강조 띠 + 바탕 면, 아래 꼬리 줄 */
+.ed.editing .ed-body { background: var(--c-surface); box-shadow: inset 3px 0 0 var(--c-accent), 0 0 0 1px var(--c-line); }
+.ed.editing .ed-body.md .ProseMirror { min-height: calc(1.65em * var(--rows, 3)); }
+.ed-foot { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2); margin-top: var(--sp-2); }
+.ed:not(.editing) .ed-foot, .ed:not(.editing) .ed-bar { display: none; }
+.ed-foot .btn { height: 30px; padding: 0 12px; font-size: var(--fs-xs); }
+.ed-foot .spacer { flex: 1; }
+.ed-keys { display: grid; grid-template-columns: auto 1fr; gap: 2px var(--sp-3); margin: var(--sp-2) 0 0; padding: var(--sp-3); font-size: var(--fs-xs);
+  background: var(--c-soft); border-radius: var(--r-sm); }
+.ed-keys dt { font-family: var(--f-mono); color: var(--c-ink); }
+.ed-keys dd { margin: 0; color: var(--c-muted); }
+/* 문서·회의록만: 기존 전체 막대 */
+.ed-bar { display: flex; flex-wrap: wrap; gap: var(--sp-1); padding: var(--sp-2) 0; margin-bottom: var(--sp-2); position: sticky; top: 0; z-index: var(--z-sticky);
+  background: var(--c-surface); border-bottom: 1px solid var(--c-line); }
+.ed-bar .btn { height: 30px; padding: 0 10px; font-size: var(--fs-xs); }
+
+/* 늘 쓰는 칸(사유·결정): 입력처럼 보이는 패시브 칸 */
+.ed[data-mode="live"] .ed-body { margin: 0; padding: 10px 14px; background: var(--c-surface); border: 1px solid var(--c-line); cursor: text;
+  transition: border-color var(--dur-fast) var(--ease), box-shadow var(--dur-fast) var(--ease); }
+.ed[data-mode="live"] .ed-body:focus-within { border-color: var(--c-accent); box-shadow: 0 0 0 3px var(--c-accent-soft); }
+.ed[data-mode="live"] .ed-body.md .ProseMirror { min-height: calc(1.65em * var(--rows, 2)); }
+.ed.bad .ed-body { border-color: var(--c-danger); }
+
+/* / 메뉴 */
+.ed-menu { position: fixed; z-index: var(--z-dropdown); width: 240px; max-height: 300px; overflow: auto; padding: var(--sp-1); margin: 0; list-style: none;
+  background: var(--c-surface); border: 1px solid var(--c-line); border-radius: var(--r-md); box-shadow: var(--sh-pop); }
+.ed-menu li { display: flex; justify-content: space-between; gap: var(--sp-3); padding: 8px 12px; border-radius: var(--r-sm); font-size: var(--fs-sm); cursor: pointer; }
+.ed-menu li[aria-selected="true"] { background: var(--c-accent-soft); }
+.ed-menu li span { color: var(--c-muted); font-family: var(--f-mono); font-size: var(--fs-xs); }
+.ed-menu .head { cursor: default; padding: 4px 12px; color: var(--c-muted); font-size: var(--fs-xs); font-weight: 600; }
+
+/* 결정 기록: 한 장짜리 양식(왼쪽 라벨, 오른쪽 칸) */
+.sheet { display: grid; grid-template-columns: 72px minmax(0, 1fr); gap: var(--sp-2) var(--sp-3); align-items: start; }
+.sheet > .k { padding-top: 11px; font-size: var(--fs-sm); font-weight: 600; color: var(--c-muted); }
+.md-out { white-space: pre-wrap; font-family: var(--f-mono); font-size: var(--fs-xs); background: var(--c-soft); padding: var(--sp-3); border-radius: var(--r-sm); margin: 0; max-height: 220px; overflow: auto; }
+
+@media (max-width: 1100px) { .cx-grid { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 700px) {
+  .cx { padding: var(--sp-4); gap: var(--sp-4); }
+  .panel, .card { padding: 18px; }
+  .ed-body.md .ProseMirror { font-size: var(--fs-lg); }
+  .ed-foot .btn, .ed-bar .btn, .ed-label .btn.link { min-height: 44px; }
+  .ed-foot .btn { height: 44px; font-size: var(--fs-sm); }
+  .ed-menu li { min-height: 44px; align-items: center; }
+  .sheet { grid-template-columns: minmax(0, 1fr); gap: var(--sp-1); }
+  .sheet > .k { padding-top: var(--sp-2); }
+}
+</style>
+</head>
+<body>
+<main class="cx">
+  <div class="page-head">
+    <span class="cx-tag">편집기 시안 B (Claude)</span>
+    <h1>읽다가 그 자리에서</h1>
+    <p>긴 글 칸은 평소에 다 그려진 글로 보입니다. 누르면 그 자리가 쓰기 상태가 되고, 서식 버튼 대신 <code>/</code>를 치면 그 칸에 맞는 요소만 고르는 목록이 뜹니다.
+      짧은 사유·결정 칸은 처음부터 쓰기 칸이며 버튼이 없습니다. 마크다운 입력과 Ctrl+B·I·K, 붙여넣은 주소 자동 링크는 모든 칸에서 됩니다.</p>
+  </div>
+
+  <section class="card">
+    <h2>항목별 편집 방식</h2>
+    <div class="table-scroll" tabindex="0" role="region" aria-label="항목별 편집 방식 표">
+      <table class="grid">
+        <thead><tr><th>항목</th><th>상태</th><th>툴바 유형</th><th><code>/</code> 목록</th><th>이유</th></tr></thead>
+        <tbody>
+          <tr><td>태스크 설명</td><td>읽기 → 누르면 쓰기</td><td>버튼 없음 + <code>/</code></td><td>체크 · 목록 · 링크 · 코드 · 표</td><td>패널을 여는 사람 대부분은 읽으러 온다. 글이 입력 칸 테두리 없이 먼저 읽힌다</td></tr>
+          <tr><td>완료 조건</td><td>읽기 → 누르면 쓰기</td><td>버튼 없음 + <code>/</code></td><td>체크 · 링크</td><td>읽기 상태에서 체크 상자를 바로 누른다. 글을 고칠 때만 쓰기로</td></tr>
+          <tr><td>진행 메모</td><td>읽기 → 누르면 쓰기</td><td>버튼 없음 + <code>/</code></td><td>오늘 날짜 · 체크 · 목록 · 링크</td><td>쓰기를 시작하면 끝에 오늘 날짜 머리를 붙일 수 있다(<code>/날짜</code>)</td></tr>
+          <tr><td>멈춤·막힘·반려 사유</td><td>늘 쓰기</td><td>패시브만</td><td>없음</td><td>1~3줄 필수. 버튼·메뉴 없이 쓰고 Ctrl+Enter</td></tr>
+          <tr><td>결정 기록 네 칸</td><td>늘 쓰기, 한 장 양식</td><td>패시브만</td><td>없음</td><td>칸마다 테두리 상자를 쌓지 않고 라벨 | 칸 한 장으로. 대안은 목록으로 시작</td></tr>
+          <tr><td>요청 본문</td><td>늘 쓰기(새 글)</td><td>버튼 없음 + <code>/</code></td><td>체크 · 목록 · 링크 · 표</td><td>새로 쓰는 폼이라 읽기 상태가 없다. 빈 칸 안내 문구에 <code>/</code>를 알린다</td></tr>
+          <tr><td>거버넌스 규칙</td><td>읽기 → 누르면 쓰기</td><td>버튼 없음 + <code>/</code></td><td>제목 · 소제목 · 번호 · 표 · 인용 · 구분선</td><td>대부분 읽히는 문서. 관리자만 [고치기]가 보인다</td></tr>
+          <tr><td>포트폴리오 초안</td><td>읽기 → 누르면 쓰기</td><td>버튼 없음 + <code>/</code></td><td>제목 · 소제목 · 목록 · 그림 · 표 · 인용 · 구분선</td><td>긴 글은 다 쓴 모양을 보며 고치는 편이 낫다</td></tr>
+          <tr><td>문서·회의록</td><td>읽기 → 누르면 쓰기(기존)</td><td>전체(기존 유지) + <code>/</code></td><td>문서 전부</td><td>이미 쓰는 화면. 막대는 두고 <code>/</code>만 더한다</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <div class="cx-grid">
+    <div class="cx-col">
+      <aside class="panel" aria-label="태스크 상세">
+        <div class="panel-bar">
+          <span class="pill static blocked">■ 막힘</span>
+          <span class="status" id="save-status" aria-live="polite">자동 저장</span>
+        </div>
+        <div class="number">TASK-128</div>
+        <div class="display t24">신입 부원 온보딩 자료 정리</div>
+
+        <form class="stop-box" id="stop-form" novalidate>
+          <div class="label fw-7" id="stop-label">막힘 사유</div>
+          <div class="ed-field" data-name="막힘 사유" data-mode="live" data-ph="무엇 때문에 막혔나요? (필수)" data-rows="2" data-submit="stop-form" data-required>
+            <div class="ed"><div class="ed-body md"><textarea class="md-src" hidden></textarea></div></div>
+            <div class="row between"><span class="t12">Ctrl+Enter로 저장합니다.</span><span class="error t13" hidden>사유를 적어 주세요.</span></div>
+          </div>
+          <div class="row"><button class="btn sm primary">막힘으로 변경</button><button type="button" class="btn sm">취소</button></div>
+          <p class="why"><b>패시브만, 늘 쓰기.</b> 짧은 필수 입력은 읽기 상태를 거치지 않습니다.</p>
+        </form>
+
+        <div class="ed-field" data-name="설명" data-mode="rw" data-autosave data-slash="task,bullet,link,code,table" data-rows="3"
+             data-ph="무엇을 하는 태스크인지 적습니다. /로 체크·표를 넣습니다." data-empty="설명이 없습니다. 눌러서 적습니다.">
+          <div class="ed-label">설명<span class="ed-status" aria-live="polite"></span></div>
+          <div class="ed"><div class="ed-body md"><textarea class="md-src" hidden>신입 부원 온보딩 자료를 한곳에 모읍니다. 지난 학기 자료는 [공유 폴더](https://drive.example.com/onboarding)에 있습니다.
+
+- 동아리 소개 슬라이드 갱신
+- 첫 주 일정표 정리</textarea></div></div>
+          <p class="why"><b>읽기 → 쓰기.</b> 글을 누르면 누른 자리에 커서가 놓입니다. 링크를 누르면 이동합니다. Esc로 마칩니다.</p>
+        </div>
+
+        <div class="ed-field" data-name="완료 조건" data-mode="rw" data-autosave data-slash="task,link" data-rows="2" data-start="task"
+             data-ph="끝났다고 볼 조건을 하나씩 적습니다." data-empty="완료 조건이 없습니다. 눌러서 적습니다.">
+          <div class="ed-label">완료 조건<span class="ed-status" aria-live="polite"></span></div>
+          <div class="ed"><div class="ed-body md"><textarea class="md-src" hidden>- [x] 소개 슬라이드 초안 공유
+- [ ] 일정표 운영진 검토
+- [ ] 안내 메일 발송</textarea></div></div>
+          <p class="why"><b>체크는 읽기 상태에서.</b> 상자를 누르면 바로 저장되고, 글자를 누를 때만 쓰기 상태가 됩니다.</p>
+        </div>
+
+        <div class="ed-field" data-name="진행 메모" data-mode="rw" data-autosave data-slash="date,task,bullet,link" data-rows="3"
+             data-ph="지금까지 한 일, 막힌 점, 다음에 할 일" data-empty="진행 메모가 없습니다. 눌러서 적습니다.">
+          <div class="ed-label">진행 메모<span class="ed-status" aria-live="polite"></span></div>
+          <div class="ed"><div class="ed-body md"><textarea class="md-src" hidden>**10월 7일** 슬라이드 초안을 올렸습니다. 사진 사용 동의는 아직 받지 못했습니다.</textarea></div></div>
+          <p class="why"><b><code>/날짜</code>가 맨 위.</b> 메모는 날짜별로 쌓이므로 <code>/</code> 목록 첫 항목이 오늘 날짜입니다.</p>
+        </div>
+
+        <section class="section">
+          <div class="label">의사결정 기록 추가</div>
+          <form class="sheet" onsubmit="return false">
+            <span class="k" id="k-sum">요약</span>
+            <div class="ed-field" data-name="결정 요약" data-mode="live" data-rows="1" data-ph="무엇을 정했나요?">
+              <div class="ed"><div class="ed-body md"><textarea class="md-src" hidden>온보딩 자료는 노션 대신 유달리 문서에 둡니다.</textarea></div></div>
+            </div>
+            <span class="k">이유</span>
+            <div class="ed-field" data-name="결정 이유" data-mode="live" data-rows="1" data-ph="왜 그렇게 정했나요?">
+              <div class="ed"><div class="ed-body md"><textarea class="md-src" hidden></textarea></div></div>
+            </div>
+            <span class="k">영향</span>
+            <div class="ed-field" data-name="결정 영향" data-mode="live" data-rows="1" data-ph="무엇이 바뀌나요?">
+              <div class="ed"><div class="ed-body md"><textarea class="md-src" hidden></textarea></div></div>
+            </div>
+            <span class="k">대안</span>
+            <div class="ed-field" data-name="검토한 대안" data-mode="live" data-rows="1" data-start="bullet" data-ph="대안을 한 줄에 하나씩 적습니다.">
+              <div class="ed"><div class="ed-body md"><textarea class="md-src" hidden>- 노션 공유 페이지 유지
+- 구글 드라이브 폴더</textarea></div></div>
+            </div>
+            <span></span><div class="row"><button class="btn sm">기록 추가</button></div>
+          </form>
+          <p class="why"><b>한 장 양식, 패시브만.</b> 네 칸을 라벨 | 칸 한 장으로 묶어 상자 반복을 줄였습니다. 대안은 목록으로 시작해 한 줄 = 대안 하나로 저장합니다.</p>
+        </section>
+      </aside>
+    </div>
+
+    <div class="cx-col">
+      <section class="card form-card">
+        <h2>새 요청</h2>
+        <form class="stack" id="req-form" novalidate>
+          <label class="field">제목<input class="input" value="동아리 소개 영상 촬영 지원"></label>
+          <div class="ed-field" data-name="요청 내용" data-mode="live" data-slash="task,bullet,link,table" data-rows="5" data-required data-foot
+               data-ph="무엇이 필요한지, 언제까지인지 적습니다. /를 치면 체크·표를 넣습니다.">
+            <div class="ed-label">내용</div>
+            <div class="ed"><div class="ed-body md"><textarea class="md-src" hidden></textarea></div></div>
+            <span class="error t13" hidden>내용을 적어 주세요.</span>
+          </div>
+          <div class="row"><button class="btn primary">요청 보내기</button></div>
+          <pre class="md-out" hidden aria-label="보낼 Markdown"></pre>
+          <p class="why"><b>늘 쓰기 + <code>/</code>.</b> 새 글이라 읽기 상태가 없습니다. 제출하면 Markdown으로 보냅니다(시안에서는 아래에 원문을 보여 줍니다).</p>
+        </form>
+      </section>
+
+      <section class="card">
+        <div class="card-head"><h2>프로젝트 규칙</h2><span class="badge">관리자</span></div>
+        <div class="ed-field" data-name="프로젝트 추가 규칙" data-mode="rw" data-slash="h2,h3,ordered,bullet,table,quote,hr,link" data-rows="8"
+             data-ph="이 프로젝트에만 적용할 규칙을 적습니다." data-empty="추가 규칙이 없습니다.">
+          <div class="ed-label"><span class="ed-status" aria-live="polite"></span></div>
+          <div class="ed"><div class="ed-body md"><textarea class="md-src" hidden>## 태스크 규칙
+
+1. 모든 태스크에는 목표일 또는 미정 사유를 적습니다.
+2. 막힘으로 바꿀 때는 사유를 남깁니다.
+
+## 검토
+
+| 단계 | 담당 | 기한 |
+|---|---|---|
+| 초안 | 담당자 | 목표일 3일 전 |
+| 검토 | 팀장 | 목표일 1일 전 |</textarea></div></div>
+        </div>
+        <p class="why"><b>읽기 → 쓰기.</b> 규칙은 대부분 읽힙니다. 쓰기를 마치면 [저장]이 꼬리 줄에 나옵니다. 조직 거버넌스도 같은 칸입니다.</p>
+      </section>
+
+      <section class="card">
+        <h2>포트폴리오 초안</h2>
+        <div class="ed-field" data-name="포트폴리오 본문" data-mode="rw" data-slash="h2,h3,bullet,image,table,quote,hr,link" data-rows="14"
+             data-ph="이번 학기 한 일을 적습니다. /로 제목·그림을 넣습니다." data-empty="초안이 비어 있습니다. 눌러서 적습니다.">
+          <div class="ed-label"><span class="ed-status" aria-live="polite"></span></div>
+          <div class="ed"><div class="ed-body md"><textarea class="md-src" hidden>## 2026년 2학기 활동
+
+### 맡은 일
+
+- 신입 부원 온보딩 자료 정리(TASK-128)
+- 정기 회의 회의록 작성 **12회**
+
+### 배운 점
+
+일정을 먼저 쪼개 두니 막힘을 빨리 알릴 수 있었습니다. 특히 사진 사용 동의처럼 다른 사람에게 기대는 일은 미리 요청했습니다.
+
+> 다음 학기에는 검토 기한을 목표일 3일 전으로 당깁니다.
+
+### 결과
+
+| 항목 | 수 |
+|---|---|
+| 완료 태스크 | 18 |
+| 작성 문서 | 7 |</textarea></div></div>
+        </div>
+        <p class="why"><b>읽기 → 쓰기.</b> 가장 긴 글이라 다 쓴 모양을 보며 고칩니다. 그림은 <code>/그림</code>으로 주소를 넣습니다.</p>
+      </section>
+
+      <section class="card">
+        <h2>문서·회의록</h2>
+        <p class="muted t13">이미 같은 방식(읽기 → 누르면 쓰기, 전체 막대)인 화면입니다. 막대는 그대로 두고 <code>/</code>만 더합니다.</p>
+        <div class="ed-field" data-name="문서 본문" data-mode="rw" data-bar="h2,h3,bold,bullet,ordered,task,quote,link,code,table"
+             data-slash="h2,h3,task,bullet,ordered,table,quote,code,hr,image,link" data-rows="6">
+          <div class="ed-label"><span class="ed-status" aria-live="polite"></span></div>
+          <div class="ed"><div class="ed-body md"><textarea class="md-src" hidden>## 10월 둘째 주 정기 회의
+
+- 참석: 7명
+- [ ] 소개 영상 촬영 장소 섭외</textarea></div></div>
+        </div>
+      </section>
+    </div>
+  </div>
+</main>
+
+<script type="module">
+import * as T from "../../core/web/static/vendor/tiptap.bundle.js";
+
+const LABEL = { bold: "굵게", bullet: "목록", ordered: "번호 목록", task: "체크", h2: "제목", h3: "소제목", quote: "인용",
+  code: "코드", hr: "구분선", table: "표", link: "링크", image: "그림", date: "오늘 날짜" };
+const MD = { bullet: "- ", ordered: "1. ", task: "[ ] ", h2: "## ", h3: "### ", quote: "> ", code: "```", hr: "---", link: "Ctrl+K", bold: "Ctrl+B" };
+const ALIAS = { date: "날짜 today", task: "할일 todo check", bullet: "list", ordered: "숫자 ol", h2: "heading h2", h3: "h3", table: "table", image: "이미지 사진 img", link: "주소 url", quote: "quote", code: "code", hr: "선 hr" };
+const today = () => { const d = new Date(); return `${d.getMonth() + 1}월 ${d.getDate()}일`; };
+const CMD = {
+  bold: (c) => c.toggleBold(), bullet: (c) => c.toggleBulletList(), ordered: (c) => c.toggleOrderedList(),
+  task: (c) => c.toggleTaskList(), h2: (c) => c.toggleHeading({ level: 2 }), h3: (c) => c.toggleHeading({ level: 3 }),
+  quote: (c) => c.toggleBlockquote(), code: (c) => c.toggleCodeBlock(), hr: (c) => c.setHorizontalRule(),
+  table: (c) => c.insertTable({ rows: 3, cols: 3, withHeaderRow: true }),
+  // 굵은 날짜 뒤에는 굵기 없는 빈칸을 둬서 이어 쓰는 글이 굵어지지 않게 한다
+  date: (c) => c.insertContent({ type: "text", text: today(), marks: [{ type: "bold" }] })
+    .command(({ tr }) => { tr.setStoredMarks([]); tr.insertText(" "); return true; }),
+};
+const ACTIVE = { bold: ["bold"], bullet: ["bulletList"], ordered: ["orderedList"], task: ["taskList"], quote: ["blockquote"], code: ["codeBlock"],
+  h2: ["heading", { level: 2 }], h3: ["heading", { level: 3 }] };
+
+function editLink(ed) {
+  const v = prompt("링크 주소(https://… 또는 /로 시작). 비우면 링크를 지웁니다.", ed.getAttributes("link").href || "");
+  if (v === null) return;
+  const href = v.trim(), ch = ed.chain().focus().extendMarkRange("link");
+  if (!href) return ch.unsetLink().run();
+  if (!T.safeUrl(href)) return alert("https://, mailto: 또는 /로 시작하는 주소만 넣을 수 있습니다.");
+  if (ed.state.selection.empty && !ed.isActive("link")) ch.insertContent({ type: "text", text: href, marks: [{ type: "link", attrs: { href } }] }).run();
+  else ch.setLink({ href }).run();
+}
+function addImage(ed) {
+  const v = prompt("그림 주소(https://… 또는 /로 시작)");
+  if (!v) return;
+  if (!T.safeUrl(v)) return alert("https:// 또는 /로 시작하는 주소만 넣을 수 있습니다.");
+  ed.chain().focus().setImage({ src: v.trim(), alt: "" }).run();
+}
+const run = (ed, k) => (ed.view.focus(), k === "link" ? editLink(ed) : k === "image" ? addImage(ed) : CMD[k](ed.chain().focus()).run());
+
+// ---------- / 메뉴(화면에 하나) ----------
+const menu = document.createElement("ul");
+menu.className = "ed-menu"; menu.id = "slash-menu"; menu.setAttribute("role", "listbox"); menu.hidden = true;
+document.body.append(menu);
+let menuEd = null, menuItems = [], menuSel = 0, menuRange = null;
+
+function slashAt(ed) {
+  const { $from, empty } = ed.state.selection;
+  if (!empty || $from.parent.type.name === "codeBlock") return null;
+  const before = $from.parent.textBetween(0, $from.parentOffset, "\n", "￼");
+  const m = before.match(/(?:^|\s)\/([^\s/]{0,12})$/);
+  return m ? { q: m[1], from: $from.pos - m[1].length - 1, to: $from.pos } : null;
+}
+function refreshMenu(ed, keys) {
+  if (ed.view.composing) return; // 조합 중엔 그대로 두고, compositionend에서 다시 본다
+  const hit = keys.length && ed.isEditable ? slashAt(ed) : null;
+  const items = hit ? keys.filter((k) => !hit.q || LABEL[k].includes(hit.q) || (ALIAS[k] || "").includes(hit.q.toLowerCase()) || k.startsWith(hit.q.toLowerCase())) : [];
+  if (!items.length) return closeMenu(ed);
+  menuEd = ed; menuItems = items; menuRange = hit; menuSel = Math.min(menuSel, items.length - 1);
+  menu.setAttribute("aria-label", ed.view.dom.getAttribute("aria-label") + "에 넣기");
+  menu.innerHTML = `<li class="head" role="presentation">넣기 · ↑↓ 고르고 Enter</li>` + items.map((k, i) =>
+    `<li role="option" id="slash-${k}" data-k="${k}" aria-selected="${i === menuSel}">${LABEL[k]}<span>${MD[k] || ""}</span></li>`).join("");
+  const c = ed.view.coordsAtPos(hit.from);
+  menu.hidden = false;
+  const h = menu.offsetHeight, w = menu.offsetWidth;
+  menu.style.top = (c.bottom + 6 + h < innerHeight ? c.bottom + 6 : c.top - h - 6) + "px";
+  menu.style.left = Math.max(8, Math.min(c.left, innerWidth - w - 8)) + "px";
+  ed.view.dom.setAttribute("aria-expanded", "true");
+  ed.view.dom.setAttribute("aria-activedescendant", "slash-" + items[menuSel]);
+}
+function closeMenu(ed) {
+  menu.hidden = true; menuSel = 0;
+  const d = (ed || menuEd)?.view.dom;
+  d?.setAttribute("aria-expanded", "false"); d?.removeAttribute("aria-activedescendant");
+  menuEd = null;
+}
+function pick(k) {
+  const ed = menuEd, r = menuRange;
+  closeMenu();
+  ed.chain().focus().deleteRange(r).run();
+  run(ed, k);
+}
+menu.addEventListener("mousedown", (e) => e.preventDefault());
+menu.addEventListener("click", (e) => { const li = e.target.closest("[data-k]"); if (li) pick(li.dataset.k); });
+// ProseMirror보다 먼저 받으려고 문서 캡처 단계에서 듣는다
+document.addEventListener("keydown", (e) => {
+  if (menu.hidden || !menuEd || e.isComposing || !menuEd.view.dom.contains(e.target)) return;
+  if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+    e.preventDefault();
+    menuSel = (menuSel + (e.key === "ArrowDown" ? 1 : menuItems.length - 1)) % menuItems.length;
+    refreshMenu(menuEd, menuItems);
+  } else if (e.key === "Enter" || e.key === "Tab") { e.preventDefault(); pick(menuItems[menuSel]); }
+  else if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); closeMenu(); }
+}, true);
+
+// ---------- 칸 ----------
+function mount(field) {
+  const box = field.querySelector(".ed"), body = field.querySelector(".ed-body"), src = body.querySelector(".md-src");
+  const name = field.dataset.name, mode = field.dataset.mode, rw = mode === "rw";
+  const keys = (field.dataset.slash || "").split(",").filter(Boolean);
+  box.dataset.mode = mode;
+  body.style.setProperty("--rows", field.dataset.rows || 3);
+  const ed = new T.Editor({
+    element: body, editable: !rw, extensions: T.extensions({ placeholder: field.dataset.ph || "", checkInView: true }),
+    content: T.preprocess(src.value), contentType: "markdown",
+  });
+  T.setupMarkdown(ed);
+  src.remove();
+  const dom = ed.view.dom;
+  dom.setAttribute("aria-label", name);
+  dom.setAttribute("aria-multiline", "true");
+  if (keys.length) { dom.setAttribute("aria-haspopup", "listbox"); dom.setAttribute("aria-controls", "slash-menu"); dom.setAttribute("aria-expanded", "false"); }
+  if (field.dataset.required !== undefined) dom.setAttribute("aria-required", "true");
+  field.ed = ed;
+  const start = field.dataset.start;
+  if (start && ed.isEmpty) CMD[start](ed.chain()).run();
+
+  // 빈 칸 안내(읽기 상태)
+  let empty = null;
+  if (rw && field.dataset.empty) {
+    empty = document.createElement("p");
+    empty.className = "ed-empty"; empty.textContent = field.dataset.empty;
+    body.append(empty);
+  }
+  const syncEmpty = () => { if (empty) empty.hidden = !(ed.isEmpty && !ed.isEditable); };
+  syncEmpty();
+
+  // 문서·회의록만: 기존 전체 막대
+  let bar = null;
+  if (field.dataset.bar) {
+    bar = document.createElement("div");
+    bar.className = "ed-bar"; bar.setAttribute("role", "toolbar"); bar.setAttribute("aria-label", name + " 서식");
+    bar.innerHTML = field.dataset.bar.split(",").map((k) => `<button type="button" class="btn sm" data-k="${k}"${ACTIVE[k] ? ' aria-pressed="false"' : ""}>${LABEL[k]}</button>`).join("");
+    box.prepend(bar);
+    bar.addEventListener("mousedown", (e) => e.preventDefault());
+    bar.addEventListener("click", (e) => { const b = e.target.closest("[data-k]"); if (b) run(ed, b.dataset.k); });
+    ed.on("transaction", () => { for (const b of bar.querySelectorAll("[aria-pressed]")) b.setAttribute("aria-pressed", String(ed.isActive(...ACTIVE[b.dataset.k]))); });
+  }
+
+  // 꼬리 줄: [/ 넣기] [단축키] … [마침]
+  let foot = null, keysBox = null;
+  if (rw || field.dataset.foot !== undefined) {
+    foot = document.createElement("div");
+    foot.className = "ed-foot";
+    foot.innerHTML = (keys.length ? `<button type="button" class="btn sm tint" data-act="slash" aria-label="${name}에 요소 넣기">/ 넣기</button>` : "") +
+      `<button type="button" class="btn sm" data-act="keys" aria-expanded="false">단축키</button><span class="spacer"></span>` +
+      (rw ? `<button type="button" class="btn sm" data-act="done">마침 <span class="muted">Esc</span></button>` : "");
+    keysBox = document.createElement("dl");
+    keysBox.className = "ed-keys"; keysBox.hidden = true;
+    keysBox.innerHTML = [["# ", "제목"], ["- ", "목록"], ["[ ] ", "체크"], ["``` ", "코드"], ["> ", "인용"], ["Ctrl+B · I", "굵게 · 기울임"], ["Ctrl+K", "링크(주소를 붙여 넣으면 자동)"], ["/", "이 칸에 넣을 수 있는 것"]]
+      .map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join("");
+    box.append(foot, keysBox);
+    if (!rw) box.classList.add("editing");
+    foot.addEventListener("mousedown", (e) => { if (e.target.closest("[data-act=slash]")) e.preventDefault(); });
+    foot.addEventListener("click", (e) => {
+      const act = e.target.closest("[data-act]")?.dataset.act;
+      if (act === "slash") {
+        const { $from } = ed.state.selection, prev = $from.parent.textBetween(0, $from.parentOffset);
+        ed.view.focus();
+        ed.chain().focus().insertContent(prev && !/\s$/.test(prev) ? " /" : "/").run();
+      } else if (act === "keys") {
+        keysBox.hidden = !keysBox.hidden;
+        e.target.closest("button").setAttribute("aria-expanded", String(!keysBox.hidden));
+      } else if (act === "done") setEditing(false, true);
+    });
+  }
+
+  function setEditing(on, refocus) {
+    if (!rw) return;
+    ed.setEditable(on);
+    box.classList.toggle("editing", on);
+    editBtn?.setAttribute("aria-expanded", String(on));
+    if (editBtn) editBtn.textContent = on ? "마침" : "고치기";
+    syncEmpty();
+    if (!on) { closeMenu(ed); if (keysBox) keysBox.hidden = true; if (refocus) editBtn?.focus(); }
+  }
+  // 라벨 줄의 [고치기]: 키보드·화면 낭독기로도 쓰기 상태에 들어간다
+  let editBtn = null;
+  if (rw) {
+    editBtn = document.createElement("button");
+    editBtn.type = "button"; editBtn.className = "btn link"; editBtn.textContent = "고치기";
+    editBtn.setAttribute("aria-expanded", "false"); editBtn.setAttribute("aria-label", name + " 고치기");
+    field.querySelector(".ed-label").append(editBtn);
+    editBtn.addEventListener("click", () => { if (ed.isEditable) setEditing(false, true); else { setEditing(true); ed.view.focus(); ed.commands.focus("end"); } });
+    body.addEventListener("click", (e) => {
+      if (ed.isEditable) return;
+      const a = e.target.closest("a[href]");
+      if (a) { e.preventDefault(); if (T.safeUrl(a.getAttribute("href"))) window.open(a.href, "_blank", "noopener"); return; }
+      if (e.target.closest("input, label")) return; // 체크 상자는 읽기 상태에서 바로
+      const at = ed.view.posAtCoords({ left: e.clientX, top: e.clientY });
+      setEditing(true);
+      ed.view.focus(); // 바로 초점을 옮겨 첫 글자를 놓치지 않는다(chain().focus는 한 프레임 늦다)
+      ed.chain().focus(at ? at.pos : "end").run();
+    });
+    // 읽기 상태의 체크(TaskItem은 콜백만 부른다 → 항목을 찾아 직접 바꾼다. doc-tiptap.js와 같은 방법)
+    body.addEventListener("change", (e) => {
+      if (ed.isEditable || e.target.type !== "checkbox") return;
+      const $pos = ed.state.doc.resolve(ed.view.posAtDOM(e.target.closest("li"), 0));
+      for (let d = $pos.depth; d > 0; d--) {
+        if ($pos.node(d).type.name !== "taskItem") continue;
+        ed.view.dispatch(ed.state.tr.setNodeMarkup($pos.before(d), undefined, { ...$pos.node(d).attrs, checked: e.target.checked }));
+        return;
+      }
+    });
+    // 칸 밖으로 초점이 나가면 쓰기를 마친다(저장은 자동)
+    field.addEventListener("focusout", (e) => { if (ed.isEditable && !field.contains(e.relatedTarget) && !menu.contains(e.relatedTarget)) setTimeout(() => { if (!field.contains(document.activeElement)) setEditing(false); }, 0); });
+  } else {
+    body.addEventListener("click", (e) => { if (e.target === body) ed.commands.focus("end"); });
+  }
+
+  // ProseMirror보다 먼저 받아야 Ctrl+Enter가 줄바꿈을 넣지 않는다(조상에서 캡처)
+  body.addEventListener("keydown", (e) => {
+    if (e.isComposing) return;
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") { e.preventDefault(); e.stopPropagation(); editLink(ed); }
+    if ((e.ctrlKey || e.metaKey) && e.key === "Enter" && field.dataset.submit) { e.preventDefault(); e.stopPropagation(); document.getElementById(field.dataset.submit).requestSubmit(); }
+    if (e.key === "Escape" && rw && menu.hidden) { e.preventDefault(); setEditing(false, true); }
+  }, true);
+  ed.on("update", () => { refreshMenu(ed, keys); box.classList.remove("bad"); field.querySelector(".error")?.setAttribute("hidden", ""); });
+  ed.on("selectionUpdate", () => refreshMenu(ed, keys));
+  dom.addEventListener("compositionend", () => setTimeout(() => refreshMenu(ed, keys), 0));
+  dom.addEventListener("blur", () => setTimeout(() => { if (menuEd === ed && !dom.contains(document.activeElement)) closeMenu(ed); }, 0));
+
+  // 자동 저장 흉내(실제 규약은 doc-tiptap.js: 800ms, 조합 중 보류, 내용이 같으면 보내지 않음)
+  const st = field.querySelector(".ed-status");
+  if (st) {
+    let t = null, base = ed.getMarkdown();
+    const auto = field.dataset.autosave !== undefined;
+    const schedule = () => {
+      clearTimeout(t);
+      if (ed.view.composing) { st.textContent = "입력 중…"; return; }
+      st.textContent = auto ? "저장 대기…" : "";
+      t = setTimeout(() => { const md = ed.getMarkdown(); if (md !== base) st.textContent = auto ? "저장됨" : "바뀐 내용이 있습니다 · 저장 전"; base = md; }, 800);
+    };
+    ed.on("update", schedule);
+    dom.addEventListener("compositionend", schedule);
+  }
+}
+
+document.querySelectorAll(".ed-field").forEach(mount);
+
+for (const form of document.querySelectorAll("#stop-form, #req-form")) {
+  form.addEventListener("submit", (e) => {
+    e.preventDefault();
+    const field = form.querySelector(".ed-field[data-required]"), ed = field.ed;
+    if (!ed.getText().trim()) {
+      field.querySelector(".ed").classList.add("bad");
+      field.querySelector(".error").hidden = false;
+      ed.commands.focus();
+      return;
+    }
+    const out = form.querySelector(".md-out");
+    if (out) { out.hidden = false; out.textContent = ed.getMarkdown(); }
+    else document.getElementById("save-status").textContent = "막힘 사유를 저장했습니다.";
+  });
+}
+window.cx = document.querySelectorAll(".ed-field"); // 시험용
+</script>
+</body>
+</html>

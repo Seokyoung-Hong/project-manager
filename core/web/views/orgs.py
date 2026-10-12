@@ -17,7 +17,7 @@ from orgs.models import ChangeRequest, Invite, OrgMembership, TeamMembership
 from orgs.settings import GROUPS, SPECS, display, effective, enforced, locked_keys, specs_for
 from projects.services import project_stats_bulk, visible_projects
 from reports.services import org_status
-from tasks.models import TaskProject
+from tasks.models import Task, TaskProject
 
 from ..forms import InviteForm, OrgForm
 from .common import apply_service_error, can_admin, current_org, not_admin, org_or_404
@@ -64,6 +64,45 @@ def org_new(request):
     return render(request, "orgs/new.html", {"form": form})
 
 
+def _getting_started(org) -> list[dict] | None:
+    """갓 만든 조직(태스크 0개)의 "시작하기" 단계. 다 끝냈거나 태스크가 생기면 None(카드를 숨긴다)."""
+    if Task.objects.filter(project__org=org).exists():
+        return None
+    steps = [
+        {
+            "label": "첫 프로젝트 만들기",
+            "value": "프로젝트를 만들면 관련 태스크와 진행 상황을 함께 볼 수 있습니다.",
+            "done": org.projects.exists(),
+            "url": None,  # 템플릿에서 [새 프로젝트] 대화상자를 연다
+        },
+        {
+            "label": "팀원 초대",
+            "value": "초대 링크로 가입한 팀원은 이 조직에 바로 참여할 수 있습니다.",
+            "done": org.memberships.count() > 1 or org.invites.exists(),
+            "url": reverse("org_teams", args=[org.pk]),
+        },
+    ]
+    if settings.GITHUB_ENABLED:
+        steps.append(
+            {
+                "label": "저장소 연결",
+                "value": "저장소를 연결하면 연결된 PR의 생성·병합에 따라 태스크 상태가 바뀝니다.",
+                "done": hasattr(org, "github"),
+                "url": reverse("org_github", args=[org.pk]),
+            }
+        )
+    if settings.DISCORD_CLIENT_ID:
+        steps.append(
+            {
+                "label": "Discord 알림",
+                "value": "Discord 서버를 연결하면 팀 채널에서 조직 알림과 주간 보고를 받을 수 있습니다.",
+                "done": bool(org.discord_guild_id),
+                "url": reverse("org_discord", args=[org.pk]),
+            }
+        )
+    return None if all(s["done"] for s in steps) else steps
+
+
 @login_required
 def org_detail(request, org_id):
     """조직 현황. README §3."""
@@ -91,6 +130,7 @@ def org_detail(request, org_id):
         projects = projects.filter(is_archived=False)
     projects = list(projects)
     stats = project_stats_bulk(projects)
+    is_admin = can_admin(request.user, org)
     return render(
         request,
         "orgs/detail.html",
@@ -102,7 +142,8 @@ def org_detail(request, org_id):
             "by_assignee": st["by_assignee"],
             "me_url": me_url,
             "include_archived": include_archived,
-            "is_admin": can_admin(request.user, org),
+            "is_admin": is_admin,
+            "getting_started": _getting_started(org) if is_admin else None,
             "tab": "overview",
         },
     )
@@ -211,7 +252,9 @@ def invite_create(request, org_id):
     org = org_or_404(request.user, org_id)
     form = InviteForm(request.POST)
     if not form.is_valid():
-        messages.error(request, "만료 기간은 1~90일로 입력하세요. 초대 링크는 만들지 않았습니다.")
+        messages.error(
+            request, "만료 기간은 1~90일로 입력해 주세요. 초대 링크는 만들지 않았습니다."
+        )
         return _member_redirect(request, org.pk)
     days = form.cleaned_data["days"]
     try:
@@ -324,7 +367,7 @@ def org_governance(request, org_id):
             osv.set_governance(
                 org, "" if request.POST.get("reset") else request.POST["text"], request.user
             )
-            messages.success(request, "거버넌스를 저장했습니다.")
+            messages.success(request, "업무 규칙을 저장했습니다.")
             return redirect("org_governance", org_id=org.pk)
         except ServiceError as e:
             error = "; ".join(e.errors.values())
