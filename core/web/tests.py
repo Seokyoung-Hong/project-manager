@@ -1921,6 +1921,13 @@ def test_privacy_page_is_public_and_linked_from_footer(client, db):
     assert '<address class="biz">' in body and "537-16-02777" in body
 
 
+def test_terms_page_is_public_and_bans_sensitive_member_info(client, db):
+    body = client.get("/terms").content.decode()
+    assert "<title>이용약관" in body and '<h2 id="제6조-구성원-정보와-조직의-의무">' in body
+    assert "주민등록번호" in body and "{{" not in body
+    assert '<a href="/terms">이용약관</a>' in body.split('<footer class="site-footer')[1]
+
+
 def test_privacy_placeholder_warns_only_in_production(settings, tmp_path, monkeypatch):
     from web import apps
     from web.views import auth

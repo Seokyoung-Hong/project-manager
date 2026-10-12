@@ -51,6 +51,12 @@ def privacy(request):
     return render(request, "privacy.html", {"body": body})
 
 
+def terms(request):
+    """이용약관. 처리방침과 같은 방식(content/terms.md → terms.html 조각)."""
+    body = mark_safe((PRIVACY_HTML.parent / "terms.html").read_text(encoding="utf-8"))
+    return render(request, "privacy.html", {"body": body, "title": "이용약관"})
+
+
 def landing(user) -> str:
     """로그인한 사람이 처음 갈 화면. 조직이 없으면 오늘 화면은 할 일이 없으니 조직 목록([조직 만들기])으로."""
     if not orgs_of(user).exists():

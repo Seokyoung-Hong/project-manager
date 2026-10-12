@@ -29,7 +29,7 @@
 <section class="card" id="member-info" aria-labelledby="member-info-title">
   <h2 id="member-info-title">구성원 정보</h2>
   <p class="muted t13">구성원이 이 조직에 내야 하는 정보입니다. 필수 항목을 입력하지 않은 구성원(관리자 포함)은 입력할 때까지 이 조직을 쓸 수 없습니다. 항목 이름을 바꿔도 입력한 값은 남고, 항목을 삭제하면 그 값은 더 이상 보이지 않습니다.</p>
-  <p class="notice warn"><span aria-hidden="true">⚠</span> 민감정보·고유식별정보(주민등록번호 등)·금융정보는 요구할 수 없습니다(이용약관).</p>
+  <p class="notice warn"><span aria-hidden="true">⚠</span> 민감정보·고유식별정보(주민등록번호 등)·금융정보는 요구할 수 없습니다(<a href="{% url 'terms' %}#제6조-구성원-정보와-조직의-의무">이용약관 제6조</a>).</p>
   <form method="post" action="{% url 'org_member_fields' org.pk %}" class="stack">{% csrf_token %}
     <label class="field">실명 입력<select class="select" name="real_name">{% for v, l in real_name_modes %}<option value="{{ v }}"{% if v == member_def.real_name %} selected{% endif %}>{{ l }}</option>{% endfor %}</select></label>
     <p class="table-scroll-hint">항목 표는 좌우로 이동해 확인해 주세요.</p>

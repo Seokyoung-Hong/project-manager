@@ -65,6 +65,7 @@ urlpatterns = [
     path("skills/install.<str:ext>", skills.install, name="skills_install"),
     path("skills/udally-skills.zip", skills.bundle, name="skills_bundle"),
     path("privacy", auth.privacy, name="privacy"),
+    path("terms", auth.terms, name="terms"),
     path("join/<str:token>", auth.join, name="join"),
     path("today", today.today, name="today"),
     path("today/quick", today.quick_add, name="today_quick"),
