@@ -176,6 +176,12 @@ def blocked_orgs(user) -> list:
     return [m.org for m in ms if missing(m)]
 
 
+def blocked_user_ids(org_id) -> set[int]:
+    """이 조직에서 필수 항목이 빈 구성원. 열람 함수를 거치지 않는 알림(DM·기한 알림)이 수신자에서 뺀다."""
+    ms = OrgMembership.objects.select_related("org").filter(org_id=org_id)
+    return {m.user_id for m in ms if missing(m)}
+
+
 def blocked_out(user) -> list[dict]:
     """여러 조직에 걸친 응답에 붙이는 안내: 빠진 조직과 입력 화면 주소."""
     return [

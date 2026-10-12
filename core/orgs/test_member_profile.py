@@ -183,3 +183,43 @@ def test_web_paths_use_target_org(client, org, admin, member):
     assert client.post(f"/orgs/invites/{inv.pk}/revoke")["Location"] == url
     assert client.post(f"/orgs/memberships/{m.pk}/tags", {"tags": "a"})["Location"] == url
     assert client.get(f"/milestones/{ms.pk}/edit")["Location"] == url
+
+
+def test_discord_lists_and_notices(client, api, org, admin, member, project, task, team):
+    """Discord 실행자 안내, 목록 API 헤더, 팀 열람, 알림 수신자 제외."""
+    import json
+
+    from accounts.models import ApiToken, User
+    from orgs.services import visible_teams
+    from tasks.models import Notice
+    from tasks.work_requests import notify
+
+    bot = User.objects.create_user("discord-bot", password="pw12345678", display_name="봇")
+    _, raw = ApiToken.issue(bot, "봇", "bot")
+    bh = {"Authorization": f"Bearer {raw}"}
+    set_definition(org, "required", [], admin)
+
+    r = client.post(
+        f"/api/integrations/discord/tasks/{task.pk}/done",
+        {"discord_user_id": "111"},
+        content_type="application/json",
+        headers=bh,
+    )
+    assert r.status_code == 403 and r.json()["error"] == "profile_required"
+    assert r.json()["detail"].endswith(f"/orgs/{org.pk}/member-info")
+
+    r = api.get("/api/projects")
+    assert r.status_code == 200 and r.json() == []
+    blocked = json.loads(r["X-Blocked-Orgs"])
+    assert blocked[0]["org_id"] == org.pk and blocked[0]["url"].endswith("/member-info")
+
+    assert not visible_teams(member).exists()
+
+    save(_m(org, admin), "김관리", {})  # 관리자는 입력을 마쳤다
+    members = client.get(f"/api/integrations/discord/orgs/{org.pk}/members", headers=bh).json()
+    assert [m["id"] for m in members] == [admin.pk]
+    notify(org, "알림", user=member)
+    assert not Notice.objects.filter(user=member).exists()
+
+    save(_m(org, member), "김팀원", {})
+    assert "X-Blocked-Orgs" not in api.get("/api/projects")

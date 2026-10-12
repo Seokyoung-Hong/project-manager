@@ -172,6 +172,20 @@ def test_profile_required_message_passes_through():
     assert str(e.value) == body["detail"]
 
 
+def test_blocked_orgs_header_is_shown():
+    """목록 응답 헤더 X-Blocked-Orgs(막힌 조직 안내)를 결과에 붙인다."""
+    import httpx
+
+    from mcp_server.core_client import Core
+
+    note = [
+        {"org_id": 1, "org_name": "산돌이", "message": "m", "url": "http://x/orgs/1/member-info"}
+    ]
+    resp = httpx.Response(200, json=[{"id": 3}], headers={"X-Blocked-Orgs": json.dumps(note)})
+    core = Core("t", transport=httpx.MockTransport(lambda r: resp))
+    assert core.get("/api/projects") == {"items": [{"id": 3}], "blocked_orgs": note}
+
+
 def test_update_conflict_message(fake_core, with_token):
     with pytest.raises(CoreError) as e:
         fn("update_task")(1, version=99, priority=8)

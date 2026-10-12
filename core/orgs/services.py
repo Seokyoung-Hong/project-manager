@@ -479,7 +479,7 @@ def visible_teams(user, org=None):
     qs = (
         Team.objects.filter(org=org)
         if org is not None
-        else Team.objects.filter(org__in=orgs_of(user))
+        else Team.objects.filter(org__in=usable_orgs(user))
     )
     admin = OrgMembership.objects.filter(user=user, role="admin", org_id=OuterRef("org_id"))
     member = TeamMembership.objects.filter(user=user, team_id=OuterRef("pk"))

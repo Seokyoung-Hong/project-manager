@@ -72,4 +72,38 @@ class BotTokenAuth(TokenAuth):
             return None
         if request.api_token.scope != "bot":
             raise HttpError(403, "Discord 봇 토큰이 필요합니다.")
+        _discord_actor_gate(request)
         return user
+
+
+DISCORD_PREFIX = "/api/integrations/discord/"
+
+
+def _discord_actor_gate(request):
+    """봇이 사람(discord_user_id) 대신 일할 때도 그 사람이 막힌 조직이면 404 대신 입력 안내를 준다.
+
+    대상 조직은 경로의 task·project·team·request id, 본문의 project·team 또는 guild_id(연결 서버)로 정한다.
+    회의 진행 중 이벤트(/meetings/{id}/…)는 봇이 대신 보고하는 것이라 막지 않는다.
+    """
+    from accounts.services import user_by_discord_id
+    from orgs.models import Organization
+
+    path = request.path
+    if not path.startswith(DISCORD_PREFIX) or path.startswith(DISCORD_PREFIX + "meetings/"):
+        return
+    params = api_params(request)
+    did = params.get("discord_user_id")
+    actor = user_by_discord_id(str(did)) if did else None
+    if actor is None:
+        return
+    match = request.resolver_match
+    org_id = request_org_id(match.kwargs if match else {}, params)
+    if org_id is None and params.get("guild_id"):
+        org_id = (
+            Organization.objects.filter(discord_guild_id=str(params["guild_id"]))
+            .values_list("pk", flat=True)
+            .first()
+        )
+    org = blocked_org(actor, org_id)
+    if org is not None:
+        raise MemberInfoRequired(org)
