@@ -21,6 +21,7 @@ from orgs import services as osv
 from orgs.settings import SPECS, STT_KEYS, display, effective, secret_value
 
 from .common import not_admin, org_or_404
+from .notes import audio_ctx
 from .orgs import _settings_from_post, stt_models
 
 RECENT = timedelta(days=7)
@@ -187,6 +188,8 @@ def _panel(request, org, rec, *, error=""):
             "options_error": opts_error,
             "running": any(j.status in TranscriptionJob.RUNNING for j in active),
             "error": error,
+            "recording": rec,
+            **audio_ctx(rec),
         },
     )
 
