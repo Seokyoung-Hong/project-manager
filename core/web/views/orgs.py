@@ -1,6 +1,7 @@
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.core.exceptions import PermissionDenied
 from django.db.models import Count, Prefetch
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
@@ -477,6 +478,26 @@ def _org_settings_history(org):
             }
         )
     return rows
+
+
+@login_required
+@require_POST
+def org_delete(request, org_id):
+    """조직 삭제. 관리자가 조직 이름을 정확히 입력해야 진행한다(JS 확인 창이 없어도 서버가 막는다)."""
+    org = org_or_404(request.user, org_id)
+    if not can_admin(request.user, org):
+        raise PermissionDenied
+    if request.POST.get("confirm_name", "").strip() != org.name:
+        messages.error(
+            request, "조직 이름이 일치하지 않아 삭제하지 않았습니다. 이름을 정확히 입력해 주세요."
+        )
+        return redirect("org_settings", org_id=org.pk)
+    name = org.name
+    osv.delete_org(org, request.user)
+    if request.session.get("org_id") == org_id:
+        request.session.pop("org_id")
+    messages.success(request, f"조직 '{name}'을(를) 삭제했습니다.")
+    return redirect("org")
 
 
 @login_required

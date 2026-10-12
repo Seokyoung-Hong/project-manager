@@ -90,6 +90,7 @@ urlpatterns = [
     path("orgs/<int:org_id>/teams", orgs.org_teams, name="org_teams"),
     path("orgs/<int:org_id>/governance", orgs.org_governance, name="org_governance"),
     path("orgs/<int:org_id>/settings", orgs.org_settings, name="org_settings"),
+    path("orgs/<int:org_id>/delete", orgs.org_delete, name="org_delete"),
     path("orgs/<int:org_id>/requests/<int:req_id>", orgs.change_request, name="change_request"),
     path("orgs/<int:org_id>/teams/new", teams.team_new, name="team_new"),
     path("orgs/<int:org_id>/invites", orgs.invite_create, name="invite_create"),

@@ -264,6 +264,45 @@ def _admin_count(org) -> int:
     return OrgMembership.objects.filter(org=org, role="admin").count()
 
 
+@transaction.atomic
+def delete_org(org, actor):
+    """조직과 그 안의 모든 데이터를 한 트랜잭션으로 지운다. 웹 전용(AI·API 경로 없음).
+
+    대부분은 org CASCADE로 따라 지워지지만 PROTECT FK는 Django가 막으므로 잎부터 명시 순서로
+    먼저 지운다. 새 PROTECT FK가 생기면 test_delete_org의 전 모델 픽스처가 실패해 알려 준다.
+    GitHub 앱 설치·Discord 연결은 DB 행만 지운다(외부 쪽 해제는 사람이 따로 한다).
+    """
+    require_admin(actor, org)
+    _lock_org(org)
+    from portfolio.models import PortfolioDraft, PortfolioSource
+    from tasks.attachments import purge_files
+    from tasks.models import Attachment, ChangeLog, Task, TaskDecisionRecord
+
+    # 삭제 기록. ChangeLog는 조직 FK가 없어 조직이 지워져도 남는다(팀·프로젝트 삭제와 같은 방식).
+    ChangeLog.objects.create(
+        target_type="org",
+        target_id=org.pk,
+        field="delete",
+        old_value="",
+        new_value=f"조직 {org.name}({org.pk})",
+        actor=actor,
+        source="web",
+    )
+    purge_files(
+        Attachment.objects.filter(Q(project__org=org) | Q(task__project__org=org) | Q(doc__org=org))
+    )  # 행은 CASCADE로 지워지고, 파일은 커밋 뒤에 지운다
+    # PROTECT 사슬: 포트폴리오 출처 → 초안(org PROTECT) → 결정 기록(task PROTECT) → 태스크(project PROTECT)
+    PortfolioSource.objects.filter(
+        Q(draft__org=org) | Q(decision_record__task__project__org=org)
+    ).delete()
+    PortfolioDraft.objects.filter(org=org).delete()
+    records = TaskDecisionRecord.objects.filter(task__project__org=org)
+    records.update(supersedes=None)  # 자기 참조 PROTECT는 같은 묶음 안이어도 Django가 막는다
+    records.delete()
+    Task.objects.filter(project__org=org).delete()
+    org.delete()  # 나머지(프로젝트·팀·문서·멤버십·초대·GitHub·Discord 등)는 CASCADE
+
+
 def _lock_org(org):
     """마지막 관리자 검사를 직렬화한다. 관리자 둘이 동시에 서로를 내리면 둘 다 count=2를 보고
     통과해 관리자 0명이 되기 때문이다(그 조직은 설정도 승인도 영영 못 바꾼다)."""
