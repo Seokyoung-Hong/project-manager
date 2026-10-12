@@ -1,0 +1,21 @@
+{% extends "base.html" %}{% block title %}{{ org.name }} · 전사{% endblock %}
+{% block main %}
+{% include "orgs/_tabs.html" %}
+<div class="row view-switch" role="group" aria-label="보기">
+  <a class="btn sm" href="{% url 'org_transcribe' org.pk %}" aria-pressed="{% if view == 'jobs' %}true{% else %}false{% endif %}">전사 작업</a>
+  <a class="btn sm" href="{% url 'org_transcribe' org.pk %}?view=server" aria-pressed="{% if view == 'server' %}true{% else %}false{% endif %}">전사 서버</a>
+</div>
+{% if view == "server" %}
+<form method="post" action="{% url 'org_transcribe_server' org.pk %}" class="card">{% csrf_token %}
+  <div class="card-head"><h2>전사 서버</h2><button class="btn primary">전사 서버 설정 저장</button></div>
+  <p class="muted t13">회의가 끝나면 이 서버와 모델로 전사문을 만듭니다. 로컬 전사 서버가 없으면 조직 OpenAI 키로 전사합니다.</p>
+  <div class="settings-list" role="list">
+    {% for row in rows %}{% include "settings/_setting_row.html" with row=row %}{% endfor %}
+  </div>
+</form>
+{% else %}
+<section class="card" aria-label="전사 작업">
+  {% include "orgs/_transcribe_jobs.html" %}
+</section>
+{% endif %}
+{% endblock %}

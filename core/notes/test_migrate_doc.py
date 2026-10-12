@@ -93,8 +93,10 @@ def test_meeting_notes_move_into_docs(pg_flushable):
         assert (d1.created_on, d1.created_at, d1.created_by_id) == (T0, T0, host.pk)
         assert list(d1.tasks.all()) == [task]
         assert set(d1.attendees.all()) == {host, guest}
-        # 0006 시점 표에는 뒤 마이그레이션(0007 audio)의 열이 없다
-        rec = VoiceRecording.objects.defer("audio", "audio_size").get()
+        # 0006 시점 표에는 뒤 마이그레이션(0007 audio, 0009 전사 작업, 0010 출처)의 열이 없다
+        rec = VoiceRecording.objects.defer(
+            "audio", "audio_size", "segments", "transcript_job", "source"
+        ).get()
         assert rec.note_id == d1.pk and rec.host == guest and rec.transcript_md == "안녕"
         assert d1.revisions.get().version == 4
         assert [d.pk for d in task.docs.all()] == [d1.pk]
@@ -105,6 +107,7 @@ def test_meeting_notes_move_into_docs(pg_flushable):
     finally:
         from projects.models import Doc
 
-        Doc.objects.filter(kind="meeting", is_template=False).delete()
         ex = MigrationExecutor(connection)
         ex.migrate(ex.loader.graph.leaf_nodes())
+        # 지우기는 끝까지 올린 뒤에(0006 시점엔 연쇄 삭제가 볼 0008 voicetrack 표가 없다)
+        Doc.objects.filter(kind="meeting", is_template=False).delete()

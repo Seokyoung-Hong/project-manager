@@ -1,0 +1,286 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>전사 시안 A</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jua&display=swap">
+<style>
+/* DESIGN.md 토큰(app.css 값 그대로 옮김) + 시안에 필요한 부품만 */
+:root {
+  --c-bg: #F8F5EE; --c-surface: #FFFDF8; --c-soft: #EFE9DC; --c-fill: #E6E0D1; --c-line: #E2DFD4; --c-line-strong: #8A8677;
+  --c-ink: #33372D; --c-muted: #64655A; --c-faint: #8A8A7C;
+  --c-accent: #A63E2E; --c-accent-strong: #873022; --c-accent-soft: #F6E1D6; --c-on-accent: #FFFDF6;
+  --c-yellow: #F5D575; --c-sage: #DCE8D5; --c-sage-strong: #8CAA73; --c-coral: #F4C1AC;
+  --c-danger: #A52F2B; --c-danger-soft: #FBE3DE; --c-success: #2F6B3A; --c-success-soft: #DCE8D5;
+  --c-warning: #84520A; --c-warning-soft: #FBEFCB; --c-info: #285480; --c-info-soft: #E3ECF5;
+  --f-display: 'Jua', Pretendard, sans-serif;
+  --f-body: Pretendard, -apple-system, 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif;
+  --f-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --fs-2xs: 11px; --fs-xs: 12px; --fs-sm: 13px; --fs-md: 14px; --fs-task: 15px; --fs-lg: 16px; --fs-xl: 20px;
+  --fs-2xl: 24px; --fs-h2: 28px; --fs-3xl: 30px; --fs-page: 38px;
+  --sp-1: 4px; --sp-2: 8px; --sp-3: 12px; --sp-4: 16px; --sp-5: 20px; --sp-6: 24px; --sp-8: 32px; --sp-10: 40px;
+  --r-xs: 6px; --r-sm: 8px; --r-md: 12px; --r-lg: 18px; --r-xl: 24px; --r-pill: 999px;
+  --sh-1: 0 2px 0 rgba(51, 55, 45, .04); --sh-2: 0 6px 15px rgba(51, 55, 45, .08); --sh-pop: 0 16px 36px rgba(34, 41, 31, .16);
+  --scrim: rgba(36, 41, 33, .38);
+  --z-sticky: 4; --z-header: 10; --z-overlay: 20;
+  --dur-fast: 180ms; --dur-base: 200ms; --dur-slow: 800ms; --ease: ease; --ease-out: cubic-bezier(.2, .8, .2, 1);
+  --header-h: 80px;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --c-bg: #242921; --c-surface: #30362C; --c-soft: #3C4434; --c-fill: #465040; --c-line: #4A5143; --c-line-strong: #8A9480;
+    --c-ink: #F5F0DF; --c-muted: #BDC2B3; --c-faint: #8F9984;
+    --c-accent: #FFC3AD; --c-accent-strong: #FFD8C8; --c-accent-soft: #533B30; --c-on-accent: #3A1E16;
+    --c-yellow: #675723; --c-sage: #3D563C; --c-sage-strong: #8CAA73; --c-coral: #654638;
+    --c-danger: #FFB2A6; --c-danger-soft: #4A2A26; --c-success: #A9D99A; --c-success-soft: #34472F;
+    --c-warning: #F5CA86; --c-warning-soft: #4A3D22; --c-info: #A9CDF4; --c-info-soft: #2A3A4C;
+    --sh-1: 0 2px 0 rgba(0, 0, 0, .12); --sh-2: 0 6px 15px rgba(0, 0, 0, .22); --sh-pop: 0 16px 36px rgba(0, 0, 0, .40);
+    --scrim: rgba(0, 0, 0, .52);
+  }
+}
+* { box-sizing: border-box; margin: 0; }
+body { background: var(--c-bg); color: var(--c-ink); font: 14px/1.55 var(--f-body); }
+h1, h2, h3 { text-wrap: balance; } p { text-wrap: pretty; }
+a { color: var(--c-accent); }
+code { font-family: var(--f-mono); font-size: var(--fs-xs); background: var(--c-soft); border-radius: var(--r-xs); padding: 1px 6px; }
+.num, .eta, .bar-label { font-variant-numeric: tabular-nums; }
+.muted { color: var(--c-muted); } .t12 { font-size: var(--fs-xs); } .t13 { font-size: var(--fs-sm); }
+:focus-visible { outline: 3px solid var(--c-accent); outline-offset: 2px; }
+
+.draft-note { background: var(--c-ink); color: var(--c-bg); font-size: var(--fs-xs); padding: 6px var(--sp-8); }
+.header { position: sticky; top: 0; z-index: var(--z-header); height: var(--header-h); display: flex; align-items: center; gap: var(--sp-5);
+  padding: 0 var(--sp-8); background: color-mix(in srgb, var(--c-bg) 92%, transparent); border-bottom: 1px solid var(--c-line); }
+.logo { font-family: var(--f-display); font-size: var(--fs-2xl); color: var(--c-ink); text-decoration: none; background: var(--c-yellow); padding: 0 10px; border-radius: var(--r-sm); }
+.nav { display: flex; gap: var(--sp-1); padding: 5px; border-radius: var(--r-pill); background: var(--c-soft); overflow-x: auto; }
+.nav a, .tabs a { display: inline-flex; align-items: center; height: 40px; padding: 0 15px; border-radius: var(--r-pill);
+  color: var(--c-muted); font-weight: 500; text-decoration: none; white-space: nowrap; }
+.nav a[aria-current="page"], .tabs a[aria-current="page"] { background: var(--c-surface); color: var(--c-ink); font-weight: 700; box-shadow: var(--sh-2); }
+.layout { padding: var(--sp-8); display: flex; flex-direction: column; gap: var(--sp-6); }
+.page-head { display: flex; flex-direction: column; gap: 2px; }
+.page-head > a { color: var(--c-muted); text-decoration: none; font-weight: 700; font-size: var(--fs-xs); }
+.page-head > h1 { font-family: var(--f-display); font-weight: 400; font-size: var(--fs-page); line-height: 1.25; align-self: flex-start; position: relative; z-index: 0; }
+.page-head > h1::after { content: ""; position: absolute; z-index: -1; left: -4px; right: -8px; bottom: 4px; height: 14px;
+  background: var(--c-yellow); border-radius: 10px 4px 12px 6px; transform: rotate(-1deg); opacity: .85; }
+.page-head > p { color: var(--c-muted); }
+.tabs { display: flex; gap: var(--sp-1); flex-wrap: wrap; align-self: flex-start; max-width: 100%; padding: 5px; border-radius: var(--r-xl); background: var(--c-soft); }
+
+.card { background: var(--c-surface); border: 1px solid var(--c-line); border-radius: var(--r-lg); padding: var(--sp-6); display: flex; flex-direction: column; gap: var(--sp-4); min-width: 0; }
+.card > h2, .card-head h2 { font-family: var(--f-display); font-weight: 400; font-size: var(--fs-2xl); line-height: 1.35; }
+.card-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--sp-2) var(--sp-4); }
+.box { background: var(--c-soft); border: 1px solid var(--c-line); border-radius: var(--r-lg); padding: var(--sp-4); }
+
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 40px; padding: 0 18px; border-radius: var(--r-pill);
+  border: 1px solid var(--c-line); background: var(--c-surface); color: var(--c-ink); font: inherit; font-weight: 600; cursor: pointer; text-decoration: none; white-space: nowrap;
+  transition: background var(--dur-fast) var(--ease); }
+.btn:hover { background: var(--c-soft); } .btn:active { transform: translateY(1px); }
+.btn.primary { background: var(--c-accent); border-color: var(--c-accent); color: var(--c-on-accent); }
+.btn.primary:hover { background: var(--c-accent-strong); }
+.btn.tint { background: var(--c-accent-soft); border-color: transparent; color: var(--c-accent); }
+.btn.sm { height: 36px; padding: 0 14px; font-size: var(--fs-sm); }
+.btn.link { height: auto; padding: 0; border: 0; background: none; color: var(--c-accent); border-radius: var(--r-sm); }
+.btn.danger { border-color: var(--c-danger); color: var(--c-danger); }
+.btn:disabled { opacity: .5; cursor: default; }
+
+label.field { display: flex; flex-direction: column; gap: 6px; font-weight: 600; font-size: var(--fs-sm); }
+.select, .input { height: 40px; border: 1px solid var(--c-line-strong); border-radius: var(--r-md); background: var(--c-surface); color: var(--c-ink); font: inherit; padding: 0 12px; max-width: 420px; width: 100%; }
+.helptext { font-size: var(--fs-xs); color: var(--c-muted); font-weight: 400; max-width: 70ch; }
+
+.badge { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; padding: 1px 8px; border-radius: var(--r-xs);
+  font-size: var(--fs-xs); line-height: 18px; background: var(--c-soft); color: var(--c-muted); font-weight: 600; }
+.badge.ok { background: var(--c-success-soft); color: var(--c-success); } .badge.warn { background: var(--c-warning-soft); color: var(--c-warning); }
+.badge.danger { background: var(--c-danger-soft); color: var(--c-danger); } .badge.info { background: var(--c-info-soft); color: var(--c-info); }
+.badge.primary { background: var(--c-yellow); color: var(--c-ink); }
+.conn { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2) var(--sp-3); }
+.conn-state { display: inline-flex; align-items: center; gap: 6px; padding: 2px 10px 2px 8px; border-radius: var(--r-xs);
+  font-size: var(--fs-xs); line-height: 20px; font-weight: 700; white-space: nowrap; background: var(--c-soft); color: var(--c-muted); }
+.conn-state::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+.conn-state.on { background: var(--c-success-soft); color: var(--c-success); }
+.conn-state.warn { background: var(--c-warning-soft); color: var(--c-warning); }
+.conn-state.bad { background: var(--c-danger-soft); color: var(--c-danger); }
+.conn-state.off::before { background: transparent; border: 1.5px dashed currentColor; }
+.notice { display: flex; align-items: flex-start; gap: var(--sp-2); padding: 14px 16px; border-radius: var(--r-lg); background: var(--c-sage); color: var(--c-ink); }
+.notice.warn { background: var(--c-warning-soft); color: var(--c-warning); }
+
+.bar { height: 8px; border-radius: var(--r-pill); background: var(--c-fill); overflow: hidden; }
+.bar i { display: block; height: 100%; background: var(--c-accent); border-radius: inherit; transition: width var(--dur-slow) var(--ease-out); }
+.bar.sage i { background: var(--c-sage-strong); }
+
+table.grid { width: 100%; border-collapse: separate; border-spacing: 0; }
+table.grid th, table.grid td { text-align: left; padding: 12px 10px; border-bottom: 1px solid var(--c-line); vertical-align: top; }
+table.grid th { font-size: var(--fs-xs); color: var(--c-muted); background: var(--c-soft); font-weight: 600; }
+table.grid th:first-child { border-radius: var(--r-sm) 0 0 0; } table.grid th:last-child { border-radius: 0 var(--r-sm) 0 0; }
+
+details.fold > summary { cursor: pointer; font-weight: 600; font-size: var(--fs-sm); color: var(--c-muted); list-style: none; display: inline-flex; gap: 6px; align-items: center; min-height: 32px; }
+details.fold > summary::-webkit-details-marker { display: none; }
+details.fold > summary::before { content: "▸"; } details.fold[open] > summary::before { content: "▾"; }
+dl.meta { display: grid; grid-template-columns: max-content 1fr; gap: 6px 16px; font-size: var(--fs-sm); margin-top: var(--sp-2); }
+dl.meta dt { color: var(--c-muted); } dl.meta dd { font-variant-numeric: tabular-nums; }
+
+.radios { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr)); gap: var(--sp-2); }
+.radio-card { display: flex; gap: var(--sp-3); padding: 12px 14px; border: 1px solid var(--c-line); border-radius: var(--r-lg); background: var(--c-surface); cursor: pointer; }
+.radio-card:has(input:checked) { border-color: var(--c-accent); background: var(--c-accent-soft); }
+.radio-card:has(input:disabled) { cursor: default; opacity: .6; }
+.radio-card b { display: block; font-size: var(--fs-task); font-weight: 600; } .radio-card span { display: block; font-size: var(--fs-sm); color: var(--c-muted); }
+.radio-card input { accent-color: var(--c-accent); margin-top: 4px; }
+
+dialog { border: 0; border-radius: var(--r-lg); padding: 0; width: min(640px, calc(100vw - 32px)); background: var(--c-surface); color: var(--c-ink); box-shadow: var(--sh-pop); }
+dialog::backdrop { background: var(--scrim); }
+dialog .dlg { padding: var(--sp-6); display: flex; flex-direction: column; gap: var(--sp-4); }
+dialog h2 { font-family: var(--f-display); font-weight: 400; font-size: var(--fs-2xl); }
+.row-btns { display: flex; flex-wrap: wrap; gap: var(--sp-2); justify-content: flex-end; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+
+@media (max-width: 700px) {
+  :root { --header-h: 115px; }
+  .header { flex-wrap: wrap; height: auto; padding: 12px 16px; gap: 10px; } .nav { max-width: 100%; }
+  .layout { padding: 16px; gap: 16px; } .draft-note { padding: 6px 16px; }
+  .page-head > h1 { font-size: var(--fs-3xl); } .page-head > h1::after { height: 10px; }
+  .card { padding: 18px; } .tabs { flex-wrap: nowrap; overflow-x: auto; }
+  .btn, .select, .input { min-height: 44px; } .btn.link { min-height: 44px; } .select, .input { font-size: var(--fs-lg); }
+}
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
+fieldset { border: 0; padding: 0; min-width: 0; } legend { padding: 0; }
+[hidden] { display: none !important; }
+/* 시안 A 전용 */
+.server-grid { display: grid; grid-template-columns: minmax(260px, 1.2fr) minmax(260px, 1fr); gap: var(--sp-6); align-items: start; }
+.model-line { display: flex; flex-wrap: wrap; gap: var(--sp-2); align-items: center; }
+.speed { font-size: var(--fs-sm); }
+.speed b { font-family: var(--f-display); font-weight: 400; font-size: var(--fs-xl); }
+.jobs td.prog { min-width: 200px; }
+.jobs .eta { font-weight: 700; }
+.jobs .acts { text-align: right; white-space: nowrap; }
+.job-title { font-weight: 600; font-size: var(--fs-task); }
+.bar-label { display: flex; justify-content: space-between; font-size: var(--fs-xs); color: var(--c-muted); margin-top: 4px; }
+@media (max-width: 850px) {
+  .server-grid { grid-template-columns: 1fr; }
+  table.jobs thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+  table.jobs, table.jobs tbody, table.jobs tr, table.jobs td { display: block; width: 100%; }
+  table.jobs tr { padding: 14px 0; border-bottom: 1px solid var(--c-line); display: grid; grid-template-columns: 1fr auto; gap: 8px 12px; }
+  table.jobs td { border: 0; padding: 0; }
+  table.jobs td.dash { display: none; }
+  table.jobs td.prog { grid-column: 1 / -1; min-width: 0; }
+  table.jobs td.acts { grid-column: 1 / -1; text-align: left; display: flex; flex-wrap: wrap; gap: 8px; }
+}
+</style>
+</head>
+<body>
+<p class="draft-note">시안 A · 한 화면 두 카드 — 위는 전사 서버·모델, 아래는 전사 작업 표. 세부 정보는 각 행 안에 접어 둡니다. (가짜 데이터)</p>
+<header class="header">
+  <a class="logo" href="#">udally</a>
+  <nav class="nav" aria-label="주 메뉴"><a href="#">오늘</a><a href="#">내 태스크</a><a href="#">요청</a><a href="#">프로젝트</a><a href="#" aria-current="page">조직</a><a href="#">검색</a></nav>
+</header>
+<main class="layout">
+  <div class="page-head">
+    <a href="#">산돌이</a>
+    <h1>전사</h1>
+    <p>회의 녹음을 전사문으로 바꾸는 서버와 작업을 관리합니다.</p>
+  </div>
+  <nav class="tabs" aria-label="조직 메뉴"><a href="#">개요</a><a href="#">팀</a><a href="#">로드맵</a><a href="#">문서</a><a href="#">회의록</a><a href="#" aria-current="page">전사</a><a href="#">Discord</a><a href="#">설정</a></nav>
+
+  <section class="card" aria-labelledby="h-server">
+    <div class="card-head"><h2 id="h-server">전사 서버</h2>
+      <div class="conn"><span class="conn-state on">로컬 전사 서버 연결됨</span><code>stt.house.sio2.kr</code></div></div>
+    <div class="server-grid">
+      <div>
+        <label class="field" for="model">회의가 끝나면 쓸 모델
+          <span class="model-line">
+            <select id="model" class="select" aria-describedby="model-help">
+              <option>large-v3-turbo · 준비됨</option>
+              <option>medium · 준비됨</option>
+              <option>small · 받는 중 42%</option>
+              <option>large-v3 · 받지 않음</option>
+              <option disabled>large-v3 (int8 아님) · 이 서버에서 쓸 수 없음</option>
+            </select>
+            <button type="button" class="btn sm">모델 적용</button>
+          </span>
+          <span id="model-help" class="helptext">받지 않은 모델을 적용하면 서버가 먼저 받습니다. 받는 동안에는 지금 모델로 전사합니다.</span>
+        </label>
+      </div>
+      <div class="box">
+        <p class="speed muted">이 모델의 속도</p>
+        <p class="speed"><b class="num">30분</b> 회의 ≈ <b class="num">약 7분</b></p>
+        <p class="t12 muted">최근 전사 12건 실측 기준입니다.</p>
+        <details class="fold"><summary>서버 세부 정보</summary>
+          <dl class="meta"><dt>장치</dt><dd>CPU 4코어</dd><dt>정밀도</dt><dd>int8</dd><dt>처리 속도</dt><dd>음성 1분당 14초(실측 0.23배)</dd><dt>동시 처리</dt><dd>2구간</dd><dt>대체 수단</dt><dd>조직 OpenAI 키(whisper-1) 설정됨</dd><dt>응답</dt><dd>210ms</dd></dl>
+        </details>
+      </div>
+    </div>
+  </section>
+
+  <section class="card" aria-labelledby="h-jobs">
+    <div class="card-head"><h2 id="h-jobs">전사 작업</h2><span class="t13 muted">진행 1 · 대기 1 · 최근 7일</span></div>
+    <table class="grid jobs">
+      <thead><tr><th>회의록</th><th>상태</th><th>진행</th><th>남은 시간</th><th class="acts"><span class="sr-only">행동</span></th></tr></thead>
+      <tbody>
+        <tr>
+          <td><div class="job-title">주간 기획 회의</div><div class="t12 muted">10월 12일 14:00 · 음성 38분 · 참여자 4명</div>
+            <details class="fold"><summary>세부 정보</summary><dl class="meta"><dt>모델</dt><dd>large-v3-turbo</dd><dt>수단</dt><dd>로컬 전사 서버</dd><dt>구간</dt><dd><span data-seg>81</span>/131 · 실패 0</dd><dt>장치·정밀도</dt><dd>CPU · int8</dd><dt>실측 속도</dt><dd>0.24배</dd><dt>시작</dt><dd>14:42</dd></dl></details></td>
+          <td><span class="conn-state on">전사 중</span></td>
+          <td class="prog"><div class="bar" role="progressbar" aria-label="주간 기획 회의 전사 진행" aria-valuenow="62" aria-valuemin="0" aria-valuemax="100"><i data-bar style="width:62%"></i></div><div class="bar-label"><span data-pct>62%</span><span>음성 23분/38분</span></div></td>
+          <td><span class="eta" data-eta="250">약 4분 남음</span></td>
+          <td class="acts"><button type="button" class="btn sm danger" aria-label="주간 기획 회의 전사 취소">전사 취소</button></td>
+        </tr>
+        <tr>
+          <td><div class="job-title">디자인 리뷰</div><div class="t12 muted">10월 12일 15:10 · 음성 22분 · 다시 전사</div></td>
+          <td><span class="conn-state">대기</span></td>
+          <td class="prog"><span class="t13 muted">앞 작업이 끝나면 시작합니다</span></td>
+          <td><span class="eta">약 4분 뒤 시작 · 약 5분</span></td>
+          <td class="acts"><button type="button" class="btn sm" aria-label="디자인 리뷰 대기 취소">대기 취소</button></td>
+        </tr>
+        <tr>
+          <td><div class="job-title">스프린트 회고</div><div class="t12 muted">10월 11일 · 음성 51분</div>
+            <details class="fold"><summary>세부 정보</summary><dl class="meta"><dt>모델</dt><dd>medium</dd><dt>수단</dt><dd>로컬 전사 서버</dd><dt>구간</dt><dd>176/176 · 실패 3</dd><dt>걸린 시간</dt><dd>9분 12초(실측 0.18배)</dd></dl></details></td>
+          <td><span class="conn-state warn">끝남 · 구간 3개 실패</span></td>
+          <td class="prog"><a href="#" class="t13">전사문 보기</a></td>
+          <td class="dash"><span class="t13 muted">—</span></td>
+          <td class="acts"><button type="button" class="btn sm tint" data-open="retry" aria-label="스프린트 회고 다른 모델로 다시 전사">다른 모델로 다시 전사</button></td>
+        </tr>
+        <tr>
+          <td><div class="job-title">신입 온보딩</div><div class="t12 muted">10월 10일 · 음성 17분</div></td>
+          <td><span class="conn-state off">취소됨</span></td>
+          <td class="prog"><span class="t13 muted">이전 전사문을 그대로 씁니다</span></td>
+          <td class="dash"><span class="t13 muted">—</span></td>
+          <td class="acts"><button type="button" class="btn sm tint" data-open="retry" aria-label="신입 온보딩 다른 모델로 다시 전사">다른 모델로 다시 전사</button></td>
+        </tr>
+        <tr>
+          <td><div class="job-title">9월 결산 회의</div><div class="t12 muted">10월 2일 · 음성 44분</div></td>
+          <td><span class="conn-state">끝남</span></td>
+          <td class="prog"><a href="#" class="t13">전사문 보기</a></td>
+          <td class="dash"><span class="t13 muted">—</span></td>
+          <td class="acts"><span class="t12 muted">보관 기간이 지나 다시 전사할 수 없습니다</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+</main>
+
+<dialog id="retry" aria-labelledby="h-retry">
+  <form method="dialog" class="dlg">
+    <h2 id="h-retry">다른 모델로 다시 전사</h2>
+    <p class="muted">스프린트 회고 · 음성 51분(말한 구간 기준). 지금 전사문은 이전 전사문으로 남아 되돌릴 수 있습니다.</p>
+    <fieldset class="radios"><legend class="sr-only">모델</legend>
+      <label class="radio-card"><input type="radio" name="m" checked><span><b>large-v3-turbo</b><span>약 12분 · 정확도 높음</span></span></label>
+      <label class="radio-card"><input type="radio" name="m"><span><b>medium</b><span>약 9분 · 지난번 모델</span></span></label>
+      <label class="radio-card"><input type="radio" name="m"><span><b>OpenAI whisper-1</b><span>약 3분 · 조직 키 사용(요금 발생)</span></span></label>
+      <label class="radio-card"><input type="radio" name="m" disabled><span><b>small</b><span>받는 중 42%</span></span></label>
+    </fieldset>
+    <p class="t12 muted">예상 시간은 최근 실측 속도로 계산합니다. 진행 중에는 실제 속도로 다시 계산합니다.</p>
+    <div class="row-btns"><button class="btn" value="close">닫기</button><button class="btn primary" value="go">다시 전사 시작</button></div>
+  </form>
+</dialog>
+<script>
+document.querySelectorAll('[data-open]').forEach((b) => b.addEventListener('click', () => document.getElementById(b.dataset.open).showModal()));
+// 가짜 진행: 1초마다 남은 시간·진행률 갱신
+const eta = document.querySelector('[data-eta]'); let left = +eta.dataset.eta;
+setInterval(() => {
+  if (left <= 0) return; left -= 1;
+  const p = Math.min(99, Math.round(62 + (250 - left) / 250 * 38));
+  document.querySelector('[data-bar]').style.width = p + '%';
+  document.querySelector('[data-pct]').textContent = p + '%';
+  eta.textContent = left < 60 ? '1분 안에 끝남' : '약 ' + Math.ceil(left / 60) + '분 남음';
+}, 1000);
+</script>
+</body>
+</html>

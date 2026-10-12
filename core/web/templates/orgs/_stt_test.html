@@ -1,0 +1,5 @@
+{% if error %}<div class="error">{{ error }}</div>
+{% elif applied %}<p class="muted t12">모델을 적용해 저장했습니다.{% if polling %} 받기가 끝날 때까지 상태를 갱신합니다.{% endif %}</p>
+{% else %}<p class="muted t12">연결되었습니다({{ ms }}ms). 모델 {{ models_count }}개를 로컬 전사 모델 목록에 채웠습니다.</p>{% endif %}
+{% if polling %}<span hx-post="{% url 'org_stt_test' org.pk %}" hx-trigger="load delay:3s" hx-target="#stt-test-result" hx-include="closest form"></span>{% endif %}
+{% include "orgs/_stt_model_select.html" with oob=True %}

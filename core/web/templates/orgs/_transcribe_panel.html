@@ -1,0 +1,54 @@
+<div class="panel" hx-get="{% url 'transcribe_panel' org.pk rec.pk %}" hx-trigger="transcribe-changed from:body" hx-target="#panel" hx-swap="innerHTML">
+  <div class="panel-bar">
+    <span class="grow">{% if row %}{% include "orgs/_transcribe_state.html" with r=row %}{% endif %}</span>
+    <button type="button" class="btn sm" data-action="close-panel" aria-label="전사 작업 닫기">닫기</button>
+  </div>
+  <div class="stack tjob-panel">
+    <div>
+      <h2 class="display t24">{{ note.title }}</h2>
+      <p class="t13 muted">{{ rec.started_at|date:"n월 j일 H:i" }} · {% if rec.source == "upload" %}올린 녹음{% else %}참여자 {{ rec.participants|length }}명{% endif %}{% if speech_min %} · 말한 음성 {{ speech_min }}분{% endif %} · <a href="{% url 'org_notes' org.pk %}?note={{ note.pk }}">회의록 보기</a></p>
+    </div>
+    {% if error %}<p class="notice bad" role="alert">⚠ {{ error }}</p>{% endif %}
+    {% include "orgs/_transcribe_progress.html" with row=active_row %}
+    {% if block %}<p class="muted t13">{{ block }}</p>
+    {% else %}
+    <form class="stack" hx-post="{% url 'transcribe_retry' org.pk rec.pk %}" hx-target="#panel" hx-swap="innerHTML">
+      <fieldset class="radios" aria-describedby="retry-help">
+        <legend class="t13 tjob-legend">다른 모델로 다시 전사</legend>
+        {% for o in options %}
+        <label class="radio-card"><input type="radio" name="choice" value="{{ o.value }}" required><span><b>{{ o.label }}</b><span>{{ o.eta }}</span></span></label>
+        {% empty %}<p class="muted t13">다시 전사에 쓸 수 있는 모델이 없습니다. 전사 서버 보기에서 서버 주소나 OpenAI 키를 저장해 주세요.</p>
+        {% endfor %}
+      </fieldset>
+      {% if options_error %}<p class="t12 muted">{{ options_error }}</p>{% endif %}
+      <p id="retry-help" class="t12 muted">{% if running %}지금 전사를 멈추고 고른 모델로 처음부터 전사합니다. {% endif %}새 전사문이 현재 전사문이 되며, 이전 전사문은 전사 기록에 남습니다. 회의록 본문은 바뀌지 않습니다.</p>
+      {% if options %}<button class="btn primary">{% if running %}취소하고 다시 전사{% else %}다시 전사 시작{% endif %}</button>{% endif %}
+    </form>
+    {% endif %}
+    <div class="stack panel-folds">
+      {% if row %}<details class="fold"><summary>세부 정보</summary>
+        <dl class="tjob-meta">
+          <dt>모델</dt><dd>{{ row.label }}</dd>
+          {% if row.job.stats.device %}<dt>장치</dt><dd>{{ row.job.stats.device }}</dd>{% endif %}
+          {% if row.job.stats.compute_type %}<dt>정밀도</dt><dd>{{ row.job.stats.compute_type }}</dd>{% endif %}
+          {% if row.job.stats.rtf %}<dt>서버 처리 배수</dt><dd>{{ row.job.stats.rtf|floatformat:2 }}배</dd>{% endif %}
+          {% if row.job.measured_rtf %}<dt>실측 처리 배수</dt><dd>{{ row.job.measured_rtf|floatformat:2 }}배</dd>{% endif %}
+          <dt>구간</dt><dd>{{ row.job.segments_done }}/{{ row.job.segments_total }}{% if row.job.segments_failed %} · 실패 {{ row.job.segments_failed }}{% endif %}</dd>
+          {% if row.job.started_at %}<dt>시작</dt><dd>{{ row.job.started_at|date:"n월 j일 H:i" }}</dd>{% endif %}
+          {% if row.job.finished_at %}<dt>끝</dt><dd>{{ row.job.finished_at|date:"n월 j일 H:i" }}</dd>{% endif %}
+        </dl>
+      </details>{% endif %}
+      <details class="fold"><summary>전사 기록 <span class="muted">{{ history|length }}</span></summary>
+        <ol class="tjob-history">
+          {% for h in history %}
+          <li><span>{{ h.job.created_at|date:"n월 j일 H:i" }} · {{ h.label }} · {% include "orgs/_transcribe_state.html" with r=h %}</span>
+            {% if h.current %}<span class="badge ok">현재 전사문</span>
+            {% elif h.job.status == "done" %}<button type="button" class="btn sm" hx-post="{% url 'transcribe_use' org.pk h.job.pk %}" hx-target="#panel" hx-swap="innerHTML" aria-label="{{ h.job.created_at|date:'n월 j일 H:i' }} 전사문을 현재 전사문으로 지정">현재 전사문으로 지정</button>{% endif %}
+          </li>
+          {% empty %}<li class="muted">전사 기록이 없습니다.</li>
+          {% endfor %}
+        </ol>
+      </details>
+    </div>
+  </div>
+</div>

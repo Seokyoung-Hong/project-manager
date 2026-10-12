@@ -1,7 +1,14 @@
+import json
+import time
+import urllib.error
+import urllib.parse
+import urllib.request
+
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db.models import Count, Prefetch
+from django.http import HttpResponseForbidden
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
@@ -10,11 +17,23 @@ from django.views.decorators.http import require_POST
 from common.errors import ServiceError
 from github import services as gh_services
 from github import writes as gh_writes
+from notes.transcription import model_name
 from orgs import requests as creq
 from orgs import services as osv
 from orgs.governance import governance_text
 from orgs.models import ChangeRequest, Invite, OrgMembership, TeamMembership
-from orgs.settings import GROUPS, SPECS, display, effective, enforced, locked_keys, specs_for
+from orgs.settings import (
+    GROUPS,
+    SPECS,
+    STT_KEYS,
+    display,
+    effective,
+    enforced,
+    locked_keys,
+    secret_value,
+    specs_for,
+    validate_stt_url,
+)
 from projects.services import project_stats_bulk, visible_projects
 from reports.services import org_status
 from tasks.models import Task, TaskProject
@@ -484,10 +503,14 @@ def org_settings(request, org_id):
     """조직 설정. 관리자가 고치고 멤버는 읽기만 한다 — "왜 진행 중으로 못 바꾸지"의 답이 여기 있다."""
     org = org_or_404(request.user, org_id)
     is_admin = can_admin(request.user, org)
-    specs = specs_for("org")
+    # 전사 서버·모델은 전사 메뉴(views/transcribe.py)가 저장한다. 여기서는 그 값을 그대로 둔다.
+    specs = [s for s in specs_for("org") if s.key not in STT_KEYS]
     if request.method == "POST" and is_admin:
         try:
-            osv.set_org_settings(org, _settings_from_post(request.POST, specs), request.user)
+            keep = {k: v for k, v in (org.settings or {}).items() if k in STT_KEYS}
+            osv.set_org_settings(
+                org, {**keep, **_settings_from_post(request.POST, specs)}, request.user
+            )
             unlocked = {
                 spec.key
                 for spec in specs
@@ -531,3 +554,148 @@ def org_settings(request, org_id):
             "pending_requests": _pending(org, "settings") if is_admin else [],
         },
     )
+
+
+class _NoRedirect(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, *args, **kwargs):
+        return None  # 3xx는 HTTPError로 끝낸다 — 다른 호스트로 끌려가지 않는다.
+
+
+_STT_STATUS = {"downloading": "받는 중", "not_downloaded": "받지 않음"}
+
+
+def _stt_call(org, url: str, path: str, method: str = "GET"):
+    """로컬 전사 서버 호출(discord_gateway transcribe.mjs와 같은 규약). (본문, 오류 문구, 상태 코드)."""
+    # SSRF: 조직 관리자만 부를 수 있고 로컬 서버가 목적이라 사설 IP는 허용한다(루프백·내부 이름은 validate_stt_url이 막는다).
+    error = validate_stt_url(url) if url else "서버 주소를 입력해 주세요."
+    if error:
+        return b"", error, None
+    req = urllib.request.Request(url.rstrip("/") + path, method=method)
+    key = secret_value("meeting.stt_api_key", org)
+    if key:
+        req.add_header("Authorization", f"Bearer {key}")
+    try:
+        with urllib.request.build_opener(_NoRedirect).open(req, timeout=5) as r:  # noqa: S310 — http(s)만 검증함
+            body = r.read(1_000_001)
+        return (
+            (b"", "응답이 1MB를 넘습니다.", None) if len(body) > 1_000_000 else (body, "", r.status)
+        )
+    except urllib.error.HTTPError as e:
+        if e.code in (401, 403):
+            return b"", f"인증에 실패했습니다(HTTP {e.code}). 서버 키를 확인해 주세요.", e.code
+        return b"", f"서버가 HTTP {e.code}로 응답했습니다.", e.code
+    except TimeoutError:
+        return b"", "응답 시간(5초)을 넘겼습니다.", None
+    except OSError as e:  # URLError·연결 끊김
+        timed_out = isinstance(getattr(e, "reason", None), TimeoutError)
+        return (
+            b"",
+            "응답 시간(5초)을 넘겼습니다." if timed_out else "서버에 접속할 수 없습니다.",
+            None,
+        )
+
+
+def _stt_url(request, org) -> str:
+    return (
+        request.POST.get("meeting.stt_url") or effective("meeting.stt_url", org=org) or ""
+    ).strip()
+
+
+INFO_KEYS = (
+    "display_name",
+    "family",
+    "owned_by",
+    "fits",
+    "device",
+    "compute_type",
+    "rtf",
+    "concurrency",
+)
+
+
+def stt_models(org, url: str):
+    """GET /v1/models → ([{id, status, label, name, fits, info}], 오류, ms). 없는 필드는 없는 대로 둔다."""
+    start = time.monotonic()
+    body, error, _ = _stt_call(org, url, "/v1/models")
+    models = []
+    if error:
+        return models, error, None
+    try:
+        for m in json.loads(body)["data"]:
+            if isinstance(m, dict) and m.get("id"):
+                # status가 없는 서버(일반 OpenAI 호환)는 ready로 본다.
+                status = m.get("status") or "ready"
+                label = _STT_STATUS.get(status, "")
+                if status == "downloading" and isinstance(m.get("progress"), int | float):
+                    label += f" {round(m['progress'] * 100)}%"
+                info = {k: m[k] for k in INFO_KEYS if m.get(k) not in (None, "")}
+                if info.get("fits") is False:
+                    label = "이 서버에서 쓸 수 없음"
+                mid = str(m["id"])
+                models.append(
+                    {
+                        "id": mid,
+                        "status": status,
+                        "label": label,
+                        "name": model_name(mid, info),
+                        "fits": info.get("fits") is not False,
+                        "info": info,
+                    }
+                )
+    except (ValueError, KeyError, TypeError):
+        return [], "응답 형식이 OpenAI 호환 모델 목록이 아닙니다.", None
+    return models, "", round((time.monotonic() - start) * 1000)
+
+
+def _stt_models(request, org, ctx=None):
+    """모델 select 부분 템플릿. downloading이 있으면 3초 뒤 다시 부른다(폴링)."""
+    ctx = ctx or {}
+    models, error, ms = stt_models(org, _stt_url(request, org))
+    ctx["ms"] = ms
+    ctx["error"] = ctx.get("error") or error
+    # 지금 고른 값(폼 → 저장값)은 목록에 없어도 남겨 선택을 잃지 않는다.
+    current = request.POST.get("meeting.stt_model", effective("meeting.stt_model", org=org))
+    if current and current not in {m["id"] for m in models}:
+        models.insert(0, {"id": current, "status": "", "label": "", "name": current, "fits": True})
+    ctx.update(
+        org=org,
+        current=current,
+        options=models,
+        models_count=sum(1 for m in models if m["status"]),
+        polling=not error and any(m["status"] == "downloading" for m in models),
+    )
+    return render(request, "orgs/_stt_test.html", ctx)
+
+
+@require_POST
+@login_required
+def org_stt_test(request, org_id):
+    """[연결 시험]·화면 열 때 자동 조회·받는 중 폴링."""
+    org = org_or_404(request.user, org_id)
+    if not can_admin(request.user, org):
+        return HttpResponseForbidden()
+    return _stt_models(request, org)
+
+
+@require_POST
+@login_required
+def org_stt_apply(request, org_id):
+    """[적용] POST /v1/models/{id}로 모델 받기를 시작하고 stt_model을 그 값으로 저장한다."""
+    org = org_or_404(request.user, org_id)
+    if not can_admin(request.user, org):
+        return HttpResponseForbidden()
+    model = request.POST.get("meeting.stt_model", "").strip()
+    error, code = "", None
+    if model:
+        path = "/v1/models/" + urllib.parse.quote(model, safe="")
+        _, error, code = _stt_call(org, _stt_url(request, org), path, "POST")
+        if code in (404, 405):  # 받기를 지원하지 않는 서버 — 저장만 한다.
+            error = ""
+    if not error:
+        try:
+            osv.set_org_settings(
+                org, {**(org.settings or {}), "meeting.stt_model": model}, request.user
+            )
+        except ServiceError as e:
+            error = " ".join(e.errors.values())
+    return _stt_models(request, org, {"error": error, "applied": not error})

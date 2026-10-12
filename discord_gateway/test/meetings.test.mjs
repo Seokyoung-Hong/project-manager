@@ -55,7 +55,7 @@ function fakeCore(handler = () => undefined) {
       return json({ id: 7, status: body.status ?? 'recording', audio_expires_at: body.status ? '2026-10-19T00:00:00Z' : null,
         channel_notice: body.end_reason === 'host_left' ? '회의 진행자가 나가서 회의를 종료하였습니다.' : '' });
     }
-    if (opts.method === 'PUT' && path.endsWith('/audio')) return json({ ok: true });
+    if (opts.method === 'PUT') return json({ ok: true });
     if (path.endsWith('/names')) return json({ names: [{ discord_user_id: 'h', display_name: '홍길동' }], stt: {}, glossary: '' });
     return json({ detail: 'nope' }, 404);
   };
@@ -328,7 +328,7 @@ test('녹음만: 올리기 → 빈 전사문 draft(engine none) → 로컬 구�
   assert.equal(inputsOf(run.runs[0]).length, 1); // 패킷 0인 구간은 섞지 않는다
   assert.match(run.runs[0].join(' '), /adelay=1000:all=1/);
   const seq = calls.filter((c) => c.method !== 'PATCH' || c.body.status).map((c) => c.method + ' ' + c.path);
-  assert.deepEqual(seq.slice(1), ['PATCH /meetings/7', 'PUT /meetings/7/audio', 'GET /meetings/7/names', 'PATCH /meetings/7']);
+  assert.deepEqual(seq.slice(1), ['PATCH /meetings/7', 'PUT /meetings/7/audio', 'PUT /meetings/7/tracks/h', 'GET /meetings/7/names', 'PATCH /meetings/7']);
   const put = calls.find((c) => c.method === 'PUT');
   assert.equal(put.auth, 'Bearer tok');
   assert.equal(put.body.get('file').name, 'meeting.ogg');
@@ -337,8 +337,35 @@ test('녹음만: 올리기 → 빈 전사문 draft(engine none) → 로컬 구�
   assert.equal(draft.transcript_md, '');
   assert.equal(draft.stats.engine, 'none');
   assert.equal(draft.participants.length, 2);
+  // 다시 전사 입력: 구간 경계만(파일 경로·패킷 수는 보내지 않는다)
+  assert.deepEqual(draft.segments, [{ seq: 1, user_id: 'h', start_ms: 1000, duration_ms: 3000 }, { seq: 2, user_id: 'a', start_ms: 0, duration_ms: 0 }]);
   assert.ok(!existsSync(join(dir, 'seg')));
   assert.ok(!existsSync(join(dir, 'meeting.ogg')));
+  assert.equal(JSON.parse(readFileSync(join(dir, 'state.json'))).uploaded, true);
+});
+
+test('참여자별 트랙: 사람마다 자기 구간만 회의 시작 기준으로 섞어 올리고, 트랙이 실패하면 재시도(만든 파일은 다시 안 만든다)', async () => {
+  let fails = 1;
+  const run = fakeFfmpeg();
+  const s = setup({ ffmpeg: run, handler: (me, p) => (me === 'PUT' && p.endsWith('/tracks/a') && fails-- > 0 ? [503, { detail: 'busy' }] : undefined) });
+  await s.m.start(startBody);
+  const dir = join(s.dataDir, 'meetings', '7');
+  for (const f of ['a.ogg', 'b.ogg', 'c.ogg']) writeFileSync(join(dir, 'seg', f), 'x');
+  writeFileSync(join(dir, 'segments.jsonl'), [{ seq: 1, user_id: 'h', start_ms: 1000, packets: 5, file: 'seg/a.ogg' },
+    { seq: 2, user_id: 'a', start_ms: 2000, packets: 5, file: 'seg/b.ogg' }, { seq: 3, user_id: 'h', start_ms: 4000, packets: 5, file: 'seg/c.ogg' }].map((x) => JSON.stringify(x)).join('\n') + '\n');
+  await s.m.stop(7, 'h');
+  await s.m.idle();
+  assert.ok(existsSync(join(dir, 'track-h.ogg'))); // 트랙 하나가 실패해 아직 남긴다
+  assert.equal(JSON.parse(readFileSync(join(dir, 'state.json'))).uploaded, undefined);
+  await sleep(40);
+  await s.m.idle();
+  const outs = run.runs.map((a) => a.at(-1).split(/[\\/]/).at(-1));
+  assert.deepEqual(outs, ['meeting.ogg.part', 'track-h.ogg.part', 'track-a.ogg.part']); // 재시도 때 다시 섞지 않는다
+  assert.match(run.runs[1].join(' '), /adelay=1000:all=1.*adelay=4000:all=1.*amix=inputs=2/);
+  assert.match(run.runs[2].join(' '), /adelay=2000:all=1.*amix=inputs=1/);
+  assert.deepEqual(s.calls.filter((c) => c.method === 'PUT').map((c) => c.path),
+    ['/meetings/7/audio', '/meetings/7/tracks/h', '/meetings/7/tracks/a', '/meetings/7/audio', '/meetings/7/tracks/h', '/meetings/7/tracks/a']);
+  assert.ok(!existsSync(join(dir, 'track-h.ogg')) && !existsSync(join(dir, 'track-a.ogg')));
   assert.equal(JSON.parse(readFileSync(join(dir, 'state.json'))).uploaded, true);
 });
 
@@ -349,7 +376,7 @@ test('올리기 실패: 전사·PATCH는 진행하고 백오프 재시도, 성�
   assert.ok(existsSync(join(dir, 'seg', 'a.ogg'))); // 아직 못 올렸으니 남긴다
   await sleep(40);
   await m.idle();
-  assert.equal(calls.filter((c) => c.method === 'PUT').length, 3);
+  assert.equal(calls.filter((c) => c.method === 'PUT' && c.path.endsWith('/audio')).length, 3);
   assert.equal(patches(calls).filter((b) => b.status === 'draft').length, 1);
   assert.ok(!existsSync(join(dir, 'seg')));
   const st = JSON.parse(readFileSync(join(dir, 'state.json')));

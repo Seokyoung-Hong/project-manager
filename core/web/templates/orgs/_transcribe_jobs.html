@@ -1,0 +1,17 @@
+<div id="transcribe-jobs" class="group-stack" hx-get="{% url 'org_transcribe_jobs' org.pk %}" hx-trigger="{% if polling %}every 5s, {% endif %}transcribe-changed from:body, transcribe-list from:body" hx-swap="outerHTML">
+  {% for label, rows in groups %}
+  <section class="group">
+    <h3 class="t13 muted">{{ label }} {{ rows|length }}</h3>
+    <ul class="tjob-list">
+      {% for r in rows %}
+      <li><button type="button" class="tjob" hx-get="{% url 'transcribe_panel' org.pk r.job.recording_id %}" hx-target="#panel" hx-swap="innerHTML" aria-label="{{ r.job.recording.note.title }} 전사 작업 보기">
+        <span class="tjob-name"><span class="tjob-title">{{ r.job.recording.note.title }}</span><span class="t12 muted">{{ r.job.created_at|date:"n월 j일 H:i" }} · {{ r.job.get_kind_display }} · {{ r.label }}</span></span>
+        <span class="tjob-state">{% include "orgs/_transcribe_state.html" with r=r %}</span>
+      </button></li>
+      {% endfor %}
+    </ul>
+  </section>
+  {% empty %}
+  {% include "_empty.html" with what="전사한 회의가 없습니다" why="Discord에서 /회의시작 으로 회의를 녹음하면 끝난 뒤 자동으로 전사문을 만듭니다." %}
+  {% endfor %}
+</div>

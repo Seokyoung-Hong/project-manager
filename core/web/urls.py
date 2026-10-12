@@ -31,6 +31,7 @@ from .views import (
     tasks,
     teams,
     today,
+    transcribe,
     work_requests,
 )
 
@@ -88,6 +89,44 @@ urlpatterns = [
     path("orgs/<int:org_id>/teams", orgs.org_teams, name="org_teams"),
     path("orgs/<int:org_id>/governance", orgs.org_governance, name="org_governance"),
     path("orgs/<int:org_id>/settings", orgs.org_settings, name="org_settings"),
+    path("orgs/<int:org_id>/settings/stt-test", orgs.org_stt_test, name="org_stt_test"),
+    path("orgs/<int:org_id>/settings/stt-apply", orgs.org_stt_apply, name="org_stt_apply"),
+    path("orgs/<int:org_id>/transcribe", transcribe.org_transcribe, name="org_transcribe"),
+    path(
+        "orgs/<int:org_id>/transcribe/server",
+        transcribe.org_transcribe_server,
+        name="org_transcribe_server",
+    ),
+    path(
+        "orgs/<int:org_id>/transcribe/jobs",
+        transcribe.org_transcribe_jobs,
+        name="org_transcribe_jobs",
+    ),
+    path(
+        "orgs/<int:org_id>/transcribe/recordings/<int:rec_id>/panel",
+        transcribe.transcribe_panel,
+        name="transcribe_panel",
+    ),
+    path(
+        "orgs/<int:org_id>/transcribe/recordings/<int:rec_id>/progress",
+        transcribe.transcribe_progress,
+        name="transcribe_progress",
+    ),
+    path(
+        "orgs/<int:org_id>/transcribe/recordings/<int:rec_id>/retry",
+        transcribe.transcribe_retry,
+        name="transcribe_retry",
+    ),
+    path(
+        "orgs/<int:org_id>/transcribe/jobs/<int:job_id>/cancel",
+        transcribe.transcribe_cancel,
+        name="transcribe_cancel",
+    ),
+    path(
+        "orgs/<int:org_id>/transcribe/jobs/<int:job_id>/use",
+        transcribe.transcribe_use,
+        name="transcribe_use",
+    ),
     path("orgs/<int:org_id>/requests/<int:req_id>", orgs.change_request, name="change_request"),
     path("orgs/<int:org_id>/teams/new", teams.team_new, name="team_new"),
     path("orgs/<int:org_id>/invites", orgs.invite_create, name="invite_create"),
@@ -257,6 +296,9 @@ urlpatterns = [
     path("notes/<int:note_id>/save", notes.note_save, name="note_save"),
     path("notes/<int:note_id>/delete", notes.note_delete, name="note_delete"),
     path("notes/<int:note_id>/audio", notes.note_audio, name="note_audio"),
+    path("notes/<int:note_id>/audio/upload", notes.note_audio_upload, name="note_audio_upload"),
+    path("notes/<int:note_id>/transcribe", notes.note_transcribe, name="note_transcribe"),
+    path("notes/<int:note_id>/tracks/<str:discord_user_id>", notes.note_track, name="note_track"),
     path("tasks/<int:task_id>/notes", notes.task_note_link, name="task_note_link"),
     path(
         "tasks/<int:task_id>/notes/<int:note_id>/unlink",

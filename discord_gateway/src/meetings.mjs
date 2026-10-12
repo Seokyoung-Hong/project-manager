@@ -4,7 +4,7 @@ import { mkdirSync, writeFileSync, readFileSync, readdirSync, appendFileSync, ex
 import { join } from 'node:path';
 import { Recorder } from './recorder.mjs';
 import { CoreError } from './core.mjs';
-import { transcribeMeeting } from './transcribe.mjs';
+import { transcribeMeeting, splitBySilence } from './transcribe.mjs';
 import { mix, runFfmpeg } from './mix.mjs';
 import * as texts from './texts.mjs';
 
@@ -17,14 +17,16 @@ const readJsonl = (p) => (existsSync(p) ? readFileSync(p, 'utf8').split('\n').fi
 
 export class Meetings {
   constructor({ core, discord, dataDir, siteUrl = '', env = process.env, fetch = globalThis.fetch,
-    convert, ffmpeg = runFfmpeg, backoff = (n) => Math.min(60000 * 2 ** (n - 1), 3600000),
+    convert, ffmpeg = runFfmpeg, split = splitBySilence, backoff = (n) => Math.min(60000 * 2 ** (n - 1), 3600000),
     hostBackoff = (n) => Math.min(15000 * 2 ** (n - 1), 300000),
     now = Date.now, minuteMs = 60000, debounceMs = DEBOUNCE_MS, retryDelayMs, log = () => {} }) {
-    Object.assign(this, { core, discord, siteUrl, env, fetch, convert, ffmpeg, backoff, hostBackoff, now, minuteMs, debounceMs, retryDelayMs, log });
+    Object.assign(this, { core, discord, siteUrl, env, fetch, convert, ffmpeg, split, backoff, hostBackoff, now, minuteMs, debounceMs, retryDelayMs, log });
     this.root = join(dataDir, 'meetings');
+    this.retryRoot = join(dataDir, 'retry'); // 다시 전사 때 받은 트랙(끝나면 지운다)
     mkdirSync(this.root, { recursive: true });
     this.byGuild = new Map(); // guild_id -> 진행 중인 회의(phase=recording)
     this.queue = Promise.resolve();
+    this.pending = 0; // 후처리 큐에 남은 일. 0일 때만 다시 전사를 가져간다
   }
 
   get count() { return this.byGuild.size; }
@@ -220,7 +222,7 @@ export class Meetings {
     if (rec?.channel_notice) this.send(s, rec.channel_notice);
     const minutes = Math.max(0, Math.round((Date.parse(endedAt) - Date.parse(s.started_at)) / 60000));
     this.send(s, notice ?? texts.ended({ minutes, count: participants.length }));
-    Object.assign(s, { participants, ended_at: endedAt, end_reason: reason, phase: 'transcribing', audio_expires_at: rec?.audio_expires_at ?? null });
+    Object.assign(s, { participants, ended_at: endedAt, end_reason: reason, phase: 'transcribing', audio_expires_at: rec?.audio_expires_at ?? null, job_id: rec?.job_id ?? null });
     this.save(s);
     this.byGuild.delete(s.guild_id);
     this.enqueue(s);
@@ -231,8 +233,31 @@ export class Meetings {
 
   // 후처리는 한 번에 회의 하나(메모리 상한): 종료 PATCH 재시도 → 녹음 파일 올리기 → 전사 → draft PATCH → 로컬 오디오 삭제
   enqueue(state) {
-    this.queue = this.queue.then(() => this.process(state)).catch((e) => this.log('후처리 오류', { recording_id: state.recording_id, error: e.message }));
+    return this.exclusive(() => this.process(state), state.recording_id);
+  }
+
+  // 한 번에 하나(메모리 상한 384MB): 회의 후처리와 다시 전사가 같은 큐를 쓴다
+  exclusive(fn, id) {
+    this.pending++;
+    this.queue = this.queue.then(fn).catch((e) => this.log('후처리 오류', { recording_id: id, error: e.message }))
+      .finally(() => { this.pending--; });
     return this.queue;
+  }
+
+  /** 전사 작업 진행 보고(최소 5초 간격)와 취소 신호. core가 cancel을 주면 abort한다. */
+  jobReporter(jobId) {
+    const ctl = new AbortController();
+    let last = -Infinity;
+    const send = (body) => this.core.reportJob(jobId, body).then((r) => { if (r?.cancel) ctl.abort(); return r; });
+    return {
+      signal: ctl.signal,
+      onProgress: (p) => {
+        if (!jobId || this.now() - last < 5000) return;
+        last = this.now();
+        send(p).catch((e) => this.log('전사 진행 보고 실패', { job_id: jobId, error: e.message }));
+      },
+      finish: (body) => (jobId ? send(body).catch((e) => this.log('전사 결과 보고 실패', { job_id: jobId, error: e.message })) : null),
+    };
   }
 
   idle() { return this.queue; }
@@ -243,6 +268,7 @@ export class Meetings {
       try {
         const rec = await this.core.patchMeeting(st.recording_id, st.end_pending);
         st.audio_expires_at = rec.audio_expires_at ?? st.audio_expires_at;
+        st.job_id = rec.job_id ?? st.job_id ?? null;
       } catch (e) {
         if (retryable(e)) return this.retry(st, '종료 PATCH', e);
         this.log('종료 PATCH 거절, 넘어감', { recording_id: st.recording_id, error: e.message });
@@ -264,6 +290,7 @@ export class Meetings {
     if (!uploaded) return this.retry(st, '녹음 파일 올리기');
     rmSync(join(this.dir(st), 'seg'), { recursive: true, force: true });
     rmSync(join(this.dir(st), 'meeting.ogg'), { force: true });
+    for (const f of readdirSync(this.dir(st))) if (f.startsWith('track-')) rmSync(join(this.dir(st), f), { force: true });
     st.retries = 0;
     this.save(st);
   }
@@ -276,7 +303,8 @@ export class Meetings {
     setTimeout(() => this.enqueue(st), ms).unref?.();
   }
 
-  /** 구간들을 회의 시작 기준으로 섞어 meeting.ogg를 만들고 core에 올린다. 성공 여부를 돌려준다. */
+  /** 구간들을 회의 시작 기준으로 섞어 meeting.ogg를, 참여자마다 그 사람 구간만 같은 기준으로 섞어
+   * track-<user_id>.ogg를 만들고(순차, 동시 ffmpeg 없음) core에 올린다. 전부 올라가야 성공. 성공 여부를 돌려준다. */
   async upload(st) {
     const dir = this.dir(st);
     const segs = readJsonl(join(dir, 'segments.jsonl'))
@@ -287,7 +315,13 @@ export class Meetings {
         const out = join(dir, 'meeting.ogg');
         if (!existsSync(out)) await mix(segs.map((g) => ({ path: join(dir, g.file), delay_ms: g.start_ms })), out, { run: this.ffmpeg });
         await this.core.uploadAudio(st.recording_id, out);
-        this.log('녹음 파일 올림', { recording_id: st.recording_id, segments: segs.length });
+        const users = [...new Set(segs.map((g) => g.user_id))];
+        for (const u of users) { // PUT은 덮어쓰기라 재시도 때 다시 올려도 된다
+          const t = join(dir, `track-${u}.ogg`);
+          if (!existsSync(t)) await mix(segs.filter((g) => g.user_id === u).map((g) => ({ path: join(dir, g.file), delay_ms: g.start_ms })), t, { run: this.ffmpeg });
+          await this.core.uploadTrack(st.recording_id, u, t);
+        }
+        this.log('녹음 파일 올림', { recording_id: st.recording_id, segments: segs.length, tracks: users.length });
       }
       st.uploaded = true; // 말한 구간이 없으면 올릴 것도 없다
       this.save(st);
@@ -305,22 +339,85 @@ export class Meetings {
     for (const p of state.participants) nameMap[p.discord_user_id] ??= p.discord_name;
     const cached = new Map(readJsonl(join(dir, 'results.jsonl')).map((r) => [r.seq, r]));
     const minutes = Math.round(((Date.parse(state.ended_at) - Date.parse(state.started_at)) / 60000) * 10) / 10 || 0;
+    const segments = readJsonl(join(dir, 'segments.jsonl'));
+    const job = this.jobReporter(state.job_id);
     const out = await transcribeMeeting({
-      dir, segments: readJsonl(join(dir, 'segments.jsonl')), names: nameMap, stt, glossary, minutes,
+      dir, segments, names: nameMap, stt, glossary, minutes,
       env: this.env, fetch: this.fetch, ...(this.convert ? { convert: this.convert } : {}), cached,
       ...(this.retryDelayMs != null ? { retryDelayMs: this.retryDelayMs } : {}),
       onResult: (r) => appendFileSync(join(dir, 'results.jsonl'), JSON.stringify(r) + '\n'), log: this.log,
+      signal: job.signal, onProgress: job.onProgress,
     });
+    if (out.cancelled) await job.finish({ status: 'cancelled', stats: out.stats });
+    // 전사문은 녹음 쪽 칸(transcript_md)으로 간다. 회의록 본문에는 core가 정리용 틀만 넣는다.
+    // 구간 목록은 다시 전사 입력이다(참여자별 트랙을 이 경계로 자른다).
     const rec = await this.core.patchMeeting(state.recording_id,
-      { status: 'draft', transcript_md: out.transcript_md, stats: out.stats, participants: state.participants });
+      { status: 'draft', transcript_md: out.transcript_md, stats: out.stats, participants: state.participants,
+        segments: segments.map(({ seq, user_id, start_ms, duration_ms }) => ({ seq, user_id, start_ms, duration_ms })) });
     Object.assign(state, { phase: 'done', audio_expires_at: rec.audio_expires_at ?? state.audio_expires_at });
     this.save(state);
     this.log('전사 완료', { recording_id: state.recording_id, status: out.status, engine: out.stats.engine, segments: out.stats.segments, failed: out.stats.failed });
   }
 
+  /** 다시 전사(IMPL-PLAN-10-transcribe-menu §4): 후처리 큐가 비었을 때만 core 대기열에서 하나 가져와 같은 큐에서 돈다. */
+  async pollJobs() {
+    if (this.pending > 0) return null;
+    let p;
+    try {
+      p = await this.core.claimJob();
+    } catch (e) {
+      this.log('다시 전사 가져오기 실패', { error: e.message });
+      return null;
+    }
+    if (!p?.job) return null;
+    return this.exclusive(() => this.runRetry(p), p.job.recording_id);
+  }
+
+  async runRetry(p) {
+    const { id, recording_id } = p.job;
+    const dir = join(this.retryRoot, String(id));
+    const job = this.jobReporter(id);
+    mkdirSync(dir, { recursive: true });
+    try {
+      const upload = p.source === 'upload';
+      let segments, names;
+      if (upload) {
+        // 올린 녹음: 파일 하나를 받아 무음 기준으로 나누고 화자는 하나
+        await this.core.downloadAudio(recording_id, join(dir, 'upload.audio'));
+        segments = (await this.split(join(dir, 'upload.audio')))
+          .map((r, i) => ({ ...r, seq: i + 1, user_id: 'upload', file: 'upload.audio', cut: true }));
+        names = { upload: p.speaker || 'upload' };
+      } else {
+        const tracks = new Set(p.tracks || []);
+        for (const u of tracks) await this.core.downloadTrack(recording_id, u, join(dir, `track-${u}.ogg`));
+        segments = (p.segments || []).filter((g) => tracks.has(g.user_id))
+          .map((g) => ({ ...g, file: `track-${g.user_id}.ogg`, cut: true }));
+        names = Object.fromEntries((p.names || []).map((n) => [n.discord_user_id, n.display_name]));
+        for (const x of p.participants || []) names[x.discord_user_id] ??= x.discord_name;
+      }
+      const out = await transcribeMeeting({ wav: upload,
+        dir, segments, names, stt: p.stt || {}, glossary: p.glossary || '', env: this.env, fetch: this.fetch,
+        ...(this.convert ? { convert: this.convert } : {}), ...(this.retryDelayMs != null ? { retryDelayMs: this.retryDelayMs } : {}),
+        log: this.log, signal: job.signal, onProgress: job.onProgress,
+      });
+      const done = { done_ms: out.stats.audio_ms, segments_done: out.stats.segments - out.stats.skipped, segments_failed: out.stats.failed };
+      if (out.cancelled) await job.finish({ status: 'cancelled', stats: out.stats });
+      else if (out.stats.engine === 'none') await job.finish({ status: 'failed', error: 'no_engine', stats: out.stats });
+      else await job.finish({ status: 'done', transcript_md: out.transcript_md, stats: out.stats, ...done });
+      this.log('다시 전사 끝', { job_id: id, recording_id, cancelled: !!out.cancelled, failed: out.stats.failed });
+    } catch (e) {
+      this.log('다시 전사 실패', { job_id: id, recording_id, error: e.message });
+      await job.finish({ status: 'failed', error: 'node_error' });
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  }
+
   /** 기동 시: recording이던 회의는 재접속 없이 restart로 끝내고(종료 PATCH는 후처리 큐가 재시도까지 맡는다),
-   * 남은 후처리(종료 PATCH·올리기·전사)를 이어 간다. */
+   * 남은 후처리(종료 PATCH·올리기·전사)를 이어 간다. 하다 만 다시 전사는 core 대기열로 되돌린다. */
   async recover() {
+    rmSync(this.retryRoot, { recursive: true, force: true });
+    await this.core.requeueJobs().catch((e) => this.log('다시 전사 되돌리기 실패', { error: e.message }));
     for (const st of this.states()) {
       if (st.phase === 'recording' && !st.started_at) {
         // 음성 접속 대기 중에 멈춤: 녹음 구간이 없으니 failed로 마감(core에 recording이 남아 다음 시작을 막지 않게)

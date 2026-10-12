@@ -1,0 +1,7 @@
+{% with s=r.job.status %}{% if r.stale %}<span class="conn-state warn">⚠ 응답 없음</span>
+{% elif s == "running" %}<span class="bar tjob-bar" role="progressbar" aria-label="전사 진행" aria-valuenow="{{ r.pct }}" aria-valuemin="0" aria-valuemax="100"><i style="width: {{ r.pct }}%"></i></span><span class="tjob-eta">{{ r.eta }}{% if r.eta != "예상 시간 계산 중" and r.eta != "1분 안에 끝남" %} 남음{% endif %}</span>
+{% elif s == "cancelling" %}<span class="conn-state warn">취소 중</span>
+{% elif s == "queued" %}<span class="conn-state">대기</span>{% if r.wait %}<span class="tjob-eta t13 muted">{{ r.wait }} 뒤 시작</span>{% endif %}
+{% elif s == "done" %}{% if r.job.segments_failed %}<span class="conn-state warn">⚠ 구간 {{ r.job.segments_failed }}개 실패</span>{% else %}<span class="conn-state on">끝남</span>{% endif %}
+{% elif s == "cancelled" %}<span class="conn-state off">취소됨</span>
+{% else %}<span class="conn-state bad">⚠ {% if r.job.error == "no_engine" %}전사 수단 없음{% else %}실패{% endif %}</span>{% endif %}{% endwith %}

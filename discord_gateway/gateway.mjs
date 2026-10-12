@@ -81,6 +81,8 @@ createControl({ meetings, discord, secret: env.VOICE_CONTROL_SECRET, isReady: ()
   .listen(port, () => log('control listen', { port }));
 
 setInterval(() => { try { meetings.cleanup(); } catch (e) { log('정리 오류', { error: e.message }); } }, 3600000).unref();
+// 다시 전사 대기열(core). 후처리 큐가 빌 때만 가져간다
+setInterval(() => { meetings.pollJobs(); }, 20000).unref();
 
 let stopping = false;
 function shutdown() {

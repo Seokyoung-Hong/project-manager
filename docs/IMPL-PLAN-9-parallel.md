@@ -68,6 +68,7 @@
 
 §4 전사·§2 env를 이렇게 바꾼다.
 - **녹음 파일**: 회의가 끝나면 Node가 구간들을 회의 시작 기준 시각에 맞춰 **하나의 혼합 음성 파일**(`meeting.ogg`, Opus 모노 32kbps 안팎)로 만든다(ffmpeg, 메모리 256MB 안에서 — 입력이 많으면 묶음 단위로 나눠 섞는다). core 봇 API `PUT /api/integrations/discord/meetings/{id}/audio`(multipart `file`)로 올린다. 올리기에 성공하면 Node 로컬 구간은 지운다(실패하면 재시도, 7일 정리는 그대로 안전망).
+- **참여자별 트랙(10-12)**: 혼합 파일에 더해 사람마다 자기 구간만 같은 회의 시작 기준(adelay)으로 섞은 `track-<discord_user_id>.ogg`를 순차로 만들어 `PUT …/meetings/{id}/tracks/{discord_user_id}`(덮어쓰기, 상한·형식·410은 `/audio`와 같음)로 올린다. 혼합+모든 트랙이 올라가야 `uploaded`. core는 `VoiceTrack`(recording·discord_user_id 유일)에 두고, 회의록 화면에 참여자 이름별 내려받기(`회의록-<note>-<이름>.ogg`, 권한·만료 정리는 혼합 파일과 같음).
 - **엔진 선택**: ① 조직 설정 `meeting.stt_url`(기존, 로컬 서버) ② 조직 설정 **`meeting.openai_api_key`**(신설, `meeting.stt_api_key`와 같은 Fernet 암호화·마스킹) → OpenAI `whisper-1`(env `OPENAI_TRANSCRIBE_MODEL`로만 바꿈) ③ 둘 다 없으면 **녹음만**. `.env.discord`의 `OPENAI_API_KEY`는 쓰지 않는다.
 - **녹음만일 때**: core PATCH `status=draft, transcript_md="", stats{engine:"none", …}`. 실패가 아니다. 진행자 알림 문구는 "녹음 파일이 준비되었습니다. 회의록 화면에서 내려받아 전사할 수 있습니다." 계열(core가 `stats.engine`으로 고른다).
 - **core**: 오디오는 `MEDIA_ROOT` 아래 공개 URL이 없는 경로에 저장하고, 회의록 화면에 **[녹음 내려받기]**(회의록을 볼 수 있는 사람 — 초안이면 진행자·조직 관리자). `audio_expires_at`이 지나면 파일을 지우고 버튼 대신 "보관 기간(N일)이 지나 삭제되었습니다". 업로드 상한 300MB.

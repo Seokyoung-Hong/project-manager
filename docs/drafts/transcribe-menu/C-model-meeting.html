@@ -1,0 +1,246 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>전사 시안 C</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jua&display=swap">
+<style>
+/* DESIGN.md 토큰(app.css 값 그대로 옮김) + 시안에 필요한 부품만 */
+:root {
+  --c-bg: #F8F5EE; --c-surface: #FFFDF8; --c-soft: #EFE9DC; --c-fill: #E6E0D1; --c-line: #E2DFD4; --c-line-strong: #8A8677;
+  --c-ink: #33372D; --c-muted: #64655A; --c-faint: #8A8A7C;
+  --c-accent: #A63E2E; --c-accent-strong: #873022; --c-accent-soft: #F6E1D6; --c-on-accent: #FFFDF6;
+  --c-yellow: #F5D575; --c-sage: #DCE8D5; --c-sage-strong: #8CAA73; --c-coral: #F4C1AC;
+  --c-danger: #A52F2B; --c-danger-soft: #FBE3DE; --c-success: #2F6B3A; --c-success-soft: #DCE8D5;
+  --c-warning: #84520A; --c-warning-soft: #FBEFCB; --c-info: #285480; --c-info-soft: #E3ECF5;
+  --f-display: 'Jua', Pretendard, sans-serif;
+  --f-body: Pretendard, -apple-system, 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif;
+  --f-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --fs-2xs: 11px; --fs-xs: 12px; --fs-sm: 13px; --fs-md: 14px; --fs-task: 15px; --fs-lg: 16px; --fs-xl: 20px;
+  --fs-2xl: 24px; --fs-h2: 28px; --fs-3xl: 30px; --fs-page: 38px;
+  --sp-1: 4px; --sp-2: 8px; --sp-3: 12px; --sp-4: 16px; --sp-5: 20px; --sp-6: 24px; --sp-8: 32px; --sp-10: 40px;
+  --r-xs: 6px; --r-sm: 8px; --r-md: 12px; --r-lg: 18px; --r-xl: 24px; --r-pill: 999px;
+  --sh-1: 0 2px 0 rgba(51, 55, 45, .04); --sh-2: 0 6px 15px rgba(51, 55, 45, .08); --sh-pop: 0 16px 36px rgba(34, 41, 31, .16);
+  --scrim: rgba(36, 41, 33, .38);
+  --z-sticky: 4; --z-header: 10; --z-overlay: 20;
+  --dur-fast: 180ms; --dur-base: 200ms; --dur-slow: 800ms; --ease: ease; --ease-out: cubic-bezier(.2, .8, .2, 1);
+  --header-h: 80px;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --c-bg: #242921; --c-surface: #30362C; --c-soft: #3C4434; --c-fill: #465040; --c-line: #4A5143; --c-line-strong: #8A9480;
+    --c-ink: #F5F0DF; --c-muted: #BDC2B3; --c-faint: #8F9984;
+    --c-accent: #FFC3AD; --c-accent-strong: #FFD8C8; --c-accent-soft: #533B30; --c-on-accent: #3A1E16;
+    --c-yellow: #675723; --c-sage: #3D563C; --c-sage-strong: #8CAA73; --c-coral: #654638;
+    --c-danger: #FFB2A6; --c-danger-soft: #4A2A26; --c-success: #A9D99A; --c-success-soft: #34472F;
+    --c-warning: #F5CA86; --c-warning-soft: #4A3D22; --c-info: #A9CDF4; --c-info-soft: #2A3A4C;
+    --sh-1: 0 2px 0 rgba(0, 0, 0, .12); --sh-2: 0 6px 15px rgba(0, 0, 0, .22); --sh-pop: 0 16px 36px rgba(0, 0, 0, .40);
+    --scrim: rgba(0, 0, 0, .52);
+  }
+}
+* { box-sizing: border-box; margin: 0; }
+body { background: var(--c-bg); color: var(--c-ink); font: 14px/1.55 var(--f-body); }
+h1, h2, h3 { text-wrap: balance; } p { text-wrap: pretty; }
+a { color: var(--c-accent); }
+code { font-family: var(--f-mono); font-size: var(--fs-xs); background: var(--c-soft); border-radius: var(--r-xs); padding: 1px 6px; }
+.num, .eta, .bar-label { font-variant-numeric: tabular-nums; }
+.muted { color: var(--c-muted); } .t12 { font-size: var(--fs-xs); } .t13 { font-size: var(--fs-sm); }
+:focus-visible { outline: 3px solid var(--c-accent); outline-offset: 2px; }
+
+.draft-note { background: var(--c-ink); color: var(--c-bg); font-size: var(--fs-xs); padding: 6px var(--sp-8); }
+.header { position: sticky; top: 0; z-index: var(--z-header); height: var(--header-h); display: flex; align-items: center; gap: var(--sp-5);
+  padding: 0 var(--sp-8); background: color-mix(in srgb, var(--c-bg) 92%, transparent); border-bottom: 1px solid var(--c-line); }
+.logo { font-family: var(--f-display); font-size: var(--fs-2xl); color: var(--c-ink); text-decoration: none; background: var(--c-yellow); padding: 0 10px; border-radius: var(--r-sm); }
+.nav { display: flex; gap: var(--sp-1); padding: 5px; border-radius: var(--r-pill); background: var(--c-soft); overflow-x: auto; }
+.nav a, .tabs a { display: inline-flex; align-items: center; height: 40px; padding: 0 15px; border-radius: var(--r-pill);
+  color: var(--c-muted); font-weight: 500; text-decoration: none; white-space: nowrap; }
+.nav a[aria-current="page"], .tabs a[aria-current="page"] { background: var(--c-surface); color: var(--c-ink); font-weight: 700; box-shadow: var(--sh-2); }
+.layout { padding: var(--sp-8); display: flex; flex-direction: column; gap: var(--sp-6); }
+.page-head { display: flex; flex-direction: column; gap: 2px; }
+.page-head > a { color: var(--c-muted); text-decoration: none; font-weight: 700; font-size: var(--fs-xs); }
+.page-head > h1 { font-family: var(--f-display); font-weight: 400; font-size: var(--fs-page); line-height: 1.25; align-self: flex-start; position: relative; z-index: 0; }
+.page-head > h1::after { content: ""; position: absolute; z-index: -1; left: -4px; right: -8px; bottom: 4px; height: 14px;
+  background: var(--c-yellow); border-radius: 10px 4px 12px 6px; transform: rotate(-1deg); opacity: .85; }
+.page-head > p { color: var(--c-muted); }
+.tabs { display: flex; gap: var(--sp-1); flex-wrap: wrap; align-self: flex-start; max-width: 100%; padding: 5px; border-radius: var(--r-xl); background: var(--c-soft); }
+
+.card { background: var(--c-surface); border: 1px solid var(--c-line); border-radius: var(--r-lg); padding: var(--sp-6); display: flex; flex-direction: column; gap: var(--sp-4); min-width: 0; }
+.card > h2, .card-head h2 { font-family: var(--f-display); font-weight: 400; font-size: var(--fs-2xl); line-height: 1.35; }
+.card-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--sp-2) var(--sp-4); }
+.box { background: var(--c-soft); border: 1px solid var(--c-line); border-radius: var(--r-lg); padding: var(--sp-4); }
+
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 40px; padding: 0 18px; border-radius: var(--r-pill);
+  border: 1px solid var(--c-line); background: var(--c-surface); color: var(--c-ink); font: inherit; font-weight: 600; cursor: pointer; text-decoration: none; white-space: nowrap;
+  transition: background var(--dur-fast) var(--ease); }
+.btn:hover { background: var(--c-soft); } .btn:active { transform: translateY(1px); }
+.btn.primary { background: var(--c-accent); border-color: var(--c-accent); color: var(--c-on-accent); }
+.btn.primary:hover { background: var(--c-accent-strong); }
+.btn.tint { background: var(--c-accent-soft); border-color: transparent; color: var(--c-accent); }
+.btn.sm { height: 36px; padding: 0 14px; font-size: var(--fs-sm); }
+.btn.link { height: auto; padding: 0; border: 0; background: none; color: var(--c-accent); border-radius: var(--r-sm); }
+.btn.danger { border-color: var(--c-danger); color: var(--c-danger); }
+.btn:disabled { opacity: .5; cursor: default; }
+
+label.field { display: flex; flex-direction: column; gap: 6px; font-weight: 600; font-size: var(--fs-sm); }
+.select, .input { height: 40px; border: 1px solid var(--c-line-strong); border-radius: var(--r-md); background: var(--c-surface); color: var(--c-ink); font: inherit; padding: 0 12px; max-width: 420px; width: 100%; }
+.helptext { font-size: var(--fs-xs); color: var(--c-muted); font-weight: 400; max-width: 70ch; }
+
+.badge { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; padding: 1px 8px; border-radius: var(--r-xs);
+  font-size: var(--fs-xs); line-height: 18px; background: var(--c-soft); color: var(--c-muted); font-weight: 600; }
+.badge.ok { background: var(--c-success-soft); color: var(--c-success); } .badge.warn { background: var(--c-warning-soft); color: var(--c-warning); }
+.badge.danger { background: var(--c-danger-soft); color: var(--c-danger); } .badge.info { background: var(--c-info-soft); color: var(--c-info); }
+.badge.primary { background: var(--c-yellow); color: var(--c-ink); }
+.conn { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2) var(--sp-3); }
+.conn-state { display: inline-flex; align-items: center; gap: 6px; padding: 2px 10px 2px 8px; border-radius: var(--r-xs);
+  font-size: var(--fs-xs); line-height: 20px; font-weight: 700; white-space: nowrap; background: var(--c-soft); color: var(--c-muted); }
+.conn-state::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+.conn-state.on { background: var(--c-success-soft); color: var(--c-success); }
+.conn-state.warn { background: var(--c-warning-soft); color: var(--c-warning); }
+.conn-state.bad { background: var(--c-danger-soft); color: var(--c-danger); }
+.conn-state.off::before { background: transparent; border: 1.5px dashed currentColor; }
+.notice { display: flex; align-items: flex-start; gap: var(--sp-2); padding: 14px 16px; border-radius: var(--r-lg); background: var(--c-sage); color: var(--c-ink); }
+.notice.warn { background: var(--c-warning-soft); color: var(--c-warning); }
+
+.bar { height: 8px; border-radius: var(--r-pill); background: var(--c-fill); overflow: hidden; }
+.bar i { display: block; height: 100%; background: var(--c-accent); border-radius: inherit; transition: width var(--dur-slow) var(--ease-out); }
+.bar.sage i { background: var(--c-sage-strong); }
+
+table.grid { width: 100%; border-collapse: separate; border-spacing: 0; }
+table.grid th, table.grid td { text-align: left; padding: 12px 10px; border-bottom: 1px solid var(--c-line); vertical-align: top; }
+table.grid th { font-size: var(--fs-xs); color: var(--c-muted); background: var(--c-soft); font-weight: 600; }
+table.grid th:first-child { border-radius: var(--r-sm) 0 0 0; } table.grid th:last-child { border-radius: 0 var(--r-sm) 0 0; }
+
+details.fold > summary { cursor: pointer; font-weight: 600; font-size: var(--fs-sm); color: var(--c-muted); list-style: none; display: inline-flex; gap: 6px; align-items: center; min-height: 32px; }
+details.fold > summary::-webkit-details-marker { display: none; }
+details.fold > summary::before { content: "▸"; } details.fold[open] > summary::before { content: "▾"; }
+dl.meta { display: grid; grid-template-columns: max-content 1fr; gap: 6px 16px; font-size: var(--fs-sm); margin-top: var(--sp-2); }
+dl.meta dt { color: var(--c-muted); } dl.meta dd { font-variant-numeric: tabular-nums; }
+
+.radios { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr)); gap: var(--sp-2); }
+.radio-card { display: flex; gap: var(--sp-3); padding: 12px 14px; border: 1px solid var(--c-line); border-radius: var(--r-lg); background: var(--c-surface); cursor: pointer; }
+.radio-card:has(input:checked) { border-color: var(--c-accent); background: var(--c-accent-soft); }
+.radio-card:has(input:disabled) { cursor: default; opacity: .6; }
+.radio-card b { display: block; font-size: var(--fs-task); font-weight: 600; } .radio-card span { display: block; font-size: var(--fs-sm); color: var(--c-muted); }
+.radio-card input { accent-color: var(--c-accent); margin-top: 4px; }
+
+dialog { border: 0; border-radius: var(--r-lg); padding: 0; width: min(640px, calc(100vw - 32px)); background: var(--c-surface); color: var(--c-ink); box-shadow: var(--sh-pop); }
+dialog::backdrop { background: var(--scrim); }
+dialog .dlg { padding: var(--sp-6); display: flex; flex-direction: column; gap: var(--sp-4); }
+dialog h2 { font-family: var(--f-display); font-weight: 400; font-size: var(--fs-2xl); }
+.row-btns { display: flex; flex-wrap: wrap; gap: var(--sp-2); justify-content: flex-end; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+
+@media (max-width: 700px) {
+  :root { --header-h: 115px; }
+  .header { flex-wrap: wrap; height: auto; padding: 12px 16px; gap: 10px; } .nav { max-width: 100%; }
+  .layout { padding: 16px; gap: 16px; } .draft-note { padding: 6px 16px; }
+  .page-head > h1 { font-size: var(--fs-3xl); } .page-head > h1::after { height: 10px; }
+  .card { padding: 18px; } .tabs { flex-wrap: nowrap; overflow-x: auto; }
+  .btn, .select, .input { min-height: 44px; } .btn.link { min-height: 44px; } .select, .input { font-size: var(--fs-lg); }
+}
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
+fieldset { border: 0; padding: 0; min-width: 0; } legend { padding: 0; }
+[hidden] { display: none !important; }
+/* 시안 C 전용: 지금 전사 띠 + 모델 고르기 + 회의별 전사 기록 */
+.now { display: grid; grid-template-columns: minmax(0, 1fr) minmax(220px, 340px) auto; gap: var(--sp-4) var(--sp-6); align-items: center;
+  background: var(--c-sage); border-radius: var(--r-xl); padding: var(--sp-5) var(--sp-6); }
+.now h2 { font-family: var(--f-display); font-weight: 400; font-size: var(--fs-xl); }
+.now .big { font-family: var(--f-display); font-size: var(--fs-h2); font-variant-numeric: tabular-nums; }
+.now .muted { color: var(--c-ink); }
+.now .bar { background: var(--c-surface); } .now .bar i { background: var(--c-sage-strong); }
+.models { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr)); gap: var(--sp-3); }
+.model { display: flex; flex-direction: column; gap: 6px; padding: 14px 16px; border: 1px solid var(--c-line); border-radius: var(--r-lg); background: var(--c-surface); }
+.model:has(input:checked) { border-color: var(--c-accent); box-shadow: inset 0 0 0 1px var(--c-accent); }
+.model label { display: flex; gap: 10px; align-items: flex-start; cursor: pointer; }
+.model input { accent-color: var(--c-accent); margin-top: 5px; }
+.model b { font-size: var(--fs-task); }
+.model .spd { font-size: var(--fs-sm); }
+.model .foot { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-top: auto; }
+.meetings { list-style: none; padding: 0; }
+.meetings > li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px 16px; padding: 14px 0; border-bottom: 1px solid var(--c-line); }
+.meetings > li:last-child { border-bottom: 0; }
+.job-title { font-weight: 600; font-size: var(--fs-task); }
+ol.tries { grid-column: 1 / -1; list-style: none; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+ol.tries li { font-size: var(--fs-xs); padding: 3px 10px; border-radius: var(--r-xs); background: var(--c-soft); color: var(--c-muted); }
+ol.tries li[aria-current="true"] { background: var(--c-success-soft); color: var(--c-success); font-weight: 700; }
+.redo { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
+.redo .select { width: auto; min-width: 180px; height: 36px; }
+@media (max-width: 850px) { .now { grid-template-columns: 1fr; } .meetings > li { grid-template-columns: 1fr; } .redo { justify-content: flex-start; } }
+@media (max-width: 700px) { .redo .select { height: 44px; width: 100%; } }
+</style>
+</head>
+<body>
+<p class="draft-note">시안 C · 모델과 회의 중심 — 맨 위 지금 전사 띠 하나, 모델은 선택 카드로 비교, 아래는 회의별 전사 기록과 줄 안 다시 전사. (가짜 데이터)</p>
+<header class="header">
+  <a class="logo" href="#">udally</a>
+  <nav class="nav" aria-label="주 메뉴"><a href="#">오늘</a><a href="#">내 태스크</a><a href="#">요청</a><a href="#">프로젝트</a><a href="#" aria-current="page">조직</a><a href="#">검색</a></nav>
+</header>
+<main class="layout">
+  <div class="page-head"><a href="#">산돌이</a><h1>전사</h1></div>
+  <nav class="tabs" aria-label="조직 메뉴"><a href="#">개요</a><a href="#">팀</a><a href="#">로드맵</a><a href="#">문서</a><a href="#">회의록</a><a href="#" aria-current="page">전사</a><a href="#">Discord</a><a href="#">설정</a></nav>
+
+  <section class="now" aria-labelledby="h-now">
+    <div><h2 id="h-now">지금 전사 중 · 주간 기획 회의</h2><p class="t13 muted">large-v3-turbo · 음성 23분/38분 · 다음 대기 1건(디자인 리뷰)</p></div>
+    <div><p class="big" data-eta="250">약 4분 남음</p>
+      <div class="bar" role="progressbar" aria-label="전사 진행" aria-valuenow="62" aria-valuemin="0" aria-valuemax="100"><i data-bar style="width:62%"></i></div></div>
+    <button type="button" class="btn danger" aria-label="주간 기획 회의 전사 취소">전사 취소</button>
+  </section>
+
+  <section class="card" aria-labelledby="h-models">
+    <div class="card-head"><h2 id="h-models">회의가 끝나면 쓸 모델</h2>
+      <div class="conn"><span class="conn-state on">로컬 전사 서버 연결됨</span><button type="button" class="btn sm" data-open="server">전사 서버 설정</button></div></div>
+    <fieldset class="models"><legend class="sr-only">모델</legend>
+      <div class="model"><label><input type="radio" name="m" checked><span><b>large-v3-turbo</b><br><span class="spd">30분 회의 약 7분 · 정확도 높음</span></span></label>
+        <div class="foot"><span class="conn-state on">준비됨</span><button type="button" class="btn link t13" data-open="detail">세부 정보</button></div></div>
+      <div class="model"><label><input type="radio" name="m"><span><b>medium</b><br><span class="spd">30분 회의 약 5분</span></span></label>
+        <div class="foot"><span class="conn-state on">준비됨</span><button type="button" class="btn link t13" data-open="detail">세부 정보</button></div></div>
+      <div class="model"><label><input type="radio" name="m" disabled><span><b>small</b><br><span class="spd">받는 중 42% · 약 2분 남음</span></span></label>
+        <div class="bar sage"><i style="width:42%"></i></div></div>
+      <div class="model"><label><input type="radio" name="m" disabled><span><b>large-v3</b><br><span class="spd">받지 않음 · 1.5GB</span></span></label>
+        <div class="foot"><button type="button" class="btn sm">모델 받기</button></div></div>
+      <div class="model"><label><input type="radio" name="m"><span><b>OpenAI whisper-1</b><br><span class="spd">30분 회의 약 2분 · 조직 키 요금 발생</span></span></label>
+        <div class="foot"><span class="conn-state on">키 설정됨</span></div></div>
+    </fieldset>
+    <div class="row-btns" style="justify-content:flex-start"><button type="button" class="btn primary">모델 적용</button></div>
+  </section>
+
+  <section class="card" aria-labelledby="h-meet">
+    <div class="card-head"><h2 id="h-meet">회의별 전사 기록</h2><span class="t13 muted">녹음 보관 기간 안의 회의만 다시 전사할 수 있습니다</span></div>
+    <ul class="meetings">
+      <li><div><span class="job-title">스프린트 회고</span><br><span class="t12 muted">10월 11일 · 음성 51분 · <span class="badge warn">⚠ 구간 3개 실패</span></span></div>
+        <div class="redo"><label class="sr-only" for="r1">다시 전사할 모델</label><select id="r1" class="select"><option>large-v3-turbo · 약 12분</option><option>OpenAI whisper-1 · 약 3분</option></select><button type="button" class="btn sm tint" aria-label="스프린트 회고 다시 전사">다시 전사</button></div>
+        <ol class="tries" aria-label="전사 기록"><li aria-current="true">medium · 지금 전사문</li><li>small · 취소됨</li></ol></li>
+      <li><div><span class="job-title">디자인 리뷰</span><br><span class="t12 muted">10월 12일 · 음성 22분</span></div>
+        <div class="redo"><span class="conn-state">대기 · 약 4분 뒤 시작</span><button type="button" class="btn sm" aria-label="디자인 리뷰 대기 취소">대기 취소</button></div>
+        <ol class="tries" aria-label="전사 기록"><li>medium · 대기</li><li aria-current="true">large-v3-turbo · 지금 전사문</li></ol></li>
+      <li><div><span class="job-title">신입 온보딩</span><br><span class="t12 muted">10월 10일 · 음성 17분</span></div>
+        <div class="redo"><label class="sr-only" for="r3">다시 전사할 모델</label><select id="r3" class="select"><option>large-v3-turbo · 약 4분</option><option>medium · 약 3분</option></select><button type="button" class="btn sm tint" aria-label="신입 온보딩 다시 전사">다시 전사</button></div>
+        <ol class="tries" aria-label="전사 기록"><li aria-current="true">large-v3-turbo · 지금 전사문</li><li>medium · 이전 전사문 <a href="#" aria-label="medium 전사문으로 되돌리기">되돌리기</a></li></ol></li>
+    </ul>
+  </section>
+</main>
+
+<dialog id="detail" aria-labelledby="h-detail"><form method="dialog" class="dlg">
+  <h2 id="h-detail">large-v3-turbo 세부 정보</h2>
+  <dl class="meta"><dt>장치</dt><dd>CPU 4코어</dd><dt>정밀도</dt><dd>int8</dd><dt>처리 속도</dt><dd>음성 1분당 14초(최근 12건 실측 0.23배)</dd><dt>동시 처리</dt><dd>2구간</dd><dt>메모리</dt><dd>이 서버에 맞음</dd></dl>
+  <div class="row-btns"><button class="btn">닫기</button></div></form></dialog>
+<dialog id="server" aria-labelledby="h-srv"><form method="dialog" class="dlg">
+  <h2 id="h-srv">전사 서버 설정</h2>
+  <label class="field">서버 주소<input class="input" value="https://stt.house.sio2.kr"><span class="helptext">비우면 조직 OpenAI 키로 전사합니다.</span></label>
+  <label class="field">서버 키<input class="input" type="password" placeholder="설정됨 · 바꿀 때만 입력"></label>
+  <label class="field">조직 OpenAI 키<input class="input" type="password" placeholder="설정됨 · 바꿀 때만 입력"></label>
+  <div class="row-btns"><button class="btn" value="close">닫기</button><button class="btn">연결 시험</button><button class="btn primary">전사 서버 저장</button></div></form></dialog>
+<script>
+document.querySelectorAll('[data-open]').forEach((b) => b.addEventListener('click', () => document.getElementById(b.dataset.open).showModal()));
+const eta = document.querySelector('[data-eta]'); let left = +eta.dataset.eta;
+setInterval(() => {
+  if (left <= 0) return; left -= 1;
+  const p = Math.min(99, Math.round(62 + (250 - left) / 250 * 38));
+  document.querySelector('[data-bar]').style.width = p + '%';
+  eta.textContent = left < 60 ? '1분 안에 끝남' : '약 ' + Math.ceil(left / 60) + '분 남음';
+}, 1000);
+</script>
+</body>
+</html>

@@ -9,6 +9,7 @@
 
 from datetime import date
 
+from django.http import FileResponse
 from ninja import File, Router, Schema
 from ninja.errors import HttpError
 from ninja.files import UploadedFile
@@ -24,7 +25,8 @@ from accounts.services import (
 )
 from github import hooks as gh_hooks
 from notes import services as notes_svc
-from notes.models import VoiceRecording
+from notes import transcription as tx
+from notes.models import TranscriptionJob, VoiceRecording
 from orgs import channels as org_channels
 from orgs import discord as org_discord
 from orgs import settings as org_settings
@@ -74,6 +76,7 @@ from ..schemas import (
     DiscordStatusIn,
     DiscordTaskCreateIn,
     DiscordTaskUpdateIn,
+    DiscordTranscriptionReportIn,
 )
 from ..serialize import request_out, task_out
 
@@ -718,6 +721,10 @@ def _recording_out(rec) -> dict:
         "audio_expires_at": rec.audio_expires_at,
         # 봇이 텍스트 채널에 그대로 올린다. 진행자 퇴장으로 끝났을 때만 있다.
         "channel_notice": notes_svc.HOST_LEFT_NOTICE if rec.end_reason == "host_left" else "",
+        # 자동 전사 작업. Node가 진행을 보고하고 취소 신호를 받는 데 쓴다(없으면 null).
+        "job_id": rec.jobs.filter(kind="auto", status__in=TranscriptionJob.RUNNING)
+        .values_list("pk", flat=True)
+        .first(),
     }
 
 
@@ -777,6 +784,7 @@ def meeting_update(request, recording_id: int, payload: DiscordMeetingPatchIn):
         participants=payload.participants,
         transcript_md=payload.transcript_md,
         stats=payload.stats,
+        segments=payload.segments,
     )
     return _recording_out(rec)
 
@@ -792,6 +800,89 @@ def meeting_audio(request, recording_id: int, file: UploadedFile = File(...)):  
         raise HttpError(410, notes_svc.AUDIO_EXPIRED)
     rec = notes_svc.save_audio(rec, file)
     return {"ok": True, "size": rec.audio_size}
+
+
+@router.put("/meetings/{int:recording_id}/tracks/{discord_user_id}", response=dict)
+def meeting_track(request, recording_id: int, discord_user_id: str, file: UploadedFile = File(...)):  # noqa: B008
+    """참여자별 트랙(그 사람 구간만, 회의 시작 기준 정렬). 상한·형식·410은 `/audio`와 같다."""
+    rec = _recording(recording_id)
+    if notes_svc.audio_expired(rec):
+        raise HttpError(410, notes_svc.AUDIO_EXPIRED)
+    track = notes_svc.save_audio(rec, file, discord_user_id)
+    return {"ok": True, "size": track.audio_size}
+
+
+@router.get("/meetings/{int:recording_id}/audio")
+def meeting_audio_get(request, recording_id: int):
+    """전사용 녹음 파일 내려받기(올린 녹음은 원래 형식 그대로). 보관 기간이 지났으면 410."""
+    rec = _recording(recording_id)
+    if notes_svc.audio_expired(rec):
+        raise HttpError(410, notes_svc.AUDIO_EXPIRED)
+    if not rec.audio:
+        raise HttpError(404, "녹음 파일을 찾을 수 없습니다.")
+    try:
+        fh = rec.audio.open("rb")
+    except FileNotFoundError:
+        raise HttpError(404, "녹음 파일을 찾을 수 없습니다.") from None
+    r = FileResponse(fh, content_type="application/octet-stream")
+    r["X-Audio-Ext"] = rec.audio.name.rsplit(".", 1)[-1]
+    return r
+
+
+@router.get("/meetings/{int:recording_id}/tracks/{discord_user_id}")
+def meeting_track_get(request, recording_id: int, discord_user_id: str):
+    """다시 전사용 참여자별 트랙 내려받기. 보관 기간이 지났으면 410."""
+    rec = _recording(recording_id)
+    if notes_svc.audio_expired(rec):
+        raise HttpError(410, notes_svc.AUDIO_EXPIRED)
+    track = rec.tracks.filter(discord_user_id=discord_user_id).exclude(audio="").first()
+    if track is None:
+        raise HttpError(404, "참여자별 녹음을 찾을 수 없습니다.")
+    try:
+        fh = track.audio.open("rb")
+    except FileNotFoundError:
+        raise HttpError(404, "참여자별 녹음을 찾을 수 없습니다.") from None
+    return FileResponse(fh, content_type="audio/ogg")
+
+
+@router.post("/transcriptions/claim", response=dict)
+def transcription_claim(request):
+    """대기 중인 다시 전사 하나를 가져간다. 없으면 {"job": null}."""
+    job = tx.claim()
+    if job is None:
+        return {"job": None}
+    rec = _recording(job.recording_id)
+    stt = _stt(rec.note.org)
+    # 고른 수단만 쓴다: 로컬이면 OpenAI 대체를 끄고, OpenAI면 로컬 주소를 비운다.
+    if job.engine == "openai":
+        stt["url"] = ""
+    else:
+        stt["openai_api_key"], stt["model"] = "", job.model
+    return {
+        **tx._retry_payload(job),
+        "stt": stt,
+        "names": notes_svc.speaker_names(rec),
+        "glossary": notes_svc.meeting_glossary(rec),
+    }
+
+
+@router.patch("/transcriptions/{int:job_id}", response=dict)
+def transcription_report(request, job_id: int, payload: DiscordTranscriptionReportIn):
+    if not TranscriptionJob.objects.filter(pk=job_id).exists():
+        raise HttpError(404, "전사 작업을 찾을 수 없습니다.")
+    data = payload.dict()
+    if data.get("transcript_md") and len(data["transcript_md"].encode()) > notes_svc.MAX_BODY:
+        raise HttpError(
+            400, "전사문이 용량 한도 256KB를 넘었습니다. 전사문을 줄여 다시 보내 주세요."
+        )
+    job = tx.report(job_id, data)
+    return {"status": job.status, "cancel": job.status == "cancelling"}
+
+
+@router.post("/transcriptions/requeue", response=dict)
+def transcription_requeue(request):
+    """Node 기동 때 한 번: 하다 만 다시 전사를 대기로 되돌린다."""
+    return {"requeued": tx.requeue()}
 
 
 @router.get("/meetings/{int:recording_id}/names", response=dict)

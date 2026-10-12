@@ -153,6 +153,7 @@ IGNORE = {
     "projects_milestone", "projects_apispec", "projects_docrevision", "projects_projectdependency",
     "projects_doc_attendees",
     "tasks_notice",
+    "notes_voicetrack", "notes_transcriptionjob",  # 회의 녹음 내부(패널·목록에 안 나온다)
     "github_githubinstallation", "github_gitrelease", "github_gitevent", "github_githubteamlink",
     "api_integrationstatus", "ops_opsauditlog",
 }  # fmt: skip

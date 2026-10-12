@@ -1,3 +1,4 @@
+import re
 from datetime import datetime
 
 from django.contrib import messages
@@ -86,6 +87,45 @@ def org_notes(request, org_id):
             else "ready"
         )
         extras["audio_expired_text"] = ts_notes.AUDIO_EXPIRED
+        if extras["audio_state"] == "ready":
+            extras["tracks"] = [
+                {
+                    "id": t.discord_user_id,
+                    "name": _track_name(rec, t.discord_user_id),
+                    "size": t.audio_size,
+                }
+                for t in rec.tracks.exclude(audio="").order_by("pk")
+            ]
+        # 녹음 파일 올리기·[전사]: 회의록을 고칠 수 있는 사람, Discord 녹음이 없는 회의록만.
+        from notes import transcription as tx
+
+        try:
+            ts_notes._check_edit(note, request.user, "web")
+            editable = True
+        except (ServiceError, Forbidden):
+            editable = False
+        extras["can_upload_audio"] = editable and (rec is None or rec.source == "upload")
+        extras["upload_accept"] = ts_notes.UPLOAD_AUDIO_ACCEPT
+        extras["can_transcribe_upload"] = (
+            editable
+            and rec is not None
+            and rec.source == "upload"
+            and not tx.retry_block(rec)
+            and not rec.jobs.filter(status__in=tx.TranscriptionJob.ACTIVE).exists()
+        )
+        if rec is not None:
+            # 전사 진행(전사문 쪽 상태). 회의록 본문과 별개다.
+            from notes.models import TranscriptionJob
+
+            active = list(rec.jobs.filter(status__in=TranscriptionJob.ACTIVE))
+            if active:
+                left, _ = tx.queue_eta(active).get(active[0].pk, (None, 0))
+                extras["transcribe_line"] = (
+                    "전사 대기 중"
+                    if active[0].status == "queued"
+                    else f"전사 중 · {tx.eta_text(left)}"
+                )
+            extras["transcribe_admin"] = can_admin(request.user, org)
         extras["can_finalize"] = note.status == "draft" and ts_notes._is_owner(note, request.user)
         extras["teams"] = visible_teams(request.user, org).order_by("name")
     return render(
@@ -143,6 +183,45 @@ def note_upload(request, org_id):
         messages.error(request, "회의록을 올리지 못했습니다. " + " ".join(e.errors.values()))
         return redirect("org_notes", org_id=org.pk)
     return redirect(f"{reverse('org_notes', args=[org.pk])}?note={note.pk}")
+
+
+def _note_url(note):
+    return f"{reverse('org_notes', args=[note.org_id])}?note={note.pk}"
+
+
+@login_required
+@require_POST
+def note_audio_upload(request, note_id):
+    """회의록에 녹음 파일 올리기. 파일은 Django가 디스크 임시 파일로 받는다(메모리에 통째로 두지 않는다)."""
+    note = _note_or_404(request.user, note_id)
+    f = request.FILES.get("file")
+    if f is None:
+        messages.error(request, "올릴 녹음 파일을 선택해 주세요.")
+        return redirect(_note_url(note))
+    try:
+        ts_notes.upload_audio(note, f, request.user)
+        messages.success(request, "녹음 파일을 올렸습니다. [전사 시작]을 누르면 전사문을 만듭니다.")
+    except (ServiceError, Forbidden) as e:
+        messages.error(request, "녹음 파일을 올리지 못했습니다. " + " ".join(e.errors.values()))
+    return redirect(_note_url(note))
+
+
+@login_required
+@require_POST
+def note_transcribe(request, note_id):
+    """올린 녹음을 전사 대기열에 넣는다. 실행은 Node 음성 서비스가 한다."""
+    from notes import transcription as tx
+
+    note = _note_or_404(request.user, note_id)
+    rec = getattr(note, "recording", None)
+    if rec is None:
+        raise Http404
+    try:
+        tx.request_upload(rec, actor=request.user)
+        messages.success(request, "전사를 대기열에 넣었습니다. 끝나면 아래에 전사문이 보입니다.")
+    except (ServiceError, Forbidden) as e:
+        messages.error(request, " ".join(e.errors.values()))
+    return redirect(_note_url(note))
 
 
 @login_required
@@ -251,8 +330,39 @@ def note_audio(request, note_id):
         fh = rec.audio.open("rb")
     except FileNotFoundError:
         raise Http404 from None
+    ext = rec.audio.name.rsplit(".", 1)[-1].lower()
     r = FileResponse(
-        fh, as_attachment=True, filename=f"회의록-{note.pk}.ogg", content_type="audio/ogg"
+        fh,
+        as_attachment=True,
+        filename=f"회의록-{note.pk}.{ext}",
+        content_type="audio/mpeg" if ext == "mp3" else f"audio/{ext}",
+    )
+    r["X-Content-Type-Options"] = "nosniff"
+    return r
+
+
+def _track_name(rec, discord_user_id):
+    p = next((p for p in rec.participants or [] if p.get("discord_user_id") == discord_user_id), {})
+    return (p.get("display_name") or discord_user_id).removesuffix(ts_notes.UNLINKED_MARK)
+
+
+@login_required
+def note_track(request, note_id, discord_user_id):
+    """참여자별 녹음 내려받기. 권한은 note_audio와 같다."""
+    note = _note_or_404(request.user, note_id)
+    rec = getattr(note, "recording", None)
+    if rec is None or ts_notes.audio_expired(rec):
+        raise Http404
+    track = rec.tracks.filter(discord_user_id=discord_user_id).exclude(audio="").first()
+    if track is None:
+        raise Http404
+    try:
+        fh = track.audio.open("rb")
+    except FileNotFoundError:
+        raise Http404 from None
+    name = re.sub(r"[^\w-]+", "_", _track_name(rec, discord_user_id)).strip("_") or "참여자"
+    r = FileResponse(
+        fh, as_attachment=True, filename=f"회의록-{note.pk}-{name}.ogg", content_type="audio/ogg"
     )
     r["X-Content-Type-Options"] = "nosniff"
     return r
