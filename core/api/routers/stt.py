@@ -21,7 +21,17 @@ from notes.models import TranscriptionJob
 router = Router(tags=["stt"], auth=SttTokenAuth(), throttle=[])
 
 # PC가 보낼 수 있는 오류 코드. 목록 밖이면 pc_error로 바꾼다.
-PC_ERRORS = {"model_not_ready", "download_failed", "decode_failed", "no_audio", "out_of_memory"}
+# 계획서 목록 + udally-stt link.py가 실제로 보내는 값. out_of_memory는 PC가 구간 실패로 보고하지만 와도 받는다.
+PC_ERRORS = {
+    "model_not_ready",
+    "download_failed",
+    "decode_failed",
+    "audio_unavailable",
+    "out_of_memory",
+    "transcript_too_large",
+    "pc_error",
+}
+PC_ERROR_ALIASES = {"no_audio": "audio_unavailable"}  # 같은 뜻의 다른 이름
 MIN_VERSION_TEXT = "전사 서버 프로그램이 오래되었습니다. 설치 명령을 다시 실행해 업데이트해 주세요."  # COPY:pc_update_needed
 
 
@@ -132,8 +142,8 @@ def job_report(request, job_id: int, payload: SttJobReportIn):
     if payload.stats is not None and _too_big(payload.stats):
         return _detail(422, "세부 정보가 너무 큽니다.")
     data = payload.dict(exclude={"rows"})
-    if data["error"] and data["error"] not in PC_ERRORS:
-        data["error"] = "pc_error"
+    error = PC_ERROR_ALIASES.get(data["error"], data["error"])
+    data["error"] = error if not error or error in PC_ERRORS else "pc_error"
     if payload.status == "done":
         rec = job.recording
         rows = [r.dict() for r in payload.rows or []]
@@ -146,5 +156,8 @@ def job_report(request, job_id: int, payload: SttJobReportIn):
         data["transcript_md"] = tx.format_transcript(rows, names)
         if len(data["transcript_md"].encode()) > notes_svc.MAX_BODY:
             return _detail(413, "전사문이 용량 한도 256KB를 넘었습니다.")
-    job = tx.report(job.pk, data)
+    try:
+        job = tx.report(job.pk, data, server=request.stt_server, claimed_at=job.claimed_at)
+    except tx.StaleClaim:
+        raise HttpError(409, "이 PC가 맡은 작업이 아닙니다.") from None
     return {"status": job.status, "cancel": job.status == "cancelling"}

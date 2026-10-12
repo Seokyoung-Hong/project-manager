@@ -51,6 +51,7 @@ def _job_row(job, eta, user=None):
         "job": job,
         "label": job.stats.get("label") or tx.model_label(job.engine, job.model),
         "runner": runner,
+        "error_label": tx.ERROR_LABELS.get(job.error, ""),
         "waiting_pc": job.engine == "pc" and job.status == "queued" and not tx.online(job.server),
         "eta": tx.eta_text(left),
         "wait": tx.eta_text(wait) if job.status == "queued" and wait else "",

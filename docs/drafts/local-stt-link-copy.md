@@ -76,6 +76,22 @@
 | tracks_zip | core/web/templates/notes/_tracks_download.html:3 | 참여자별 녹음 한 번에 내려받기(zip) · {N}명 · {총 크기} | 회의록 화면·전사 패널 녹음 칸 |
 | tracks_each | core/web/templates/notes/_tracks_download.html:4 | 참여자별로 하나씩 내려받기 | 개별 링크 접힘 제목 |
 
-## 오류 코드 표시(작업 상태 칸, 아직 화면 문구 없음)
+## 오류 코드 표시(작업 상태 칸)
 
-`pc_offline` · `pc_disabled` · `pc_unlinked` · `no_access` · `expired` · `model_not_ready` · `pc_error` — 지금은 `_transcribe_state.html`의 "실패"/"취소됨"으로만 보인다. Sol이 코드별 문구를 정하면 그 템플릿에 분기를 더한다.
+위치: core/notes/transcription.py:65 `ERROR_LABELS`(키 `job_error_<코드>`), 표시는 core/web/templates/orgs/_transcribe_state.html — 실패는 "⚠ 문구", 취소는 "취소됨 · 문구". 목록에 없는 코드는 "실패".
+
+| 코드 | 임시 문구 | 맥락 |
+|---|---|---|
+| no_engine | 전사 수단 없음 | 기존 문구 그대로 |
+| pc_offline | PC가 꺼져 있음 | 자동 작업 취소·사람이 고른 PC 24시간 대기 끝 |
+| pc_unlinked | PC 연결 끊김 | [끊기]·DELETE /self |
+| pc_disabled | 멤버 PC 전사 꺼짐 | 조직이 member_pc를 끔 |
+| no_access | 볼 수 없는 녹음 | PC 주인이 더는 못 봄 |
+| expired | 보관 기간 지남 | 가져갈 때 만료 |
+| model_not_ready | PC에 모델 없음 | PC 보고 |
+| download_failed | 모델 받기 실패 | PC 보고(계획서 목록) |
+| decode_failed | 녹음 읽기 실패 | PC 보고 |
+| audio_unavailable | 녹음을 받지 못함 | PC 보고(no_audio도 이것으로 바꿔 저장) |
+| out_of_memory | PC 메모리 부족 | 보통 구간 실패로 오지만 작업 코드로 와도 받는다 |
+| transcript_too_large | 전사문이 너무 큼 | PC가 413을 받은 뒤 보고 |
+| pc_error | PC 오류 | PC 보고·목록 밖 코드 |

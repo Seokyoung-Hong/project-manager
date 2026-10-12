@@ -166,6 +166,8 @@ class TranscriptionJob(models.Model):
     )
     # 작업자(Node·PC)가 가져간 시각. 재시작 되돌리기·"시작 전 취소" 판정 기준.
     claimed_at = models.DateTimeField(null=True, blank=True)
+    # 처음 가져간 시각. 되돌려도 지우지 않는다 — 조직 수단 한도에서 "시작 전 취소"를 가르는 기준.
+    first_claimed_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         ordering = ["-created_at", "-id"]

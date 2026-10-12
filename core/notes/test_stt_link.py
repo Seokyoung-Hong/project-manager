@@ -544,3 +544,280 @@ def test_settings_page_pull_unlink_and_panel_options(client, enabled, admin, mem
     assert r.status_code == 302 and not SttServer.objects.exists()
     client.force_login(admin)
     assert client.post(f"/settings/stt/{server.pk}/unlink").status_code == 404
+
+
+# ---------- Sol 교차 리뷰 반영 ----------
+
+
+def test_pc_glossary_only_has_terms_the_pc_owner_can_see(client, enabled, admin, member, bot):
+    """관리자가 시작한 회의를 멤버 PC로 전사할 때, 멤버가 못 보는 팀 전용 프로젝트명이 PC로 나가지 않는다."""
+    from projects.services import create_project, set_visibility
+
+    secret = create_project(org=enabled, name="비밀프로젝트 오메가", actor=admin, owners=[admin])
+    set_visibility(secret, "teams", actor=admin)
+    create_project(org=enabled, name="학식개편 프로젝트", actor=admin, owners=[admin])
+    rec = _drafted_with_tracks(client, enabled, admin, bot)
+    rec.note.status = "final"
+    rec.note.save()
+    server, token = _pc(client, member)
+    tx.request_retry(rec, engine="pc", model=TURBO, actor=member, server=server)
+    glossary = _beat(client, token).json()["job"]["glossary"]
+    from notes.services import meeting_glossary
+
+    assert "비밀프로젝트" in meeting_glossary(rec)  # 시작자(관리자)는 본다
+    assert "학식개편" in glossary and "비밀프로젝트" not in glossary
+
+
+def test_stale_pc_cannot_finish_job_handed_to_node(client, enabled, member, bot, monkeypatch):
+    """PATCH 소유권 확인 뒤 작업이 넘어가 Node가 가져갔으면, 이전 PC의 결과는 409이고 아무것도 덮지 않는다."""
+    from api.routers import stt as stt_router
+
+    server, token = _pc(client, member)
+    rec, _ = _meeting(enabled, member, bot)
+    _draft(bot, rec, engine="none")
+    _tracks(rec, "h", "a")
+    job = TranscriptionJob.objects.get(pk=_beat(client, token).json()["job"]["id"])
+    real = stt_router._my_job
+
+    def racing(request, job_id):
+        got = real(request, job_id)
+        tx._handoff(TranscriptionJob.objects.get(pk=job_id))  # 그 사이 PC가 꺼진 것으로 보고 넘김
+        assert tx.claim().pk == job_id  # Node가 가져감
+        return got
+
+    monkeypatch.setattr(stt_router, "_my_job", racing)
+    rows = [{"seq": 1, "user_id": "h", "start_ms": 0, "text": "이전 PC 결과"}]
+    r = _api(
+        client,
+        "patch",
+        f"/api/integrations/stt/jobs/{job.pk}",
+        {"status": "done", "rows": rows},
+        token,
+    )
+    assert r.status_code == 409
+    job.refresh_from_db()
+    rec.refresh_from_db()
+    assert job.status == "running" and job.server_id is None and job.transcript_md == ""
+    assert "이전 PC 결과" not in rec.transcript_md
+
+
+def test_requeued_then_cancelled_org_job_still_counts(client, enabled, member, other, bot):
+    """가져가 실행한 조직 전사가 Node 재시작으로 대기로 돌아간 뒤 취소돼도 시작 전 취소가 아니다."""
+    rec = _drafted_with_tracks(client, enabled, member, bot)
+    rec.note.status = "final"
+    rec.note.save()
+    job = tx.request_retry(rec, engine="openai", model="", actor=member)
+    assert tx.claim().pk == job.pk
+    assert tx.requeue() == 1
+    job.refresh_from_db()
+    assert job.status == "queued"
+    tx.cancel(job, member)
+    assert tx.org_used(rec) is True
+    with pytest.raises(Exception, match="이미 조직 전사 수단"):
+        tx.request_retry(rec, engine="openai", model="", actor=other)
+
+
+def test_backfill_marks_pre_deploy_running_jobs_claimed(enabled, member):
+    """배포 전 Node가 가져가 돌던 다시 전사·올린 녹음 작업은 claimed_at이 비어 있다 — 백필 뒤 재시작 복구에 걸린다."""
+    import importlib
+
+    from django.apps import apps
+
+    rec = start_recording(org=enabled, actor=member, guild_id="g1", voice_channel_id="v1")
+    rec.status = "draft"
+    rec.save()
+    t = timezone.now() - timedelta(minutes=5)
+    up = TranscriptionJob.objects.create(
+        recording=rec, kind="upload", status="running", engine="openai", started_at=t
+    )
+    auto = TranscriptionJob.objects.create(
+        recording=rec, kind="auto", status="done", engine="local", started_at=t
+    )
+    old = TranscriptionJob.objects.create(
+        recording=rec, kind="retry", status="cancelled", engine="openai", started_at=t
+    )
+    mod = importlib.import_module("notes.migrations.0012_backfill_claimed_at")
+    mod.backfill(apps, None)
+    for j in (up, auto, old):
+        j.refresh_from_db()
+    assert up.claimed_at == t and up.first_claimed_at == t
+    assert auto.claimed_at is None  # Node가 바로 전사하던 자동 작업은 가져간 적이 없다
+    assert old.first_claimed_at == t  # 실행했던 작업은 한도에 센다
+    assert tx.requeue() == 1
+
+
+def test_approved_but_unclaimed_codes_count_toward_server_limit(member):
+    codes = [
+        stt_link.start_device(name=str(i), machine_id=str(uuid.uuid4()), version="", device={})
+        for i in range(stt_link.MAX_SERVERS + 1)
+    ]
+    for d in codes[:-1]:
+        stt_link.approve(stt_link.find_code(d["user_code"]), member, "pc")
+    with pytest.raises(Exception, match="5대"):
+        stt_link.approve(stt_link.find_code(codes[-1]["user_code"]), member, "pc")
+    for d in codes[:-1]:
+        assert stt_link.poll_token(d["device_code"])[1] == ""
+    assert SttServer.objects.filter(owner=member).count() == stt_link.MAX_SERVERS
+
+
+ON_PG = "postgres" in __import__("os").environ.get("DATABASE_URL", "")
+
+
+def _for_update_tables(queries) -> list[str]:
+    import re
+
+    return [
+        re.search(r'FROM "(\w+)"', q["sql"]).group(1) for q in queries if "FOR UPDATE" in q["sql"]
+    ]
+
+
+@pytest.mark.skipif(not ON_PG, reason="FOR UPDATE는 Postgres에서만 질의에 나온다")
+def test_lock_order_is_recording_then_job(client, enabled, admin, member, bot):
+    """교착 방지: 작업 행을 잠그는 경로는 모두 녹음 행을 먼저 잠근다(request_retry와 같은 순서)."""
+    from django.db import connection
+    from django.test.utils import CaptureQueriesContext
+
+    rec = _drafted_with_tracks(client, enabled, member, bot)
+    server, token = _pc(client, member)
+    job = tx.request_retry(rec, engine="pc", model=TURBO, actor=member, server=server)
+    set_org_settings(enabled, {**enabled.settings, "meeting.member_pc": False}, admin)
+    calls = [
+        lambda: tx.report(job.pk, {"done_ms": 1}),
+        lambda: tx.claim_for(server),
+        lambda: tx.cancel(job, admin),
+        lambda: tx.requeue_or_cancel(job.pk),
+    ]
+    for call in calls:
+        with CaptureQueriesContext(connection) as q:
+            call()
+        tables = _for_update_tables(q.captured_queries)
+        if "notes_transcriptionjob" in tables:
+            assert tables[0] == "notes_voicerecording", tables
+
+
+@pytest.mark.django_db(transaction=True)
+@pytest.mark.skipif(not ON_PG, reason="실제 행 잠금 교착은 Postgres에서만")
+def test_no_deadlock_between_pc_claim_and_org_retry(enabled, admin, member):
+    """한 쪽은 녹음→작업(조직 다시 전사 순서), 다른 쪽은 PC 배정(멤버 PC 꺼짐 → 작업 놓기). 교착 없이 끝난다."""
+    import threading
+    import time
+
+    from django.db import connection, transaction
+
+    from notes.models import VoiceRecording
+
+    rec = start_recording(org=enabled, actor=member, guild_id="g1", voice_channel_id="v1")
+    rec.status, rec.segments = "draft", SEGS
+    rec.save()
+    _tracks(rec, "h", "a")
+    server = SttServer.objects.create(
+        owner=member, name="pc", machine_id="m", models=MODELS, last_seen_at=timezone.now()
+    )
+    job = TranscriptionJob.objects.create(
+        recording=rec, kind="retry", status="queued", engine="pc", model=TURBO, server=server
+    )
+    set_org_settings(enabled, {**enabled.settings, "meeting.member_pc": False}, admin)
+    locked, errors = threading.Event(), []
+
+    def org_retry():
+        try:
+            with transaction.atomic():
+                list(VoiceRecording.objects.select_for_update().filter(pk=rec.pk))
+                locked.set()
+                time.sleep(0.5)
+                TranscriptionJob.objects.filter(pk=job.pk).update(model="x")
+        except Exception as e:  # noqa: BLE001
+            errors.append(e)
+        finally:
+            connection.close()
+
+    def pc_claim():
+        locked.wait()
+        try:
+            tx.claim_for(server)
+        except Exception as e:  # noqa: BLE001
+            errors.append(e)
+        finally:
+            connection.close()
+
+    threads = [threading.Thread(target=org_retry), threading.Thread(target=pc_claim)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join(20)
+    assert errors == []
+    job.refresh_from_db()
+    assert job.status == "cancelled" and job.error == "pc_disabled"
+
+
+# ---------- udally-stt link.py 계약(967e4ec) ----------
+
+
+def _upload_job(client, org, member, server):
+    from notes.models import VoiceRecording
+    from notes.services import create_note
+
+    note = create_note(org=org, actor=member, title="올린 회의")
+    rec = VoiceRecording.objects.create(
+        note=note,
+        source="upload",
+        status="draft",
+        guild_id="",
+        voice_channel_id="",
+        started_by=member,
+        host=member,
+        audio=ContentFile(b"mp3", name="a.mp3"),
+        audio_size=3,
+    )
+    return tx.request_upload(rec, actor=member, engine="pc", model=TURBO, server=server)
+
+
+def test_pc_upload_rows_with_upload_user_id_are_kept(client, enabled, member, bot):
+    """link.py는 올린 녹음 행의 user_id를 "upload"로 보낸다(Node와 같음) — 버리지 않고 '올린 녹음' 화자로."""
+    server, token = _pc(client, member)
+    job = _upload_job(client, enabled, member, server)
+    got = _beat(client, token).json()["job"]
+    assert got["id"] == job.pk and got["source"] == "upload" and got["segments"] == []
+    r = _api(client, "get", f"/api/integrations/stt/jobs/{job.pk}/audio", token=token)
+    assert r.status_code == 200 and r["X-Audio-Ext"] == "mp3"
+    rows = [
+        {"seq": 1, "user_id": "upload", "start_ms": 0, "text": "첫 구간"},
+        {"seq": 2, "user_id": "upload", "start_ms": 5000, "failed": True},
+    ]
+    stats = {"device": None, "compute_type": None, "elapsed_ms": 10}
+    patch = {"status": "done", "rows": rows, "stats": stats}
+    r = _api(client, "patch", f"/api/integrations/stt/jobs/{job.pk}", patch, token)
+    assert r.status_code == 200, r.content
+    job.refresh_from_db()
+    assert (
+        job.transcript_md
+        == f"[00:00:00] {tx.UPLOAD_SPEAKER}: 첫 구간\n[00:00:05] {tx.UPLOAD_SPEAKER}: [전사 실패]"
+    )
+
+
+@pytest.mark.parametrize(
+    ("sent", "kept"),
+    [
+        ("audio_unavailable", "audio_unavailable"),
+        ("no_audio", "audio_unavailable"),
+        ("transcript_too_large", "transcript_too_large"),
+        ("pc_error", "pc_error"),
+        ("out_of_memory", "out_of_memory"),
+        ("model_not_ready", "model_not_ready"),
+        ("weird", "pc_error"),
+    ],
+)
+def test_pc_error_codes_from_link_py(client, enabled, member, bot, sent, kept):
+    server, token = _pc(client, member)
+    job = _upload_job(client, enabled, member, server)
+    _beat(client, token)
+    body = {
+        "status": "failed",
+        "rows": None,
+        "error": sent,
+    }  # link.py는 실패 때 rows를 null로 보낸다
+    r = _api(client, "patch", f"/api/integrations/stt/jobs/{job.pk}", body, token)
+    assert r.status_code == 200, r.content
+    job.refresh_from_db()
+    assert (job.status, job.error) == ("failed", kept)
+    assert tx.ERROR_LABELS[kept]

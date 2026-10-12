@@ -13,7 +13,7 @@ from django.conf import settings
 from django.db import IntegrityError, transaction
 from django.utils import timezone
 
-from accounts.models import ApiToken
+from accounts.models import ApiToken, User
 from common.errors import ServiceError
 
 from . import transcription as tx
@@ -130,8 +130,17 @@ def approve(code: SttDeviceCode, user, name: str) -> None:
     code = SttDeviceCode.objects.select_for_update().get(pk=code.pk)
     if code.approved_by_id or code.denied or code.used_at or code.expires_at <= timezone.now():
         raise ServiceError({"code": "코드가 만료되었습니다. PC에서 다시 연결해 주세요."})
-    others = SttServer.objects.filter(owner=user).exclude(machine_id=code.machine_id).count()
-    if others >= MAX_SERVERS:
+    # 같은 사람의 허용을 줄 세운다(동시에 허용해도 상한을 넘지 않게).
+    User.objects.select_for_update().filter(pk=user.pk).first()
+    machines = set(
+        SttServer.objects.filter(owner=user).values_list("machine_id", flat=True)
+    ) | set(  # 허용했지만 PC가 아직 토큰을 안 가져간 코드도 자리를 차지한다
+        _pending()
+        .filter(approved_by=user, expires_at__gt=timezone.now())
+        .values_list("machine_id", flat=True)
+    )
+    machines.discard(code.machine_id)
+    if len(machines) >= MAX_SERVERS:
         raise ServiceError({"code": TOO_MANY_SERVERS})
     code.approved_by = user
     code.name = (name or "").strip()[:50] or code.name
@@ -205,7 +214,7 @@ def job_payload(job) -> dict:
         "source": rec.source,
         "segments": rec.segments if rec.source == "discord" else [],
         "tracks": list(rec.tracks.exclude(audio="").values_list("discord_user_id", flat=True)),
-        "glossary": meeting_glossary(rec),
+        "glossary": meeting_glossary(rec, viewer=job.server.owner),  # PC 주인이 못 보는 용어는 빼고
         "language": "ko",
     }
 

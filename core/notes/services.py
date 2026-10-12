@@ -350,9 +350,10 @@ def _terms(text: str):
             yield t
 
 
-def meeting_glossary(rec) -> str:
+def meeting_glossary(rec, viewer=None) -> str:
     """전사 정확도용 용어집(전사 API의 prompt). 처음 진행자(started_by)가 볼 수 있는 자료에서만
     뽑는다(결정 2-3). 진행자를 넘겨도 바꾸지 않는다 — 녹음 중 용어집이 넓어지지 않게.
+    viewer를 주면 그 사람도 볼 수 있는 자료로 더 좁힌다(내 PC 전사: PC 주인에게 나가는 용어집).
 
     참여자 이름이 먼저, 그다음 프로젝트·마일스톤 이름(가중 2)과 문서·회의록·태스크 제목에 자주 나오는
     용어 순. 한 번만 나온 일반 용어는 뺀다.
@@ -362,6 +363,10 @@ def meeting_glossary(rec) -> str:
 
     starter, org = rec.started_by, rec.note.org
     projects = visible_projects(starter, org)
+    notes = visible_notes(starter).filter(org=org)
+    if viewer is not None:
+        projects = projects.filter(pk__in=visible_projects(viewer, org).values("pk"))
+        notes = notes.filter(pk__in=visible_notes(viewer).values("pk"))
     counts = Counter()
     for weight, titles in (
         (2, projects.values_list("name", flat=True)),
@@ -379,10 +384,7 @@ def meeting_glossary(rec) -> str:
         ),
         (
             1,
-            visible_notes(starter)
-            .filter(org=org)
-            .exclude(pk=rec.note_id)
-            .values_list("title", flat=True),
+            notes.exclude(pk=rec.note_id).values_list("title", flat=True),
         ),
     ):
         for title in titles:

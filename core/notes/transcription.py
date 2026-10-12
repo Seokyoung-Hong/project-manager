@@ -12,7 +12,7 @@ import statistics
 from datetime import timedelta
 
 from django.db import transaction
-from django.db.models import Exists, OuterRef, Q
+from django.db.models import Exists, OuterRef
 from django.utils import timezone
 
 from common.errors import ServiceError
@@ -61,6 +61,22 @@ PC_WAIT = timedelta(hours=24)
 PC_RELEASE = ("pc_offline", "pc_unlinked", "pc_disabled")  # PC 작업을 놓은 이유(error)
 
 STATUS_LABELS = {"downloading": "받는 중", "not_downloaded": "받지 않음"}
+# 실패·취소 작업의 오류 코드 → 상태 칸 문구(임시, COPY:job_error_*). 없는 코드는 "실패".
+ERROR_LABELS = {
+    "no_engine": "전사 수단 없음",
+    "pc_offline": "PC가 꺼져 있음",
+    "pc_unlinked": "PC 연결 끊김",
+    "pc_disabled": "멤버 PC 전사 꺼짐",
+    "no_access": "볼 수 없는 녹음",
+    "expired": "보관 기간 지남",
+    "model_not_ready": "PC에 모델 없음",
+    "download_failed": "모델 받기 실패",
+    "decode_failed": "녹음 읽기 실패",
+    "audio_unavailable": "녹음을 받지 못함",
+    "out_of_memory": "PC 메모리 부족",
+    "transcript_too_large": "전사문이 너무 큼",
+    "pc_error": "PC 오류",
+}
 INFO_KEYS = (
     "display_name",
     "family",
@@ -444,11 +460,34 @@ def fail_active(rec):
         _finish(job, "failed", error="meeting_failed")
 
 
+class StaleClaim(Exception):
+    """보고한 작업자가 지금 그 작업을 맡고 있지 않다(넘겨졌거나 다시 배정됐다)."""
+
+
+def _lock_job(job_id: int, *related):
+    """작업을 잠근다. 잠금 순서는 늘 녹음 → 작업이다(request_retry·update_recording과 같은 순서 — 교착 방지).
+    호출하는 쪽이 transaction 안에 있어야 한다."""
+    rec_ids = TranscriptionJob.objects.filter(pk=job_id).values("recording_id")
+    list(VoiceRecording.objects.select_for_update().filter(pk__in=rec_ids))
+    qs = TranscriptionJob.objects.select_for_update(of=("self",))
+    if related:
+        qs = qs.select_related(*related)
+    return qs.filter(pk=job_id).first()
+
+
 @transaction.atomic
-def report(job_id: int, data: dict) -> TranscriptionJob:
+def report(job_id: int, data: dict, *, server=None, claimed_at=None) -> TranscriptionJob:
     """Node·PC 진행·결과 보고. 응답의 cancel(= status cancelling)을 보고 작업자가 멈춘다.
-    PC 경로는 engine·model을 넘기지 않는다(api.routers.stt)."""
-    job = TranscriptionJob.objects.select_for_update().select_related("recording").get(pk=job_id)
+    PC 경로는 engine·model을 넘기지 않는다(api.routers.stt). server를 주면 잠근 뒤에 그 서버가
+    지금도 맡고 있고 같은 배정(claimed_at)인지 다시 본다 — 아니면 StaleClaim(아무것도 쓰지 않는다)."""
+    job = _lock_job(job_id, "recording")
+    if server is not None and (
+        job is None
+        or job.server_id != server.pk
+        or job.claimed_at != claimed_at
+        or job.status not in TranscriptionJob.RUNNING
+    ):
+        raise StaleClaim
     for key in ("done_ms", "segments_done", "segments_total", "segments_failed", "audio_ms"):
         if data.get(key) is not None:
             setattr(job, key, max(0, int(data[key])))
@@ -494,7 +533,10 @@ def _busy():
 def _start(job):
     now = timezone.now()
     job.status, job.started_at, job.progress_at, job.claimed_at = "running", now, now, now
-    job.save(update_fields=["status", "started_at", "progress_at", "claimed_at"])
+    job.first_claimed_at = job.first_claimed_at or now  # 되돌려도 지우지 않는다(한도 셈 기준)
+    job.save(
+        update_fields=["status", "started_at", "progress_at", "claimed_at", "first_claimed_at"]
+    )
     return job
 
 
@@ -527,14 +569,18 @@ def claim_for(server):
     """PC: 이 서버에 배정된 대기 작업 하나. 녹음이 draft·done이고 입력이 다 올라왔고 주인이 지금도 볼 수 있을 때만."""
     from .services import audio_expired, get_visible_note
 
-    with transaction.atomic():
-        jobs = list(
-            TranscriptionJob.objects.select_for_update(skip_locked=True)
-            .filter(status="queued", server=server)
-            .exclude(Exists(_busy()))
-            .order_by("created_at", "id")
-        )
-        for job in jobs:
+    ids = list(
+        TranscriptionJob.objects.filter(status="queued", server=server)
+        .order_by("created_at", "id")
+        .values_list("pk", flat=True)
+    )
+    for pk in ids:
+        with transaction.atomic():
+            job = _lock_job(pk)  # 녹음 → 작업 순서로 잠근 뒤 다시 확인한다
+            if job is None or job.status != "queued" or job.server_id != server.pk:
+                continue
+            if job.recording.jobs.filter(status__in=TranscriptionJob.RUNNING).exists():
+                continue
             rec = VoiceRecording.objects.select_related("note__org").get(pk=job.recording_id)
             if not member_pc(rec.note.org):
                 release_pc_job(job, "pc_disabled")
@@ -556,9 +602,7 @@ def requeue_or_cancel(job_id: int, **fields) -> TranscriptionJob | None:
     취소로 끝낸다. 녹음 행을 먼저 잠근다(request_retry와 같은 순서).
     """
     with transaction.atomic():
-        rec_ids = TranscriptionJob.objects.filter(pk=job_id).values("recording_id")
-        list(VoiceRecording.objects.select_for_update().filter(pk__in=rec_ids))
-        job = TranscriptionJob.objects.select_for_update().filter(pk=job_id).first()
+        job = _lock_job(job_id)
         if job is None or job.status not in TranscriptionJob.ACTIVE:
             return job
         others = job.recording.jobs.filter(status="queued").exclude(pk=job.pk).exists()
@@ -597,11 +641,14 @@ def release_pc_job(job, reason: str):
     자동 작업: 회의가 draft 전이면 취소만 한다(Node 기본 경로가 받는다 — 넘기면 Node 즉시 전사와 겹친다).
     draft 뒤면 조직 수단으로 넘긴다. 사람이 고른 작업은 취소한다.
     """
-    rec = VoiceRecording.objects.get(pk=job.recording_id)
-    if job.kind == "auto" and rec.status in ("draft", "done"):
-        _handoff(job)
-    else:
-        _finish(job, "cancelled", error=reason)
+    with transaction.atomic():
+        job = _lock_job(job.pk, "recording__note__org")
+        if job is None or job.status not in TranscriptionJob.ACTIVE:
+            return
+        if job.kind == "auto" and job.recording.status in ("draft", "done"):
+            _handoff(job)
+        else:
+            _finish(job, "cancelled", error=reason)
 
 
 def sweep(now=None) -> None:
@@ -616,7 +663,7 @@ def sweep(now=None) -> None:
         if job.kind == "auto":
             release_pc_job(job, "pc_offline")
         elif job.server is None or job.created_at < now - PC_WAIT:
-            _finish(job, "cancelled", error="pc_offline")
+            release_pc_job(job, "pc_offline")
         elif job.status in TranscriptionJob.RUNNING:
             requeue_or_cancel(job.pk)  # 사람이 고른 PC를 계속 기다린다
 
@@ -627,7 +674,7 @@ def requeue() -> int:
     ids = list(
         TranscriptionJob.objects.filter(server__isnull=True, status__in=TranscriptionJob.RUNNING)
         .exclude(engine="pc")
-        .filter(Q(claimed_at__isnull=False) | Q(kind="retry"))
+        .filter(claimed_at__isnull=False)  # 배포 전 작업은 0012가 채웠다
         .values_list("pk", flat=True)
     )
     for pk in ids:
@@ -666,8 +713,8 @@ def org_used(rec) -> bool:
     for job in rec.jobs.filter(engine__in=("local", "openai")).exclude(kind="auto"):
         if (job.stats or {}).get("handoff"):
             continue
-        if job.status == "cancelled" and job.claimed_at is None and job.started_at is None:
-            continue
+        if job.status == "cancelled" and job.first_claimed_at is None:
+            continue  # 한 번도 실행되지 않았다(되돌린 뒤 취소는 여기 들지 않는다)
         return True
     return False
 
@@ -797,11 +844,7 @@ def can_use(job, actor) -> bool:
 
 @transaction.atomic
 def cancel(job, actor) -> TranscriptionJob:
-    job = (
-        TranscriptionJob.objects.select_for_update(of=("self",))
-        .select_related("recording__note__org", "server")
-        .get(pk=job.pk)
-    )
+    job = _lock_job(job.pk, "recording__note__org", "server")
     if not can_cancel(job, actor):
         raise ServiceError({"job": "이 전사를 취소할 권한이 없습니다."})
     if job.status == "queued" or (job.status in TranscriptionJob.RUNNING and is_stale(job)):
