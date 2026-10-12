@@ -20,3 +20,25 @@ def test_panel_etag_304_until_task_changes(client, member, task):
     ts.update_task(task, {"priority": 1}, actor=member, source="web", expected_version=task.version)
     changed = client.get(url, headers={**HX, "If-None-Match": etag})
     assert changed.status_code == 200 and changed["ETag"] != etag
+
+
+def test_panel_etag_by_data_version_skips_render(client, member, task, monkeypatch):
+    """Postgres 경로: 데이터 버전이 같으면 패널을 그리지 않고 304, 버전이 바뀌면 다시 그린다."""
+    from web import data_version
+    from web.views import tasks as views
+
+    version = {"v": "1-5-5"}
+    renders = []
+    real_panel = views._panel
+    monkeypatch.setattr(data_version, "current", lambda: version["v"])
+    monkeypatch.setattr(views, "_panel", lambda *a, **k: renders.append(1) or real_panel(*a, **k))
+    client.force_login(member)
+    url = f"/tasks/{task.pk}/panel"
+    etag = client.get(url, headers=HX)["ETag"]
+    assert len(renders) == 1
+    assert client.get(url, headers={**HX, "If-None-Match": etag}).status_code == 304
+    assert len(renders) == 1  # 그리지 않았다
+    # 다른 사람·다른 주소는 같은 버전이어도 다른 ETag
+    assert client.get(url + "?block=1", headers={**HX, "If-None-Match": etag}).status_code == 200
+    version["v"] = "1-6-6"
+    assert client.get(url, headers={**HX, "If-None-Match": etag}).status_code == 200

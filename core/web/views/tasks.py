@@ -1,8 +1,10 @@
 import hashlib
 import json
+import os
 import re
 from datetime import date, timedelta
 
+from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db.models import Q
@@ -28,6 +30,7 @@ from tasks.attachments import attachments_of
 from tasks.models import ChangeLog, ChecklistItem, Link
 from tasks.work_requests import pending_assignee
 
+from .. import data_version
 from ..forms import LinkForm
 from . import subtasks, task_projects
 from .common import (
@@ -250,17 +253,49 @@ def task_detail(request, task_id):
 _CSRF_VALUE = re.compile(rb'name="csrfmiddlewaretoken" value="[^"]*"')
 
 
+def _code_stamp() -> str:
+    """배포본 표시: 코드·템플릿 파일의 가장 늦은 수정 시각. 배포로 패널 모양이 바뀌면 ETag도 바뀐다."""
+    latest = 0
+    for root, dirs, files in os.walk(settings.BASE_DIR):
+        dirs[:] = [d for d in dirs if not d.startswith((".", "__")) and d != "node_modules"]
+        for f in files:
+            if f.endswith((".py", ".html")):
+                latest = max(latest, os.stat(os.path.join(root, f)).st_mtime_ns)
+    return str(latest)
+
+
+_CODE_STAMP = _code_stamp()
+
+
+def _tag(text: str | bytes) -> str:
+    raw = text.encode() if isinstance(text, str) else text
+    return f'"{hashlib.blake2b(raw, digest_size=12).hexdigest()}"'
+
+
 @login_required
 def task_panel(request, task_id):
-    """브라우저가 미리 받아 둔 패널의 해시(If-None-Match)가 지금 것과 같으면 본문 없이 304만 보낸다.
-    ponytail: 같은지 보려고 한 번 그리므로 줄어드는 것은 전송량이다. 서버 계산까지 줄이려면 태스크·하위 표의 갱신 시각으로 해시를 만든다."""
-    response = _panel(request, task_or_404(request.user, task_id))
-    digest = hashlib.blake2b(_CSRF_VALUE.sub(b"", response.content), digest_size=12).hexdigest()
-    etag = f'"{digest}"'
+    """브라우저가 받아 둔 패널의 ETag(If-None-Match)가 지금 것과 같으면 본문 없이 304만 보낸다.
+
+    Postgres: ETag = 데이터 버전(web.data_version) + 보는 사람 + 오늘 날짜 + 주소 + 배포본.
+    패널 내용은 DB와 오늘 날짜로만 정해지므로(GitHub 상태도 DB에 저장된 값) 그리지 않고 비교한다.
+    그 밖의 DB(로컬·테스트 SQLite): 그린 본문의 해시로 비교한다.
+    """
+    task = task_or_404(request.user, task_id)
     # 중간 프록시·gzip이 약한 ETag(W/)로 바꿔도 같은 것으로 본다
     sent = request.headers.get("If-None-Match", "").removeprefix("W/")
-    if sent == etag:
-        return HttpResponseNotModified(headers={"ETag": etag})
+    version = data_version.current()
+    if version is not None:
+        etag = _tag(
+            f"{version}|{request.user.pk}|{today_kst()}|{request.get_full_path()}|{_CODE_STAMP}"
+        )
+        if sent == etag:
+            return HttpResponseNotModified(headers={"ETag": etag})
+        response = _panel(request, task)
+    else:
+        response = _panel(request, task)
+        etag = _tag(_CSRF_VALUE.sub(b"", response.content))
+        if sent == etag:
+            return HttpResponseNotModified(headers={"ETag": etag})
     response["ETag"] = etag
     return response
 

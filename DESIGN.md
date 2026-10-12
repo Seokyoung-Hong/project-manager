@@ -157,7 +157,7 @@ animation·transition을 끈다(파일 맨 끝 규칙).
 `focus({ preventScroll: true })`, 닫으면 연 행으로 돌아간다. 패널을 열 때 본문을 숨기거나 `scrollTo`로 페이지를 옮기지 않는다.
 패널 내용은 미리 받는다(`app.js` 태스크 패널 미리 받기): 화면에 보이는 행과 마우스·초점이 간 행의 `/tasks/N/panel`을 동시 2개씩 받아 두고, 열 때 받아 둔 것을 바로 넣은 뒤
 최신본인지 다시 물어 바뀌었고 손대기 전이면 갈아 끼운다. `task-changed`·`task-updated`(SSE 포함)가 오면 그 태스크 것을 낡음으로 표시하고 다시 묻는다.
-물을 때는 가진 것의 ETag(`If-None-Match`, CSRF 값 뺀 본문 해시)를 보내 같으면 서버가 본문 없이 304를 준다(`task_panel`).
+물을 때는 가진 것의 ETag(`If-None-Match`)를 보내 같으면 서버가 본문 없이 304를 준다(`task_panel`). Postgres에서는 ETag가 데이터 버전(`web/data_version.py`, 모든 표의 쓰기 트리거)·보는 사람·오늘·주소·배포본이라 패널을 그리지 않고 비교한다.
 패널 안 고정 막대(`.panel-bar`)는 패널이 스크롤 상자라 `top: 0`이다.
 
 **바닥글** `_site_footer.html` `.site-footer > .foot-in`. 좌우 끝선은 바로 위 본문 내용과 같다: 앱은 레일을 뺀 본문 열(`.frame-main`) 안에 두고
