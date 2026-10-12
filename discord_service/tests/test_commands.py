@@ -167,3 +167,15 @@ def test_task_line_shows_group_and_linked_projects():
     assert "↳ TASK-3" in team_task_line(t)
     plain = task_line(task(5, "2026-09-12"))
     assert "↳" not in plain and "↔" not in plain
+
+
+def test_profile_required_shows_core_message():
+    """구성원 정보가 비어 core가 403 profile_required를 주면 입력 안내를 그대로 보여 준다."""
+    import httpx
+
+    from discord_service.commands import _error_reply
+
+    msg = "산돌이 조직의 구성원 정보를 먼저 입력해 주세요: http://x/orgs/1/member-info"
+    r = httpx.Response(403, json={"detail": msg, "error": "profile_required"})
+    assert _error_reply(r) == msg
+    assert _error_reply(httpx.Response(403, json={"detail": "x"})) == "권한이 없습니다."

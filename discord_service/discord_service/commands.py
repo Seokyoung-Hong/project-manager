@@ -222,7 +222,8 @@ def _error_reply(r: httpx.Response) -> str:
     if r.status_code == 404:
         return detail or "찾을 수 없습니다. `연결`이 필요할 수 있습니다."
     if r.status_code == 403:
-        return "권한이 없습니다."
+        # 구성원 정보가 빈 조직: core 문구에 입력 화면 주소가 있다
+        return detail if _error_code(r) == "profile_required" else "권한이 없습니다."
     if r.status_code == 409:
         return "방금 다른 곳에서 변경되었습니다. 다시 보내 주세요."
     if r.status_code == 429:
@@ -231,6 +232,13 @@ def _error_reply(r: httpx.Response) -> str:
         return detail or "입력을 다시 확인해 주세요."
     log.warning("core %s: %s", r.status_code, detail)
     return BUSY
+
+
+def _error_code(r: httpx.Response) -> str:
+    try:
+        return str(r.json().get("error") or "")
+    except Exception:  # noqa: BLE001
+        return ""
 
 
 def _detail(r: httpx.Response) -> str:

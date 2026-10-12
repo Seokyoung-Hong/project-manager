@@ -1,8 +1,12 @@
+import json
 import os
 
 import httpx
 
 CORE_URL = os.environ.get("CORE_URL", "http://web:8000").rstrip("/")
+
+
+LIST_TOOLS = {"/api/projects", "/api/requests"}
 
 
 class CoreError(Exception):
@@ -38,7 +42,17 @@ class Core:
         if r.status_code == 204:
             return None
         if r.status_code in (200, 201, 202):  # 202: 승인 요청으로 남았다(approve_url)
-            return r.json()
+            data = r.json()
+            # 구성원 정보가 빈 조직은 결과에서 빠졌다. 안내(입력 화면 주소)를 결과에 붙여 사용자에게 보이게 한다.
+            blocked = r.headers.get("X-Blocked-Orgs")
+            if blocked:
+                notes = json.loads(blocked)
+                # 목록을 그대로 돌려주는 도구만 감싼다(다른 결과 안에 끼워 넣는 목록은 그대로 둔다)
+                if isinstance(data, list) and r.request.url.path in LIST_TOOLS:
+                    return {"items": data, "blocked_orgs": notes}
+                if isinstance(data, dict):
+                    data.setdefault("blocked_orgs", notes)
+            return data
         if r.status_code == 401:
             raise CoreError("토큰이 유효하지 않습니다. 폐기됐거나 만료됐을 수 있습니다.")
         if r.status_code == 403:

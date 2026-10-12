@@ -30,6 +30,7 @@ from notes.models import TranscriptionJob, VoiceRecording
 from orgs import channels as org_channels
 from orgs import discord as org_discord
 from orgs import settings as org_settings
+from orgs.member_info import blocked_user_ids
 from orgs.models import Organization, OrgMembership, Team
 from orgs.services import orgs_of, set_team_channel, visible_teams
 from projects.models import Project
@@ -209,8 +210,10 @@ def orgs(request):
 @router.get("/orgs/{int:org_id}/members", response=list[dict])
 def org_members(request, org_id: int):
     """그 조직의 멤버와 개인 알림 설정. 봇이 누구에게 무엇을 보낼지 여기서 정한다."""
+    # 구성원 정보가 빈 사람은 그 조직의 알림 수신자에서 뺀다(아래 admins·owners·deadlines도 같다)
     rows = (
         OrgMembership.objects.filter(org_id=org_id, user__is_active=True)
+        .exclude(user_id__in=blocked_user_ids(org_id))
         .select_related("user")
         .order_by("user__display_name")
     )
@@ -247,7 +250,10 @@ def org_deadlines(request, org_id: int, date: date):
     org = Organization.objects.filter(pk=org_id).first()
     if org is None:
         raise HttpError(404, "조직을 찾을 수 없습니다.")
-    alerts = org_discord.deadline_alerts(org, date)
+    blocked = blocked_user_ids(org.pk)
+    alerts = [
+        (t, k) for t, k in org_discord.deadline_alerts(org, date) if t.assignee_id not in blocked
+    ]
     attach_group_visible([t for t, _ in alerts])  # 봇: 상위가 공개 범위일 때만 ↳(R5)
     return [{**task_brief(t), "alert_kind": kind} for t, kind in alerts]
 
@@ -258,7 +264,8 @@ def project_owners(request, project_id: int):
     project = Project.objects.filter(pk=project_id).first()
     if project is None:
         raise HttpError(404, "프로젝트를 찾을 수 없습니다.")
-    return _people(project.owners.filter(is_active=True).order_by("display_name"))
+    owners = project.owners.filter(is_active=True).exclude(pk__in=blocked_user_ids(project.org_id))
+    return _people(owners.order_by("display_name"))
 
 
 @router.get("/orgs/{int:org_id}/admins", response=list[dict])
@@ -266,6 +273,7 @@ def org_admins(request, org_id: int):
     """조직 관리자. 프로젝트 관리자가 0명일 때의 대체 수신자다."""
     rows = (
         OrgMembership.objects.filter(org_id=org_id, role="admin", user__is_active=True)
+        .exclude(user_id__in=blocked_user_ids(org_id))
         .select_related("user")
         .order_by("user__display_name")
     )

@@ -1,3 +1,6 @@
+import json
+
+
 def origin_agent_cluster(get_response):
     """WebMCP는 오리진 키 에이전트 클러스터에서만 동작한다.
 
@@ -35,7 +38,21 @@ class MemberInfoGate:
         self.get_response = get_response
 
     def __call__(self, request):
-        return self.get_response(request)
+        response = self.get_response(request)
+        # API 성공 응답에 막힌 조직 안내를 헤더로 붙인다. 목록 응답(/api/projects 등)의 형식을 깨지 않는
+        # 공통 자리다. JSON(ASCII 이스케이프)이라 헤더에 한글이 그대로 실리지 않는다. pm.py·MCP가 읽어 보여 준다.
+        user = getattr(request, "auth", None)
+        if (
+            request.path.startswith("/api/")
+            and not request.path.startswith("/api/integrations/")
+            and response.status_code < 300
+            and getattr(user, "is_authenticated", False)
+        ):
+            from orgs.member_info import blocked_out
+
+            if blocked := blocked_out(user):
+                response.headers["X-Blocked-Orgs"] = json.dumps(blocked)
+        return response
 
     def process_view(self, request, view_func, view_args, view_kwargs):
         match = request.resolver_match

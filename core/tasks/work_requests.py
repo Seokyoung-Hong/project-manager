@@ -14,6 +14,7 @@ from django.utils import timezone
 
 from common.dates import fmt_md, today_kst
 from common.errors import ServiceError
+from orgs.member_info import blocked_user_ids
 from orgs.models import Team, TeamMembership
 from orgs.services import is_admin, is_member, usable_orgs
 from projects.services import visible_projects
@@ -50,6 +51,8 @@ def notify(org, text: str, *, user=None, channel_id: str = ""):
         return
     if user is None and not channel_id:
         return
+    if user is not None and user.pk in blocked_user_ids(org.pk):
+        return  # 구성원 정보가 빈 사람에게는 그 조직의 내용을 보내지 않는다
     Notice.objects.create(org=org, user=user, channel_id=channel_id, text=text[:1900])
 
 

@@ -138,6 +138,9 @@ def call(method, path, query=None, body=None, key=None):
     try:
         with urlopen(Request(url, data=data, headers=headers, method=method), timeout=30) as r:
             raw = r.read()
+            # 구성원 정보가 빈 조직은 결과에서 빠졌다: 입력 안내를 함께 보여 준다
+            for b in json.loads(r.headers.get("X-Blocked-Orgs") or "[]"):
+                print(f"{b['message']} 입력: {b['url']}", file=sys.stderr)
             return json.loads(raw) if raw else None
     except HTTPError as e:
         text = e.read().decode('utf-8', errors='replace')
