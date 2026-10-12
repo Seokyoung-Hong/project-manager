@@ -20,6 +20,7 @@ import httpx
 from discord import app_commands
 from discord.app_commands import Choice
 
+from . import meeting
 from .channels import (
     NOT_A_MANAGER,
     can_manage_channels,
@@ -182,7 +183,9 @@ def request_label(r: dict) -> str:
     return f"{r['number']} {r['title']}"
 
 
-def register(tree: app_commands.CommandTree, guild, cfg, core: CoreClient, seen: dict, store=None):
+def register(
+    tree: app_commands.CommandTree, guild, cfg, core: CoreClient, seen: dict, store=None, voice=None
+):
     """명령을 길드 범위로 등록한다. 동기화(tree.sync)는 listener의 setup_hook이 한다."""
     cache: Cache = {}
 
@@ -608,5 +611,10 @@ def register(tree: app_commands.CommandTree, guild, cfg, core: CoreClient, seen:
                     str(interaction.channel.id),
                 )
         await send(interaction, reply)
+
+    # --- 회의(IMPL-PLAN-9). 음성은 Node 서비스, 여기는 명령 UI ---
+    meeting.register(
+        tree, guild, core, seen, voice or meeting.voice_from(cfg), ac_channel_project, ac_team
+    )
 
     return cache

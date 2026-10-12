@@ -99,11 +99,16 @@ def test_all_commands_are_guild_scoped_with_the_shared_vocabulary():
         "요청거절",
         "요청완료",
         "요청목록",
+        "회의시작",
+        "회의종료",
+        "회의진행자",
+        "회의받기",
     }
     assert tree.get_commands(guild=None) == []
     vocab = {"번호", "프로젝트", "팀", "담당자", "기한", "기한미정사유", "중요도", "상태", "사유"}
     vocab |= {"내용", "제목", "다음행동", "카테고리", "코드", "종류", "대상", "메모"}
     vocab |= {"기존카테고리", "새카테고리만들기", "기존채널", "권한밖허용", "자동관리"}
+    vocab |= {"참여자"}
     for c in tree.get_commands(guild=GUILD):
         for p in c.parameters:
             assert p.display_name in vocab, (c.name, p.display_name)

@@ -6,9 +6,10 @@
     "node": ">=22.12.0"
   },
   "scripts": {
+    "start": "node gateway.mjs",
     "poc": "node poc.mjs",
     "test": "node --test",
-    "check": "node --check poc.mjs && node --check src/ogg.mjs && node --check src/recorder.mjs"
+    "check": "node --check poc.mjs && node --check gateway.mjs && node --check src/ogg.mjs && node --check src/recorder.mjs && node --check src/texts.mjs && node --check src/core.mjs && node --check src/transcribe.mjs && node --check src/mix.mjs && node --check src/meetings.mjs && node --check src/control.mjs"
   },
   "dependencies": {
     "@discordjs/voice": "0.19.2",

@@ -1,0 +1,10 @@
+- 결론: **배포 차단**입니다. 문구 수정과 검토는 완료이며, 지정 테스트는 `discord_gateway npm test` 28개, `discord_service uv run pytest -q` 196개, `core uv run pytest -q notes` 66개 모두 통과입니다. 로직 변경·커밋·운영 접속은 없는 상태입니다.
+- 결함 목록:
+  - **P1 — 종료 경합**: `discord_gateway/src/meetings.mjs:116,156,167`. 권한 없는 종료 요청의 PATCH 응답을 지연시킨 동안 진행자와 다른 참여자가 모두 퇴장하고 403으로 거절되면, 퇴장 이벤트는 무시되고 녹음은 계속입니다. 가짜 어댑터 재현 결과 활성 회의 1개·유예 없음·두 사람 모두 남아 있는 것으로 표시되는 상태입니다. 최대 길이 종료도 같은 잠금 동안 무시되는 경로입니다.
+  - **P1 — 동시 시작**: `discord_gateway/src/meetings.mjs:49,52,62`; `core/notes/services.py:199`; `core/notes/models.py:59`. 길드별 예약 전에 core 요청을 기다리므로 두 시작 요청이 동시에 통과 가능한 구조입니다. 가짜 core에서 녹음 2개·로컬 상태 2개·메모리 회의 1개로 재현입니다. core에도 길드별 잠금·유일성 제약이 없는 상태입니다.
+  - **P1 — 복구 누락**: `discord_gateway/src/meetings.mjs:52,65,87,281`. core 생성 후 음성 접속 대기 중 종료되면 최초 상태 저장 전이라 복구 대상이 0개입니다. core에는 recording이 남아 이후 시작을 거절하는 구조입니다. 접속 대기 중 로컬 폴더·복구 상태가 모두 없는 것으로 재현입니다.
+  - **P1 — 진행자 동기화**: `discord_service/discord_service/meeting.py:110,119,195,263`; `discord_gateway/src/meetings.mjs:131`. core의 진행자 변경 후 Node 알림 실패는 로그만 남기는 구조입니다. 이후 새 진행자가 다른 참여자를 남겨 두고 퇴장하면 Node가 새 진행자를 감시하지 않아 종료되지 않는 경로입니다.
+  - **P2 — 파일 검증**: `core/notes/services.py:463,465`; `core/notes/test_voice.py:728,763`. OggS 네 바이트만 맞으면 손상 파일도 저장되는 구조이며, 실제 업로드 통과 테스트도 OggS 뒤 60개 영바이트인 파일입니다. Ogg·Opus 구조 검증은 없는 상태입니다.
+- 기타 검토: Python 음성 인텐트 없음(`listener.py:53`), Node 명령·인터랙션 처리 없음(`gateway.mjs:19,65`), 8082 비밀값 미설정·불일치 거절(`control.mjs:7,40`), UUID 저장 경로(`models.py:34`), 내려받기 가시성 관문(`web/views/notes.py:28,246`) 확인입니다. 재시도 PATCH의 중복 알림은 같은 상태 전환을 건너뛰는 core 처리(`services.py:387`)로 방지하는 구조입니다. 비밀값을 명시적으로 출력하는 새 로그는 발견되지 않은 상태입니다.
+- 바꾼 문구 파일: `discord_gateway/src/texts.mjs`, `discord_service/discord_service/messages.py`, `core/notes/services.py`, `core/orgs/settings.py`입니다. 문구 단언 수정 파일은 `discord_gateway/test/meetings.test.mjs`, `discord_service/tests/test_meeting.py`, `core/notes/test_voice.py`입니다. `core/web/templates/notes/list.html`의 새 문구는 용어표에 맞아 변경이 없는 상태입니다. Python AST 비교에서 문자열 외 변경 없음 확인입니다.
+- 확인 불가: 실 Discord 동시 연결·장시간 안정성, 실제 PostgreSQL 동시 시작, Linux 256MB 제한 내 장시간 혼합·동시 전사 RSS, 운영 환경·로그에서 비밀값 노출 여부입니다.

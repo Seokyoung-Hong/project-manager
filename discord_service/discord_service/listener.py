@@ -23,6 +23,7 @@ from .commands import RATE, handle, too_fast  # noqa: F401  (RATE·too_fast는 �
 from .control import start_control_server
 from .core_client import CoreClient
 from .discord import chunk
+from .meeting import is_host_button, on_host_button, voice_from
 from .slash import register
 from .store import Store
 from .watch import Watcher
@@ -58,6 +59,11 @@ def _run(cfg, core: CoreClient, intent_denied: bool = False):
     store = Store(cfg.db_path)
     watcher = Watcher(client, core, store, cfg.members_intent, intent_denied=intent_denied)
     seen: dict[str, list[float]] = {}
+    voice = voice_from(cfg)
+    if not voice.ready:
+        log.warning(
+            "VOICE_URL·VOICE_CONTROL_SECRET이 없어 회의 명령은 거절합니다 (다른 명령은 동작)"
+        )
 
     tree = app_commands.CommandTree(client)
     # 다중 조직(§8.4): 바인딩된 길드 전부에 등록한다. 길드가 늘면 다음 기동에 반영된다
@@ -72,7 +78,7 @@ def _run(cfg, core: CoreClient, intent_denied: bool = False):
     guilds = [discord.Object(id=int(o["guild_id"])) for o in orgs if o.get("guild_id")]
     if guilds:
         for guild in guilds:
-            register(tree, guild, cfg, core, seen, store)
+            register(tree, guild, cfg, core, seen, store, voice)
     else:
         log.warning("바인딩된 Discord 서버가 없어 슬래시 명령을 등록하지 않습니다 (DM 명령만 동작)")
 
@@ -124,6 +130,12 @@ def _run(cfg, core: CoreClient, intent_denied: bool = False):
         @client.event
         async def on_member_join(member):
             watcher.trigger(member.guild.id)
+
+    # 넘겨받기 버튼(meeting-host:…). 재시작 뒤 눌러도 동작하도록 View가 아니라 custom_id로 받는다.
+    @client.event
+    async def on_interaction(interaction):
+        if is_host_button(interaction):
+            await on_host_button(interaction, core, voice)
 
     @client.event
     async def on_message(message):

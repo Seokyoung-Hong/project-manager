@@ -1,3 +1,5 @@
+import uuid
+
 from django.conf import settings
 from django.db import models
 
@@ -29,8 +31,13 @@ class MeetingNote(Doc):
         super().save(*args, **kwargs)
 
 
+def audio_path(instance, filename):
+    """meeting/<org_id>/<uuid4 hex>.ogg. MEDIA_ROOT 아래지만 URL이 없다 — 내려받기 뷰만 내준다."""
+    return f"meeting/{instance.note.org_id}/{uuid.uuid4().hex}.ogg"
+
+
 class VoiceRecording(models.Model):
-    """회의 한 번의 녹음(IMPL-PLAN-9 v1 §3.1, v2 §5). 오디오 파일은 core에 두지 않는다."""
+    """회의 한 번의 녹음(IMPL-PLAN-9 v1 §3.1, v2 §5). 혼합 녹음 파일은 봇이 올린다(IMPL-PLAN-9-parallel §7)."""
 
     STATUSES = [
         ("recording", "녹음 중"),
@@ -73,6 +80,9 @@ class VoiceRecording(models.Model):
     # {segments, skipped, decrypt_failures, transcribe_failed, engines: [{engine, host, model, segments, failed}]}
     stats = models.JSONField(default=dict, blank=True)
     audio_expires_at = models.DateTimeField(null=True, blank=True)
+    # 혼합 녹음(meeting.ogg). 만료 정리가 파일을 지우면 비우고, audio_size는 남겨 "삭제됨"을 알린다.
+    audio = models.FileField(upload_to=audio_path, max_length=200, blank=True)
+    audio_size = models.PositiveBigIntegerField(default=0)
 
     def __str__(self):
         return f"녹음 #{self.pk}"

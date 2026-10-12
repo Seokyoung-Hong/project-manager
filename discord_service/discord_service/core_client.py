@@ -256,6 +256,30 @@ class CoreClient:
             "request"
         ]
 
+    # --- 회의(IMPL-PLAN-9). 시작·종료는 음성 서비스(Node)가 core를 부른다. 여기는 진행자 넘김만 ---
+
+    def meeting_host(self, did: str, recording_id: int, target: str, participants) -> dict:
+        return self._bot(
+            f"/meetings/{recording_id}/host",
+            {
+                "discord_user_id": did,
+                "target_discord_user_id": target,
+                "participants": participants,
+            },
+        )
+
+    def meeting_host_request(self, did: str, recording_id: int, participants) -> dict:
+        return self._bot(
+            f"/meetings/{recording_id}/host-requests",
+            {"discord_user_id": did, "participants": participants},
+        )
+
+    def meeting_host_answer(self, did: str, recording_id: int, request_id: int, approve: bool):
+        return self._bot(
+            f"/meetings/{recording_id}/host-requests/{request_id}",
+            {"discord_user_id": did, "approve": approve},
+        )
+
     # --- 알림 발송함. 행위자 없이 봇 토큰으로 ---
 
     def notices(self) -> list[dict]:

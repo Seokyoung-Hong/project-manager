@@ -10,7 +10,7 @@ from accounts.identity import resolve
 from common.dates import now_kst
 from common.errors import Forbidden, ServiceError
 from orgs import settings as org_settings
-from orgs.models import OrgMembership
+from orgs.models import Organization, OrgMembership
 from orgs.services import ai_denied, is_admin, is_member, visible_teams
 from projects import docs
 from projects.services import can_view_project, visible_projects
@@ -228,7 +228,8 @@ def start_recording(
     *, org, actor, guild_id: str, voice_channel_id: str, project=None, team=None, title=""
 ) -> VoiceRecording:
     meeting_scope(org=org, actor=actor, project=project, team=team)
-    # 봇은 길드당 음성 연결 하나다.
+    # 봇은 길드당 음성 연결 하나다. 동시에 온 시작 요청은 조직 행 잠금으로 줄 세운다(길드 ↔ 조직 1:1).
+    Organization.objects.select_for_update().filter(pk=org.pk).first()
     if VoiceRecording.objects.filter(guild_id=guild_id, status="recording").exists():
         raise ServiceError(
             {
@@ -452,9 +453,13 @@ def update_recording(
                 note.body_md = DRAFT_BODY.format(id=note.pk)
                 note.version += 1
                 note.save(update_fields=["body_md", "version", "updated_at"])
+            engine = (stats if stats is not None else rec.stats or {}).get("engine")
             _notify_owner(
                 rec,
-                f"회의록 초안(전사문)이 준비되었습니다. `/pm-meeting {note.pk}`로 정리하거나 "
+                # 녹음만(전사 수단 없음, IMPL-PLAN-9-parallel §7). 실패가 아니다.
+                "회의록 초안이 준비된 상태입니다. 녹음 파일은 회의록 화면에서 내려받아 직접 전사해 주세요."
+                if engine == "none"
+                else f"전사문이 포함된 회의록 초안입니다. `/pm-meeting {note.pk}`로 정리하거나 "
                 "웹에서 작성해 주세요.",
             )
         elif status == "failed":
@@ -489,6 +494,93 @@ def update_recording(
         rec.transcript_md = transcript_md
     rec.save()
     return rec
+
+
+AUDIO_MAX_BYTES = 300 * 1024 * 1024  # IMPL-PLAN-9-parallel §7
+AUDIO_EXPIRED = "보관 기간이 지나 녹음 파일이 삭제된 상태입니다."
+
+
+def audio_expired(rec) -> bool:
+    return rec.audio_expires_at is not None and rec.audio_expires_at <= timezone.now()
+
+
+def _is_ogg_opus(upload) -> bool:
+    """Ogg Opus인가(stdlib만, RFC 3533·7845). 페이지를 처음부터 끝까지 걸어가며 본다.
+
+    모든 페이지: `OggS`·버전 0, 세그먼트 표로 잰 길이가 빈틈·쓰레기 없이 파일 끝에 정확히 닿는다.
+    BOS는 첫 페이지에만, EOS는 마지막 페이지에. 첫 페이지 = OpusHead 패킷 하나(19바이트 이상·
+    버전 1·채널 1 이상), 둘째 페이지는 OpusTags로 시작. 본문은 첫 두 페이지만 읽고 나머지는 건너뛴다.
+    ponytail: CRC는 보지 않는다. 손상된 본문까지 잡아야 하면 페이지 CRC32를 더한다."""
+    size, pos, page, flags = upload.size, 0, 0, 0
+    upload.seek(0)
+    try:
+        while pos < size:
+            head = upload.read(27)
+            if len(head) < 27 or head[:4] != b"OggS" or head[4] != 0:
+                return False
+            flags = head[5]
+            if bool(flags & 0x02) != (page == 0):  # BOS
+                return False
+            table = upload.read(head[26])
+            if len(table) != head[26]:
+                return False
+            body_len = sum(table)
+            pos += 27 + len(table) + body_len
+            if pos > size:
+                return False
+            if page == 0:
+                body = upload.read(body_len)
+                # OpusHead는 첫 페이지에 혼자, 그 페이지에서 끝난다(마지막 세그먼트 < 255)
+                if not (
+                    table
+                    and table[-1] < 255
+                    and len(body) >= 19
+                    and body[:8] == b"OpusHead"
+                    and body[8] == 1
+                    and body[9] >= 1
+                ):
+                    return False
+            elif page == 1:
+                if upload.read(8) != b"OpusTags":
+                    return False
+                upload.seek(pos)
+            else:
+                upload.seek(pos)
+            page += 1
+        return page >= 2 and bool(flags & 0x04)  # EOS
+    finally:
+        upload.seek(0)
+
+
+@transaction.atomic
+def save_audio(rec, upload) -> VoiceRecording:
+    """봇이 올린 혼합 녹음(Ogg). 같은 회의에 다시 올리면 바꾼다. 옛 파일은 커밋 뒤에 지운다."""
+    if upload.size > AUDIO_MAX_BYTES:
+        raise ServiceError({"file": "녹음 파일의 크기 제한은 300MB입니다."})
+    if not _is_ogg_opus(upload):
+        raise ServiceError({"file": "올릴 수 있는 녹음 파일 형식은 Ogg입니다."})
+    rec = VoiceRecording.objects.select_for_update().select_related("note").get(pk=rec.pk)
+    old = rec.audio.name
+    rec.audio.save("meeting.ogg", upload, save=False)
+    rec.audio_size = upload.size
+    rec.save(update_fields=["audio", "audio_size"])
+    if old:
+        storage = rec.audio.storage
+        transaction.on_commit(lambda: storage.delete(old))
+    return rec
+
+
+def purge_expired_audio() -> int:
+    """보관 기간(audio_expires_at)이 지난 녹음 파일을 지운다. audio_size는 남긴다(화면의 "삭제함" 표시)."""
+    storage = VoiceRecording._meta.get_field("audio").storage
+    n = 0
+    for rec in VoiceRecording.objects.filter(audio_expires_at__lte=timezone.now()).exclude(
+        audio=""
+    ):
+        storage.delete(rec.audio.name)
+        VoiceRecording.objects.filter(pk=rec.pk).update(audio="")
+        n += 1
+    return n
 
 
 @transaction.atomic

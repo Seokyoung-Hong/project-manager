@@ -109,6 +109,7 @@ services:
       CORE_URL: http://web:8000
       DISCORD_CONTROL_PORT: "8081"
       DB_PATH: /data/bot.sqlite      # 채널 자동 관리가 넣은 덮어쓰기 기록. 발송 프로세스의 파일과 따로 쓴다
+      VOICE_URL: http://discord-voice:8082   # 회의 명령이 음성 서비스를 부른다(VOICE_CONTROL_SECRET은 .env.discord)
     command: ["python", "-m", "discord_service", "bot"]
     volumes:
       - discord_bot_data:/data
@@ -119,6 +120,29 @@ services:
       - "8081"                    # MCP 내부 채널 관리 브리지. 호스트 포트로 공개하지 않는다.
     restart: unless-stopped
     logging: *logging
+
+  discord-voice:                 # 음성(같은 봇 토큰의 두 번째 게이트웨이 세션): 회의 녹음·전사. docs/IMPL-PLAN-9-parallel.md
+    profiles: ["discord"]        # 명령·인터랙션은 discord-bot만 받는다. 이 서비스는 명령을 등록하지 않는다
+    build: ./discord_gateway
+    env_file: .env.discord
+    environment:
+      CORE_URL: http://web:8000
+      VOICE_CONTROL_PORT: "8082"
+      VOICE_DATA: /data
+      SITE_URL: ${SITE_URL:-}      # 시작 고지의 처리방침 링크
+      NODE_OPTIONS: --max-old-space-size=96
+    volumes:
+      - discord_voice_data:/data   # 녹음 구간(7일 뒤 스스로 지운다). 백업에 넣지 않는다
+    depends_on:
+      web:
+        condition: service_healthy
+    expose:
+      - "8082"                    # discord-bot만 부른다. 호스트 포트로 공개하지 않는다.
+    # LXC 512MB의 가용분(≈190MB) 아래로 둔다. 넘치면 db·web 대신 이 컨테이너가 먼저 죽는다(재시도 큐가 이어 받는다)
+    mem_limit: 160m
+    oom_score_adj: 1000
+    logging: *logging
+    restart: unless-stopped
 
   mcp:                           # 선택 확장: claude.ai 웹·모바일용 원격 커넥터. Claude Code는 skills/로 core API를 직접 부른다
     profiles: ["mcp"]            # 켜려면 --profile mcp 또는 .env의 COMPOSE_PROFILES=mcp
@@ -156,3 +180,4 @@ volumes:
   media_data:
   discord_data:
   discord_bot_data:
+  discord_voice_data:

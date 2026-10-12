@@ -258,6 +258,7 @@ urlpatterns = [
     path("orgs/<int:org_id>/notes/upload", notes.note_upload, name="note_upload"),
     path("notes/<int:note_id>/save", notes.note_save, name="note_save"),
     path("notes/<int:note_id>/delete", notes.note_delete, name="note_delete"),
+    path("notes/<int:note_id>/audio", notes.note_audio, name="note_audio"),
     path("tasks/<int:task_id>/notes", notes.task_note_link, name="task_note_link"),
     path(
         "tasks/<int:task_id>/notes/<int:note_id>/unlink",

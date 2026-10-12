@@ -576,6 +576,7 @@ def test_api_key_encrypted_masked_everywhere(client, enabled, admin, member, bot
         "model": "",
         "timeout_s": 120,
         "api_key": KEY,
+        "openai_api_key": "",
     }
     # False는 지운다
     client.put(
@@ -720,3 +721,197 @@ def test_host_request_cancelled_on_host_change_and_end(enabled, member, other, l
     rec.refresh_from_db()
     assert rec.host_requests[-1]["status"] == "cancelled"
     assert _answer(bot, rec, rid2, "333", True).status_code == 400
+
+
+# ---------- 녹음 파일 (IMPL-PLAN-9-parallel §7) ----------
+
+
+def _page(body: bytes, flags: int = 0, version: int = 0) -> bytes:
+    """Ogg 페이지 하나(RFC 3533). CRC는 core가 보지 않으므로 0으로 둔다."""
+    segs = [255] * (len(body) // 255) + [len(body) % 255]
+    return (
+        b"OggS"
+        + bytes([version, flags])
+        + bytes(8 + 4 + 4 + 4)
+        + bytes([len(segs)])
+        + bytes(segs)
+        + body
+    )
+
+
+OPUS_HEAD = b"OpusHead" + bytes([1, 1]) + bytes(9)  # 19바이트
+OGG = (
+    _page(OPUS_HEAD, flags=0x02)
+    + _page(b"OpusTags" + bytes(8))
+    + _page(b"OggS-in-body" + bytes(600), flags=0x04)  # 본문에 OggS가 껴도 통과
+)
+
+
+@pytest.fixture
+def media(settings, tmp_path):
+    settings.MEDIA_ROOT = tmp_path
+    return tmp_path
+
+
+def _put_audio(client, rec, data=OGG, *, token=None, name="meeting.ogg"):
+    from django.core.files.uploadedfile import SimpleUploadedFile
+    from django.test.client import BOUNDARY, MULTIPART_CONTENT, encode_multipart
+
+    if token is None:
+        u = User.objects.get_or_create(username="discord-bot", defaults={"display_name": "봇"})[0]
+        token = ApiToken.issue(u, "봇", "bot")[1]
+    body = encode_multipart(BOUNDARY, {"file": SimpleUploadedFile(name, data)})
+    return client.put(
+        f"/api/integrations/discord/meetings/{rec.pk}/audio",
+        body,
+        content_type=MULTIPART_CONTENT,
+        headers=_h(token),
+    )
+
+
+def _ended(org, host):
+    rec = _rec(org, host)
+    from notes.services import update_recording
+
+    update_recording(rec, status="transcribing")
+    rec = update_recording(rec, status="draft", transcript_md="", stats={"engine": "none"})
+    return rec
+
+
+def test_audio_upload_bot_only_and_replaces(
+    client, enabled, member, media, write_token, django_capture_on_commit_callbacks
+):
+    rec = _ended(enabled, member)
+    assert _put_audio(client, rec, token=write_token).status_code in (401, 403)
+    assert _put_audio(client, rec, token=_token(member, ai=False)).status_code in (401, 403)
+    r = _put_audio(client, rec)
+    assert r.status_code == 200, r.content
+    assert r.json() == {"ok": True, "size": len(OGG)}
+    rec.refresh_from_db()
+    first = rec.audio.name
+    assert first.startswith(f"meeting/{enabled.pk}/") and (media / first).exists()
+    with django_capture_on_commit_callbacks(execute=True):
+        r = _put_audio(client, rec, OGG + _page(b"more", flags=0x04))
+    rec.refresh_from_db()
+    assert r.json()["size"] == len(OGG) + 32 and rec.audio.name != first
+    assert not (media / first).exists()
+
+
+def test_audio_upload_rejects_format_size_and_expired(client, enabled, member, media, monkeypatch):
+    from notes import services
+
+    rec = _ended(enabled, member)
+    assert _put_audio(client, rec, b"RIFF....WAVE", name="a.ogg").status_code == 400
+    for bad in (
+        b"OggS" + bytes(60),  # 페이지 머리만 흉내
+        OGG[:-5],  # 끝이 잘림
+        _page(OPUS_HEAD, flags=0) + OGG[len(_page(OPUS_HEAD, flags=0x02)) :],  # BOS 없음
+        _page(OPUS_HEAD, flags=0x02, version=1) + OGG[47:],  # 버전 1
+        _page(b"OpusTagsXXXXXXXXXXX", flags=0x02) + _page(b"x" * 30),  # 첫 패킷이 OpusHead 아님
+        OGG[:30],  # 세그먼트 표가 파일 밖
+        _page(OPUS_HEAD, flags=0x02)[:36],  # Sol: 36바이트짜리 불완전한 OpusHead 페이지
+        OGG[:47] + b"junk" + OGG[47:],  # Sol: 중간에 쓰레기
+        _page(b"OpusHead" + bytes([2, 1]) + bytes(9), flags=0x02) + OGG[47:],  # Sol: 버전 2
+        _page(b"OpusHead" + bytes([1, 0]) + bytes(9), flags=0x02) + OGG[47:],  # Sol: 채널 0
+        _page(b"OpusHead" + bytes([1, 1]), flags=0x02) + OGG[47:],  # OpusHead 19바이트 미만
+        OGG[:47] + _page(b"NotTags!" + bytes(8)) + OGG[47 + 44 :],  # 둘째 패킷이 OpusTags 아님
+        OGG[:91] + _page(b"OggS-in-body" + bytes(600)),  # EOS 없음
+        OGG[:47] + _page(b"OpusTags", flags=0x02) + OGG[47 + 44 :],  # BOS가 둘째 페이지에도
+    ):
+        assert _put_audio(client, rec, bad).status_code == 400, bad[:40]
+    monkeypatch.setattr(services, "AUDIO_MAX_BYTES", 10)
+    assert _put_audio(client, rec).status_code == 400
+    monkeypatch.undo()
+    rec.audio_expires_at = timezone.now() - timezone.timedelta(minutes=1)
+    rec.save()
+    r = _put_audio(client, rec)
+    assert r.status_code == 410 and "보관 기간" in r.json()["detail"]
+    assert _put_audio(client, VoiceRecording(pk=99999)).status_code == 404
+
+
+def test_audio_download_visibility(client, enabled, admin, member, other, media, project):
+    rec = _ended(enabled, member)
+    url = f"/notes/{rec.note_id}/audio"
+    client.force_login(member)
+    assert client.get(url).status_code == 404  # 아직 파일 없음
+    page = client.get(f"/orgs/{enabled.pk}/notes?note={rec.note_id}").content.decode()
+    assert "녹음 내려받기" not in page
+    _put_audio(client, rec)
+    page = client.get(f"/orgs/{enabled.pk}/notes?note={rec.note_id}").content.decode()
+    assert "녹음 내려받기" in page
+    r = client.get(url)
+    assert r.status_code == 200 and b"".join(r.streaming_content) == OGG
+    assert r["Content-Disposition"].startswith("attachment")
+    assert "%ED%9A%8C%EC%9D%98%EB%A1%9D-" in r["Content-Disposition"]  # 회의록-{id}.ogg
+    assert f"-{rec.note_id}.ogg" in r["Content-Disposition"]
+    client.force_login(admin)
+    assert client.get(url).status_code == 200
+    client.force_login(other)
+    assert client.get(url).status_code == 404  # 초안은 진행자·관리자만
+    # 확정 뒤에는 공개 범위를 볼 수 있는 사람
+    from notes.services import finalize_note
+
+    finalize_note(rec.note, actor=member, source="web", project=project)
+    assert client.get(url).status_code == 200
+    outsider = User.objects.create_user("out2", password="pw12345678", display_name="외부")
+    client.force_login(outsider)
+    assert client.get(url).status_code == 404
+
+
+def test_audio_purge_after_expiry(client, enabled, member, media):
+    from notes.services import purge_expired_audio
+
+    rec = _ended(enabled, member)
+    _put_audio(client, rec)
+    rec.refresh_from_db()
+    path = media / rec.audio.name
+    assert purge_expired_audio() == 0 and path.exists()
+    VoiceRecording.objects.filter(pk=rec.pk).update(
+        audio_expires_at=timezone.now() - timezone.timedelta(seconds=1)
+    )
+    client.force_login(member)
+    # 정리 전이라도 만료면 내주지 않는다
+    assert client.get(f"/notes/{rec.note_id}/audio").status_code == 404
+    # 발송 프로세스가 60초마다 부르는 /notices가 정리를 돈다
+    u = User.objects.get(username="discord-bot")
+    r = client.get(
+        "/api/integrations/discord/notices", headers=_h(ApiToken.issue(u, "b", "bot")[1])
+    )
+    assert r.status_code == 200 and not path.exists()
+    rec.refresh_from_db()
+    assert not rec.audio and rec.audio_size == len(OGG)
+    page = client.get(f"/orgs/{enabled.pk}/notes?note={rec.note_id}").content.decode()
+    assert "보관 기간이 지나 녹음 파일이 삭제된 상태입니다." in page and "녹음 내려받기" not in page
+
+
+def test_engine_none_draft_notice(enabled, member, bot):
+    rec = _rec(enabled, member)
+    bot("patch", f"/meetings/{rec.pk}", {"status": "transcribing"})
+    r = bot(
+        "patch",
+        f"/meetings/{rec.pk}",
+        {"status": "draft", "transcript_md": "", "stats": {"engine": "none"}},
+    )
+    assert r.status_code == 200 and r.json()["status"] == "draft"
+    n = Notice.objects.get(user=member)
+    assert "회의록 초안이 준비된 상태입니다" in n.text and "회의록 화면에서 내려받아" in n.text
+
+
+def test_openai_key_masked_and_only_bot_sees(client, enabled, admin, bot):
+    OPENAI = "sk-openai-평문-5678"
+    _, raw = ApiToken.issue(admin, "t", "write", for_ai=False)
+    url = f"/api/orgs/{enabled.pk}/settings"
+    r = client.put(
+        url,
+        {"meeting.recording_enabled": True, "meeting.openai_api_key": OPENAI},
+        content_type="application/json",
+        headers=_h(raw),
+    )
+    assert r.status_code == 200 and OPENAI not in r.content.decode()
+    assert r.json()["values"]["meeting.openai_api_key"] == "설정됨"
+    enabled.refresh_from_db()
+    assert enabled.settings["meeting.openai_api_key"].startswith("enc:")
+    client.force_login(admin)
+    assert OPENAI not in client.get(f"/orgs/{enabled.pk}/settings").content.decode()
+    check = bot("post", "/meetings/check", {"discord_user_id": "111", "guild_id": "g1"}).json()
+    assert check["stt"]["openai_api_key"] == OPENAI

@@ -20,6 +20,9 @@ class Config:
     # Server Members 특권 인텐트(IMPL-PLAN-5 B). 포털에서 먼저 켠 뒤에 1로 둔다 — 포털이 꺼진 채
     # 요청하면 게이트웨이가 접속을 거부해 알림·명령이 모두 멈춘다. 꺼져 있으면 채널 감시·조정을 건너뛴다.
     members_intent: bool = False
+    # 음성 서비스(discord-voice, IMPL-PLAN-9-parallel §3). 둘 중 하나라도 비면 회의 명령만 거절한다.
+    voice_url: str = "http://discord-voice:8082"
+    voice_secret: str = ""
 
     @classmethod
     def from_env(cls) -> "Config":
@@ -42,4 +45,6 @@ class Config:
             site_name=os.environ.get("SITE_NAME", "유달리"),
             members_intent=os.environ.get("DISCORD_MEMBERS_INTENT", "").strip().lower()
             in ("1", "true", "yes", "on"),
+            voice_url=os.environ.get("VOICE_URL", "http://discord-voice:8082").strip().rstrip("/"),
+            voice_secret=os.environ.get("VOICE_CONTROL_SECRET", "").strip(),
         )
