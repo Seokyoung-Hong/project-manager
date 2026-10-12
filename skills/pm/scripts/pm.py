@@ -9,7 +9,8 @@
     pm.py login | logout                          브라우저 OAuth로 토큰 받기 / 지우기
 
 토큰은 환경 변수 UDALLY_TOKEN, 없으면 `pm.py login`이 저장한 ~/.config/udally/token.json에서 읽는다.
-주소는 UDALLY_URL(기본 https://project.sio2.kr). 저장한 토큰은 받은 주소로만 보낸다.
+주소는 UDALLY_URL, 없으면 설치 스크립트가 저장한 ~/.config/udally/url, 그것도 없으면 https://udally.sio2.kr.
+저장한 토큰은 받은 주소로만 보낸다.
 모든 요청에 X-Source: ai 를 붙인다. 조직의 AI 정책(ai.*)이 이 헤더로 걸린다.
 """
 
@@ -35,10 +36,15 @@ USAGE = (
     "pm.py apidoc 프로젝트ID [경로 일부 | put 파일|URL]  |  pm.py login|logout"
 )
 TOKEN_FILE = Path.home() / ".config" / "udally" / "token.json"
+URL_FILE = TOKEN_FILE.with_name("url")  # 서버의 /skills/install.* 가 받은 서버 주소를 적어 둔다
 
 
 def _base():
-    return os.environ.get("UDALLY_URL", "https://project.sio2.kr").rstrip("/")
+    try:
+        saved = URL_FILE.read_text(encoding="utf-8").strip()
+    except OSError:
+        saved = ""
+    return (os.environ.get("UDALLY_URL") or saved or "https://udally.sio2.kr").rstrip("/")
 
 
 def _token(base):

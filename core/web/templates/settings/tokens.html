@@ -19,8 +19,12 @@
   </details>
   <details name="ai-tool">
     <summary>Claude Code <span class="badge">스킬 · 이 기기만</span></summary>
-    <p>저장소의 <code>skills/</code> 폴더(<code>pm</code>, <code>pm-*</code>)를 <code>~/.claude/skills/</code>에 복사하고 <code>pm.py login</code>으로 로그인합니다(브라우저에서 허용 — 토큰을 손으로 옮기지 않습니다).
-      <code>/pm-start</code>, <code>/pm-new</code> 같은 명령이 생깁니다. 자세한 방법은 <code>skills/README.md</code>를 확인해 주세요.</p>
+    <p>터미널에 명령 한 줄을 붙여 넣으면 스킬을 <code>~/.claude/skills/</code>에 설치하고 브라우저 로그인 화면을 엽니다. 다시 실행하면 최신 버전으로 갱신됩니다.</p>
+    <p>Windows(PowerShell) <code>irm {{ site_url }}/skills/install.ps1 | iex</code>
+      <button type="button" class="btn sm" data-copy-text="irm {{ site_url }}/skills/install.ps1 | iex" data-copy-label="명령 복사됨">명령 복사</button></p>
+    <p>macOS·Linux <code>curl -fsSL {{ site_url }}/skills/install.sh | sh</code>
+      <button type="button" class="btn sm" data-copy-text="curl -fsSL {{ site_url }}/skills/install.sh | sh" data-copy-label="명령 복사됨">명령 복사</button></p>
+    <p class="muted t13">Python 3.9 이상이 필요합니다. 브라우저에서 허용하면 토큰이 자동으로 저장됩니다. 설치 후 <code>/pm-start</code>, <code>/pm-new</code> 같은 명령을 쓸 수 있습니다.</p>
   </details>
   <details name="ai-tool">
     <summary>Claude Code <span class="badge">MCP · 헤더</span></summary>

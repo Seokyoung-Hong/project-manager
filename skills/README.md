@@ -23,6 +23,21 @@ MCP 커넥터(`mcp_server/`)는 claude.ai 웹·모바일처럼 셸이 없는 클
 
 ## 설치
 
+유달리 서버가 스킬과 설치 스크립트를 내려준다. 터미널에 한 줄을 붙여 넣으면 `~/.claude/skills/`에 설치(이미 있으면 갱신)하고,
+서버 주소를 `~/.config/udally/url`에 적은 뒤 `pm.py login`을 실행한다. 같은 명령은 웹의 설정 → API 토큰 → Claude Code(스킬)에서도 복사할 수 있다.
+
+```powershell
+irm https://udally.sio2.kr/skills/install.ps1 | iex       # Windows PowerShell
+```
+
+```sh
+curl -fsSL https://udally.sio2.kr/skills/install.sh | sh  # macOS·Linux
+```
+
+Python 3.9 이상이 필요하다. 로그인을 나중에 하려면 환경 변수 `UDALLY_SKIP_LOGIN=1`을 넣고 실행한다.
+
+### 수동 설치(대안)
+
 1. `pm`과 `pm-*` 폴더를 모두 같은 스킬 폴더에 복사한다. 다른 명령이 `../pm/`의 규칙과 스크립트를 쓰므로 함께 둬야 한다.
    - 모든 프로젝트에서: `~/.claude/skills/`
    - 이 저장소에서만: `.claude/skills/`
@@ -40,7 +55,7 @@ MCP 커넥터(`mcp_server/`)는 claude.ai 웹·모바일처럼 셸이 없는 클
 
    토큰은 `~/.config/udally/token.json`에 저장되고 로그인한 서버 주소로만 쓰인다. `pm.py logout`은 이 파일을 지운다.
    서버 쪽 토큰은 `/settings/tokens`에 "유달리 스킬 (기기 이름)"으로 보이며, 기기를 잃어버리면 거기서 폐기한다.
-   환경 변수 `UDALLY_TOKEN`을 넣으면 그것이 우선한다. 다른 서버는 `UDALLY_URL`(기본 `https://project.sio2.kr`).
+   환경 변수 `UDALLY_TOKEN`을 넣으면 그것이 우선한다. 서버 주소는 `UDALLY_URL`, 없으면 `~/.config/udally/url`, 그것도 없으면 `https://udally.sio2.kr`.
 
 3. Python 3.9 이상이 필요하다. 추가 패키지는 없다.
 

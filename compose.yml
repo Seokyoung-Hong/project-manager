@@ -6,6 +6,11 @@ x-logging: &logging
   driver: json-file
   options: {max-size: "2m", max-file: "3"}
 
+# web·purge·realtime이 같은 core 이미지를 쓴다. 스킬 묶음 제공(/skills/udally-skills.zip)에 저장소 skills/가 필요하다.
+x-core-build: &core-build
+  context: ./core
+  additional_contexts: {skills: ./skills}
+
 services:
   db:
     image: postgres:16-alpine
@@ -26,7 +31,7 @@ services:
       - "127.0.0.1:5432:5432"   # 로컬 개발·테스트용. 서버에서는 이 두 줄을 지운다.
 
   web:
-    build: ./core
+    build: *core-build
     env_file: .env               # 봇 토큰·CORE_TOKEN은 여기 없다(.env.discord에만 있다)
     environment:
       DATABASE_URL: postgres://pm:${POSTGRES_PASSWORD:-pm}@db:5432/pm
@@ -54,7 +59,7 @@ services:
       start_period: 30s
 
   purge:                         # 주기 작업: GitHub 보정(github_reconcile) 5분, 보관 기간 정리(purge_expired) 하루. web과 같은 이미지(새 이미지·cron 없음)
-    build: ./core
+    build: *core-build
     env_file: .env
     environment:
       DATABASE_URL: postgres://pm:${POSTGRES_PASSWORD:-pm}@db:5432/pm
@@ -69,7 +74,7 @@ services:
     logging: *logging
 
   realtime:                      # 실시간 반영(/rt/: WebSocket·SSE·폴링). web과 같은 이미지, 진입점만 다르다
-    build: ./core
+    build: *core-build
     env_file: .env
     environment:
       DATABASE_URL: postgres://pm:${POSTGRES_PASSWORD:-pm}@db:5432/pm

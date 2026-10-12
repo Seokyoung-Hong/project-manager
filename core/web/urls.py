@@ -25,6 +25,7 @@ from .views import (
     roadmap,
     search,
     settings,
+    skills,
     split,
     subtasks,
     task_projects,
@@ -60,6 +61,9 @@ urlpatterns = [
     path("oauth/authorize", oauth.authorize, name="oauth_authorize"),
     path("oauth/token", oauth.token, name="oauth_token"),
     path("signup", auth.signup, name="signup"),
+    # ---- Claude Code 스킬 한 줄 설치(web/views/skills.py) ----
+    path("skills/install.<str:ext>", skills.install, name="skills_install"),
+    path("skills/udally-skills.zip", skills.bundle, name="skills_bundle"),
     path("privacy", auth.privacy, name="privacy"),
     path("join/<str:token>", auth.join, name="join"),
     path("today", today.today, name="today"),

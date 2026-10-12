@@ -20,6 +20,8 @@ SITE_URL = os.environ.get("SITE_URL", "http://localhost:8000").rstrip("/")
 # 운영은 core와 같은 도메인을 쓰고 앞단이 경로로 나눈다(mcp_server/README.md). 도메인을
 # 따로 둔다면 그 주소를 넣는다.
 MCP_URL = os.environ.get("MCP_URL", SITE_URL).rstrip("/")
+# /skills/udally-skills.zip 이 묶는 저장소 skills/ 폴더. 이미지에서는 /skills(core/Dockerfile).
+SKILLS_DIR = BASE_DIR.parent / "skills"
 # WebMCP는 크롬 149·엣지 150에서 아직 오리진 트라이얼이라 도메인마다 토큰을 받아야 켜진다.
 # 토큰이 있으면 <meta http-equiv="origin-trial">로 실어 보낸다. 없으면 기능만 조용히 빠진다.
 WEBMCP_ORIGIN_TRIAL = os.environ.get("WEBMCP_ORIGIN_TRIAL", "")
