@@ -821,3 +821,25 @@ def test_pc_error_codes_from_link_py(client, enabled, member, bot, sent, kept):
     job.refresh_from_db()
     assert (job.status, job.error) == ("failed", kept)
     assert tx.ERROR_LABELS[kept]
+
+
+def test_long_row_text_is_cut_not_rejected(client, enabled, member, bot):
+    server, token = _pc(client, member)
+    job = _upload_job(client, enabled, member, server)
+    _beat(client, token)
+    rows = [
+        {"seq": 1, "user_id": "upload", "start_ms": 0, "text": "가" * 2500},
+        {"seq": 2, "user_id": "upload", "start_ms": 5000, "text": "짧음"},
+    ]
+    r = _api(
+        client,
+        "patch",
+        f"/api/integrations/stt/jobs/{job.pk}",
+        {"status": "done", "rows": rows},
+        token,
+    )
+    assert r.status_code == 200, r.content
+    job.refresh_from_db()
+    first, second = job.transcript_md.split("\n")
+    assert first.endswith("가" * 2000 + "") and "가" * 2001 not in first and second.endswith("짧음")
+    assert job.stats["truncated"] == 1

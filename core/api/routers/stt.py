@@ -31,6 +31,7 @@ PC_ERRORS = {
     "transcript_too_large",
     "pc_error",
 }
+ROW_TEXT_MAX = 2000  # 구간 하나의 전사 글자 수 상한
 PC_ERROR_ALIASES = {"no_audio": "audio_unavailable"}  # 같은 뜻의 다른 이름
 MIN_VERSION_TEXT = "전사 서버 프로그램이 오래되었습니다. 설치 명령을 다시 실행해 업데이트해 주세요."  # COPY:pc_update_needed
 
@@ -147,6 +148,11 @@ def job_report(request, job_id: int, payload: SttJobReportIn):
     if payload.status == "done":
         rec = job.recording
         rows = [r.dict() for r in payload.rows or []]
+        cut = sum(1 for r in rows if len(r["text"]) > ROW_TEXT_MAX)
+        for r in rows:
+            r["text"] = r["text"][:ROW_TEXT_MAX]
+        if cut:
+            data["stats"] = {**(data.get("stats") or {}), "truncated": cut}
         if rec.source == "upload":
             names = {r["user_id"]: tx.UPLOAD_SPEAKER for r in rows}
         else:

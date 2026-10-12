@@ -645,7 +645,7 @@ class SttRowIn(Schema):
     seq: int
     user_id: str = Field("", max_length=32)
     start_ms: int = Field(ge=0)
-    text: str = Field("", max_length=2000)
+    text: str = ""  # 2,000자 넘는 구간은 라우터가 잘라 저장한다(보고 전체를 거절하지 않는다)
     failed: bool = False
 
 
