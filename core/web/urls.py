@@ -1,5 +1,6 @@
 from django.urls import path
 
+from .realtime import views as rt
 from .views import (
     attachments,
     auth,
@@ -44,6 +45,10 @@ urlpatterns = [
     path("", auth.root, name="root"),
     path("healthz", ops.healthz, name="healthz"),
     path("events", events.events, name="events"),
+    # 실시간(realtime 컨테이너 전용. web에서는 503). WebSocket /rt/ws는 config.rt_asgi가 받는다.
+    path("rt/sse", rt.sse, name="rt_sse"),
+    path("rt/poll", rt.poll, name="rt_poll"),
+    path("rt/subscribe", rt.subscribe, name="rt_subscribe"),
     path("login", auth.login_view, name="login"),
     path("logout", auth.logout_view, name="logout"),
     # ---- MCP 커넥터용 OAuth 2.1 (web/views/oauth.py 맨 위 설명) ----

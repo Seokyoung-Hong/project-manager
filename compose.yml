@@ -68,6 +68,24 @@ services:
     restart: unless-stopped
     logging: *logging
 
+  realtime:                      # 실시간 반영(/rt/: WebSocket·SSE·폴링). web과 같은 이미지, 진입점만 다르다
+    build: ./core
+    env_file: .env
+    environment:
+      DATABASE_URL: postgres://pm:${POSTGRES_PASSWORD:-pm}@db:5432/pm
+    # web의 entrypoint.sh(migrate·collectstatic)를 건너뛴다. 프로세스 하나가 직접 LISTEN하므로 --workers 1 고정.
+    # 접속 로그는 web과 같이 끈다(처리방침: 앱에는 IP를 남기지 않는다).
+    entrypoint: ["uvicorn", "config.rt_asgi:app", "--host", "0.0.0.0", "--port", "8082", "--workers", "1",
+                 "--no-access-log", "--proxy-headers", "--forwarded-allow-ips", "*"]
+    depends_on:
+      web:
+        condition: service_healthy   # migrate(트리거 설치)가 끝난 뒤에 뜬다
+    restart: unless-stopped
+    logging: *logging
+    ports:
+      # 앞단(NPM)이 ^~ /rt/ 를 여기로 보낸다. 방화벽은 web 포트와 같이 프록시 장비만 연다.
+      - "${RT_PORT:-8082}:8082"
+
   discord:                       # 발송(60초 틱): 마감 DM·주간 보고
     profiles: ["discord"]        # DISCORD_BOT_TOKEN 없이는 기동에 실패한다 → 기본에서 뺀다
     build: ./discord_service

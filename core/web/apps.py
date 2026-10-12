@@ -31,7 +31,9 @@ class WebConfig(AppConfig):
         from django.db.models.signals import post_migrate
 
         from . import data_version
+        from .realtime import keys
 
         checks.register(privacy_placeholder_check)
         # web에는 모델이 없어 sender=self면 신호가 오지 않는다. 앱마다 불려도 이미 건 표는 건너뛴다.
         post_migrate.connect(data_version.install, dispatch_uid="web.data_version")
+        post_migrate.connect(keys.install, dispatch_uid="web.realtime.keys")

@@ -12,6 +12,18 @@ from projects.services import create_project
 from tasks.services import create_task
 
 
+def pytest_collection_modifyitems(config, items):
+    """`@pytest.mark.pg`는 Postgres에서만 돈다(로컬: docker postgres:16-alpine + DATABASE_URL)."""
+    from django.db import connection
+
+    if connection.vendor == "postgresql":
+        return
+    skip = pytest.mark.skip(reason="Postgres 전용(DATABASE_URL=postgres…)")
+    for item in items:
+        if "pg" in item.keywords:
+            item.add_marker(skip)
+
+
 @pytest.fixture(autouse=True)
 def _clear_throttle_cache():
     """테스트마다 처리량 제한 카운터를 비운다.
