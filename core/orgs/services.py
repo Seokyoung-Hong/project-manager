@@ -86,15 +86,26 @@ def _display_setting(key: str, value) -> str:
 
 @transaction.atomic
 def set_org_settings(
-    org, data: dict, actor, *, note: str = "", source: str = "web", token=None
+    org, data: dict, actor, *, only=None, note: str = "", source: str = "web", token=None
 ) -> Organization:
     """조직 설정을 통째로 교체한다(병합이 아니다 — 키 없음 = 기본값이 규칙이기 때문이다).
 
+    only(키 묶음, 보통 settings.tab_keys(탭))를 주면 그 키만 바꾸는 부분 저장이다(IMPL-PLAN-14 §9.1):
+    행을 잠그고 다시 읽은 뒤 data 중 only 안의 키만 검사하고, only 밖의 키(잠금·숨김 키 값 포함)는
+    검사 없이 그대로 둔다. only 안인데 data에 없는 키는 기본값(키 없음)이 된다.
+    반환값은 다시 읽은 새 객체다 — 이어지는 set_locks에는 반드시 반환값을 넘긴다.
     바뀐 키마다 이력을 남긴다.
     """
     require_admin(actor, org)
-    old = org.settings or {}
-    cleaned = clean("org", merge_secrets(data, old), allow_locked=True)
+    if only is None:
+        old = org.settings or {}
+        cleaned = clean("org", merge_secrets(data, old), allow_locked=True)
+    else:
+        only = set(only) - {LOCKED}
+        org = Organization.objects.select_for_update().get(pk=org.pk)
+        old = org.settings or {}
+        part = {k: v for k, v in merge_secrets(data, old).items() if k in only}
+        cleaned = {k: v for k, v in old.items() if k not in only} | clean("org", part)
     if old != cleaned:
         from tasks.models import ChangeLog
 
@@ -119,13 +130,19 @@ def set_org_settings(
 
 
 @transaction.atomic
-def set_locks(org, keys: list[str], actor) -> Organization:
-    """덮어쓸 수 있는(overridable) 항목만 잠근다. 그 밖의 키는 조용히 걸러진다."""
+def set_locks(org, keys: list[str], actor, *, only=None) -> Organization:
+    """덮어쓸 수 있는(overridable) 항목만 잠근다. 그 밖의 키는 조용히 걸러진다.
+
+    only를 주면 그 키들의 잠금만 바꾸고 나머지 잠금은 둔다(탭별 저장, IMPL-PLAN-14 §9.1).
+    """
     require_admin(actor, org)
     # 승인 반영(_approve)·설정 저장과 동시에 돌면 옛 settings로 덮어쓰므로 행을 잠그고 다시 읽는다.
     org = Organization.objects.select_for_update().get(pk=org.pk)
     old = org.settings or {}
     old_locked = old.get(LOCKED) or []
+    if only is not None:
+        only = set(only)
+        keys = [k for k in old_locked if k not in only] + [k for k in (keys or []) if k in only]
     new_locked = clean("org", {LOCKED: keys}, allow_locked=True).get(LOCKED, [])
     if old_locked != new_locked:
         from tasks.models import ChangeLog

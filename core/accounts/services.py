@@ -52,6 +52,23 @@ def clean_real_name(value, *, field: str = "real_name", required: bool = True) -
     return v
 
 
+def set_real_name(user, value) -> User:
+    """계정 실명 저장(프로필·조직 설정 내 정보가 함께 쓴다). 실명 이력은 남기지 않는다(IMPL-PLAN-13 결정 5).
+
+    orgs 0014가 남긴 충돌 후보는 저장하면 끝이다. 바뀌면 실명으로 표시하는 조직들의 이름 캐시를 비운다.
+    """
+    from orgs.names import forget_all
+
+    new = clean_real_name(value)
+    changed = new != user.real_name
+    user.real_name = new
+    user.settings.pop("real_name_candidates", None)
+    user.save(update_fields=["real_name", "settings"])
+    if changed:
+        forget_all()
+    return user
+
+
 class RealNameRequired(Exception):
     """계정 실명이 비어 있다. API가 403 real_name_required로 돌려준다(api/api.py). 웹은 MemberInfoGate."""
 

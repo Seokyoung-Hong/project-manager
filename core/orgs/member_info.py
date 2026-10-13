@@ -15,6 +15,7 @@ import re
 import secrets
 
 from django.conf import settings
+from django.db import transaction
 from django.urls import reverse
 
 from common.errors import ServiceError
@@ -75,26 +76,46 @@ def _clean_field(f: dict) -> dict:
     }
 
 
-def set_definition(org, show_real_name: bool, fields: list[dict], actor):
-    """항목 정의와 "실명으로 표시"를 통째로 바꾼다. 바뀌면 조직 이력(ChangeLog)에 전후 요약을 남긴다."""
+@transaction.atomic
+def set_definition(org, *args, show_real_name=None, fields=None):
+    """ "실명으로 표시"와 항목 정의를 바꾼다. 둘 중 None인 쪽은 그대로 둔다(IMPL-PLAN-14 §8.4).
+
+    부르는 법: set_definition(org, actor, show_real_name=…, fields=…).
+    바뀌면 조직 이력(ChangeLog)에 전후 요약을 남긴다. 행을 잠그고 다시 읽어 합친다.
+    """
     from tasks.models import ChangeLog
 
     from . import names
+    from .models import Organization
     from .services import require_admin
 
+    # ponytail: 옛 위치 인자 호출 set_definition(org, flag, fields, actor) 한 판 호환. B 갈래가 orgs.py를 바꾸면 지운다.
+    if len(args) == 3:
+        show_real_name, fields, actor = args
+    else:
+        (actor,) = args
     require_admin(actor, org)
-    if len(fields) > MAX_FIELDS:
-        raise ServiceError({"member_fields": f"항목은 {MAX_FIELDS}개까지 만들 수 있습니다."})
-    cleaned = [_clean_field(f) for f in fields]
-    ids = [f["id"] for f in cleaned]
-    if len(set(ids)) != len(ids):
-        raise ServiceError(
-            {
-                "member_fields": "같은 항목이 두 번 들어왔습니다. 화면을 새로 고쳐 다시 저장해 주세요."
-            }
-        )
+    if fields is not None:
+        if len(fields) > MAX_FIELDS:
+            raise ServiceError({"member_fields": f"항목은 {MAX_FIELDS}개까지 만들 수 있습니다."})
+        fields = [_clean_field(f) for f in fields]
+        ids = [f["id"] for f in fields]
+        if len(set(ids)) != len(ids):
+            raise ServiceError(
+                {
+                    "member_fields": "같은 항목이 두 번 들어왔습니다. 화면을 새로 고쳐 다시 저장해 주세요."
+                }
+            )
+    org.member_fields = (
+        Organization.objects.select_for_update()
+        .values_list("member_fields", flat=True)
+        .get(pk=org.pk)
+    )
     old = definition(org)
-    new = {"show_real_name": bool(show_real_name), "fields": cleaned}
+    new = {
+        "show_real_name": old["show_real_name"] if show_real_name is None else bool(show_real_name),
+        "fields": old["fields"] if fields is None else fields,
+    }
     if old == new:
         return org
     ChangeLog.objects.create(
@@ -136,14 +157,13 @@ def rows(membership) -> list[dict]:
     return [{**f, "value": info.get(f["id"], "")} for f in definition(membership.org)["fields"]]
 
 
-def save(membership, values: dict):
-    """구성원이 자기 정보를 저장한다. values는 {항목 id: 값}. 실명은 계정에 있다(설정 → 프로필)."""
-    d = definition(membership.org)
-    errors = {}
+def _check(org, values: dict, errors: dict, *, required: bool = True) -> dict:
+    """values({항목 id: 값})를 검사해 저장할 info를 돌려준다. 오류는 errors에 모은다.
+    required=False(관리자 대리 수정)는 필수 비움을 허용한다."""
     info = {}
-    for f in d["fields"]:
+    for f in definition(org)["fields"]:
         v = str(values.get(f["id"]) or "").strip()
-        if f["required"] and not v:
+        if required and f["required"] and not v:
             errors[f["id"]] = f"{f['label']}을(를) 입력해 주세요."
         elif v and f["kind"] == "choice" and v not in f["choices"]:
             errors[f["id"]] = f"{f['label']}은(는) 목록에서 골라 주세요."
@@ -151,11 +171,138 @@ def save(membership, values: dict):
             errors[f["id"]] = f"{f['label']}은(는) {MAX_LEN[f['kind']]}자까지 입력할 수 있습니다."
         elif v:
             info[f["id"]] = v
+    return info
+
+
+def save(membership, values: dict):
+    """구성원이 자기 정보를 저장한다. values는 {항목 id: 값}. 실명은 계정에 있다(설정 → 프로필)."""
+    errors = {}
+    info = _check(membership.org, values, errors)
     if errors:
         raise ServiceError(errors)
     membership.info = info
     membership.save(update_fields=["info"])
     return membership
+
+
+def _check_nickname(membership, value, errors: dict):
+    """조직 표시 이름 검사. 바꿀 필요가 없으면 None, 바꿀 값이면 정리한 문자열."""
+    from accounts.services import clean_real_name
+
+    try:
+        new = clean_real_name(value, field="nickname", required=False)
+    except ServiceError as e:
+        errors.update(e.errors)
+        return None
+    if new == membership.nickname:
+        return None
+    if definition(membership.org)["show_real_name"]:
+        # COPY:nickname.real_name_org (services.set_nickname과 같은 문구)
+        errors["nickname"] = (
+            "이 조직은 구성원 이름을 실명으로 표시하므로 조직 표시 이름을 변경할 수 없습니다."
+        )
+        return None
+    return new
+
+
+@transaction.atomic
+def save_me(membership, *, real_name=None, nickname=None, values=None):
+    """내 정보 한 폼 원자 저장(IMPL-PLAN-14 §7): 계정 실명·조직 표시 이름·구성원 정보.
+
+    셋을 모두 먼저 검사해 오류를 한꺼번에 ServiceError({필드: 문구})로 낸다(필드 = real_name·nickname·항목 id).
+    오류가 하나라도 있으면 아무것도 쓰지 않는다. None = 안 보냄 = 그대로(옛 폼 호환).
+    대상은 항상 membership.user 본인이다 — 호출자는 request.user의 멤버십만 넘긴다.
+    """
+    from accounts.services import clean_real_name, set_real_name
+
+    from .services import set_nickname
+
+    errors, info, nick = {}, None, None
+    if real_name is not None:
+        try:
+            clean_real_name(real_name)
+        except ServiceError as e:
+            errors.update(e.errors)
+    if nickname is not None:
+        nick = _check_nickname(membership, nickname, errors)
+    if values is not None:
+        info = _check(membership.org, values, errors)
+    if errors:
+        raise ServiceError(errors)
+    user = membership.user
+    if real_name is not None:
+        set_real_name(user, real_name)
+    if nick is not None:
+        set_nickname(membership, nick, user)
+    if info is not None:
+        membership.info = info
+        membership.save(update_fields=["info"])
+    return membership
+
+
+@transaction.atomic
+def admin_save(membership, actor, *, nickname=None, values=None):
+    """조직 관리자가 구성원이 이 조직에 낸 정보(조직 표시 이름·구성원 정보)를 고친다(IMPL-PLAN-14 §8.2).
+
+    실명·계정 표시 이름·아이디는 받지 않는다. 형식·길이·선택지만 검사하고 필수 비움은 허용한다.
+    조직 표시 이름은 set_nickname이 이력을 남기고, 구성원 정보가 바뀌면 조직 이력에
+    field="member_info", new_value="이름(user pk): 바뀐 항목 이름들" 1건 — 값은 남기지 않는다.
+    """
+    from tasks.models import ChangeLog
+
+    from .services import require_admin, set_nickname
+
+    org, user = membership.org, membership.user
+    require_admin(actor, org)
+    errors, info, nick = {}, None, None
+    if nickname is not None:
+        nick = _check_nickname(membership, nickname, errors)
+    if values is not None:
+        info = _check(org, values, errors, required=False)
+    if errors:
+        raise ServiceError(errors)
+    if nick is not None:
+        set_nickname(membership, nick, actor)
+    if info is not None:
+        old = membership.info or {}
+        changed = [
+            f["label"]
+            for f in definition(org)["fields"]
+            if str(old.get(f["id"], "")) != info.get(f["id"], "")
+        ]
+        if changed:
+            ChangeLog.objects.create(
+                target_type="org",
+                target_id=org.pk,
+                field="member_info",
+                old_value="",
+                new_value=f"{membership.nickname or user.display_name}({user.pk}): "
+                + ", ".join(changed),
+                actor=actor,
+                source="web",
+            )
+            membership.info = info
+            membership.save(update_fields=["info"])
+    return membership
+
+
+def empty_counts(org) -> dict[str, int]:
+    """항목 id → 그 항목이 빈 구성원 수(가입 전 구성원 제외). 필수로 바꿀 때 영향 인원 안내용.
+
+    # ponytail: 구성원마다 is_pending이 GitHub 연결을 한 번 읽는다(조직당 수십 명). 커지면 한 쿼리로 모은다.
+    """
+    from .services import is_pending
+
+    fields = definition(org)["fields"]
+    counts = {f["id"]: 0 for f in fields}
+    for m in OrgMembership.objects.filter(org=org).select_related("user"):
+        if is_pending(m.user):
+            continue
+        info = m.info or {}
+        for f in fields:
+            if not str(info.get(f["id"], "")).strip():
+                counts[f["id"]] += 1
+    return counts
 
 
 def blocked_org(user, org_id):
