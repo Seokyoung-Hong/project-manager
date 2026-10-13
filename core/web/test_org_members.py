@@ -148,10 +148,10 @@ def test_fields_editor_cards_preview_and_impact(client, org, admin, member, monk
     assert "구성원에게 보이는 입력 항목" in body and "disabled" in body
     assert "입력값 ‘20260001’" in body and "‘참여 가능한 시간’" in body  # 형식별 설명·예시
     # 관리자·구성원 둘 다 비워 둠
-    assert "지금 2명이 비워 두었습니다" in body
+    assert "입력하지 않은 구성원은 2명입니다" in body
     # 필수 아닌 항목: 차단 경고(impact-on)와 중립 정보(impact-off)를 함께 그리고 CSS가 필수 체크로 고른다
-    assert "impact-on" in body and "필수가 아니라 조직 사용에는 영향이 없습니다" in body
-    assert "지금 0명이 입력했습니다" in body
+    assert "impact-on" in body and "입력하지 않아도 이 조직을 사용할 수 있습니다" in body
+    assert "입력한 구성원은 0명입니다" in body
     assert "member-fields.js" in body and "data-field-preview" in body  # 편집 중 초안 미리보기
     assert 'data-label="역할"' in body and 'class="names-effect"' in body
     assert 'data-confirm-if="[data-was-optional]:checked"' in body
@@ -162,7 +162,7 @@ def test_fields_editor_cards_preview_and_impact(client, org, admin, member, monk
 
     monkeypatch.setattr(member_info, "empty_counts", boom)
     r = _page(client, org)
-    assert r.status_code == 200 and "비워 두었습니다" not in r.content.decode()
+    assert r.status_code == 200 and "입력하지 않은 구성원은 2명" not in r.content.decode()
 
 
 def test_pending_and_invites_moved_here(client, org, admin):

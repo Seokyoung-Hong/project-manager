@@ -1,6 +1,6 @@
 # 조직 설정 개편 — 사용자 노출 문구 최종본
 
-기준: HEAD da73091, 변경 범위 bcbe63c..da73091의 core. 기존 임시 키 99개와 설명 보완용 제안 키 7개, 총 106개입니다. 코드 수정·커밋 없이 문구만 확정한 문서이며, 화면 반영은 별도 작업입니다.
+기준: HEAD da73091, 변경 범위 bcbe63c..da73091의 core. 기존 임시 키 99개와 설명 보완용 제안 키 7개, 총 106개입니다. 아래 ‘추가 키’ 절에서 HEAD e2bf160 기준 신규 COPY 키 7개를 확정하여, 최종 문구는 총 113개입니다. 코드 수정·커밋 없이 문구만 확정한 문서이며, 화면 반영은 별도 작업입니다.
 
 기획 근거: docs/IMPL-PLAN-14-org-settings-ia.md:53(탭·섹션), :162(내 정보), :189(구성원 패널), :208(이름 표시·항목 정의), :306(문구); docs/drafts/org-settings-ia-brief.md:8(사용자 요구), :35(관리자 권한).
 
@@ -73,7 +73,7 @@
 | members.fields.help_help | core/web/templates/orgs/settings/_member_fields_editor.html:21 | 도움말 / 예: 숫자 8자리로 적어 주세요. / 입력칸 아래에 회색 글로 보입니다. | 도움말 / 예: 숫자 8자리로 입력해 주세요. / 구성원이 값을 입력할 때 참고할 설명입니다. 내 정보의 입력칸 아래에 표시됩니다. |
 | members.fields.required_impact | core/web/templates/orgs/settings/_member_fields_editor.html:24 | 지금 {n}명이 비워 두었습니다. 필수로 저장하면 입력할 때까지 조직을 쓸 수 없습니다(관리자 포함). | 현재 이 항목을 입력하지 않은 구성원은 {n}명입니다. 필수로 저장하면 이 구성원들은 값을 입력할 때까지 이 조직을 사용할 수 없습니다. 관리자에게도 적용됩니다. |
 | members.fields.add | core/web/templates/orgs/settings/_member_fields_editor.html:31 | ＋ 항목 추가 | ＋ 항목 추가 |
-| members.fields.save | core/web/templates/orgs/settings/_member_fields_editor.html:44 | 정보 항목 저장 / 저장 전까지 구성원 화면과 오른쪽 미리보기는 바뀌지 않습니다. | 정보 항목 저장 / 저장하면 내 정보의 입력 항목과 미리보기에 반영됩니다. 미리보기는 마지막으로 저장한 항목 기준입니다. |
+| members.fields.save | core/web/templates/orgs/settings/_member_fields_editor.html:44 | 정보 항목 저장 / 저장 전까지 구성원 화면과 오른쪽 미리보기는 바뀌지 않습니다. | 정보 항목 저장 / 저장 안내는 추가 키 members.fields.save_hint의 최종 문구로 분리합니다. |
 | members.fields.preview_title | core/web/templates/orgs/settings/_member_fields_editor.html:47 | 구성원에게 보이는 모습 / 내 정보 탭 | 구성원에게 보이는 입력 항목 / 내 정보 탭 |
 | me.no_fields | core/web/templates/orgs/settings/_member_fields_editor.html:49 | 이 조직은 구성원 정보를 받지 않습니다. | 이 조직에서 요청하는 구성원 정보 항목이 없습니다. |
 | members.panel.back | core/web/templates/orgs/settings/_member_panel.html:4 | ‹ 구성원 목록 | ‹ 구성원 목록 |
@@ -132,6 +132,20 @@
 | members.fields.choices_help | core/web/templates/orgs/settings/_member_fields_editor.html:19<br>core/web/templates/orgs/settings/_member_fields_editor.html:38 | 선택지 / 한 줄에 하나, 50자·30개까지. 형식이 ‘선택지’일 때만 씁니다. / 한 줄에 하나 | 선택지 / ‘선택지’ 형식에서 구성원이 고를 값입니다. 한 줄에 하나씩 입력해 주세요. 최대 30개이며 각 선택지는 50자까지입니다. 예: 1학년, 2학년을 각각 한 줄에 입력 |
 | members.fields.required_help | core/web/templates/orgs/settings/_member_fields_editor.html:23<br>core/web/templates/orgs/settings/_member_fields_editor.html:40 | 필수 / 비워 두면 조직을 쓸 수 없습니다(관리자 포함). | 필수 / 값을 입력해야 이 조직을 사용할 수 있습니다. 관리자에게도 적용됩니다. |
 | members.fields.order_help | core/web/templates/orgs/settings/_member_fields_editor.html:13 | 순서 | 순서 / 내 정보에서 항목이 표시되는 순서입니다. 작은 숫자부터 표시됩니다. |
+
+## 추가 키
+
+HEAD e2bf160에서 추가된 COPY 키 7개입니다. 미리보기는 편집 즉시 저장 전 초안을 표시하며, 구성원의 내 정보 화면에는 저장 후 반영됩니다. 기존 members.fields.save의 ‘마지막으로 저장한 항목 기준’ 설명은 사용하지 않고, 버튼은 ‘정보 항목 저장’으로 유지하며 아래 save_hint 문구로 대체합니다.
+
+| 키 | 위치(파일:줄) | 현재 임시 문구 | 최종 문구 |
+|---|---|---|---|
+| members.fields.empty_info | core/web/templates/orgs/settings/_member_fields_editor.html:26 | 지금 {n}명이 비워 두었습니다. 필수가 아니라 조직 사용에는 영향이 없습니다. | 현재 이 항목을 입력하지 않은 구성원은 {n}명입니다. 필수 항목이 아니므로 입력하지 않아도 이 조직을 사용할 수 있습니다. |
+| members.fields.filled | core/web/templates/orgs/settings/_member_fields_editor.html:29 | 지금 {n}명이 입력했습니다. | 현재 이 항목을 입력한 구성원은 {n}명입니다. |
+| members.fields.save_hint | core/web/templates/orgs/settings/_member_fields_editor.html:52 | 미리보기는 바로 바뀌고, 구성원 화면은 저장해야 바뀝니다. | 미리보기에는 편집 중인 내용이 즉시 표시됩니다. 구성원의 내 정보 화면에는 정보 항목을 저장한 후 반영됩니다. |
+| members.fields.preview_jump | core/web/templates/orgs/settings/_member_fields_editor.html:53 | 미리보기 보기 | 미리보기로 이동 |
+| members.names.effect_on | core/web/templates/orgs/settings/_members.html:99 | 내 정보·구성원 패널에서 조직 표시 이름 칸이 사라집니다. 저장된 조직 표시 이름은 지우지 않으며, 다시 끄면 그대로 돌아옵니다. | 실명 표시를 켜고 저장하면 내 정보와 구성원 패널의 조직 표시 이름 입력칸이 숨겨집니다. 기존 조직 표시 이름은 보관되며, 실명 표시를 끄고 저장하면 다시 사용됩니다. |
+| members.names.effect_off | core/web/templates/orgs/settings/_members.html:97 | 구성원은 내 정보에서, 관리자는 구성원 패널에서 조직 표시 이름을 바꿀 수 있습니다. | 실명 표시를 끄고 저장하면 구성원은 내 정보에서, 관리자는 구성원 패널에서 조직 표시 이름을 수정할 수 있습니다. |
+| member_fields.summary_show_real_name | core/orgs/member_info.py:150 | 실명으로 표시 켬 / 실명으로 표시 끔 | 실명 표시: 켜짐 / 실명 표시: 꺼짐 |
 
 ## 적용 시 확인할 사항
 

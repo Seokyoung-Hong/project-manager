@@ -148,7 +148,7 @@ def lock_definition(org):
 
 def summary(d: dict) -> str:
     # COPY:member_fields.summary_show_real_name
-    parts = ["실명으로 표시 " + ("켬" if d["show_real_name"] else "끔")]
+    parts = ["실명 표시: " + ("켜짐" if d["show_real_name"] else "꺼짐")]
     parts += [f["label"] + (" (필수)" if f["required"] else "") for f in d["fields"]]
     return ", ".join(parts)[:500]
 

@@ -65,7 +65,7 @@ def test_profile_real_name_change_shows_in_real_name_org(client, org, admin, mem
     client.force_login(admin)
     client.post(f"/orgs/{org.pk}/member-fields", {"show_real_name": "on"})
     assert ChangeLog.objects.filter(
-        target_id=org.pk, field="member_fields", new_value__contains="실명으로 표시 켬"
+        target_id=org.pk, field="member_fields", new_value__contains="실명 표시: 켜짐"
     ).exists()
     client.force_login(member)
     client.post("/settings/profile", {"real_name": "이바뀜", "display_name": "팀원"})

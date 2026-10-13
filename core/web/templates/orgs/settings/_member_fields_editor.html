@@ -23,10 +23,10 @@
       <div class="field-required stack">
         <label class="check"><input type="checkbox" name="f{{ i }}-required"{% if f.required %} checked{% else %} data-was-optional{% endif %}> <b>필수</b> <span class="t13 muted">값을 입력해야 이 조직을 사용할 수 있습니다. 관리자에게도 적용됩니다.</span></label>{# COPY:members.fields.required_help #}
         {% if f.empty %}<p class="notice warn t13 impact-on" data-impact><span aria-hidden="true">⚠</span><span>현재 이 항목을 입력하지 않은 구성원은 {{ f.empty }}명입니다. 필수로 저장하면 이 구성원들은 값을 입력할 때까지 이 조직을 사용할 수 없습니다. 관리자에게도 적용됩니다.</span></p>{# COPY:members.fields.required_impact #}
-        <p class="muted t13 impact-off">지금 {{ f.empty }}명이 비워 두었습니다. 필수가 아니라 조직 사용에는 영향이 없습니다.</p>{% endif %}{# COPY:members.fields.empty_info #}
+        <p class="muted t13 impact-off">현재 이 항목을 입력하지 않은 구성원은 {{ f.empty }}명입니다. 필수 항목이 아니므로 입력하지 않아도 이 조직을 사용할 수 있습니다.</p>{% endif %}{# COPY:members.fields.empty_info #}
       </div>
       <div class="field-card-foot">
-        {% if f.filled is not None %}<span class="t12 muted">지금 {{ f.filled }}명이 입력했습니다.</span>{% endif %}{# COPY:members.fields.filled #}
+        {% if f.filled is not None %}<span class="t12 muted">현재 이 항목을 입력한 구성원은 {{ f.filled }}명입니다.</span>{% endif %}{# COPY:members.fields.filled #}
         <label class="check t13"><input type="checkbox" name="f{{ i }}-delete"> 이 항목 삭제</label>
       </div>
     </div>
@@ -49,8 +49,8 @@
     {# 편집 중에도 닿도록 화면 아래에 붙는 저장 막대. 좁은 화면은 미리보기로 가는 링크를 함께 둔다. #}
     <div class="field-save-bar">
       <button class="btn primary">정보 항목 저장</button>{# COPY:members.fields.save #}
-      <span class="muted t13 grow">미리보기는 바로 바뀌고, 구성원 화면은 저장해야 바뀝니다.</span>{# COPY:members.fields.save_hint #}
-      <a class="btn sm field-preview-jump" href="#field-preview">미리보기 보기</a>{# COPY:members.fields.preview_jump #}
+      <span class="muted t13 grow">미리보기에는 편집 중인 내용이 즉시 표시됩니다. 구성원의 내 정보 화면에는 정보 항목을 저장한 후 반영됩니다.</span>{# COPY:members.fields.save_hint #}
+      <a class="btn sm field-preview-jump" href="#field-preview">미리보기로 이동</a>{# COPY:members.fields.preview_jump #}
     </div>
   </form>
   <aside class="field-preview card" id="field-preview" aria-label="구성원에게 보이는 입력 항목">

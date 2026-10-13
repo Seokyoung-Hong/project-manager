@@ -38,7 +38,7 @@ def test_definition_and_input(org, admin, member):
         fields=[PHONE, {"label": "역할", "kind": "choice", "choices": ["가", "나"]}],
     )
     log = ChangeLog.objects.get(target_type="org", target_id=org.pk, field="member_fields")
-    assert "실명으로 표시 켬" in log.new_value and "연락처 (필수)" in log.new_value
+    assert "실명 표시: 켜짐" in log.new_value and "연락처 (필수)" in log.new_value
     pid, rid = _fid(org, "연락처"), _fid(org, "역할")
     m = _m(org, member)
     assert missing(m)

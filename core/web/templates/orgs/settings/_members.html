@@ -94,9 +94,9 @@
     {# 고른 방식의 결과만 보인다(CSS :has, JS 없음) #}
     <div class="names-effect" aria-live="polite">
       <p class="t13" data-when="off"><b>관리자 본인의 이름 예시: 조직 표시 이름 사용 시</b> <span class="name-sample">{{ names_preview.nickname }}</span></p>{# COPY:members.names.preview #}
-      <p class="t13" data-when="off">구성원은 내 정보에서, 관리자는 구성원 패널에서 조직 표시 이름을 바꿀 수 있습니다.</p>{# COPY:members.names.effect_off #}
+      <p class="t13" data-when="off">실명 표시를 끄고 저장하면 구성원은 내 정보에서, 관리자는 구성원 패널에서 조직 표시 이름을 수정할 수 있습니다.</p>{# COPY:members.names.effect_off #}
       <p class="t13" data-when="on"><b>관리자 본인의 이름 예시: 실명 사용 시</b> <span class="name-sample">{{ names_preview.real }}</span></p>
-      <p class="t13" data-when="on">내 정보·구성원 패널에서 조직 표시 이름 칸이 사라집니다. 저장된 조직 표시 이름은 지우지 않으며, 다시 끄면 그대로 돌아옵니다.</p>{# COPY:members.names.effect_on #}
+      <p class="t13" data-when="on">실명 표시를 켜고 저장하면 내 정보와 구성원 패널의 조직 표시 이름 입력칸이 숨겨집니다. 기존 조직 표시 이름은 보관되며, 실명 표시를 끄고 저장하면 다시 사용됩니다.</p>{# COPY:members.names.effect_on #}
     </div>
     <div><button class="btn">이름 표시 방식 저장</button></div>{# COPY:members.names.save #}
   </form>
