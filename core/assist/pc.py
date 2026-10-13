@@ -4,6 +4,7 @@
 PC를 끊으면 AiJob.server가 NULL(SET_NULL)이 되어 어느 PC에도 배정되지 않는다(정리는 worker.sweep).
 """
 
+import json
 import logging
 
 from django.db import transaction
@@ -12,7 +13,7 @@ from django.utils import timezone
 
 from github.crypto import decrypt
 
-from . import fields, prompts
+from . import extract, prompts
 from .models import AiJob, AiSource
 
 log = logging.getLogger(__name__)
@@ -88,11 +89,11 @@ def claim(server) -> dict | None:
 
 
 def _payload(job) -> dict:
-    """§8.3 생성 파라미터. ponytail: 워커(A)와 같은 표 — A가 공용 함수를 두면 그것으로 바꾼다."""
+    """§8.3 생성 파라미터는 워커와 같은 prompts.spec_of."""
     src = job.source
     if src is None or not src.base_url:
         raise ValueError("no source")
-    shape = fields.FIELDS[job.field].shape if job.kind == "field" else job.kind
+    spec = prompts.spec_of(job)
     raw = src.api_key or ""
     return {
         "id": job.pk,
@@ -100,13 +101,23 @@ def _payload(job) -> dict:
         "model": src.model,
         "api_key": decrypt(raw[len(_ENC) :]) if raw.startswith(_ENC) else "",
         "messages": prompts.build_messages(job, job.user),
-        "max_tokens": {"line": 200, "text": 1500, "list": 800}.get(shape, 4000),
-        "temperature": 0.2 if job.kind == "extract" else 0.3,
-        "response_format": {"type": "json_object"}
-        if shape in ("line", "list", "extract")
-        else None,
-        "timeout_s": 30 if job.kind == "field" else 120,
+        "max_tokens": spec.max_tokens,
+        "temperature": spec.temperature,
+        "response_format": {"type": "json_object"} if spec.want_json else None,
+        "timeout_s": spec.timeout_s,
     }
+
+
+def _verify(job, content: str) -> str:
+    """워커와 같은 검증(§11.2)·후보 사후 처리. 형식 오류·대상 못 봄은 ValueError."""
+    earliest = extract.earliest_due(job, job.user) if job.kind == "extract" else None
+    result = prompts.parse_output(job, content, earliest=earliest)
+    if job.kind == "extract":
+        tasks = extract.postprocess(job, job.user, json.loads(result)["tasks"])
+        result = json.dumps({"tasks": tasks}, ensure_ascii=False)
+    if len(result.encode()) > AiJob.MAX_RESULT:
+        raise ValueError("too_large")
+    return result
 
 
 def report(job_id: int, server, data: dict):
@@ -128,7 +139,16 @@ def report(job_id: int, server, data: dict):
         if job.status == "cancelling" or status == "cancelled":
             _finish(job, "cancelled", error="cancelled")
         elif status == "done":
-            job.result, job.usage = data.get("content") or "", data.get("usage") or {}
+            try:
+                result = _verify(job, data.get("content") or "")
+            except Http404:
+                _finish(job, "failed", error="no_source")  # 대상을 이제 볼 수 없다
+                return job
+            except ValueError as e:
+                # ponytail: PC엔 재질문 없이 다음 항목으로. 재질문이 필요하면 PC 페이로드에 이전 답을 실어 다시 배정.
+                _fall_through(job, "too_large" if str(e) == "too_large" else "bad_output")
+                return job
+            job.result, job.usage = result, data.get("usage") or {}
             _finish(job, "done")
             if job.source_id:
                 AiSource.objects.filter(pk=job.source_id).update(

@@ -86,10 +86,10 @@ def test_report_owner_check_size_codes_and_fallthrough(client, org, member, admi
     assert _report(client, admin_tok, done.pk, status="done", content="x").status_code == 404
     big = "가" * (AiJob.MAX_RESULT // 3 + 1)
     assert _report(client, tok, done.pk, status="done", content=big).status_code == 413
-    r = _report(client, tok, done.pk, status="done", content='{"options":[]}', usage={"t": 3})
+    r = _report(client, tok, done.pk, status="done", content='{"options":["가"]}', usage={"t": 3})
     assert r.status_code == 200 and r.json()["status"] == "done"
     done.refresh_from_db()
-    assert done.result == '{"options":[]}' and done.usage == {"t": 3} and done.finished_at
+    assert done.result == '{"options": ["가"]}' and done.usage == {"t": 3} and done.finished_at
     assert done.source.last_ok_at and not done.source.last_error
     assert _report(client, tok, done.pk, status="done", content="x").status_code == 409
     r = _report(client, tok, failed.pk, status="failed", error="rm -rf")
@@ -98,6 +98,10 @@ def test_report_owner_check_size_codes_and_fallthrough(client, org, member, admi
     assert failed.tried == [{"route": "pc", "source_id": failed.source_id, "error": "pc_error"}]
     failed.source.refresh_from_db()
     assert failed.source.last_error == "pc_error"
+    bad = _job(member, org, server, status="running")  # 워커와 같은 검증: 형식이 틀리면 다음 항목
+    r = _report(client, tok, bad.pk, status="done", content="형식 없는 글")
+    bad.refresh_from_db()
+    assert r.json()["status"] == "queued" and bad.tried[0]["error"] == "bad_output"
 
 
 def test_pc_restart_releases_forgotten_job(client, org, member):

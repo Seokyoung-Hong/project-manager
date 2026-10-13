@@ -97,6 +97,8 @@ def request_new(request):
             .order_by("display_name"),
             "values": values,
             "errors": errors,
+            # AI 작업은 현재 조직으로 만든다(assist.views) — 다른 조직 화면이면 버튼을 붙이지 않는다
+            "ai_here": org == current_org(request, my_orgs),
         },
     )
 

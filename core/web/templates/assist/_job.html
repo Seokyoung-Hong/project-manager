@@ -32,7 +32,12 @@
     <button type="button" class="btn primary" data-ai-use="replace">칸 내용 바꾸기</button>
     <button type="button" class="btn" data-ai-use="append">칸 뒤에 붙이기</button>
     {% else %}
-    <button type="button" class="btn primary" data-ai-apply="{% url 'assist_job_apply' job.pk %}">본문에 적용</button>
+    {% if job.field == "doc.continue" %}
+    <button type="button" class="btn primary" data-ai-apply="{% url 'assist_job_apply' job.pk %}" data-ai-how="append">본문 뒤에 붙이기</button>
+    {% else %}
+    <button type="button" class="btn primary" data-ai-apply="{% url 'assist_job_apply' job.pk %}" data-ai-how="replace">본문 바꾸기</button>
+    <button type="button" class="btn" data-ai-apply="{% url 'assist_job_apply' job.pk %}" data-ai-how="append">본문 뒤에 붙이기</button>
+    {% endif %}
     {% endif %}
     <button type="button" class="btn" data-ai-retry>다시 쓰기</button>
   </div>

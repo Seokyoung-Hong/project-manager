@@ -126,7 +126,7 @@ def test_service_error_code_message(logged, task, monkeypatch):
     r = logged.post(
         reverse("assist_job_create"), {"field": "task.title", "target": f"task:{task.pk}"}
     )
-    assert r.status_code == 400 and "쓸 수 있는 AI가 없습니다" in r.content.decode()
+    assert r.status_code == 400 and "쓸 수 있는 AI가 없거나" in r.content.decode()
 
 
 def test_other_users_job_is_404(logged, org, admin, monkeypatch, stub_get):
@@ -153,13 +153,13 @@ def test_apply_conflict_and_success(logged, org, member, monkeypatch, stub_get):
     job = _job(member, org, kind="doc", field="doc.fill", status="done", result="글")
     calls = []
 
-    def conflict(user, job_id, *, version=None):
-        calls.append(version)
+    def conflict(user, job_id, *, version=None, mode="replace"):
+        calls.append((version, mode))
         raise ConflictError(None)
 
     monkeypatch.setattr(services, "apply_job", conflict)
-    r = logged.post(f"/assist/jobs/{job.pk}/apply", {"version": "7"})
-    assert r.status_code == 409 and calls == [7]
+    r = logged.post(f"/assist/jobs/{job.pk}/apply", {"version": "7", "mode": "append"})
+    assert r.status_code == 409 and calls == [(7, "append")]
     monkeypatch.setattr(services, "apply_job", lambda *a, **k: None)
     r = logged.post(f"/assist/jobs/{job.pk}/apply", {"version": "8"})
     assert r.status_code == 204 and r["HX-Refresh"] == "true"

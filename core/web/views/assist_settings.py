@@ -38,12 +38,17 @@ ERROR_TEXT = {
     "http_5xx": "AI 서버에 오류가 났습니다. 잠시 뒤 다시 시도해 주세요.",  # COPY:assist_err_http_5xx
     "auth_failed": "키가 맞지 않습니다. 키를 확인해 주세요.",  # COPY:assist_err_auth_failed
     "model_not_found": "모델을 찾을 수 없습니다. 모델 이름을 확인해 주세요.",  # COPY:assist_err_model_not_found
-    "bad_output": "AI 서버의 응답 형식이 OpenAI 호환 형식이 아닙니다.",  # COPY:assist_err_bad_output
+    "bad_output": "AI 응답을 읽지 못했습니다. 다시 시도하고, 계속되면 OpenAI 호환 주소·모델인지 확인해 주세요.",  # COPY:assist_err_bad_output
     "too_large": "AI 서버의 응답이 너무 큽니다.",  # COPY:assist_err_too_large
     "blocked_address": "이 주소로는 보낼 수 없습니다. 공개 https 주소이거나 운영자가 허용한 주소여야 합니다.",  # COPY:assist_err_blocked_address
     "pc_offline": "거쳐 갈 PC가 꺼져 있습니다.",  # COPY:assist_err_pc_offline
     "pc_unlinked": "연결된 PC가 없습니다.",  # COPY:assist_err_pc_unlinked
     "pc_error": "PC에서 AI 서버를 부르지 못했습니다.",  # COPY:assist_err_pc_error
+    # 작업(자동완성) 쪽 코드. no_source는 "쓸 AI가 없음"과 "대상을 더 볼 수 없음" 둘 다다(assist.worker).
+    "no_source": "쓸 수 있는 AI가 없거나 대상을 더 볼 수 없습니다. 설정의 AI 탭에서 개인 AI를 등록하거나 조직 관리자에게 조직 AI 등록을 요청해 주세요.",  # COPY:assist_err_no_source
+    "no_worker": "AI 작업을 처리할 곳이 없어 멈췄습니다. 잠시 뒤 다시 요청해 주세요.",  # COPY:assist_err_no_worker
+    "org_disabled": "이 조직은 AI 자동완성을 쓰지 않도록 설정되어 있습니다.",  # COPY:assist_err_org_disabled
+    "cancelled": "작업을 취소했습니다.",  # COPY:assist_cancelled
 }
 ERROR_FALLBACK = "AI 서버를 부르지 못했습니다."  # COPY:assist_err_unknown
 

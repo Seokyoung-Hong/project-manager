@@ -74,13 +74,13 @@ function put(el, value) {
   el.dispatchEvent(new Event("change", { bubbles: true }));
 }
 
-async function apply(url) {
+async function apply(url, mode) {
   const root = document.querySelector(".md-editor");
   if (root?._flush && !(await root._flush())) {
     body.insertAdjacentHTML("afterbegin", '<p class="error" role="alert"><span aria-hidden="true">⚠</span> 본문을 아직 저장하지 못해 적용하지 않았습니다. 저장 상태를 확인한 뒤 다시 눌러 주세요.</p>'); // COPY:ai_apply_unsaved
     return;
   }
-  htmx.ajax("POST", url, { source: dlg, target: body, swap: "innerHTML", values: { version: root?.dataset.version || "" } });
+  htmx.ajax("POST", url, { source: dlg, target: body, swap: "innerHTML", values: { version: root?.dataset.version || "", mode: mode || "replace" } });
 }
 
 if (dlg) {
@@ -109,7 +109,7 @@ if (dlg) {
       const old = cur.el.value.trim();
       put(cur.el, b.dataset.aiUse === "append" && old ? `${old}\n\n${v}` : v);
       close();
-    } else if (b.dataset.aiApply) apply(b.dataset.aiApply);
+    } else if (b.dataset.aiApply) apply(b.dataset.aiApply, b.dataset.aiHow);
   });
 
   // 대화상자 안의 거절 응답(400·403·409·429)도 그린다. 그 밖의 오류는 한 줄로 바꾼다(전체 오류 페이지를 넣지 않는다).

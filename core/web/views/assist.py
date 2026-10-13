@@ -19,22 +19,9 @@ from orgs.settings import effective
 from projects.services import visible_projects
 from tasks.services import visible_tasks
 
+from .assist_settings import ERROR_TEXT
 from .common import current_org
 
-try:  # 오류 코드 → 문구 표는 B 갈래(assist_settings.ERROR_TEXT)가 한 벌로 갖는다
-    from .assist_settings import ERROR_TEXT
-except ImportError:  # 병합 전 임시. 병합 때 아래 MESSAGES를 지우고 ERROR_TEXT로 교체
-    ERROR_TEXT = {}
-
-# 임시(병합 때 ERROR_TEXT로 교체): 서비스 오류 코드 → 화면 문구(§11.4). 목록 밖 코드는 GENERIC.
-MESSAGES = {
-    "org_disabled": "이 조직은 AI 자동완성을 쓰지 않도록 설정되어 있습니다.",  # COPY:ai_err_org_disabled
-    "no_source": "쓸 수 있는 AI가 없습니다. 설정의 AI 탭에서 개인 AI를 등록하거나 조직 관리자에게 조직 AI 등록을 요청해 주세요.",  # COPY:ai_err_no_source
-    "bad_output": "AI 응답을 읽지 못했습니다. [다시 쓰기]를 눌러 주세요.",  # COPY:bad_output
-    "no_worker": "AI 작업을 처리할 곳이 없어 멈췄습니다. 잠시 후 다시 요청해 주세요.",  # COPY:ai_err_no_worker
-    "cancelled": "작업을 취소했습니다.",  # COPY:ai_cancelled
-    "pc_offline": "내 PC가 연결되어 있지 않아 쓰지 못했습니다. 내 PC 연결을 확인한 뒤 다시 요청해 주세요.",  # COPY:ai_err_pc_offline
-}
 GENERIC = "AI가 글을 쓰지 못했습니다(오류 코드 {code}). 잠시 후 다시 요청해 주세요."  # COPY:ai_err_generic
 BAD_FIELD = "이 칸은 AI로 쓸 수 없습니다."  # COPY:ai_err_field
 BAD_TARGET = "대상을 먼저 골라 주세요."  # COPY:ai_err_target
@@ -43,10 +30,8 @@ CONFLICT = "다른 사람이 먼저 본문을 고쳐 적용하지 못했습니�
 
 
 def _message(code: str) -> str:
-    if ERROR_TEXT.get(code):
+    if code in ERROR_TEXT:
         return ERROR_TEXT[code]
-    if code in MESSAGES:
-        return MESSAGES[code]
     if code and not code.isascii():  # 서비스가 코드 대신 문구를 준 경우
         return code
     return GENERIC.format(code=code or "unknown")
@@ -164,7 +149,7 @@ def job_create(request):
     if org is None:
         raise Http404
     if not services.ai_on(request.user, org):
-        return _error(request, MESSAGES["org_disabled"], 403)
+        return _error(request, ERROR_TEXT["org_disabled"], 403)
     try:
         options = json.loads(request.POST.get("options") or "{}")
     except ValueError:
@@ -212,7 +197,9 @@ def job_apply(request, job_id: int):
     except ValueError:
         version = None
     try:
-        services.apply_job(request.user, job.pk, version=version)
+        services.apply_job(
+            request.user, job.pk, version=version, mode=request.POST.get("mode") or "replace"
+        )
     except ConflictError:
         return _error(request, CONFLICT, 409)
     except ServiceError as e:
