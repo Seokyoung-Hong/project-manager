@@ -1,0 +1,39 @@
+{# AI 사용 순서 한 행(IMPL-PLAN-12 §7.5). s: AiSource, n: 순서, first/last, servers: 내 PC. 키는 설정 여부만 보인다. #}
+{% with label=s.name|default:"조직 AI" %}
+<div id="ai-source-{{ s.pk }}" class="group stack" role="listitem">
+  <div class="conn">
+    <span class="badge" aria-label="{{ n }}번째">{{ n }}</span>
+    <b>{% if s.kind == "org" %}조직 AI{% else %}{{ s.name }}{% endif %}</b>
+    {% if s.enabled %}<span class="conn-state on">사용</span>{% else %}<span class="conn-state off">꺼짐</span>{% endif %}{# COPY:assist_src_state #}
+    {% if s.kind == "personal" %}<span class="badge">{{ s.get_route_display }}</span>
+    <span class="muted t13">{{ s.model|default:"모델 미입력" }} · 키 {% if s.api_key %}설정됨{% else %}미설정{% endif %}</span>{% endif %}
+  </div>
+  {% if s.kind == "org" %}<p class="muted t13">작업하는 조직의 관리자가 등록한 AI입니다. 주소·모델은 조직마다 다르고, 조직 설정에 따라 쓸 수 없거나 하루 한도가 있을 수 있습니다.</p>{# COPY:assist_src_org_help #}
+  {% elif s.route == "pc" and not s.server %}<p class="notice warn"><span>⚠ 연결된 PC가 없습니다. 아래 [PC 다시 고르기]에서 거쳐 갈 내 PC를 골라 주세요.</span></p>{# COPY:assist_src_pc_unlinked #}
+  {% elif s.route == "pc" %}<p class="muted t13">{{ s.base_url }} · {{ s.server.name }}을 거쳐 보냅니다.</p>{# COPY:assist_src_pc_via #}
+  {% else %}<p class="muted t13">{{ s.base_url }}</p>{% endif %}
+  {% if s.last_error %}<p class="error">⚠ 최근 오류: {{ s.error_label }}</p>{% endif %}{# COPY:assist_src_last_error #}
+  <div class="row">
+    <form method="post" action="{% url 'settings_ai_move' s.pk 'up' %}">{% csrf_token %}<button class="btn sm"{% if first %} disabled{% endif %} aria-label="{{ label }} 순서 올리기">순서 올리기</button></form>
+    <form method="post" action="{% url 'settings_ai_move' s.pk 'down' %}">{% csrf_token %}<button class="btn sm"{% if last %} disabled{% endif %} aria-label="{{ label }} 순서 내리기">순서 내리기</button></form>
+    <form method="post" action="{% url 'settings_ai_row' s.pk %}">{% csrf_token %}<input type="hidden" name="action" value="toggle"><button class="btn sm" aria-label="{{ label }} {% if s.enabled %}끄기{% else %}켜기{% endif %}">{% if s.enabled %}이 AI 끄기{% else %}이 AI 켜기{% endif %}</button></form>{# COPY:assist_src_toggle #}
+    {% if s.kind == "personal" and s.route == "direct" %}
+    <button type="button" class="btn sm" hx-post="{% url 'settings_ai_test' s.pk %}" hx-target="#ai-result-{{ s.pk }}" aria-label="{{ s.name }} 연결 시험">연결 시험</button>
+    <button type="button" class="btn sm" hx-post="{% url 'settings_ai_models' s.pk %}" hx-target="#ai-result-{{ s.pk }}" aria-label="{{ s.name }} 모델 불러오기">모델 불러오기</button>
+    {% endif %}
+    {% if s.kind == "personal" %}
+    <form method="post" action="{% url 'settings_ai_delete' s.pk %}" data-confirm="개인 AI &lsquo;{{ s.name }}&rsquo;과 저장한 키를 지웁니다. 다시 쓰려면 새로 등록해야 합니다." data-confirm-ok="개인 AI 삭제">{% csrf_token %}<button class="btn sm danger" aria-label="{{ s.name }} 삭제">개인 AI 삭제</button></form>{# COPY:assist_src_delete_confirm #}
+    {% endif %}
+  </div>
+  <div id="ai-result-{{ s.pk }}" aria-live="polite"></div>
+  {% if s.kind == "personal" %}
+  <details class="fold"{% if edit_id == s.pk or s.route == "pc" and not s.server %} open{% endif %}>
+    <summary>{% if s.route == "pc" and not s.server %}PC 다시 고르기{% else %}{{ s.name }} 고치기{% endif %}</summary>{# COPY:assist_src_edit #}
+    <form method="post" action="{% url 'settings_ai_row' s.pk %}" class="stack">{% csrf_token %}
+      {% if edit_id == s.pk %}{% include "settings/_ai_fields.html" with prefix=s.pk v=s errors=edit_errors key_set=s.api_key %}{% else %}{% include "settings/_ai_fields.html" with prefix=s.pk v=s errors=None key_set=s.api_key %}{% endif %}
+      <div><button class="btn">개인 AI 저장</button></div>{# COPY:assist_src_save #}
+    </form>
+  </details>
+  {% endif %}
+</div>
+{% endwith %}

@@ -20,6 +20,7 @@
       <div class="settings-list settings-list-overrides" role="list">
         {% for row in group_rows %}{% include "settings/_setting_row.html" with row=row %}{% endfor %}
       </div>
+      {% if is_admin and group_rows.0.spec.group == "assist" %}{% include "orgs/_assist_test.html" %}{% endif %}
     </div>
   </details>
   {% endfor %}

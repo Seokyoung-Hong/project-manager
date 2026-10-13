@@ -7,6 +7,7 @@
   <a href="{% url 'ops_orgs' %}"{% if ops_nav == "orgs" %} aria-current="page"{% endif %}>조직</a>
   <a href="{% url 'ops_access' %}"{% if ops_nav == "access" %} aria-current="page"{% endif %}>접근</a>
   <a href="{% url 'ops_integrations' %}"{% if ops_nav == "integrations" %} aria-current="page"{% endif %}>연동</a>
+  <a href="{% url 'ops_assist' %}"{% if ops_nav == "assist" %} aria-current="page"{% endif %}>AI 허용 호스트</a>{# COPY:ops_assist_nav #}
   <a href="{% url 'ops_system' %}"{% if ops_nav == "system" %} aria-current="page"{% endif %}>시스템</a>
   <a href="{% url 'ops_audit' %}"{% if ops_nav == "audit" %} aria-current="page"{% endif %}>감사 기록</a>
   <a href="{% url 'ops_design' %}"{% if ops_nav == "design" %} aria-current="page"{% endif %}>디자인 시스템</a>

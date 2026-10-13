@@ -1,0 +1,18 @@
+{# 개인 AI 입력 칸(추가·고치기 공용). v: 값(AiSource 또는 POST), errors: {칸: 문구}, key_set: 키 저장 여부. 키 값은 다시 그리지 않는다. #}
+{% for k, m in errors.items %}<p class="error" role="alert">⚠ {{ m }}</p>{% endfor %}
+<label class="field">이름<input class="input" name="name" value="{{ v.name|default:'' }}" maxlength="50" required></label>{# COPY:assist_src_name #}
+<label class="field">AI 서버 주소<input class="input" name="base_url" value="{{ v.base_url|default:'' }}" maxlength="300" required inputmode="url" spellcheck="false" aria-describedby="ai-url-help-{{ prefix }}"></label>
+<p id="ai-url-help-{{ prefix }}" class="muted t12">…/v1까지 입력해 주세요. 예: https://api.example.com/v1, http://localhost:11434/v1</p>{# COPY:assist_src_url_help #}
+<label class="field">모델<input class="input" name="model" value="{{ v.model|default:'' }}" maxlength="200" list="ai-models-{{ prefix }}" spellcheck="false"></label>{# COPY:assist_src_model #}
+<datalist id="ai-models-{{ prefix }}"></datalist>
+<label class="field">키<input class="input" type="password" name="api_key" value="" autocomplete="new-password" placeholder="{% if key_set %}설정됨{% else %}미설정{% endif %} · 바꿀 때만 입력"></label>{# COPY:assist_src_key #}
+{% if key_set %}<label class="check"><input type="checkbox" name="clear_key"> 저장한 키 지우기</label>{% endif %}{# COPY:assist_src_key_clear #}
+{% if servers %}
+<label class="field">거쳐 갈 내 PC<select class="select" name="server" aria-describedby="ai-pc-help-{{ prefix }}">
+  <option value="">PC 고르기</option>
+  {% for pc in servers %}<option value="{{ pc.pk }}"{% if v.server_id == pc.pk or v.server == pc.pk|stringformat:"s" %} selected{% endif %}>{{ pc.name }}</option>{% endfor %}
+</select></label>
+<p id="ai-pc-help-{{ prefix }}" class="muted t12">주소가 PC 안(localhost)이나 사설망이면 이 PC가 대신 부릅니다. 공개 주소면 고르지 않아도 됩니다.</p>{# COPY:assist_src_pc_help #}
+{% else %}
+<p class="muted t12">PC 안이나 사설망의 AI를 쓰려면 먼저 <a href="{% url 'settings_stt' %}">내 PC를 연결</a>해 주세요.</p>{# COPY:assist_src_pc_none #}
+{% endif %}

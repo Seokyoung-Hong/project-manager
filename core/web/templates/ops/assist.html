@@ -1,0 +1,29 @@
+{% extends "ops/base.html" %}{% block title %}AI 허용 호스트 · 운영 콘솔{% endblock %}
+{# 조직 AI가 쓸 수 있는 사설 주소(IMPL-PLAN-12 §3.3). 정확히 일치하는 호스트만, 추가·삭제는 감사 기록에 남는다. 문구는 임시(COPY). #}
+{% block ops %}
+<section class="card stack" aria-labelledby="assist-hosts-title">
+  <div class="card-head"><h2 id="assist-hosts-title">AI 허용 호스트</h2></div>
+  <p class="muted t13">조직 AI 주소가 사설망(10/8·172.16/12·192.168/16 등)을 가리킬 때 이 목록에 있는 호스트만 허용합니다. 호스트 문자열이 정확히 같아야 하며 와일드카드는 없습니다. 루프백·링크로컬·내부 서비스 이름은 목록에 넣어도 막힙니다. 개인 AI에는 적용하지 않습니다.</p>{# COPY:ops_assist_intro #}
+  <div class="table-scroll" tabindex="0" role="region" aria-label="AI 허용 호스트 표, 좌우로 스크롤 가능">
+  <table class="grid">
+    <thead><tr><th>호스트</th><th>추가한 사람</th><th>추가한 날</th><th></th></tr></thead>
+    <tbody>
+    {% for h in hosts %}
+    <tr><td><code>{{ h.host }}</code></td><td>{{ h.added_by.username|default:"—" }}</td><td>{{ h.created_at|date:"Y-m-d H:i" }}</td>
+      <td><button type="button" class="btn sm danger" hx-get="{% url 'ops_assist_delete' h.pk %}" hx-target="#dialog" hx-swap="innerHTML" aria-label="허용 호스트 {{ h.host }} 삭제">허용 호스트 삭제</button></td></tr>
+    {% empty %}<tr><td colspan="4" class="empty-cell">허용 호스트가 없습니다. 조직 AI는 공개 https 주소만 쓸 수 있습니다.</td></tr>{# COPY:ops_assist_empty #}
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+</section>
+<section class="card stack" aria-labelledby="assist-host-add-title">
+  <h2 id="assist-host-add-title">허용 호스트 추가</h2>
+  <form method="post" class="stack">{% csrf_token %}
+    <label class="field">호스트 이름 또는 IP<input class="input" name="host" maxlength="253" required autocomplete="off" spellcheck="false" aria-describedby="assist-host-help"></label>
+    <p id="assist-host-help" class="muted t12">예: llm.lab.internal, 10.0.0.5. http://·포트·경로 없이 입력해 주세요.</p>{# COPY:ops_assist_host_help #}
+    <label class="field">사유<textarea class="textarea" name="reason" required minlength="5" maxlength="300"></textarea></label>
+    <div><button class="btn primary">허용 호스트 추가</button></div>
+  </form>
+</section>
+{% endblock %}

@@ -1,0 +1,8 @@
+{# 조직 설정 "AI 자동완성" 그룹 아래 조직 AI 시험(IMPL-PLAN-12 §7.5). 조직 관리자만. 저장 전 폼 값으로 시험한다(hx-include). #}
+<p class="notice"><span>켜져 있으면 구성원이 업무 내용을 개인 AI·조직 AI로 보낼 수 있습니다. 끌 수 있습니다.</span></p>{# COPY:assist_enabled_notice #}
+<div class="row">
+  <button type="button" class="btn sm" hx-post="{% url 'org_assist_test' org.pk %}" hx-target="#assist-test-result" hx-include="closest form">조직 AI 연결 시험</button>{# COPY:assist_org_test #}
+  <button type="button" class="btn sm" hx-post="{% url 'org_assist_models' org.pk %}" hx-target="#assist-test-result" hx-include="closest form">조직 AI 모델 불러오기</button>{# COPY:assist_org_models #}
+</div>
+<div id="assist-test-result" aria-live="polite"></div>
+<datalist id="assist-org-models"></datalist>

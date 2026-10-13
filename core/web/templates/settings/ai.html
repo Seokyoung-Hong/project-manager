@@ -1,0 +1,27 @@
+{% extends "base.html" %}{% block title %}AI 설정{% endblock %}
+{% block main %}
+{% with settings_tab="ai" %}{% include "settings/_tabs.html" %}{% endwith %}
+{# 개인 AI·조직 AI 사용 순서(IMPL-PLAN-12 §7.5). 문구는 임시(COPY:키, 최종 문구는 Sol). #}
+<section class="card stack" aria-labelledby="ai-order-title">
+  <h2 id="ai-order-title">AI 사용 순서</h2>{# COPY:settings_ai_title #}
+  <p class="muted t13">AI 자동완성은 위에서부터 차례로 시도합니다. 앞의 AI가 응답하지 않으면 다음 AI로 넘어갑니다. 조직 AI는 작업하는 조직의 관리자가 등록한 AI이며, 조직이 AI 자동완성을 끄면 어느 AI로도 보내지 않습니다.</p>{# COPY:settings_ai_intro #}
+  <div class="group-stack" role="list" aria-label="AI 사용 순서">
+    {% for s in sources %}{% include "settings/_ai_source.html" with n=forloop.counter first=forloop.first last=forloop.last %}{% endfor %}
+  </div>
+</section>
+<section class="card stack" aria-labelledby="ai-add-title">
+  <h2 id="ai-add-title">개인 AI 추가</h2>{# COPY:settings_ai_add_title #}
+  {% if personal_count >= personal_max %}
+  <p class="muted t13">개인 AI는 {{ personal_max }}개까지 등록할 수 있습니다. 새로 추가하려면 쓰지 않는 개인 AI를 삭제해 주세요.</p>{# COPY:assist_src_limit_help #}
+  {% else %}
+  <p class="muted t13">OpenAI 호환 서버의 주소·모델·키를 등록합니다. 공개 주소는 https여야 하고, PC 안(localhost)이나 사설망 주소는 내 PC를 거쳐 보냅니다.</p>{# COPY:settings_ai_add_help #}
+  <details class="fold"{% if add_errors %} open{% endif %}>
+    <summary>개인 AI 입력 칸 열기</summary>{# COPY:settings_ai_add_open #}
+    <form method="post" action="{% url 'settings_ai_add' %}" class="stack">{% csrf_token %}
+      {% include "settings/_ai_fields.html" with prefix="new" v=add_values errors=add_errors key_set=False %}
+      <div><button class="btn primary">개인 AI 등록</button></div>{# COPY:settings_ai_add_submit #}
+    </form>
+  </details>
+  {% endif %}
+</section>
+{% endblock %}
