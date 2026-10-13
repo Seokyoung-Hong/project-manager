@@ -42,6 +42,8 @@ class FakeChat:
             raise r
         if callable(r):
             r = r()
+        if isinstance(r, dict):  # 응답 전체(추론 모델 흉내)
+            return r
         return {"choices": [{"message": {"content": r}}], "usage": {"total_tokens": 5}}
 
 
@@ -120,15 +122,48 @@ def test_personal_key_decrypted_and_not_logged(on, member, task, fake, settings,
 
 
 def test_json_object_rejected_then_without(on, member, task, fake):
-    f = fake(http_400(), http_400(), json.dumps({"options": ["a"]}))
+    f = fake(http_400(), http_400(), http_400(), json.dumps({"options": ["a"]}))
     job = services.create_job(member, on, field="task.title", target=f"task:{task.pk}")
     run_once()
     job.refresh_from_db()
     assert job.status == "done"
     c = [x[1] for x in f.calls]
     assert c[0]["reasoning_effort"] == "none" and "response_format" in c[0]
-    assert "reasoning_effort" not in c[1] and "response_format" in c[1]
-    assert "reasoning_effort" not in c[2] and "response_format" not in c[2]
+    assert (
+        c[1]["reasoning_effort"] == "low" and "response_format" in c[1]
+    )  # 추론 필수 모델: 끄지 말고 낮춤
+    assert "reasoning_effort" not in c[2] and "response_format" in c[2]
+    assert "reasoning_effort" not in c[3] and "response_format" not in c[3]
+
+
+def _spent(content=""):
+    """추론이 출력 예산을 다 쓴 응답(운영 재현: OpenRouter auto → 추론 필수 모델)."""
+    msg = {"content": content, "reasoning": "생각" * 6000}
+    return {
+        "choices": [{"message": msg, "finish_reason": "length"}],
+        "usage": {"completion_tokens": 4000},
+    }
+
+
+def test_reasoning_spends_budget_then_retry_with_more_tokens(on, member, task, fake):
+    f = fake(http_400(), _spent(), json.dumps({"options": ["a"]}))
+    job = services.create_job(member, on, field="task.title", target=f"task:{task.pk}")
+    run_once()
+    job.refresh_from_db()
+    assert job.status == "done"
+    c = [x[1] for x in f.calls]
+    assert c[1]["reasoning_effort"] == "low" and c[1]["max_tokens"] == 200
+    assert c[2]["reasoning_effort"] == "low" and c[2]["max_tokens"] == 8000  # 한 번만 넉넉히
+
+
+def test_reasoning_budget_twice_is_reasoning_budget(on, member, task, fake):
+    none_content = {"choices": [{"message": {"content": None, "reasoning_content": "생각"}}]}
+    f = fake(_spent(), none_content)
+    job = services.create_job(member, on, field="task.title", target=f"task:{task.pk}")
+    run_once()
+    job.refresh_from_db()
+    assert job.status in ("queued", "failed") and job.tried[-1]["error"] == "reasoning_budget"
+    assert len(f.calls) == 2 and f.calls[1][1]["max_tokens"] == 8000
 
 
 def test_bad_output_reask_then_next(on, member, task, fake):

@@ -25,6 +25,8 @@ ERROR_CODES = (
     "codex_auth",
     "codex_link_update",  # PC의 udally-link가 Codex를 모르는 옛 버전(heartbeat에 codex 칸 없음)
     "rate",
+    "payment_required",  # AI 서비스가 402(크레딧·결제 필요)
+    "reasoning_budget",  # 추론 모델이 출력 예산을 다 써 답을 끝내지 못함
 )
 CODEX_URL = (
     "codex:"  # 개인 AI "Codex(내 구독, 내 PC)" — 주소 대신 이 값, route=pc(마이그레이션 없이 표현)

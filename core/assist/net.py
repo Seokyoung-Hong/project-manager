@@ -247,6 +247,8 @@ def _status_error(status: int) -> NetError:
         code = "auth_failed"
     elif status == 404:
         code = "model_not_found"
+    elif status == 402:
+        code = "payment_required"  # 크레딧·결제 필요 — 다음 AI로 넘어간다
     elif status < 500:
         code = "http_4xx"
     else:

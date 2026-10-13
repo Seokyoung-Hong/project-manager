@@ -28,6 +28,7 @@ log = logging.getLogger("assist")
 TICK = 1
 SWEEP_EVERY = 10
 GRACE = timedelta(seconds=60)  # running 시간 초과 = claimed_at + timeout_s + 60초
+MAX_REASONING_TOKENS = 16000  # 추론이 예산을 다 썼을 때 한 번 늘리는 max_tokens 상한
 
 _busy = {}  # 풀에서 도는 작업 id → 긴 작업(문서·회의록·후보)인가
 _busy_lock = threading.Lock()
@@ -228,35 +229,52 @@ def _ask(ep, messages, spec, state, *, want_json):
         "model": model,
         "messages": messages,
         "temperature": spec.temperature,
-        "max_tokens": spec.max_tokens,
+        "max_tokens": state.get("max_tokens") or spec.max_tokens,
         "stream": False,
     }
     if want_json and not state.get("no_format"):
         payload["response_format"] = {"type": "json_object"}
-    if not state.get("no_reason"):
-        # 추론 모델(qwen3.5·gemma4 등)은 끄지 않으면 max_tokens를 추론에 다 써 content가 빈다
-        payload["reasoning_effort"] = "none"
+    # 추론 모델(qwen3.5·gemma4 등)은 끄지 않으면 max_tokens를 추론에 다 써 content가 빈다.
+    # 끌 수 없는 모델(OpenRouter의 추론 필수 등)은 400 → "low" → 그래도 400이면 뺀다(None).
+    effort = state.get("effort", "none")
+    if effort:
+        payload["reasoning_effort"] = effort
     try:
         resp = chat(url, payload, api_key=key, org=org, timeout_s=spec.timeout_s)
     except NetError as e:
-        if getattr(e, "status", None) == 400:  # 모르는 선택 항목을 거부하는 서버: 하나씩 빼고 다시
+        if (
+            getattr(e, "status", None) == 400
+        ):  # 모르는 선택 항목을 거부하는 서버: 하나씩 낮추거나 빼고 다시
             if "reasoning_effort" in payload:
-                state["no_reason"] = True
+                state["effort"] = "low" if effort == "none" else None
                 return _ask(ep, messages, spec, state, want_json=want_json)
             if "response_format" in payload:
                 state["no_format"] = True
                 return _ask(ep, messages, spec, state, want_json=want_json)
         raise
     try:
-        content = resp["choices"][0]["message"]["content"]
-    except (KeyError, IndexError, TypeError):
+        choice = resp["choices"][0]
+        msg = choice["message"]
+        content = msg.get("content")
+    except (KeyError, IndexError, TypeError, AttributeError):
         raise NetError("bad_output") from None
-    if not isinstance(content, str):
-        raise NetError("bad_output")
     usage = resp.get("usage") if isinstance(resp.get("usage"), dict) else {}
     for k, v in usage.items():
         if isinstance(v, int):
             state["usage"][k] = state["usage"].get(k, 0) + v
+    empty = content is None or (isinstance(content, str) and not content.strip())
+    thought = msg.get("reasoning") or msg.get("reasoning_content")
+    if empty and thought and (content is None or choice.get("finish_reason") == "length"):
+        # 추론이 출력 예산을 다 썼다: 한 번만 예산을 늘리고 추론을 낮춰 다시. 그래도 비면 reasoning_budget
+        if state.get("budget_retry"):
+            raise NetError("reasoning_budget")
+        state["budget_retry"] = True
+        state["max_tokens"] = min(max(spec.max_tokens * 4, 8000), MAX_REASONING_TOKENS)
+        if state.get("effort", "none") is not None:
+            state["effort"] = "low"
+        return _ask(ep, messages, spec, state, want_json=want_json)
+    if not isinstance(content, str):
+        raise NetError("bad_output")
     return content
 
 

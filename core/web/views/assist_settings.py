@@ -49,6 +49,8 @@ ERROR_TEXT = {
     "codex_missing": "선택한 내 PC에 Codex가 설치되어 있지 않습니다. 해당 PC에 Codex를 설치하고 로그인한 뒤 다시 시도해 주세요.",  # COPY:assist_err_codex_missing
     "codex_link_update": "선택한 내 PC의 udally-link가 Codex를 지원하지 않는 버전입니다. 해당 PC의 udally-link를 최신 버전으로 업데이트한 뒤 다시 시도해 주세요.",  # COPY:assist_err_codex_link_update
     "codex_auth": "선택한 내 PC의 Codex에 로그인되어 있지 않습니다. 해당 PC에서 `codex login`으로 로그인한 뒤 다시 시도해 주세요.",  # COPY:assist_err_codex_auth
+    "payment_required": "해당 AI 서비스의 크레딧 충전이나 결제가 필요합니다. AI 서비스의 결제 설정을 확인하거나 다른 AI를 사용해 주세요.",  # COPY:assist_err_payment_required (임시)
+    "reasoning_budget": "추론 모델이 답을 끝내지 못했습니다. 다시 시도하거나, 개인 AI 설정에서 추론이 짧은 다른 모델을 골라 주세요.",  # COPY:assist_err_reasoning_budget (임시)
     "rate": "오늘의 조직 AI 사용 한도에 도달했습니다. 내일 다시 시도하거나 설정 > AI에서 개인 AI를 등록해 주세요.",  # COPY:assist_err_rate
     # 작업(자동완성) 쪽 코드. no_source는 "쓸 AI가 없음"과 "대상을 더 볼 수 없음" 둘 다다(assist.worker).
     "no_source": "사용 가능한 AI가 없거나 대상에 접근할 수 없습니다. 대상 접근 권한과 설정 > AI의 사용 여부·사용 순서를 확인하고, 조직 AI는 관리자에게 등록·권한·하루 한도 확인을 요청해 주세요.",  # COPY:assist_err_no_source

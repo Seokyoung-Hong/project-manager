@@ -214,6 +214,8 @@ class _H(BaseHTTPRequestHandler):
         elif p.startswith("/slow"):
             time.sleep(1.5)
             self._send(200, b"{}")
+        elif p.startswith("/s402"):
+            self._send(402)
         elif p.startswith("/s401"):
             self._send(401)
         elif p.startswith("/s400"):
@@ -261,6 +263,7 @@ def test_chat_and_models_through_gate(fake_llm):
         ("/redir", "blocked_address"),
         ("/big", "too_large"),
         ("/s401", "auth_failed"),
+        ("/s402", "payment_required"),
         ("/s500", "http_5xx"),
         ("/nope", "model_not_found"),
     ],

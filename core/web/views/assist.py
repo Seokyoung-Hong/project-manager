@@ -49,6 +49,8 @@ SETUP_ERRORS = {
     "blocked_address",
     "pc_offline",
     "pc_unlinked",
+    "payment_required",
+    "reasoning_budget",
 }
 
 
