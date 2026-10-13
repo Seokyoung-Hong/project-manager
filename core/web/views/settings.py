@@ -22,6 +22,7 @@ from accounts.services import (
     issue_link_code,
     last_admin_orgs,
     missing_consents,
+    set_real_name,
     set_user_settings,
     unlink_discord,
     withdraw,
@@ -47,12 +48,12 @@ def profile(request):
     )
     if request.method == "POST" and form.is_valid():
         d = form.cleaned_data
-        name_changed = (u.real_name, u.display_name) != (d["real_name"], d["display_name"])
-        u.real_name, u.display_name = d["real_name"], d["display_name"]
-        u.settings.pop("real_name_candidates", None)  # orgs 0014가 남긴 충돌 후보: 고르면 끝
-        u.save(update_fields=["real_name", "display_name", "settings"])
-        if name_changed:
-            forget_all()  # 실명으로 표시하는 조직들의 이름이 같이 바뀐다
+        with transaction.atomic():
+            if u.display_name != d["display_name"]:
+                u.display_name = d["display_name"]
+                u.save(update_fields=["display_name"])
+                forget_all()  # 조직 표시 이름이 빈 사람은 계정 표시 이름으로 보인다
+            set_real_name(u, d["real_name"])  # 후보 정리·이름 캐시 비우기 포함
         messages.success(request, "프로필을 저장했습니다.")
         return redirect(_safe_next(request, d["next"]) or "profile")
     return render(

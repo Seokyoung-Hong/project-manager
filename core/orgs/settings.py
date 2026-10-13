@@ -1095,6 +1095,123 @@ GROUPS = [
 ]
 
 
+# 조직 설정 화면의 탭·섹션(IMPL-PLAN-14 §2·§3·§10.1 — 계약, 이름을 바꾸지 않는다).
+# (탭 코드, 탭 라벨 COPY 키, [(섹션 코드, 섹션 라벨 COPY 키, 키들)]). org scope 77개가 정확히 한 번씩 든다
+# (숨김 notify.team_channel_weekly 포함 — 자리만 예약, 저장 키는 tab_keys()가 거른다). 화면 id = settings-<탭>-<섹션>.
+ORG_TABS: list[tuple[str, str, list[tuple[str, str, tuple[str, ...]]]]] = [
+    ("me", "org_settings.tab.me", [
+        ("name", "org_settings.section.me.name", ()),
+        ("info", "org_settings.section.me.info", ()),
+        ("links", "org_settings.section.me.links", ()),
+    ]),
+    ("members", "org_settings.tab.members", [
+        ("list", "org_settings.section.members.list", ()),
+        ("pending", "org_settings.section.members.pending", ()),
+        ("invites", "org_settings.section.members.invites", ("org.invite_days", "org.invite_max_uses")),
+        ("names", "org_settings.section.members.names", ()),
+        ("fields", "org_settings.section.members.fields", ()),
+        ("teams_tags", "org_settings.section.members.teams_tags", ("org.tags_by", "org.team_join_self")),
+    ]),
+    ("work", "org_settings.tab.work", [
+        ("create", "org_settings.section.work.create", ("task.default_priority", "task.priority_cap", "task.require_done_when")),
+        ("flow", "org_settings.section.work.flow", ("task.doing_limit", "task.doing_limit_mode", "task.review_required", "task.self_review")),
+        ("reasons", "org_settings.section.work.reasons", ("task.reopen_reason_required", "task.cancel_reason_required", "task.assignee_change_reason", "task.due_change_reason", "task.reject_reason_required")),
+        ("due", "org_settings.section.work.due", ("task.due_required", "task.default_due_days", "task.overdue_grace_days")),
+        ("project_perm", "org_settings.section.work.project_perm", ("project.create_by", "project.edit_by", "project.status_by", "project.archive_by", "project.settings_by", "project.roadmap_by", "project.owner_required")),
+        ("project_default", "org_settings.section.work.project_default", ("project.default_view", "project.dev_tools")),
+    ]),
+    ("notify", "org_settings.tab.notify", [
+        ("deadline", "org_settings.section.notify.deadline", ("notify.deadline_kinds", "notify.send_hour", "notify.overdue_repeat", "notify.quiet_weekend")),
+        ("nudge", "org_settings.section.notify.nudge", ("notify.blocked_escalate_days", "notify.review_nudge_days")),
+        ("weekly", "org_settings.section.notify.weekly", ("notify.weekly_enabled", "notify.weekly_weekday", "notify.weekly_hour", "notify.team_channel_weekly")),
+        ("channel", "org_settings.section.notify.channel", ("notify.project_channel_events",)),
+        ("github", "org_settings.section.notify.github", ("notify.github_channel_events", "notify.github_dm")),
+    ]),
+    ("ai", "org_settings.tab.ai", [
+        ("assist", "org_settings.section.ai.assist", ("assist.enabled", "assist.org_level")),
+        ("org_ai", "org_settings.section.ai.org_ai", ("assist.org_url", "assist.org_model", "assist.org_api_key", "assist.org_daily_limit")),
+        ("ai_write", "org_settings.section.ai.ai_write", ("ai.enabled",)),
+        ("ai_task", "org_settings.section.ai.ai_task", ("ai.create_task", "ai.edit_text", "ai.record_work", "ai.change_assignee", "ai.change_due", "ai.change_priority", "ai.priority_cap", "ai.transition_open", "ai.close_task", "ai.reopen_task")),
+        ("ai_org", "org_settings.section.ai.ai_org", ("ai.delete", "ai.manage_repo", "ai.manage_teams", "ai.create_request", "ai.answer_request")),
+    ]),
+    ("meeting", "org_settings.tab.meeting", [
+        ("recording", "org_settings.section.meeting.recording", ("meeting.recording_enabled", "meeting.max_minutes", "meeting.leave_grace_s")),
+        ("visibility", "org_settings.section.meeting.visibility", ("meeting.audio_keep_days", "meeting.default_visibility")),
+        ("glossary", "org_settings.section.meeting.glossary", ("meeting.glossary",)),
+        ("stt", "org_settings.section.meeting.stt", ("meeting.member_pc", "meeting.transcribe_level", "meeting.stt_url", "meeting.stt_model", "meeting.stt_timeout_s", "meeting.stt_api_key", "meeting.openai_api_key")),
+    ]),
+    ("integrations", "org_settings.tab.integrations", [
+        ("github", "org_settings.section.integrations.github", ()),
+        ("discord", "org_settings.section.integrations.discord", ()),
+    ]),
+    ("org", "org_settings.tab.org", [
+        ("storage", "org_settings.section.org.storage", ("org.attachment_quota_mb",)),
+        ("history", "org_settings.section.org.history", ()),
+        ("danger", "org_settings.section.org.danger", ()),
+    ]),
+]  # fmt: skip
+ADMIN_TABS = ("members", "work", "notify", "ai", "meeting", "integrations", "org")
+
+# ORG_TABS 라벨의 임시 문구(최종은 docs/COPY-14.md, F 갈래). 화면은 COPY_DRAFT.get(키, 키)로 그린다.
+COPY_DRAFT = {
+    "org_settings.tab.me": "내 정보",
+    "org_settings.tab.members": "구성원 관리",
+    "org_settings.tab.work": "태스크·프로젝트",
+    "org_settings.tab.notify": "알림",
+    "org_settings.tab.ai": "AI",
+    "org_settings.tab.meeting": "회의·전사",
+    "org_settings.tab.integrations": "연동",
+    "org_settings.tab.org": "조직 관리",
+    "org_settings.section.me.name": "실명·조직 표시 이름",
+    "org_settings.section.me.info": "구성원 정보",
+    "org_settings.section.me.links": "다른 설정",
+    "org_settings.section.members.list": "구성원 목록",
+    "org_settings.section.members.pending": "가입 전 구성원",
+    "org_settings.section.members.invites": "초대 링크·정책",
+    "org_settings.section.members.names": "이름 표시 방식",
+    "org_settings.section.members.fields": "요청할 정보 항목",
+    "org_settings.section.members.teams_tags": "팀·기술 태그 정책",
+    "org_settings.section.work.create": "생성 기본값",
+    "org_settings.section.work.flow": "진행·검토",
+    "org_settings.section.work.reasons": "변경 사유",
+    "org_settings.section.work.due": "기한",
+    "org_settings.section.work.project_perm": "프로젝트 권한",
+    "org_settings.section.work.project_default": "프로젝트 기본값",
+    "org_settings.section.notify.deadline": "기한 알림",
+    "org_settings.section.notify.nudge": "막힘·검토 알림",
+    "org_settings.section.notify.weekly": "주간 보고",
+    "org_settings.section.notify.channel": "채널 게시",
+    "org_settings.section.notify.github": "GitHub 알림",
+    "org_settings.section.ai.assist": "AI 자동완성·이용 권한",
+    "org_settings.section.ai.org_ai": "조직 AI 연결·한도",
+    "org_settings.section.ai.ai_write": "외부 AI 쓰기 허용",
+    "org_settings.section.ai.ai_task": "태스크 작업 권한",
+    "org_settings.section.ai.ai_org": "조직·요청 관리 권한",
+    "org_settings.section.meeting.recording": "녹음 운영",
+    "org_settings.section.meeting.visibility": "공개·보관",
+    "org_settings.section.meeting.glossary": "전사 용어",
+    "org_settings.section.meeting.stt": "전사",
+    "org_settings.section.integrations.github": "GitHub",
+    "org_settings.section.integrations.discord": "Discord",
+    "org_settings.section.org.storage": "저장 공간",
+    "org_settings.section.org.history": "정책 변경 이력",
+    "org_settings.section.org.danger": "위험 구역",
+}
+
+
+def tab_keys(tab: str, section: str | None = None) -> tuple[str, ...]:
+    """그 탭(섹션)이 화면에 그리고 저장하는 키. 숨김 키는 뺀다(clean()이 거절하므로). 모르는 탭·섹션은 ()."""
+    return tuple(
+        k
+        for code, _, sections in ORG_TABS
+        if code == tab
+        for sec, _, keys in sections
+        if section in (None, sec)
+        for k in keys
+        if not SPECS[k].hidden
+    )
+
+
 def specs_for(scope: str) -> list[Spec]:
     """그 층에서 편집할 수 있는 항목. 화면과 API가 이 순서로 그린다."""
     shown = [s for s in SPECS.values() if not s.hidden]
@@ -1310,11 +1427,15 @@ def display(key: str, value) -> str:
     return str(value)
 
 
+# 업무 규칙 화면(모든 구성원)에 서버 주소를 내지 않는다(IMPL-PLAN-14 §9.4). 키는 display()가 이미 가린다.
+ENFORCED_SKIP = ("meeting.stt_url", "assist.org_url")
+
+
 def enforced(org, project=None) -> list[dict]:
     """거버넌스 화면 상단 '설정에서 강제 중' 표. 기본값이 아닌 항목만."""
     rows = []
     for spec in SPECS.values():
-        if spec.scope != "org" or spec.hidden:
+        if spec.scope != "org" or spec.hidden or spec.key in ENFORCED_SKIP:
             continue
         value = effective(spec.key, org=org, project=project)
         if _same_as_default(spec, value):

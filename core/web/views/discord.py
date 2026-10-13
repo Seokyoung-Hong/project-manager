@@ -31,6 +31,11 @@ BOT_PERMISSIONS = str(channels.REQUIRED_PERMISSIONS)
 AUTHORIZE = "https://discord.com/oauth2/authorize"
 
 
+def discord_ctx(request, org) -> dict:
+    """설정 → 연동 탭 Discord 섹션의 맥락(IMPL-PLAN-14 §10.1 계약). A0 껍데기 — D 갈래가 채운다."""
+    return {}
+
+
 def _redirect_uri() -> str:
     return f"{settings.SITE_URL}/orgs/discord/installed"
 

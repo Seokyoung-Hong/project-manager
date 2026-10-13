@@ -1,0 +1,10 @@
+{# 구성원 정보 입력칸 반복(IMPL-PLAN-14 §10.1). rows = member_info.rows()에 r.error를 붙인 것, disabled = 미리보기. orgs/member_info.html 루프 복사(원본 삭제는 B) #}
+{% for r in rows %}
+<label class="field">{{ r.label }}{% if r.required %} (필수){% endif %}
+  {% if r.kind == "long" %}<textarea class="textarea" name="v-{{ r.id }}" rows="4" maxlength="2000"{% if r.required %} required{% endif %}{% if disabled %} disabled{% endif %}>{{ r.value }}</textarea>
+  {% elif r.kind == "choice" %}<select class="select" name="v-{{ r.id }}"{% if r.required %} required{% endif %}{% if disabled %} disabled{% endif %}><option value="">고르기</option>{% for c in r.choices %}<option{% if c == r.value %} selected{% endif %}>{{ c }}</option>{% endfor %}</select>
+  {% else %}<input class="input" name="v-{{ r.id }}" value="{{ r.value }}" maxlength="200"{% if r.required %} required{% endif %}{% if disabled %} disabled{% endif %}>{% endif %}
+  {% if r.help %}<span class="helptext">{{ r.help }}</span>{% endif %}
+</label>
+{% if r.error %}<div class="error">{{ r.error }}</div>{% endif %}
+{% endfor %}

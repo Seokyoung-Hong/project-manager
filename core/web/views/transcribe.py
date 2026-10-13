@@ -127,6 +127,11 @@ def org_transcribe(request, org_id):
     return render(request, "orgs/transcribe.html", ctx)
 
 
+def stt_ctx(request, org) -> dict:
+    """설정 → 회의·전사 탭 전사 섹션의 맥락(IMPL-PLAN-14 §10.1 계약). A0 껍데기 — D 갈래가 채운다."""
+    return {}
+
+
 @require_POST
 @login_required
 def org_transcribe_server(request, org_id):

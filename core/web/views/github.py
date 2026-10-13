@@ -101,6 +101,11 @@ def _cap_rows(org) -> list[dict] | None:
     return rows
 
 
+def github_ctx(request, org) -> dict:
+    """설정 → 연동 탭 GitHub 섹션의 맥락(IMPL-PLAN-14 §10.1 계약). A0 껍데기 — D 갈래가 채운다."""
+    return {}
+
+
 @login_required
 def org_github(request, org_id):
     _gh_enabled_or_404()
