@@ -264,3 +264,16 @@
 
 약관 원본 및 HTML은 수정하지 않았습니다. 문구 적용 담당자가 두 산출물의 시행일을 함께 반영해 주세요.
 
+
+## 추가 키 2
+
+| 키 | 위치(파일:줄) | 현재 임시 문구 | 최종 문구 |
+|---|---|---|---|
+| ai_open_settings | core/web/templates/assist/_job.html:10, core/web/templates/assist/_error.html:5 | AI 설정 열기 | AI 설정 열기 |
+| ops_assist_table_hint | core/web/templates/ops/assist.html:7 | 표를 좌우로 밀어 추가한 날과 삭제 버튼을 확인해 주세요. | 표를 좌우로 스크롤해 추가한 날과 삭제 버튼을 확인해 주세요. |
+| assist_src_codex_pc_none | core/web/templates/settings/_ai_fields.html:31 | Codex를 사용하려면 먼저 [내 PC 연결]에서 Codex가 설치된 PC를 연결해 주세요. | Codex를 사용하려면 [내 PC 연결]에서 Codex가 설치되어 있고 로그인된 PC를 먼저 연결해 주세요. |
+| assist_src_pc_unlinked_none | core/web/templates/settings/_ai_source.html:12 | ⚠ 개인 AI에 연결된 내 PC가 없습니다. 먼저 [내 PC 연결]에서 PC를 연결한 뒤 [PC 다시 고르기]에서 선택해 주세요. | 개인 AI에 연결된 내 PC가 없습니다. [내 PC 연결]에서 PC를 연결한 뒤 [PC 다시 고르기]에서 선택해 주세요. |
+
+- [내 PC 연결]은 기존 설정 링크를 유지합니다. [PC 다시 고르기]는 같은 개인 AI의 수정 영역을 가리킵니다.
+- 경고 아이콘은 문구에 포함하지 않고 화면에서 별도로 표시합니다. Codex 안내는 설치와 로그인 두 조건을 함께 안내합니다.
+- 이 절은 최종 문구 제안이며 코드에는 적용하지 않았습니다.
