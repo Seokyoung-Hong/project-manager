@@ -23,6 +23,8 @@ log = logging.getLogger(__name__)
 
 # PC가 보낼 수 있는 오류 코드(assist.models.ERROR_CODES 중 PC 쪽). 목록 밖이면 pc_error.
 PC_ERRORS = {
+    "payment_required",
+    "reasoning_budget",
     "connect_failed",
     "timeout",
     "http_4xx",

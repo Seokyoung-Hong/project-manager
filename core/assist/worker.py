@@ -28,7 +28,8 @@ log = logging.getLogger("assist")
 TICK = 1
 SWEEP_EVERY = 10
 GRACE = timedelta(seconds=60)  # running 시간 초과 = claimed_at + timeout_s + 60초
-MAX_REASONING_TOKENS = 16000  # 추론이 예산을 다 썼을 때 한 번 늘리는 max_tokens 상한
+MAX_REASONING_TOKENS = 16000  # 추론이 예산을 다 썼을 때 그 요청 한 번만 늘리는 max_tokens 상한
+MAX_BUDGET_RETRIES = 3  # 작업 하나에서 예산을 늘려 다시 묻는 횟수(긴 회의록 조각마다 늘어나지 않게)
 
 _busy = {}  # 풀에서 도는 작업 id → 긴 작업(문서·회의록·후보)인가
 _busy_lock = threading.Lock()
@@ -220,7 +221,7 @@ def _cancelled(job) -> bool:
     return AiJob.objects.filter(pk=job.pk, status="cancelling").exists()
 
 
-def _ask(ep, messages, spec, state, *, want_json):
+def _ask(ep, messages, spec, state, *, want_json, max_tokens=None):
     """한 번 묻고 (내용, usage). json_object를 400으로 거부하면 그 항목에선 없이 다시 묻는다(§11.2)."""
     url, key, model, org = ep
     if url == copilot.URL:  # JSON 강제 옵션 없음 — 형식은 프롬프트와 parse_output 재질문이 맞춘다
@@ -229,7 +230,7 @@ def _ask(ep, messages, spec, state, *, want_json):
         "model": model,
         "messages": messages,
         "temperature": spec.temperature,
-        "max_tokens": state.get("max_tokens") or spec.max_tokens,
+        "max_tokens": max_tokens or spec.max_tokens,
         "stream": False,
     }
     if want_json and not state.get("no_format"):
@@ -247,10 +248,10 @@ def _ask(ep, messages, spec, state, *, want_json):
         ):  # 모르는 선택 항목을 거부하는 서버: 하나씩 낮추거나 빼고 다시
             if "reasoning_effort" in payload:
                 state["effort"] = "low" if effort == "none" else None
-                return _ask(ep, messages, spec, state, want_json=want_json)
+                return _ask(ep, messages, spec, state, want_json=want_json, max_tokens=max_tokens)
             if "response_format" in payload:
                 state["no_format"] = True
-                return _ask(ep, messages, spec, state, want_json=want_json)
+                return _ask(ep, messages, spec, state, want_json=want_json, max_tokens=max_tokens)
         raise
     try:
         choice = resp["choices"][0]
@@ -265,14 +266,15 @@ def _ask(ep, messages, spec, state, *, want_json):
     empty = content is None or (isinstance(content, str) and not content.strip())
     thought = msg.get("reasoning") or msg.get("reasoning_content")
     if empty and thought and (content is None or choice.get("finish_reason") == "length"):
-        # 추론이 출력 예산을 다 썼다: 한 번만 예산을 늘리고 추론을 낮춰 다시. 그래도 비면 reasoning_budget
-        if state.get("budget_retry"):
+        # 추론이 출력 예산을 다 썼다: 이 요청만 예산을 늘리고 추론을 낮춰 한 번 더(다음 요청은 원래 예산).
+        # 늘린 요청도 비었거나 작업당 횟수를 넘으면 reasoning_budget.
+        if max_tokens or state.get("budget_retries", 0) >= MAX_BUDGET_RETRIES:
             raise NetError("reasoning_budget")
-        state["budget_retry"] = True
-        state["max_tokens"] = min(max(spec.max_tokens * 4, 8000), MAX_REASONING_TOKENS)
+        state["budget_retries"] = state.get("budget_retries", 0) + 1
         if state.get("effort", "none") is not None:
             state["effort"] = "low"
-        return _ask(ep, messages, spec, state, want_json=want_json)
+        bigger = min(max(spec.max_tokens * 4, 8000), MAX_REASONING_TOKENS)
+        return _ask(ep, messages, spec, state, want_json=want_json, max_tokens=bigger)
     if not isinstance(content, str):
         raise NetError("bad_output")
     return content

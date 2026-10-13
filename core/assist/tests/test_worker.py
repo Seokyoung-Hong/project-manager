@@ -166,6 +166,16 @@ def test_reasoning_budget_twice_is_reasoning_budget(on, member, task, fake):
     assert len(f.calls) == 2 and f.calls[1][1]["max_tokens"] == 8000
 
 
+def test_bigger_budget_is_only_for_that_request(on, member, task, fake):
+    """예산을 늘린 값은 그 요청에만 쓴다. 형식 재질문 등 다음 요청은 원래 예산으로(Sol 지적: 비용)."""
+    f = fake(_spent(), "형식 아님", json.dumps({"options": ["a"]}))
+    job = services.create_job(member, on, field="task.title", target=f"task:{task.pk}")
+    run_once()
+    job.refresh_from_db()
+    assert job.status == "done"
+    assert [x[1]["max_tokens"] for x in f.calls] == [200, 8000, 200]
+
+
 def test_bad_output_reask_then_next(on, member, task, fake):
     f = fake('<think>음</think>```json\n{"options": ["좋음"]}\n```')
     job = services.create_job(member, on, field="task.title", target=f"task:{task.pk}")
