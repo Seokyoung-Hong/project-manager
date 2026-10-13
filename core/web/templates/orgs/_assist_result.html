@@ -1,0 +1,5 @@
+{# 조직 AI 시험 결과. [모델 불러오기]면 모델 칸을 목록이 붙은 칸으로 바꾼다(oob, 값은 폼 값 그대로). #}
+{% if error %}<p class="error" role="alert">⚠ {{ error }}</p>
+{% else %}<p class="muted t12">연결되었습니다. 모델 {{ count }}개를 확인했습니다.{% if fill %} 조직 AI 모델 칸에서 고른 뒤 조직 설정을 저장해 주세요.{% endif %}</p>{% endif %}{# COPY:assist_org_test_ok #}
+{% if fill and not error %}<input id="setting-assist.org_model" class="input setting-text" name="assist.org_model" value="{{ model }}" list="assist-org-models" aria-labelledby="setting-label-assist.org_model" aria-describedby="setting-help-assist.org_model" hx-swap-oob="outerHTML:[id='setting-assist.org_model']">
+<datalist id="assist-org-models" hx-swap-oob="true">{% for m in models %}<option value="{{ m }}"></option>{% endfor %}</datalist>{% endif %}
