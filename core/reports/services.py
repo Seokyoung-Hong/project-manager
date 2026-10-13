@@ -6,6 +6,7 @@ from django.db.models import Count, Q
 from common.dates import kst_week_range, overdue_q, today_kst, week_bounds
 from github.metrics import weekly_metrics
 from orgs.models import Team, TeamMembership
+from orgs.names import org_names, sort_by_name
 from orgs.services import visible_teams
 from projects.services import visible_projects
 from tasks.brief import task_brief, user_brief
@@ -101,7 +102,7 @@ def org_status(org, *, viewer=None) -> dict:
             "id": p.pk,
             "name": p.name,
             "status": p.status,
-            "owners": [user_brief(u) for u in p.owners.all()],
+            "owners": [user_brief(u, org) for u in p.owners.all()],
             "teams": [{"id": t.pk, "name": t.name} for t in p.teams.all()],
             **{
                 k: stats[p.pk][k] for k in ("open", "overdue", "review", "blocked", "done", "total")
@@ -121,6 +122,10 @@ def org_status(org, *, viewer=None) -> dict:
         )
         .order_by("-open")
     )
+    # assignee_name = 그 조직 표시 이름(IMPL-PLAN-13 §4.2). assignee__display_name은 호환용으로 남긴다.
+    shown_names = org_names(org.pk)
+    for r in by_assignee:
+        r["assignee_name"] = shown_names.get(r["assignee_id"], r["assignee__display_name"] or "")
 
     # 부하 현황은 미완료가 하나도 없는 사람도 보여야 한다. by_assignee는 집계라
     # 태스크가 있는 사람만 나오므로 활성 멤버 전원을 기준으로 다시 만든다.
@@ -134,7 +139,7 @@ def org_status(org, *, viewer=None) -> dict:
     for tm in TeamMembership.objects.filter(team__in=shown).select_related("team"):
         teams_by_user[tm.user_id].append({"id": tm.team_id, "name": tm.team.name})
 
-    members = list(org.members.filter(is_active=True).order_by("display_name"))
+    members = sort_by_name(org.members.filter(is_active=True), org)
     capacity = []
     for u in members:
         r = rows.get(u.pk, {})
@@ -142,7 +147,7 @@ def org_status(org, *, viewer=None) -> dict:
         overdue = r.get("overdue", 0)
         capacity.append(
             {
-                "user": user_brief(u),
+                "user": user_brief(u, org),
                 "open": r.get("open", 0),
                 "doing": doing,
                 "review": review,
@@ -290,6 +295,6 @@ def weekly(org, week_start: date, *, viewer=None) -> dict:
             "no_due": open_qs.filter(due_date__isnull=True).count(),
         },
         "members": [
-            user_brief(u) for u in org.members.filter(is_active=True).order_by("display_name")
+            user_brief(u, org) for u in sort_by_name(org.members.filter(is_active=True), org)
         ],
     }

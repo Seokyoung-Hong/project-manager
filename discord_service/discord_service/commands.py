@@ -158,6 +158,21 @@ def set_org_channel_reply(core: CoreClient, did: str, guild_id: str, channel_id:
     return f"이 채널(<#{channel_id}>)을 이 서버 조직의 알림 채널로 저장했습니다."
 
 
+def nickname_reply(core: CoreClient, did: str, guild_id: str, name: str) -> str:
+    """`/표시이름`(IMPL-PLAN-13 §6.5). 본인 것만 바뀐다. 거절(실명으로 표시 조직·길드 미연결·구성원 아님)은
+    core 400 문구를 그대로 보인다(guarded → _error_reply)."""
+    name = (name or "").strip()
+    r = core.set_org_nickname(did, guild_id, name)
+    if name:
+        # COPY:nickname.dc_done
+        head = f"{r['org_name']} 조직에서 쓰는 조직 표시 이름을 ‘{r['display_name']}’(으)로 바꿨습니다."
+    else:
+        # COPY:nickname.dc_cleared
+        head = f"{r['org_name']} 조직 표시 이름을 지웠습니다. 이제 계정 표시 이름 ‘{r['display_name']}’(으)로 보입니다."
+    # COPY:nickname.dc_delay
+    return f"{head}\n자동완성 목록에는 잠시 뒤 반영될 수 있습니다."
+
+
 def note_reply(core: CoreClient, did: str, num: int, text: str) -> str:
     t = core.note(did, num, text)["task"]
     return f"{_head(t)} — 진행 메모에 덧붙였습니다."

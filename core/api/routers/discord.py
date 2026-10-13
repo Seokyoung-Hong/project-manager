@@ -23,6 +23,7 @@ from accounts.services import (
     unlink_discord_by_id,
     user_by_discord_id,
 )
+from common.errors import ServiceError
 from github import hooks as gh_hooks
 from notes import services as notes_svc
 from notes import transcription as tx
@@ -32,11 +33,12 @@ from orgs import discord as org_discord
 from orgs import settings as org_settings
 from orgs.member_info import blocked_user_ids
 from orgs.models import Organization, OrgMembership, Team
-from orgs.services import orgs_of, set_team_channel, visible_teams
+from orgs.names import display_for, sort_by_name
+from orgs.services import orgs_of, set_nickname, set_team_channel, visible_teams
 from projects.models import Project
 from projects.services import set_project_channel, visible_projects
 from tasks import work_requests as wr
-from tasks.brief import task_brief
+from tasks.brief import task_brief, user_brief
 from tasks.models import Task
 from tasks.services import (
     attach_group_visible,
@@ -69,6 +71,7 @@ from ..schemas import (
     DiscordMeetingPatchIn,
     DiscordMeetingStartIn,
     DiscordMemberPermissionsIn,
+    DiscordNicknameIn,
     DiscordNoteIn,
     DiscordNoticeAckIn,
     DiscordOrgChannelIn,
@@ -215,15 +218,14 @@ def org_members(request, org_id: int):
         OrgMembership.objects.filter(org_id=org_id, user__is_active=True)
         .exclude(user_id__in=blocked_user_ids(org_id))
         .select_related("user")
-        .order_by("user__display_name")
     )
     out = []
-    for m in rows:
+    for m in sorted(rows, key=lambda m: display_for(m.user, org_id)):
         u = m.user
         out.append(
             {
                 "id": u.pk,
-                "display_name": u.display_name,
+                "display_name": display_for(u, org_id),
                 "discord_user_id": discord_dm_id(u),
                 "role": m.role,
                 "notify_dm": org_settings.effective("user.notify_dm", user=u),
@@ -234,11 +236,9 @@ def org_members(request, org_id: int):
     return out
 
 
-def _people(users) -> list[dict]:
-    return [
-        {"id": u.pk, "display_name": u.display_name, "discord_user_id": discord_dm_id(u)}
-        for u in users
-    ]
+def _people(users, org_id) -> list[dict]:
+    """그 조직 표시 이름순(IMPL-PLAN-13 §4.4)."""
+    return [user_brief(u, org_id) for u in sort_by_name(users, org_id)]
 
 
 @router.get("/orgs/{int:org_id}/deadlines", response=list[dict])
@@ -265,7 +265,7 @@ def project_owners(request, project_id: int):
     if project is None:
         raise HttpError(404, "프로젝트를 찾을 수 없습니다.")
     owners = project.owners.filter(is_active=True).exclude(pk__in=blocked_user_ids(project.org_id))
-    return _people(owners.order_by("display_name"))
+    return _people(owners, project.org_id)
 
 
 @router.get("/orgs/{int:org_id}/admins", response=list[dict])
@@ -275,9 +275,8 @@ def org_admins(request, org_id: int):
         OrgMembership.objects.filter(org_id=org_id, role="admin", user__is_active=True)
         .exclude(user_id__in=blocked_user_ids(org_id))
         .select_related("user")
-        .order_by("user__display_name")
     )
-    return _people([m.user for m in rows])
+    return _people([m.user for m in rows], org_id)
 
 
 @router.post("/orgs/channel", response=dict)
@@ -286,6 +285,29 @@ def org_channel(request, payload: DiscordOrgChannelIn):
     actor = _actor(payload.discord_user_id)
     org = org_discord.set_channel_by_guild(payload.guild_id, actor, payload.channel_id)
     return {"org_id": org.pk, "name": org.name, "channel_id": org.discord_channel_id}
+
+
+@router.post("/orgs/nickname", response=dict)
+def org_nickname(request, payload: DiscordNicknameIn):
+    """`/표시이름`(IMPL-PLAN-13 §6.5). 실행자 본인의 그 길드 조직 표시 이름만 바꾼다.
+    대상 사용자 인자가 없으므로 남의 이름은 바꿀 수 없다. 실명으로 표시 조직이면 서비스가 거절한다."""
+    actor = _actor(payload.discord_user_id)
+    org = org_discord.org_by_guild(payload.guild_id)
+    if org is None:
+        # COPY:nickname.dc_unbound
+        raise ServiceError(
+            {
+                "guild_id": "Discord 서버가 조직에 연결되지 않았습니다. 조직 설정에서 서버를 연결해 주세요."
+            }
+        )
+    m = OrgMembership.objects.filter(org=org, user=actor).select_related("org", "user").first()
+    if m is None:
+        # COPY:nickname.dc_not_member
+        raise ServiceError(
+            {"org": "이 조직의 구성원이 아닙니다. 조직 초대를 받은 뒤 다시 시도해 주세요."}
+        )
+    set_nickname(m, payload.nickname, actor, source="dc")
+    return {"org_id": org.pk, "org_name": org.name, "display_name": display_for(actor, org)}
 
 
 @router.post("/projects", response=list[dict])

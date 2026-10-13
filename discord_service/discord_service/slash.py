@@ -39,6 +39,7 @@ from .commands import (
     extend_reply,
     guarded,
     link_reply,
+    nickname_reply,
     note_reply,
     parse_date,
     request_list_reply,
@@ -611,6 +612,25 @@ def register(
                     str(interaction.channel.id),
                 )
         await send(interaction, reply)
+
+    # --- IMPL-PLAN-13 §6.5: 본인 조직 표시 이름. 본인 행만 바꾸므로 Discord 서버 권한은 보지 않는다 ---
+
+    @tree.command(
+        name="표시이름",
+        # COPY:nickname.dc_description
+        description="이 서버 조직에서 쓰는 내 조직 표시 이름을 바꿉니다 (비우면 계정 표시 이름)",
+        guild=guild,
+    )
+    @app_commands.guild_only()
+    @app_commands.rename(name="이름")
+    # COPY:nickname.dc_param
+    @app_commands.describe(name="새 조직 표시 이름 (비우면 계정 표시 이름으로 돌아갑니다)")
+    async def nickname(interaction: discord.Interaction, name: str = ""):
+        if interaction.guild is None:
+            await interaction.response.defer(ephemeral=True)
+            await send(interaction, "서버 채널에서 실행해 주세요.")
+            return
+        await respond(interaction, nickname_reply, str(interaction.guild.id), name)
 
     # --- 회의(IMPL-PLAN-9). 음성은 Node 서비스, 여기는 명령 UI ---
     meeting.register(

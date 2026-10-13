@@ -1204,7 +1204,8 @@ def get_weekly_report_data(org_id: int, week_start: str | None = None) -> dict:
 
 @mcp.tool()
 def list_members(org_id: int) -> list[dict]:
-    """조직의 활성 멤버(id, display_name). 담당자 지정 전에 id를 찾을 때 쓴다."""
+    """조직의 활성 멤버(id, display_name). 담당자 지정 전에 id를 찾을 때 쓴다.
+    display_name은 그 조직에서 보이는 이름이라 조직마다 다를 수 있으니 사람은 id로 지정한다."""
     return _core().get(f"/api/orgs/{org_id}/members")
 
 

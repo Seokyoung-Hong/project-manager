@@ -15,6 +15,8 @@ ProjectVisibility = Literal["org", "teams"]
 
 class UserBrief(Schema):
     id: int
+    # 그 객체가 속한 조직에서 보이는 이름(조직 표시 이름·실명으로 표시 반영, IMPL-PLAN-13 §7).
+    # 같은 사람도 조직마다 다를 수 있으니 사람을 가리킬 때는 id를 쓴다.
     display_name: str
     discord_user_id: str | None = None
 
@@ -394,6 +396,15 @@ class DiscordOrgChannelIn(Schema):
     discord_user_id: str
     guild_id: str
     channel_id: str
+
+
+class DiscordNicknameIn(Schema):
+    """`/표시이름`. 실행자 본인의 조직 표시 이름만 바꾼다 — 대상 사용자 인자는 일부러 두지 않는다.
+    nickname이 비면 조직 표시 이름을 지워 계정 표시 이름으로 돌아간다."""
+
+    discord_user_id: str
+    guild_id: str
+    nickname: str = ""
 
 
 class DiscordExtendIn(Schema):

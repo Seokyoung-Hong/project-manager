@@ -63,9 +63,11 @@ class Fake(BaseHTTPRequestHandler):
             "/api/projects/5/api-spec": {"source_url": "a.json", "fetched_at": "t", "spec": PROJECT_SPEC},
             "/oauth/register": {"client_id": "cid"},
             "/oauth/token": {"access_token": "oauth-tok", "scope": "read"},
+            "/api/realname": {"detail": "실명을 먼저 입력해 주세요: http://x/settings/profile",
+                              "error": "real_name_required", "message": "실명을 먼저 입력해 주세요: http://x/settings/profile"},
         }.get(self.path, {"ok": True})
         data = json.dumps(out).encode()
-        self.send_response(409 if self.path == "/api/conflict" else 200)
+        self.send_response({"/api/conflict": 409, "/api/realname": 403}.get(self.path, 200))
         self.send_header("Content-Length", str(len(data)))
         self.end_headers()
         self.wfile.write(data)
@@ -101,6 +103,10 @@ assert seen.pop()["body"] == {"version": 2}
 
 r = run("POST", "/api/conflict", "{}")
 assert r.returncode != 0 and "HTTP 409" in r.stderr
+
+# 계정 실명이 비면 core 문구(입력 화면 주소)를 그대로 보인다(IMPL-PLAN-13 §4.4)
+r = run("GET", "/api/realname")
+assert r.returncode != 0 and r.stderr.strip() == "실명을 먼저 입력해 주세요: http://x/settings/profile", r.stderr
 
 assert run("GET", "/elsewhere").returncode != 0  # /api/ 밖으로는 토큰을 보내지 않는다
 

@@ -94,6 +94,7 @@ def test_all_commands_are_guild_scoped_with_the_shared_vocabulary():
         "팀채널",
         "프로젝트채널",
         "알림채널",
+        "표시이름",
         "요청",
         "요청수락",
         "요청거절",
@@ -108,7 +109,7 @@ def test_all_commands_are_guild_scoped_with_the_shared_vocabulary():
     vocab = {"번호", "프로젝트", "팀", "담당자", "기한", "기한미정사유", "중요도", "상태", "사유"}
     vocab |= {"내용", "제목", "다음행동", "카테고리", "코드", "종류", "대상", "메모"}
     vocab |= {"기존카테고리", "새카테고리만들기", "기존채널", "권한밖허용", "자동관리"}
-    vocab |= {"참여자"}
+    vocab |= {"참여자", "이름"}
     for c in tree.get_commands(guild=GUILD):
         for p in c.parameters:
             assert p.display_name in vocab, (c.name, p.display_name)
@@ -397,6 +398,44 @@ def test_alert_channel_relays_core_refusal_for_non_org_admin():
     i = FakeInteraction(guild=SimpleNamespace(id=1))
     run(_cmd(tree, "알림채널").callback(i))
     assert i.reply == "조직 관리자만 할 수 있습니다."
+
+
+def test_nickname_is_guild_only_and_sends_only_self_and_guild():
+    """`/표시이름`(IMPL-PLAN-13 §6.5): 본인 것만, 서버 권한은 보지 않는다."""
+    fake = _fake()
+    tree = _tree(fake)
+    cmd = _cmd(tree, "표시이름")
+    assert cmd.guild_only is True
+    i = FakeInteraction(guild=SimpleNamespace(id=1))
+    i.user.guild_permissions = discord.Permissions.none()
+    run(cmd.callback(i, name=" 새싹 "))
+    assert fake.calls == [
+        ("orgs/nickname", {"discord_user_id": DID, "guild_id": "1", "nickname": "새싹"})
+    ]
+    assert i.deferred is True and all(eph for _, eph in i.sent)
+    assert "‘새싹’(으)로 바꿨습니다" in i.reply and "잠시 뒤 반영" in i.reply
+
+
+def test_nickname_clear_and_real_name_refusal():
+    fake = _fake()
+    tree = _tree(fake)
+    i = FakeInteraction(guild=SimpleNamespace(id=1))
+    run(_cmd(tree, "표시이름").callback(i))
+    assert fake.calls[-1][1]["nickname"] == ""
+    assert "지웠습니다" in i.reply and "‘팀원’" in i.reply
+    fake.real_name_org = True
+    i = FakeInteraction(guild=SimpleNamespace(id=1))
+    run(_cmd(tree, "표시이름").callback(i, name="새싹"))
+    assert i.reply == "실명으로 표시합니다."
+
+
+def test_nickname_in_dm_is_refused_without_core():
+    fake = _fake()
+    tree = _tree(fake)
+    i = FakeInteraction()
+    run(_cmd(tree, "표시이름").callback(i, name="새싹"))
+    assert i.sent == [("서버 채널에서 실행해 주세요.", True)]
+    assert fake.calls == []
 
 
 def test_dm_commands_still_work_unchanged():

@@ -13,6 +13,7 @@ from ninja.errors import HttpError
 
 from common.errors import ServiceError
 from orgs.models import Team
+from orgs.names import display_for
 from orgs.services import orgs_of
 from projects import docs as svc
 from projects.models import Doc
@@ -48,7 +49,7 @@ def doc_out(d, *, body: bool, viewer) -> dict:
         "updated_at": d.updated_at,
         "task_ids": visible_task_ids(d, viewer),
         # 누가 마지막으로 고쳤는지. source가 "mcp"면 AI가 고친 것이다.
-        "updated_by": d.updated_by.display_name if d.updated_by_id else "",
+        "updated_by": display_for(d.updated_by, d.org_id) if d.updated_by_id else "",
         "updated_source": d.updated_source,
     }
     if body:
@@ -169,7 +170,7 @@ def list_revisions(request, doc_id: int, body: bool = False):
             "id": r.pk,
             "version": r.version,
             "title": r.title,
-            "saved_by": r.saved_by.display_name if r.saved_by_id else "",
+            "saved_by": display_for(r.saved_by, d.org_id) if r.saved_by_id else "",
             "source": r.source,
             "saved_at": r.saved_at,
         }

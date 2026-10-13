@@ -133,6 +133,7 @@ class FakeCore:
         # 슬래시 명령용. admin=False면 채널 저장이 400, channel_save_fail이면 새 id 저장만 500.
         self.admin = True
         self.channel_save_fail = False
+        self.real_name_org = False  # /표시이름: 실명으로 표시 조직이면 core가 400
         self.channels = {"team": "", "project": ""}
         self.next_id = 100
         # 다중 조직(§8.4). 손 안 대면 조직 하나(org_id=1)에 설정 없음 — 옛 단일 조직과 동작이 같다.
@@ -314,6 +315,13 @@ class FakeCore:
             self.org_channels[body["guild_id"]] = body["channel_id"]
             return httpx.Response(
                 200, json={"guild_id": body["guild_id"], "channel_id": body["channel_id"]}
+            )
+        if cmd == "orgs/nickname":
+            if self.real_name_org:
+                return httpx.Response(400, json={"detail": {"nickname": "실명으로 표시합니다."}})
+            name = body["nickname"] or "팀원"
+            return httpx.Response(
+                200, json={"org_id": 1, "org_name": "산돌이", "display_name": name}
             )
         if cmd == "tasks":
             if not body.get("due_date") and not body.get("no_due_reason"):

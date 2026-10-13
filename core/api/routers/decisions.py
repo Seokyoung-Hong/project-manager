@@ -8,6 +8,7 @@ from ninja import Router
 from ninja.errors import HttpError
 
 from common.errors import ConflictError
+from orgs.names import display_for
 from tasks.decision_services import (
     confirm_record,
     create_record,
@@ -59,7 +60,7 @@ def _record_out(record):
         "client_name": record.client_name,
         "session_ref": record.session_ref,
         "subject_user_id": record.subject_user_id,
-        "subject_user_name": getattr(subject, "display_name", "") if subject else "",
+        "subject_user_name": display_for(subject, record.task.project.org_id) if subject else "",
         "recorded_by_id": record.recorded_by_id,
         "confirmed_by_id": record.confirmed_by_id,
         "supersedes_id": record.supersedes_id,
