@@ -413,7 +413,7 @@ def test_nickname_is_guild_only_and_sends_only_self_and_guild():
         ("orgs/nickname", {"discord_user_id": DID, "guild_id": "1", "nickname": "새싹"})
     ]
     assert i.deferred is True and all(eph for _, eph in i.sent)
-    assert "‘새싹’(으)로 바꿨습니다" in i.reply and "잠시 뒤 반영" in i.reply
+    assert "새 조직 표시 이름은 ‘새싹’입니다" in i.reply and "잠시 후 반영" in i.reply
 
 
 def test_nickname_clear_and_real_name_refusal():
@@ -422,7 +422,7 @@ def test_nickname_clear_and_real_name_refusal():
     i = FakeInteraction(guild=SimpleNamespace(id=1))
     run(_cmd(tree, "표시이름").callback(i))
     assert fake.calls[-1][1]["nickname"] == ""
-    assert "지웠습니다" in i.reply and "‘팀원’" in i.reply
+    assert "삭제했습니다" in i.reply and "‘팀원’" in i.reply
     fake.real_name_org = True
     i = FakeInteraction(guild=SimpleNamespace(id=1))
     run(_cmd(tree, "표시이름").callback(i, name="새싹"))

@@ -297,14 +297,16 @@ def org_nickname(request, payload: DiscordNicknameIn):
         # COPY:nickname.dc_unbound
         raise ServiceError(
             {
-                "guild_id": "Discord 서버가 조직에 연결되지 않았습니다. 조직 설정에서 서버를 연결해 주세요."
+                "guild_id": "이 Discord 서버에 연결된 조직이 없습니다. 조직 관리자에게 서버 연결을 요청해 주세요."
             }
         )
     m = OrgMembership.objects.filter(org=org, user=actor).select_related("org", "user").first()
     if m is None:
         # COPY:nickname.dc_not_member
         raise ServiceError(
-            {"org": "이 조직의 구성원이 아닙니다. 조직 초대를 받은 뒤 다시 시도해 주세요."}
+            {
+                "org": "이 서버에 연결된 조직의 구성원이 아닙니다. 조직 초대를 수락한 뒤 다시 시도해 주세요."
+            }
         )
     set_nickname(m, payload.nickname, actor, source="dc")
     return {"org_id": org.pk, "org_name": org.name, "display_name": display_for(actor, org)}

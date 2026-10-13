@@ -27,6 +27,8 @@ ALLOWED = {
     "orgs/teams.html": r"\br\.m\.user\.display_name\b",
     # 본인 조직 표시 이름 칸의 자리표시 = 계정 이름(비우면 이 이름이 보인다)
     "orgs/member_info.html": r"\{\{ user\.display_name \}\}",
+    # 프로필 폼의 표시 이름 필드(충돌 후보 폼도 그 값을 그대로 다시 보낸다)
+    "settings/profile.html": r"\bform\.display_name\b",
     # user_brief dict 키 — B 갈래가 조직 이름으로 채운다(reports/services.py)
     "orgs/capacity.html": r"\b[rc]\.user\.display_name\b",
     # DiscordChannelAlert.display_name = Discord 닉네임(사람 계정과 무관)

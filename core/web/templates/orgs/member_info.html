@@ -6,11 +6,11 @@
     <h2 id="nickname-title">이 조직 표시 이름</h2>
     {% if show_real_name %}{# COPY:nickname.readonly_reason #}
     <p><b>{{ user.real_name }}</b></p>
-    <p class="muted t13">이 조직은 구성원 이름을 실명으로 표시합니다. 조직 표시 이름은 바꿀 수 없고, 실명은 <a href="{% url 'profile' %}">설정 → 프로필</a>에서 바꿉니다.</p>
+    <p class="muted t13">이 조직은 구성원 이름을 실명으로 표시하므로 조직 표시 이름을 변경할 수 없습니다. 실명을 변경하려면 <a href="{% url 'profile' %}">설정 → 프로필</a>에서 수정해 주세요.</p>
     {% else %}{# COPY:nickname.help #}
     <form method="post" action="{% url 'member_nickname' m.pk %}" class="stack">{% csrf_token %}
       <input type="hidden" name="next" value="{{ request.path }}">
-      <label class="field">조직 표시 이름<input class="input" name="nickname" value="{{ m.nickname }}" maxlength="50" placeholder="{{ user.display_name }}"><span class="helptext">이 조직에서만 쓰는 이름입니다. 비워 두면 계정 표시 이름({{ user.display_name }})이 보입니다.</span></label>
+      <label class="field">조직 표시 이름<input class="input" name="nickname" value="{{ m.nickname }}" maxlength="50" placeholder="{{ user.display_name }}"><span class="helptext">이 조직에서만 사용하는 이름입니다. 비워 두면 계정의 표시 이름({{ user.display_name }})이 표시됩니다.</span></label>
       <div><button class="btn">조직 표시 이름 저장</button></div>
     </form>
     {% endif %}

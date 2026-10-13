@@ -618,13 +618,15 @@ def register(
     @tree.command(
         name="표시이름",
         # COPY:nickname.dc_description
-        description="이 서버 조직에서 쓰는 내 조직 표시 이름을 바꿉니다 (비우면 계정 표시 이름)",
+        description="이 서버에 연결된 조직에서 내 조직 표시 이름을 변경합니다. 비우면 계정의 표시 이름을 사용합니다.",
         guild=guild,
     )
     @app_commands.guild_only()
     @app_commands.rename(name="이름")
     # COPY:nickname.dc_param
-    @app_commands.describe(name="새 조직 표시 이름 (비우면 계정 표시 이름으로 돌아갑니다)")
+    @app_commands.describe(
+        name="새 조직 표시 이름을 입력해 주세요. 비우면 계정의 표시 이름을 사용합니다."
+    )
     async def nickname(interaction: discord.Interaction, name: str = ""):
         if interaction.guild is None:
             await interaction.response.defer(ephemeral=True)

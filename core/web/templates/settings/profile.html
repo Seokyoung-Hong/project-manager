@@ -5,7 +5,7 @@
 <div class="card" id="real-name">
   <h2>프로필</h2>
   {% if not user.real_name %}{# COPY:real_name.gate_notice #}
-  <div class="notice warn" role="alert"><span aria-hidden="true">⚠</span><span>실명을 입력해야 유달리를 이용할 수 있습니다. 저장하면 보던 화면으로 돌아갑니다.</span></div>
+  <div class="notice warn" role="alert"><span aria-hidden="true">⚠</span><span>유달리를 이용하려면 실명을 입력해 주세요.{% if form.next.value %} 저장하면 이전 화면으로 이동합니다.{% endif %}</span></div>
   {% endif %}
   <form method="post" class="stack">{% csrf_token %}
     {# 충돌 후보는 실명 칸 바로 아래. 후보 버튼은 아래 별도 폼(form="pick-real-name")을 제출한다 —
@@ -13,7 +13,7 @@
     {% with f=form.real_name %}{% include "_field.html" %}{% endwith %}
     {% if real_name_candidates %}{# COPY:real_name.candidates #}
     <div class="stack gap-2">
-      <p class="t13 muted">조직마다 다른 실명이 입력되어 있었습니다. 맞는 이름을 고르거나 위 실명 칸에 직접 입력해 주세요.</p>
+      <p class="t13 muted">조직별로 입력한 실명이 서로 다릅니다. 본인의 실명을 선택하거나 위 입력란에 직접 입력해 주세요.</p>
       <div class="row gap-2">{% for c in real_name_candidates %}<button class="btn sm" form="pick-real-name" name="real_name" value="{{ c }}">{{ c }} 저장</button>{% endfor %}</div>
     </div>
     {% endif %}
@@ -21,7 +21,7 @@
     {{ form.next }}
     <div><button class="btn primary">프로필 저장</button></div>
   </form>
-  {% if real_name_candidates %}<form method="post" id="pick-real-name" hidden>{% csrf_token %}<input type="hidden" name="display_name" value="{{ user.display_name }}"><input type="hidden" name="next" value="{{ form.next.value|default:'' }}"></form>{% endif %}
+  {% if real_name_candidates %}<form method="post" id="pick-real-name" hidden>{% csrf_token %}<input type="hidden" name="display_name" value="{{ form.display_name.value|default:'' }}"><input type="hidden" name="next" value="{{ form.next.value|default:'' }}"></form>{% endif %}
 </div>
 <div class="card">
   <h2>Discord 연결</h2>

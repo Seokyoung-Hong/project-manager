@@ -17,7 +17,7 @@ def test_signup_requires_valid_real_name(client, db):
     r = _signup(client)
     assert r.status_code == 200 and "실명을 입력해 주세요." in r.content.decode()
     r = _signup(client, real_name="김1")
-    assert r.status_code == 200 and "숫자와 기호는 쓸 수 없습니다" in r.content.decode()
+    assert r.status_code == 200 and "외의 기호와 숫자는 사용할 수 없습니다" in r.content.decode()
     assert not User.objects.filter(username="newbie").exists()
     assert _signup(client, real_name="  김  새사람 ").status_code == 302
     assert User.objects.get(username="newbie").real_name == "김 새사람"
@@ -28,7 +28,8 @@ def test_gate_profile_saves_and_returns_to_next(client, org, member):
     client.force_login(member)
     nxt = f"/orgs/{org.pk}"
     page = client.get(f"/settings/profile?next={nxt}").content.decode()
-    assert "실명을 입력해야" in page and f'value="{nxt}"' in page
+    assert "이전 화면으로 이동합니다" in page and f'value="{nxt}"' in page
+    assert "이전 화면으로 이동합니다" not in client.get("/settings/profile").content.decode()
     r = client.post(
         "/settings/profile", {"real_name": "김팀원", "display_name": "팀원", "next": nxt}
     )

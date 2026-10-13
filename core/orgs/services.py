@@ -364,11 +364,15 @@ def set_nickname(membership, value, actor, source: str = "web") -> OrgMembership
     org, user = membership.org, membership.user
     if actor != user and not is_admin(actor, org):
         # COPY:nickname.forbidden
-        raise Forbidden({"nickname": "본인 또는 조직 관리자만 조직 표시 이름을 바꿀 수 있습니다."})
+        raise Forbidden(
+            {"nickname": "본인 또는 조직 관리자만 조직 표시 이름을 변경할 수 있습니다."}
+        )
     if definition(org)["show_real_name"]:
         # COPY:nickname.real_name_org
         raise ServiceError(
-            {"nickname": "이 조직은 실명으로 표시하므로 조직 표시 이름을 바꿀 수 없습니다."}
+            {
+                "nickname": "이 조직은 구성원 이름을 실명으로 표시하므로 조직 표시 이름을 변경할 수 없습니다."
+            }
         )
     new = clean_real_name(value, field="nickname", required=False)
     if new == membership.nickname:

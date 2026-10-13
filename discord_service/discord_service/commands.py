@@ -165,12 +165,12 @@ def nickname_reply(core: CoreClient, did: str, guild_id: str, name: str) -> str:
     r = core.set_org_nickname(did, guild_id, name)
     if name:
         # COPY:nickname.dc_done
-        head = f"{r['org_name']} 조직에서 쓰는 조직 표시 이름을 ‘{r['display_name']}’(으)로 바꿨습니다."
+        head = f"{r['org_name']} 조직의 표시 이름을 변경했습니다. 새 조직 표시 이름은 ‘{r['display_name']}’입니다."
     else:
         # COPY:nickname.dc_cleared
-        head = f"{r['org_name']} 조직 표시 이름을 지웠습니다. 이제 계정 표시 이름 ‘{r['display_name']}’(으)로 보입니다."
+        head = f"{r['org_name']} 조직의 표시 이름을 삭제했습니다. 이제 계정의 표시 이름 ‘{r['display_name']}’이 표시됩니다."
     # COPY:nickname.dc_delay
-    return f"{head}\n자동완성 목록에는 잠시 뒤 반영될 수 있습니다."
+    return f"{head}\n변경한 이름은 잠시 후 반영될 수 있습니다."
 
 
 def note_reply(core: CoreClient, did: str, num: int, text: str) -> str:

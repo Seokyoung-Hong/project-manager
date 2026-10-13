@@ -7,7 +7,7 @@
   </div>
   <p class="muted t13">관리자 {{ admin_count }}명. 마지막 관리자는 역할을 바꾸거나 제거할 수 없습니다.</p>
   {% if show_real_name %}{# COPY:members.real_name_locked #}
-  <div class="notice t13"><span class="grow">이 조직은 구성원 이름을 실명으로 표시하므로 조직 표시 이름을 바꿀 수 없습니다. <a href="{% url 'org_settings' org.pk %}#member-info">조직 설정 → 구성원 정보</a>에서 바꿉니다.</span></div>
+  <div class="notice t13"><span class="grow">이 조직은 구성원 이름을 실명으로 표시하므로 조직 표시 이름을 변경할 수 없습니다. {# COPY:members.real_name_locked_link(임시) #}<a href="{% url 'org_settings' org.pk %}#member-info">조직 설정 → 구성원 정보</a>에서 바꿉니다.</span></div>
   {% endif %}
   <p class="table-scroll-hint">멤버 정보와 스킬 태그는 좌우로 이동해 확인해 주세요.</p>
   <div class="table-scroll member-table-scroll" tabindex="0" role="region" aria-label="조직 멤버 관리, 좌우로 스크롤 가능">

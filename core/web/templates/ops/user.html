@@ -6,7 +6,7 @@
 <section class="card">
   <div class="card-head"><h2><code>{{ target.username }}</code> {{ target.display_name }}</h2>{% with u=target %}{% include "ops/_user_badges.html" %}{% endwith %}</div>
   <dl class="t13">
-    <dt>실명</dt><dd>{{ target.real_name|default:"입력 안 함" }}</dd>{# COPY:ops_real_name #}
+    <dt>실명</dt><dd>{{ target.real_name|default:"실명 미입력" }}</dd>{# COPY:ops_real_name #}
     <dt>가입</dt><dd>{{ target.date_joined|date:"Y-m-d H:i" }}</dd>
     <dt>마지막 로그인</dt><dd>{{ target.last_login|date:"Y-m-d H:i"|default:"—" }}</dd>
     <dt>Discord 연결</dt><dd>{% if target.discord_linked_at %}{{ target.discord_linked_at|date:"Y-m-d H:i" }}{% else %}연결 안 됨{% endif %}</dd>

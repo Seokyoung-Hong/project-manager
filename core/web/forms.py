@@ -88,7 +88,7 @@ class SignupForm(UserCreationForm):
         help_texts = {
             "username": "영문·숫자와 @ . + - _ 만, 150자 이하",
             # COPY:signup.real_name_help
-            "real_name": "본인의 실제 이름을 입력해 주세요. 소속 조직의 관리자가 볼 수 있고, 실명으로 표시하는 조직에서는 구성원에게 이 이름이 보입니다.",
+            "real_name": "본인의 실명을 입력해 주세요. 소속 조직의 관리자는 이 실명을 볼 수 있습니다. 구성원 이름을 실명으로 표시하는 조직에서는 모든 구성원에게 이 실명이 표시됩니다.",
             "display_name": "팀원에게 표시되며 알림에 쓰이는 이름입니다.",
         }
 
@@ -232,7 +232,7 @@ class ProfileForm(forms.Form):
         max_length=50,
         error_messages={"required": REAL_NAME_REQUIRED},
         # COPY:profile.real_name_help
-        help_text="소속 조직의 관리자가 볼 수 있고, 실명으로 표시하는 조직에서는 구성원에게 이 이름이 보입니다.",
+        help_text="소속 조직의 관리자는 이 실명을 볼 수 있습니다. 구성원 이름을 실명으로 표시하는 조직에서는 모든 구성원에게 이 실명이 표시됩니다. 실명을 변경하면 해당 조직에 바로 반영됩니다.",
     )
     display_name = forms.CharField(label="표시 이름", max_length=50)
     next = forms.CharField(widget=forms.HiddenInput, required=False)

@@ -40,11 +40,15 @@ def clean_real_name(value, *, field: str = "real_name", required: bool = True) -
             raise ServiceError({field: "실명을 입력해 주세요."})  # COPY:real_name.required
         return v
     if len(v) > 50:
-        raise ServiceError({field: "50자까지 입력할 수 있습니다."})  # COPY:real_name.too_long
+        raise ServiceError({field: "50자 이내로 입력해 주세요."})  # COPY:real_name.too_long
     ok = all(c in _NAME_PUNCT or unicodedata.category(c)[0] in "LM" for c in v)
     if not ok or not any(unicodedata.category(c)[0] == "L" for c in v):
         # COPY:real_name.invalid_chars
-        raise ServiceError({field: "글자로만 입력해 주세요. 숫자와 기호는 쓸 수 없습니다."})
+        raise ServiceError(
+            {
+                field: "글자를 포함해 입력해 주세요. 공백·마침표(.)·하이픈(-)·작은따옴표(')·가운뎃점(·) 외의 기호와 숫자는 사용할 수 없습니다."
+            }
+        )
     return v
 
 
@@ -54,7 +58,7 @@ class RealNameRequired(Exception):
     def __init__(self):
         self.url = settings.SITE_URL + reverse("profile")
         # COPY:real_name.gate_api
-        super().__init__(f"실명을 먼저 입력해 주세요: {self.url}")
+        super().__init__(f"유달리를 이용하려면 먼저 실명을 입력해 주세요: {self.url}")
 
 
 def issue_link_code(user) -> str:
