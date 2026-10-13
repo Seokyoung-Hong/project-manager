@@ -29,6 +29,7 @@ def _crypto(settings):
 def cp_on(settings):
     settings.ASSIST_COPILOT_ENABLED = True
     settings.COPILOT_RUNTIME_URL = "copilot:4321"
+    settings.COPILOT_CONNECTION_TOKEN = "test-runtime-secret"
     settings.COPILOT_MODELS = ["gpt-5-mini", "claude-sonnet-4.5"]
     return settings
 
@@ -80,6 +81,9 @@ def test_off_skips_existing_row_in_plan(member, on, settings):
     assert all(a.source != src for a in plan(member, on))
     settings.ASSIST_COPILOT_ENABLED = True
     settings.COPILOT_RUNTIME_URL = ""  # 런타임 주소가 없어도 끈 것과 같다
+    assert all(a.source != src for a in plan(member, on))
+    settings.COPILOT_RUNTIME_URL = "copilot:4321"
+    settings.COPILOT_CONNECTION_TOKEN = ""  # 런타임과 나누는 비밀이 없어도 끈 것과 같다
     assert all(a.source != src for a in plan(member, on))
 
 

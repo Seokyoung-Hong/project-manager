@@ -22,8 +22,12 @@ logging.getLogger("copilot").setLevel(logging.CRITICAL)
 
 
 def enabled() -> bool:
-    """켜짐 = 플래그(ASSIST_COPILOT_ENABLED) + 런타임 주소. 꺼지면 버튼·실행 모두 없다."""
-    return settings.ASSIST_COPILOT_ENABLED and bool(settings.COPILOT_RUNTIME_URL)
+    """켜짐 = 플래그(ASSIST_COPILOT_ENABLED) + 런타임 주소 + 런타임과 나누는 비밀. 꺼지면 버튼·실행 모두 없다."""
+    return (
+        settings.ASSIST_COPILOT_ENABLED
+        and bool(settings.COPILOT_RUNTIME_URL)
+        and bool(settings.COPILOT_CONNECTION_TOKEN)
+    )
 
 
 def models() -> list[str]:
