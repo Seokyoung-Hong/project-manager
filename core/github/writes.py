@@ -19,6 +19,7 @@ from django.utils import timezone
 from django.utils.text import slugify
 
 from common.errors import ServiceError
+from orgs.names import org_names
 
 from . import client
 from .client import GitHubError
@@ -147,16 +148,19 @@ def reconcile_team(team, *, actor, on_result=None) -> tuple[int, list[str]]:
             {"github": "GitHub 팀이 연결되지 않았습니다. 팀 설정에서 GitHub 팀을 연결해 주세요."}
         )
     done, warns = 0, []
+    # 경고는 웹 화면용이라 조직 표시 이름. GitHub로 보내는 본문에는 이름을 넣지 않는다(login만)
+    shown = org_names(team.org_id)
     for user in team.members.filter(is_active=True):
+        name = shown.get(user.pk, user.display_name)
         login = _login_of(user)
         if not login:
-            warns.append(f"{user.display_name}: GitHub 미연결")
+            warns.append(f"{name}: GitHub 미연결")
             continue
         w = try_write(set_gh_team_member, link, team.org, login, actor=actor, add=True)
         if on_result is not None:
             on_result(user, login, w)
         if w:
-            warns.append(f"{user.display_name}: {w}")
+            warns.append(f"{name}: {w}")
         else:
             done += 1
     link.synced_at = timezone.now()

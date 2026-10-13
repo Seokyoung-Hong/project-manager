@@ -11,6 +11,7 @@ from common.dates import now_kst
 from common.errors import Forbidden, ServiceError
 from orgs import settings as org_settings
 from orgs.models import Organization, OrgMembership
+from orgs.names import display_for, org_names
 from orgs.services import ai_denied, is_admin, is_member, visible_teams
 from projects import docs
 from projects.services import can_view_project, visible_projects
@@ -275,7 +276,7 @@ def speaker(org, discord_user_id: str, nick: str = "") -> dict:
         return {
             "discord_user_id": discord_user_id,
             "user_id": user.pk,
-            "display_name": user.display_name,
+            "display_name": display_for(user, org),
         }
     return {
         "discord_user_id": discord_user_id,
@@ -428,9 +429,10 @@ def glossary_terms(rec, viewer=None) -> tuple[list[str], list[str]]:
     elif note.team_id and teams.filter(pk=note.team_id).exists():
         people = people.filter(team_memberships__team_id=note.team_id)
     # 20명 넘게 참여하는 회의는 없다고 가정한다(사용자 결정 10-13). 이름순 MEMBER_CAP명까지, 넘친 이름은 누락 목록에
-    members = list(
-        people.order_by("display_name").values_list("display_name", flat=True).distinct()
-    )
+    # 조직 표시 이름(실명으로 표시 조직이면 실명) — 계정 실명은 그 조직에서만 용어집으로 간다
+    shown = org_names(org)
+    # ponytail: sort_by_name과 같은 순서를 이름표 한 번으로(워커에서는 캐시가 없어 사람마다 쿼리가 된다)
+    members = sorted({shown.get(u.pk, u.display_name) for u in people.distinct()})
     members, over_cap = members[:MEMBER_CAP], members[MEMBER_CAP:]
     manual = split_terms(org_settings.effective(GLOSSARY_KEY, org=org))
     if project is not None:
@@ -480,7 +482,7 @@ def glossary_terms(rec, viewer=None) -> tuple[list[str], list[str]]:
                 continue
             body[t] += 1
             own[t] += is_own
-    names = [starter.display_name] + [
+    names = [shown.get(starter.pk, starter.display_name)] + [
         s["display_name"].removesuffix(UNLINKED_MARK) for s in speaker_names(rec)
     ]
     first = list(dict.fromkeys(names + members + manual))
@@ -806,7 +808,7 @@ def transfer_host(rec, *, by, to_discord_user_id: str, participants: list | None
     ]
     _close_pending(rec, "cancelled")  # 진행자가 바뀌면 대기 중인 넘겨받기 요청은 취소
     rec.save(update_fields=["host", "host_changes", "host_requests"])
-    notice = f"회의 진행자가 {old.display_name}님에서 {row['display_name']}님으로 바뀌었습니다."
+    notice = f"회의 진행자가 {display_for(old, rec.note.org_id)}님에서 {row['display_name']}님으로 바뀌었습니다."
     return rec, notice
 
 
@@ -954,5 +956,7 @@ def _answer_host_request(rec, request_id, by_discord_user_id, approve):
     req.pop("closed_at", None)
     rec.save(update_fields=["host_requests"])
     if not approve:
-        texts["requester_notice"] = f"{by.display_name}님이 넘겨받기 요청을 거절했습니다."
+        texts["requester_notice"] = (
+            f"{display_for(by, rec.note.org_id)}님이 넘겨받기 요청을 거절했습니다."
+        )
     return rec, req, texts

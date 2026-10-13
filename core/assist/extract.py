@@ -97,6 +97,7 @@ def postprocess(job, user, tasks: list[dict]) -> list[dict]:
     """서버가 다시 맞춘다: 담당자(구성원 이름 완전 일치·유일), 프로젝트(볼 수 있는 이름 완전 일치),
     비슷한 태스크(같은 프로젝트의 볼 수 있는 열린 태스크, SequenceMatcher ≥ 0.6 상위 2개)."""
     from orgs.models import OrgMembership
+    from orgs.names import org_names
     from projects.services import visible_projects
     from tasks.models import Task
     from tasks.services import visible_tasks
@@ -104,8 +105,9 @@ def postprocess(job, user, tasks: list[dict]) -> list[dict]:
     _, base, org = base_of(job, user)
     projects = {p.name.casefold(): p for p in visible_projects(user, org)}
     names: dict[str, list[int]] = {}
+    shown = org_names(org)  # 조직 표시 이름(실명으로 표시 조직이면 실명)
     for m in OrgMembership.objects.filter(org=org).select_related("user"):
-        for n in {m.user.display_name, m.user.username}:
+        for n in {shown.get(m.user_id), m.nickname, m.user.display_name, m.user.username}:
             if n:
                 names.setdefault(n.casefold(), []).append(m.user_id)
     open_cache: dict[int, list] = {}

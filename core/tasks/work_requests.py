@@ -16,6 +16,7 @@ from common.dates import fmt_md, today_kst
 from common.errors import ServiceError
 from orgs.member_info import blocked_user_ids
 from orgs.models import Team, TeamMembership
+from orgs.names import display_for
 from orgs.services import is_admin, is_member, usable_orgs
 from projects.services import visible_projects
 
@@ -72,7 +73,7 @@ def _due_text(due) -> str:
 def notify_assigned(task, actor):
     """승인 없이 남에게 맡겼을 때 받은 사람에게 알린다. 번호만으로는 무슨 일인지 모르니
     제목·프로젝트·기한·상태·웹 링크를 함께 보낸다."""
-    who = actor.display_name if actor else "GitHub"
+    who = display_for(actor, task.project.org_id) if actor else "GitHub"
     title = task.title.replace("[", "\\[").replace("]", "\\]")
     notify(
         task.project.org,
@@ -85,9 +86,7 @@ def notify_assigned(task, actor):
 
 
 def _notify_new(req, posted_in: str = ""):
-    head = (
-        f"{req.requested_by.display_name}님의 {req.get_kind_display()} **{req.number}** {req.title}"
-    )
+    head = f"{display_for(req.requested_by, req.org_id)}님의 {req.get_kind_display()} **{req.number}** {req.title}"
     link = _link(req.path)
     if req.to_user_id:
         # GitHub 재개처럼 담당 요청에 사유(body)가 있으면 알림에 함께 담는다.
@@ -108,7 +107,7 @@ def _notify_requester(req, actor, verb: str):
     note = f"\n> {req.response_note}" if req.response_note else ""
     notify(
         req.org,
-        f"↩️ {actor.display_name}님이 **{req.number}** {req.title} 요청을 {verb}했습니다."
+        f"↩️ {display_for(actor, req.org_id)}님이 **{req.number}** {req.title} 요청을 {verb}했습니다."
         f"{note}\n{_link(req.path)}",
         user=req.requested_by,
     )
@@ -354,7 +353,7 @@ def _task_from_request(req, actor, source, project, assignee, due_date):
             {"project": "다른 조직의 프로젝트입니다. 현재 조직의 프로젝트를 선택해 주세요."}
         )
     due_date = due_date or req.due_date  # 수락자가 비우면 요청자의 희망 기한
-    footer = f"({req.number} · {req.requested_by.display_name}님의 요청)"
+    footer = f"({req.number} · {display_for(req.requested_by, req.org_id)}님의 요청)"
     return ts.create_task(
         project=project,
         title=req.title,

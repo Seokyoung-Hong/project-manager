@@ -9,6 +9,7 @@ from accounts.models import IdempotencyKey, User
 from common.dates import kst_day_range, overdue_before, today_kst, week_bounds
 from common.errors import ConflictError, Forbidden, ServiceError
 from orgs.models import OrgMembership
+from orgs.names import display_for, sort_by_name
 from orgs.services import ai_denied, is_admin, is_member, require_admin
 from orgs.settings import effective
 from projects.models import Project
@@ -989,7 +990,7 @@ def transition(
     if rejecting and actor is not None and not can_reject(actor, task):
         raise ServiceError(
             {
-                "status": f"검토자 {task.reviewer.display_name}님 또는 프로젝트 관리자만 "
+                "status": f"검토자 {display_for(task.reviewer, org)}님 또는 프로젝트 관리자만 "
                 "반려할 수 있습니다. 검토자나 프로젝트 관리자에게 반려를 요청해 주세요."
             }
         )
@@ -1074,7 +1075,7 @@ def transition(
         ):
             raise ServiceError(
                 {
-                    "status": f"검토자 {task.reviewer.display_name}님 또는 프로젝트 관리자만 "
+                    "status": f"검토자 {display_for(task.reviewer, org)}님 또는 프로젝트 관리자만 "
                     "완료 처리할 수 있습니다. 검토자나 프로젝트 관리자에게 완료 처리를 요청해 주세요."
                 }
             )
@@ -1596,6 +1597,16 @@ def _due_preds(today: date) -> dict:
     }
 
 
+def _shared_org(user, member):
+    """두 사람이 함께 속한 조직이 하나뿐이면 그 조직 id, 아니면 None(계정 표시 이름으로)."""
+    ids = list(
+        OrgMembership.objects.filter(user=member, org__memberships__user=user)
+        .values_list("org_id", flat=True)
+        .distinct()[:2]
+    )
+    return ids[0] if len(ids) == 1 else None
+
+
 def me_view(
     user,
     *,
@@ -1720,7 +1731,7 @@ def me_view(
     elif isinstance(member, int):
         title = "조직 전체 태스크"
     else:
-        title = f"{member.display_name}의 태스크"
+        title = f"{display_for(member, _shared_org(user, member))}의 태스크"
     total = base.count()
     hint = f"{'완료' if completion else '미완료'} {total}건 · 결과 {len(tasks)}건"
     if member is not None:
@@ -1796,7 +1807,7 @@ class WideningRequired(ServiceError):
 
 
 def widening_message(project, users) -> str:
-    names = ", ".join(u.display_name for u in users[:3])
+    names = ", ".join(display_for(u, project.org_id) for u in users[:3])
     more = " 외" if len(users) > 3 else ""
     return (
         f"주의: '{project.name}' 프로젝트의 열람자 중 지금 이 태스크를 볼 수 없는 {len(users)}명"
@@ -1827,7 +1838,7 @@ def widening(task, project) -> list[User]:
         return []  # 이미 조직 전원이 본다
     seen = set().union(*(viewer_ids(p) for p in current))
     new = viewer_ids(project) - seen
-    return list(User.objects.filter(pk__in=new).order_by("display_name", "pk"))
+    return sort_by_name(User.objects.filter(pk__in=new).order_by("pk"), project.org_id)
 
 
 def can_approve_widening(user, task) -> bool:
@@ -1924,7 +1935,7 @@ def link_project(task, project, *, actor, source="web", token=None, confirm_wide
         note=f"연결 승인 요청: 열람자 {len(users)}명 늘어남",
     )
     text = (
-        f"{actor.display_name}님이 {task.number} {task.title}을(를) "
+        f"{display_for(actor, task.project.org_id)}님이 {task.number} {task.title}을(를) "
         f"'{project.name}' 프로젝트에 연결하려 합니다. 열람자 {len(users)}명이 늘어납니다.\n"
         f"승인·거절: {wr._link(f'/tasks/{task.pk}')}"
     )
@@ -1978,7 +1989,7 @@ def approve_link(link, *, actor, source="web", token=None) -> TaskProject:
     _touch(task)
     wr.notify(
         task.project.org,
-        f"✅ {actor.display_name}님이 {task.number}의 '{link.project.name}' 연결을 승인했습니다.\n"
+        f"✅ {display_for(actor, task.project.org_id)}님이 {task.number}의 '{link.project.name}' 연결을 승인했습니다.\n"
         f"{wr._link(f'/tasks/{task.pk}')}",
         user=link.created_by,
     )
@@ -1997,7 +2008,7 @@ def reject_link(link, *, actor, source="web", token=None, reason="") -> None:
     why = f"\n> {reason}" if reason else ""
     wr.notify(
         task.project.org,
-        f"↩️ {actor.display_name}님이 {task.number}의 '{link.project.name}' 연결 요청을 "
+        f"↩️ {display_for(actor, task.project.org_id)}님이 {task.number}의 '{link.project.name}' 연결 요청을 "
         f"거절했습니다.{why}\n{wr._link(f'/tasks/{task.pk}')}",
         user=link.created_by,
     )
