@@ -22,14 +22,6 @@
   </details>
   {% endfor %}
 </form>
-{% if settings_tab == "meeting" %}
-{# 전사 섹션은 자기 폼·엔드포인트(D 갈래 orgs/settings/_stt.html, 맥락 stt_ctx) #}
-<details id="settings-meeting-stt" class="card settings-section">
-  <summary class="settings-section-summary"><span>전사</span></summary>{# COPY:org_settings.section.meeting.stt #}
-  <div class="settings-section-body">
-    {% if stt_template %}{% include stt_template %}
-    {% else %}<p class="muted t13">전사 서버·모델은 <a href="{% url 'org_transcribe' org.pk %}?view=server">전사</a> 메뉴에서 바꿉니다.</p>{% endif %}
-  </div>
-</details>
+{% if settings_tab == "meeting" %}{% include "orgs/settings/_stt.html" %}{# 전사 섹션(#stt)은 자기 폼·엔드포인트(D 갈래, 맥락 stt_ctx) #}
 {% elif settings_tab == "org" %}{% include "orgs/settings/_org.html" %}
 {% endif %}

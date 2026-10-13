@@ -18,24 +18,11 @@
     </div>
     {% if settings_tab == "me" %}{% include "orgs/settings/_me.html" %}
     {% elif settings_tab == "members" %}
-      {% if members_template %}{% include members_template %}
-      {% else %}<p class="notice"><span>구성원·초대는 <a href="{% url 'org_teams' org.pk %}">팀</a> 메뉴에서 관리합니다.</span></p>{% endif %}
+      {% include "orgs/settings/_members.html" %}
     {% elif settings_tab == "integrations" %}
-      {# 연동 섹션 본문은 D 갈래(orgs/settings/_github.html·_discord.html, 맥락은 github_ctx·discord_ctx) #}
-      {% if github_enabled %}
-      <section class="card" id="settings-integrations-github" aria-labelledby="settings-integrations-github-title">
-        <h2 id="settings-integrations-github-title">GitHub</h2>
-        {% if github_template %}{% include github_template %}
-        {% else %}<p><a href="{% url 'org_github' org.pk %}">GitHub 연결 화면</a>에서 앱 설치·저장소 연결을 관리합니다.</p>{% endif %}
-      </section>
-      {% endif %}
-      {% if discord_enabled %}
-      <section class="card" id="settings-integrations-discord" aria-labelledby="settings-integrations-discord-title">
-        <h2 id="settings-integrations-discord-title">Discord</h2>
-        {% if discord_template %}{% include discord_template %}
-        {% else %}<p><a href="{% url 'org_discord' org.pk %}">Discord 연결 화면</a>에서 서버·채널을 관리합니다.</p>{% endif %}
-      </section>
-      {% endif %}
+      {# 연동 탭(D 갈래 조각, 맥락 github_ctx·discord_ctx). 섹션 id = #github · #discord #}
+      {% if github_enabled %}{% include "orgs/settings/_github.html" %}{% endif %}
+      {% if discord_enabled %}{% include "orgs/settings/_discord.html" %}{% endif %}
     {% else %}{% include "orgs/settings/_keys_tab.html" %}
     {% endif %}
   </div>

@@ -113,7 +113,7 @@ def _getting_started(org) -> list[dict] | None:
                 "label": "저장소 연결",
                 "value": "저장소를 연결하면 연결된 PR의 생성·병합에 따라 태스크 상태가 바뀝니다.",
                 "done": hasattr(org, "github"),
-                "url": _settings_url(org.pk, "integrations", anchor="settings-integrations-github"),
+                "url": _settings_url(org.pk, "integrations", anchor="github"),
             }
         )
     if settings.DISCORD_CLIENT_ID:
@@ -122,9 +122,7 @@ def _getting_started(org) -> list[dict] | None:
                 "label": "Discord 알림",
                 "value": "Discord 서버를 연결하면 팀 채널에서 조직 알림과 주간 보고를 받을 수 있습니다.",
                 "done": bool(org.discord_guild_id),
-                "url": _settings_url(
-                    org.pk, "integrations", anchor="settings-integrations-discord"
-                ),
+                "url": _settings_url(org.pk, "integrations", anchor="discord"),
             }
         )
     return None if all(s["done"] for s in steps) else steps
@@ -605,21 +603,6 @@ def _settings_url(org_id, tab="me", *, member=None, anchor="") -> str:
     return url + (f"#{anchor}" if anchor else "")
 
 
-def _optional_template(name: str) -> str:
-    """C·D 갈래가 만드는 탭 본문 템플릿. 아직 없으면 ""(셸이 임시 안내를 그린다).
-
-    # ponytail: B·C·D 병렬 갈래용 다리. 통합 뒤 세 파일이 모두 있으면 이 함수와 임시 안내를 지운다.
-    """
-    from django.template import TemplateDoesNotExist
-    from django.template.loader import get_template
-
-    try:
-        get_template(name)
-    except TemplateDoesNotExist:
-        return ""
-    return name
-
-
 def _integrations_on() -> bool:
     return settings.GITHUB_ENABLED or bool(settings.DISCORD_CLIENT_ID)
 
@@ -717,17 +700,14 @@ def _render_settings(request, org, tab, is_admin, membership, **me):
         from .org_members import members_ctx
 
         ctx.update(members_ctx(request, org, request.GET.get("member")))
-        ctx["members_template"] = _optional_template("orgs/settings/_members.html")
     elif tab == "integrations":
         from .discord import discord_ctx
         from .github import github_ctx
 
         if settings.GITHUB_ENABLED:
             ctx.update(github_ctx(request, org))
-            ctx["github_template"] = _optional_template("orgs/settings/_github.html")
         if settings.DISCORD_CLIENT_ID:
             ctx.update(discord_ctx(request, org))
-            ctx["discord_template"] = _optional_template("orgs/settings/_discord.html")
     else:
         ctx["key_sections"] = _key_sections(org, tab)
         ctx["pending_requests"] = _pending(org, "settings")
@@ -735,7 +715,6 @@ def _render_settings(request, org, tab, is_admin, membership, **me):
             from .transcribe import stt_ctx
 
             ctx.update(stt_ctx(request, org))
-            ctx["stt_template"] = _optional_template("orgs/settings/_stt.html")
         elif tab == "org":
             ctx["history"] = _org_settings_history(org)
     return render(request, "orgs/settings.html", ctx)

@@ -282,7 +282,7 @@ def test_transcribe_menu_server_view_admin_only_and_save_keeps_other_settings(
     server = frag("stt", admin, enabled)
     assert '<select id="setting-meeting.stt_model"' in server and 'hx-trigger="load"' in server
     settings_page = client.get(f"/orgs/{enabled.pk}/settings?tab=meeting").content.decode()
-    assert "setting-meeting.stt_url" not in settings_page and "전사</a> 메뉴" in settings_page
+    assert '<section id="stt"' in settings_page  # 회의·전사 탭 안 전사 섹션(독립 폼)
 
     r = client.post(
         f"/orgs/{enabled.pk}/transcribe/server",

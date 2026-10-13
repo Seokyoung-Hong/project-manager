@@ -157,7 +157,7 @@ def test_blocked_admin_opens_members_but_not_integrations(client, org, admin):
     assert r.status_code == 302 and r.url == _url(org, "me")
     admin_save(_m(org, admin), admin, values={_fid(org): "010"})
     body = client.get(_url(org, "integrations")).content.decode()
-    assert 'id="settings-integrations-github"' in body
+    assert 'id="github"' in body
 
 
 @override_settings(GITHUB_ENABLED=False, DISCORD_CLIENT_ID="")
