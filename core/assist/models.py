@@ -21,6 +21,12 @@ ERROR_CODES = (
     "no_worker",
     "org_disabled",
     "cancelled",
+    "codex_missing",
+    "codex_auth",
+    "rate",
+)
+CODEX_URL = (
+    "codex:"  # 개인 AI "Codex(내 구독, 내 PC)" — 주소 대신 이 값, route=pc(마이그레이션 없이 표현)
 )
 
 ROUTES = [("direct", "서버가 직접"), ("pc", "내 PC 거쳐 보내기"), ("org", "조직 AI")]
@@ -67,6 +73,10 @@ class AiSource(models.Model):
 
     def __str__(self):
         return self.name or self.get_kind_display()
+
+    @property
+    def is_codex(self) -> bool:
+        return self.base_url == CODEX_URL
 
 
 class AiJob(models.Model):

@@ -75,6 +75,22 @@ def test_pc_route_requires_own_server(client, member, admin, fake_net):
     assert src.route == "direct" and src.server is None
 
 
+def test_codex_source_needs_own_pc_and_takes_no_url_or_key(client, member, admin, fake_net):
+    mine = SttServer.objects.create(owner=member, name="내 PC", machine_id="m1")
+    other = SttServer.objects.create(owner=admin, name="남의 PC", machine_id="m2")
+    client.force_login(member)
+    assert _add(client, backend="codex", base_url="", model="").status_code == 400  # PC 안 고름
+    assert _add(client, backend="codex", base_url="", server=other.pk).status_code == 400
+    r = _add(
+        client, name="Codex", backend="codex", base_url="", model="", api_key=KEY, server=mine.pk
+    )
+    assert r.status_code == 302
+    src = AiSource.objects.get(kind="personal")
+    assert src.is_codex and src.route == "pc" and src.server == mine and src.api_key == ""
+    page = client.get(reverse("settings_ai")).content.decode()
+    assert "Codex(내 구독)" in page and "Codex 기본 모델" in page
+
+
 def test_unlinked_pc_row_shows_repick(client, member, fake_net):
     pc = SttServer.objects.create(owner=member, name="내 PC", machine_id="m1")
     client.force_login(member)

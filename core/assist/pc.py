@@ -30,6 +30,8 @@ PC_ERRORS = {
     "too_large",
     "blocked_address",
     "pc_error",
+    "codex_missing",
+    "codex_auth",
 }
 LIVE = ("running", "cancelling")
 _ENC = "enc:"
@@ -95,7 +97,7 @@ def _payload(job) -> dict:
         raise ValueError("no source")
     spec = prompts.spec_of(job)
     raw = src.api_key or ""
-    return {
+    out = {
         "id": job.pk,
         "url": src.base_url,
         "model": src.model,
@@ -107,6 +109,10 @@ def _payload(job) -> dict:
         "reasoning_effort": "none",  # 추론 모델이 max_tokens를 추론에 다 쓰지 않게(워커와 같다)
         "timeout_s": spec.timeout_s,
     }
+    if src.is_codex:
+        # PC의 Codex CLI(사용자 구독)로 실행. 키·주소 없음, 에이전트 기동이 느려 시간 상한을 넉넉히.
+        out.update(backend="codex", url="", api_key="", timeout_s=max(spec.timeout_s, 180))
+    return out
 
 
 def _verify(job, content: str) -> str:

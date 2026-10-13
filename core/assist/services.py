@@ -42,7 +42,7 @@ def create_job(user, org, *, field: str, target: str, user_input: str = "", opti
 
     from . import context, fields
     from .models import AiJob
-    from .sources import plan
+    from .sources import org_capped, plan
 
     if org is None or not is_member(user, org):
         raise Http404
@@ -86,7 +86,7 @@ def create_job(user, org, *, field: str, target: str, user_input: str = "", opti
         )  # COPY:assist_rate
     attempts = plan(user, org)
     if not attempts:
-        raise ServiceError({"assist": "no_source"})
+        raise ServiceError({"assist": "rate" if org_capped(user, org) else "no_source"})
     a = attempts[0]
     return AiJob.objects.create(
         user=user,

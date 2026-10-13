@@ -6,7 +6,7 @@ from django.utils import timezone
 
 from assist.models import AiJob, AiSource
 from assist.services import today_org_count
-from assist.sources import plan
+from assist.sources import org_capped, plan
 from notes.models import SttServer
 
 
@@ -98,6 +98,7 @@ def test_org_level_and_daily_limit(org, member, admin):
     )
     assert today_org_count(member, org) == 2
     assert routes(member, org) == []  # 멤버 한도 도달
+    assert org_capped(member, org) and not org_capped(admin, org)  # 작업 만들기 오류 코드 rate
     assert routes(admin, org) == ["org"]  # 관리자 예외
     org_ai(org, **{"assist.org_daily_limit": 0})
     assert routes(member, org) == ["org"]  # 0 = 무제한

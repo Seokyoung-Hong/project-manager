@@ -5,11 +5,12 @@
     <span class="badge" aria-label="{{ n }}번째">{{ n }}</span>
     <b>{% if s.kind == "org" %}조직 AI{% else %}{{ s.name }}{% endif %}</b>
     {% if s.enabled %}<span class="conn-state on">사용</span>{% else %}<span class="conn-state off">꺼짐</span>{% endif %}{# COPY:assist_src_state #}
-    {% if s.kind == "personal" %}<span class="badge">{{ s.get_route_display }}</span>
-    <span class="muted t13">{{ s.model|default:"모델 미입력" }} · 키 {% if s.api_key %}설정됨{% else %}미설정{% endif %}</span>{% endif %}
+    {% if s.kind == "personal" %}<span class="badge">{% if s.is_codex %}Codex(내 구독){% else %}{{ s.get_route_display }}{% endif %}</span>
+    <span class="muted t13">{% if s.is_codex %}{{ s.model|default:"Codex 기본 모델" }}{% else %}{{ s.model|default:"모델 미입력" }} · 키 {% if s.api_key %}설정됨{% else %}미설정{% endif %}{% endif %}</span>{% endif %}
   </div>
   {% if s.kind == "org" %}<p class="muted t13">작업하는 조직의 관리자가 등록한 AI입니다. 주소·모델은 조직마다 다르고, 조직 설정에 따라 쓸 수 없거나 하루 한도가 있을 수 있습니다.</p>{# COPY:assist_src_org_help #}
   {% elif s.route == "pc" and not s.server %}<p class="notice warn"><span>⚠ 연결된 PC가 없습니다. 아래 [PC 다시 고르기]에서 거쳐 갈 내 PC를 골라 주세요.</span></p>{# COPY:assist_src_pc_unlinked #}
+  {% elif s.is_codex %}<p class="muted t13">{{ s.server.name }}의 Codex CLI로 씁니다.</p>{# COPY:assist_src_codex_via #}
   {% elif s.route == "pc" %}<p class="muted t13">{{ s.base_url }} · {{ s.server.name }}을 거쳐 보냅니다.</p>{# COPY:assist_src_pc_via #}
   {% else %}<p class="muted t13">{{ s.base_url }}</p>{% endif %}
   {% if s.last_error %}<p class="error">⚠ 최근 오류: {{ s.error_label }}</p>{% endif %}{# COPY:assist_src_last_error #}

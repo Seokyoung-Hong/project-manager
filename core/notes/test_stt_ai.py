@@ -3,7 +3,7 @@
 import pytest
 from cryptography.fernet import Fernet
 
-from assist.models import AiJob, AiSource
+from assist.models import CODEX_URL, AiJob, AiSource
 from github.crypto import encrypt
 from notes import stt_link
 from notes.test_stt_link import _api, _beat, _link
@@ -60,6 +60,18 @@ def test_job_goes_only_to_owners_pc_with_ai_capability(client, org, member, admi
     job.refresh_from_db()
     forged.refresh_from_db()
     assert job.status == "running" and forged.status == "queued"
+
+
+def test_codex_source_sends_backend_without_url_or_key(client, org, member):
+    server, tok = _link(client, member)
+    job = _job(member, org, server)
+    AiSource.objects.filter(pk=job.source_id).update(base_url=CODEX_URL, model="")
+    got = _ai(client, tok)["ai_job"]
+    assert got["backend"] == "codex" and got["url"] == "" and got["api_key"] == ""
+    assert got["model"] == "" and got["timeout_s"] >= 180 and got["messages"] == MSGS
+    r = _report(client, tok, job.pk, status="failed", error="codex_auth")
+    job.refresh_from_db()
+    assert r.json()["status"] == "queued" and job.tried[0]["error"] == "codex_auth"
     assert "ai_job" not in _ai(client, tok, ai_job_id=job.pk)  # 하는 중이면 새로 안 준다
 
 

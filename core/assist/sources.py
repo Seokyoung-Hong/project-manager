@@ -38,7 +38,7 @@ def org_count(user, org, *, skip_job_id=None) -> int:
     return qs.count()
 
 
-def org_usable(user, org, *, skip_job_id=None) -> bool:
+def org_usable(user, org, *, skip_job_id=None, ignore_limit=False) -> bool:
     """조직 AI를 이 사람이 지금 쓸 수 있는가: 주소·모델, org_level, 멤버 하루 한도(관리자 예외)."""
     from orgs.services import is_admin, is_member
     from orgs.settings import effective
@@ -51,7 +51,14 @@ def org_usable(user, org, *, skip_job_id=None) -> bool:
     if effective("assist.org_level", org=org) == "admin" and not admin:
         return False
     limit = effective("assist.org_daily_limit", org=org)
-    return admin or not limit or org_count(user, org, skip_job_id=skip_job_id) < limit
+    return (
+        admin or ignore_limit or not limit or org_count(user, org, skip_job_id=skip_job_id) < limit
+    )
+
+
+def org_capped(user, org) -> bool:
+    """조직 AI가 하루 한도에만 막혔는가(오류 코드 rate)."""
+    return org_usable(user, org, ignore_limit=True) and not org_usable(user, org)
 
 
 def _plan(user, org, *, skip_job_id=None) -> list[Attempt]:

@@ -18,7 +18,7 @@ from django.utils import timezone
 from django.views.decorators.http import require_POST
 
 from assist import net
-from assist.models import AiSource, AllowedHost
+from assist.models import CODEX_URL, AiSource, AllowedHost
 from common.errors import ServiceError
 from github.crypto import decrypt, encrypt
 from notes.models import SttServer
@@ -44,6 +44,9 @@ ERROR_TEXT = {
     "pc_offline": "거쳐 갈 PC가 꺼져 있습니다.",  # COPY:assist_err_pc_offline
     "pc_unlinked": "연결된 PC가 없습니다.",  # COPY:assist_err_pc_unlinked
     "pc_error": "PC에서 AI 서버를 부르지 못했습니다.",  # COPY:assist_err_pc_error
+    "codex_missing": "PC에 Codex CLI가 없습니다. Codex를 설치한 뒤 다시 시도해 주세요.",  # COPY:assist_err_codex_missing
+    "codex_auth": "PC의 Codex가 로그인되어 있지 않습니다. PC에서 codex login을 실행해 주세요.",  # COPY:assist_err_codex_auth
+    "rate": "오늘 쓸 수 있는 조직 AI 횟수를 다 썼습니다. 내일 다시 쓰거나 개인 AI를 등록해 주세요.",  # COPY:assist_err_rate
     # 작업(자동완성) 쪽 코드. no_source는 "쓸 AI가 없음"과 "대상을 더 볼 수 없음" 둘 다다(assist.worker).
     "no_source": "쓸 수 있는 AI가 없거나 대상을 더 볼 수 없습니다. 설정의 AI 탭에서 개인 AI를 등록하거나 조직 관리자에게 조직 AI 등록을 요청해 주세요.",  # COPY:assist_err_no_source
     "no_worker": "AI 작업을 처리할 곳이 없어 멈췄습니다. 잠시 뒤 다시 요청해 주세요.",  # COPY:assist_err_no_worker
@@ -96,7 +99,8 @@ def _save_personal(user, src: AiSource, post) -> None:
     """개인 AI 저장. 주소 판정(net.classify)과 PC 소유자 불변식 1(§5.3)을 여기 한 곳에서 지킨다."""
     errors = {}
     name = post.get("name", "").strip()
-    url = post.get("base_url", "").strip().rstrip("/")
+    codex = post.get("backend") == "codex"
+    url = CODEX_URL if codex else post.get("base_url", "").strip().rstrip("/")
     model = post.get("model", "").strip()
     if not name or len(name) > 50:
         errors["name"] = "이름을 50자 이내로 입력해 주세요."  # COPY:assist_src_name_invalid
@@ -109,11 +113,20 @@ def _save_personal(user, src: AiSource, post) -> None:
     if errors:
         raise ServiceError(errors)
     try:
-        route = net.classify(url)
+        route = "pc" if codex else net.classify(url)
     except net.NetError as e:
         raise ServiceError({"base_url": error_text(e.code)}) from None
     server = None
-    if route == "pc":
+    if codex:
+        server = SttServer.objects.filter(pk=_int(post.get("server")), owner=user).first()
+        if server is None:
+            raise ServiceError(
+                {
+                    "server": "Codex는 내 PC에서 실행합니다. Codex가 설치·로그인된 내 PC를 골라 주세요."  # COPY:assist_src_codex_pc_required
+                }
+            )
+        src.api_key = ""  # 구독 토큰은 PC 밖으로 나오지 않는다 — 키를 받지 않는다
+    elif route == "pc":
         # 폼에는 내 PC만 나오지만 POST 위조 대비로 주인을 다시 본다(불변식 1).
         server = SttServer.objects.filter(pk=_int(post.get("server")), owner=user).first()
         if server is None:
@@ -122,7 +135,7 @@ def _save_personal(user, src: AiSource, post) -> None:
                     "server": "PC 안이나 사설망 주소는 내 PC를 거쳐 보냅니다. 거쳐 갈 내 PC를 골라 주세요."  # COPY:assist_src_pc_required
                 }
             )
-    key = post.get("api_key", "").strip()
+    key = "" if codex else post.get("api_key", "").strip()
     if key:
         try:
             src.api_key = _ENC + encrypt(key)
