@@ -104,6 +104,7 @@ def _payload(job) -> dict:
         "max_tokens": spec.max_tokens,
         "temperature": spec.temperature,
         "response_format": {"type": "json_object"} if spec.want_json else None,
+        "reasoning_effort": "none",  # 추론 모델이 max_tokens를 추론에 다 쓰지 않게(워커와 같다)
         "timeout_s": spec.timeout_s,
     }
 

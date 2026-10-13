@@ -120,12 +120,15 @@ def test_personal_key_decrypted_and_not_logged(on, member, task, fake, settings,
 
 
 def test_json_object_rejected_then_without(on, member, task, fake):
-    f = fake(http_400(), json.dumps({"options": ["a"]}))
+    f = fake(http_400(), http_400(), json.dumps({"options": ["a"]}))
     job = services.create_job(member, on, field="task.title", target=f"task:{task.pk}")
     run_once()
     job.refresh_from_db()
     assert job.status == "done"
-    assert "response_format" in f.calls[0][1] and "response_format" not in f.calls[1][1]
+    c = [x[1] for x in f.calls]
+    assert c[0]["reasoning_effort"] == "none" and "response_format" in c[0]
+    assert "reasoning_effort" not in c[1] and "response_format" in c[1]
+    assert "reasoning_effort" not in c[2] and "response_format" not in c[2]
 
 
 def test_bad_output_reask_then_next(on, member, task, fake):

@@ -217,12 +217,19 @@ def _ask(ep, messages, spec, state, *, want_json):
     }
     if want_json and not state.get("no_format"):
         payload["response_format"] = {"type": "json_object"}
+    if not state.get("no_reason"):
+        # 추론 모델(qwen3.5·gemma4 등)은 끄지 않으면 max_tokens를 추론에 다 써 content가 빈다
+        payload["reasoning_effort"] = "none"
     try:
         resp = chat(url, payload, api_key=key, org=org, timeout_s=spec.timeout_s)
     except NetError as e:
-        if "response_format" in payload and getattr(e, "status", None) == 400:
-            state["no_format"] = True
-            return _ask(ep, messages, spec, state, want_json=want_json)
+        if getattr(e, "status", None) == 400:  # 모르는 선택 항목을 거부하는 서버: 하나씩 빼고 다시
+            if "reasoning_effort" in payload:
+                state["no_reason"] = True
+                return _ask(ep, messages, spec, state, want_json=want_json)
+            if "response_format" in payload:
+                state["no_format"] = True
+                return _ask(ep, messages, spec, state, want_json=want_json)
         raise
     try:
         content = resp["choices"][0]["message"]["content"]
