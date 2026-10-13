@@ -890,7 +890,7 @@ _LIST_ITEM = re.compile(r"\s*([-*+]|\d+[.)])\s")
 
 
 def _keep_indent(text: str) -> str:
-    """줄 앞 탭·공백을 지워지지 않는 공백(U+00A0)으로. Markdown은 이어지는 줄의 들여쓰기를 지운다.
+    """줄 앞 탭·공백을 &nbsp; 표기로. Markdown(remarkable)은 이어지는 줄의 들여쓰기를 지우고, U+00A0 글자도 JS trim에 지워진다.
     목록 줄(중첩 들여쓰기가 의미를 가짐)과 ``` 코드 블록 안은 그대로 둔다."""
     out, fence = [], False
     for line in text.split("\n"):
@@ -899,7 +899,7 @@ def _keep_indent(text: str) -> str:
         elif not fence and line[:1] in (" ", "\t") and not _LIST_ITEM.match(line):
             body = line.lstrip(" \t")
             lead = line[: len(line) - len(body)].replace("\t", "    ")
-            line = "\u00a0" * len(lead) + body
+            line = "&nbsp;" * len(lead) + body
         out.append(line)
     return "\n".join(out)
 

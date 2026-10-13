@@ -1653,3 +1653,9 @@ form:has(option[value="person"]:checked) .person-only { display: flex; }
 .swagger-card .swagger-ui .wrapper { padding: 0; max-width: none; }
 /* 설명의 엔터를 그대로(표준 Markdown은 한 줄 줄바꿈을 공백으로 합친다). 들여쓰기는 서버가 swagger_spec에서 살린다 */
 .swagger-card .swagger-ui :is(.markdown, .renderedMarkdown) p { white-space: pre-wrap; }
+/* 좁은 화면: 응답 형식 선택 칸이 잘리지 않게, 중첩 속성 설명이 한두 글자씩 꺾이지 않게(넘치면 카드 안에서 가로 이동) */
+.swagger-card .swagger-ui select { max-width: 100%; }
+@media (max-width: 700px) {
+  .swagger-card { padding-inline: 0; }
+  .swagger-card .swagger-ui table.model td:last-child { min-width: 12em; }
+}

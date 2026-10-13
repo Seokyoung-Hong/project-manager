@@ -705,5 +705,5 @@ def test_swagger_spec_keeps_indent_but_not_lists_or_code():
     d = "첫 줄\n\t탭 들여쓰기\n  공백 둘\n- 목록\n  - 중첩 목록\n```\n    코드\n```"
     out = swagger_spec({"paths": {"/x": {"get": {"description": d}}}, "info": {"title": "t"}})
     lines = out["paths"]["/x"]["get"]["description"].split("\n")
-    assert lines[1] == "\u00a0" * 4 + "탭 들여쓰기" and lines[2] == "\u00a0\u00a0공백 둘"
+    assert lines[1] == "&nbsp;" * 4 + "탭 들여쓰기" and lines[2] == "&nbsp;&nbsp;공백 둘"
     assert lines[4] == "  - 중첩 목록" and lines[6] == "    코드"  # 목록·코드 블록은 그대로
