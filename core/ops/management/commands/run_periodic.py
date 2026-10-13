@@ -4,6 +4,8 @@ from django.core.management import call_command
 from django.core.management.base import BaseCommand
 from django.db import close_old_connections
 
+from assist import worker as assist_worker
+
 # (명령, 주기 초). 기동하자마자 한 번씩 돌고, 그 뒤 주기마다 돈다.
 # ponytail: sleep 루프라 정시가 아니고 실패 알림이 없다(로그만). 필요하면 cron이나 전용 스케줄러로.
 JOBS = [("github_reconcile", 300), ("purge_expired", 86400)]
@@ -28,6 +30,7 @@ class Command(BaseCommand):
     help = "주기 작업 실행기: github_reconcile 5분, purge_expired 하루."
 
     def handle(self, *args, **options):
+        assist_worker.start()  # AI 워커 스레드(IMPL-PLAN-12 §4.1)
         last = {}
         while True:
             run_due(last, time.monotonic(), self.stderr)
