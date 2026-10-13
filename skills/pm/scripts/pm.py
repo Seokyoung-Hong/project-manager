@@ -148,8 +148,9 @@ def call(method, path, query=None, body=None, key=None):
             err = json.loads(text)
         except ValueError:
             err = None
-        # 조직 구성원 정보가 비어 막혔다: 사용자에게 입력 화면 주소를 그대로 보여 준다
-        if isinstance(err, dict) and err.get("error") == "profile_required":
+        # 조직 구성원 정보(profile_required)·계정 실명(real_name_required)이 비어 막혔다:
+        # 사용자에게 입력 화면 주소가 든 core 문구를 그대로 보여 준다
+        if isinstance(err, dict) and err.get("error") in ("profile_required", "real_name_required"):
             raise SystemExit(err.get("message") or err.get("detail"))
         raise SystemExit(f"HTTP {e.code}: {text}")
     except URLError as e:

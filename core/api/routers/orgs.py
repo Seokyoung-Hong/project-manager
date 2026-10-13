@@ -7,6 +7,7 @@ from ninja.errors import HttpError
 from accounts.models import User
 from orgs.governance import governance_text
 from orgs.models import Invite, OrgMembership, Team
+from orgs.names import sort_by_name
 from orgs.requests import pending_out, request_change
 from orgs.services import (
     add_team_member,
@@ -74,7 +75,8 @@ def get_org(request, org_id: int):
 @router.get("/{org_id}/members", response=list[UserBrief])
 def members(request, org_id: int):
     org = org_or_404(request, org_id)
-    return [user_brief(u) for u in org.members.filter(is_active=True).order_by("display_name")]
+    users = sort_by_name(org.members.filter(is_active=True), org)
+    return [user_brief(u, org) for u in users]
 
 
 @router.get("/{org_id}/teams", response=list[TeamOut])

@@ -1,13 +1,15 @@
 from django.conf import settings
 
 from accounts.services import discord_dm_id
+from orgs.names import display_for
 
 
-def user_brief(u) -> dict | None:
+def user_brief(u, org=None) -> dict | None:
+    """display_name = org(객체·id)에서 보이는 이름(IMPL-PLAN-13 §4.4). org 없으면 계정 표시 이름."""
     if u is None:
         return None
     # 마감·검토 DM의 수신자가 여기서 나간다. 동의 없이 멈춘 사람은 None(봇은 미연결로 본다).
-    return {"id": u.pk, "display_name": u.display_name, "discord_user_id": discord_dm_id(u)}
+    return {"id": u.pk, "display_name": display_for(u, org), "discord_user_id": discord_dm_id(u)}
 
 
 def _iso(value):
@@ -34,10 +36,10 @@ def task_brief(t) -> dict:
             # 프로젝트 채널 게시(IMPL-PLAN-4 §4.5)가 목적지를 여기서 읽는다.
             "discord_channel_id": t.project.discord_channel_id,
         },
-        "assignee": user_brief(t.assignee),
+        "assignee": user_brief(t.assignee, t.project.org_id),
         # 지정 검토자. 검토 독촉(escalate)이 관리자보다 먼저 이 사람에게 보낸다.
         # 공개 범위·담당 팀이 바뀌어 검토자가 더는 못 보면 내보내지 않는다 → 독촉은 관리자에게 간다.
-        "reviewer": user_brief(t.reviewer) if _reviewer_sees(t) else None,
+        "reviewer": user_brief(t.reviewer, t.project.org_id) if _reviewer_sees(t) else None,
         "status": t.status,
         "priority": t.priority,
         "due_date": t.due_date.isoformat() if t.due_date else None,

@@ -14,6 +14,7 @@ from github.client import GitHubError
 from github.models import RepoIssue, TaskGitLink
 from github.services import can_view_repo, continuation, task_repo, task_repo_state, user_token
 from orgs.member_info import blocked_out
+from orgs.names import display_for
 from orgs.services import ai_denied
 from orgs.settings import effective
 from projects.services import can_view_project, visible_projects
@@ -293,7 +294,7 @@ def history(request, task_id: int):
     )
     # 못 보는 상위·하위 번호, 옮기기·연결·연동 프로젝트 id는 가린다(R5·R7·S2 — 웹과 같은 함수).
     mask = history_masker(logs, request.auth)
-    return [changelog_out(log, mask) for log in logs]
+    return [changelog_out(log, mask, task.project.org_id) for log in logs]
 
 
 def _widening_400(e: WideningRequired):
@@ -303,7 +304,9 @@ def _widening_400(e: WideningRequired):
         "error": "visibility_widening",
         "message": e.errors["confirm"],
         "widening_count": len(e.users),
-        "widening": [{"id": u.pk, "display_name": u.display_name} for u in e.users[:5]],
+        "widening": [
+            {"id": u.pk, "display_name": display_for(u, e.project.org_id)} for u in e.users[:5]
+        ],
     }
 
 

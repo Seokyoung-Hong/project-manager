@@ -21,8 +21,9 @@ def link_out(link) -> dict:
     return {"id": link.pk, "title": link.title, "url": link.url, "kind": link.kind}
 
 
-def changelog_out(log, mask=None) -> dict:
-    """mask: tasks.services.history_masker(logs, viewer) — 받는 사람이 못 보는 태스크·프로젝트를 가린다."""
+def changelog_out(log, mask=None, org=None) -> dict:
+    """mask: tasks.services.history_masker(logs, viewer) — 받는 사람이 못 보는 태스크·프로젝트를 가린다.
+    org: 행위자 이름을 보일 조직(없으면 계정 표시 이름)."""
     mask = mask or (lambda field, value: value)
     return {
         "id": log.pk,
@@ -30,7 +31,7 @@ def changelog_out(log, mask=None) -> dict:
         "old_value": mask(log.field, log.old_value),
         "new_value": mask(log.field, log.new_value),
         "note": log.note,
-        "actor": user_brief(log.actor),
+        "actor": user_brief(log.actor, org),
         "source": log.source,
         "created_at": log.created_at,
     }
@@ -53,6 +54,7 @@ def task_out(t, viewer=None) -> dict:
         sv = {"group": None, "subtasks": [], "done": done, "total": total, "hidden": total}
     attach_group_visible([t], viewer)  # 숨긴 상위는 group_id도 null(R5)
     d = task_brief(t)
+    org_id = t.project.org_id
     d.update(
         {
             "description": t.description,
@@ -62,7 +64,7 @@ def task_out(t, viewer=None) -> dict:
             "stopped_at": t.stopped_at,
             "completed_at": t.completed_at,
             "version": t.version,
-            "created_by": user_brief(t.created_by),
+            "created_by": user_brief(t.created_by, org_id),
             "created_at": t.created_at,
             "updated_at": t.updated_at,
             "checklist": [
@@ -76,7 +78,9 @@ def task_out(t, viewer=None) -> dict:
             # 태스크를 연결 프로젝트로 볼 수 있어도 주 프로젝트 문서까지 보게 되지는 않는다.
             "docs": [{"id": d.pk, "title": d.title} for d in task_docs(t, viewer)],
             # 담당 요청을 받은 사람이 아직 수락하지 않았다. 수락 전까지 assignee는 그대로다.
-            "pending_assignee": user_brief(pending) if (pending := pending_assignee(t)) else None,
+            "pending_assignee": user_brief(pending, org_id)
+            if (pending := pending_assignee(t))
+            else None,
             "children_count": children.count(),
             "group": (
                 {"id": sv["group"].pk, "number": sv["group"].number, "title": sv["group"].title}
@@ -89,7 +93,7 @@ def task_out(t, viewer=None) -> dict:
                     "number": s.number,
                     "title": s.title,
                     "status": s.status,
-                    "assignee": user_brief(s.assignee),
+                    "assignee": user_brief(s.assignee, org_id),
                     "due_date": s.due_date,
                     "due_after_group": s.due_after_group,
                 }
@@ -141,7 +145,7 @@ def project_out(p, stats=None, viewer=None, shown_teams=None) -> dict:
         "name": p.name,
         "purpose": p.purpose,
         "discord_channel_id": p.discord_channel_id,
-        "owners": [user_brief(u) for u in p.owners.all()],
+        "owners": [user_brief(u, p.org_id) for u in p.owners.all()],
         "teams": [_team_out(t, shown_teams) for t in p.teams.all()],
         "status": p.status,
         "status_label": p.status_label,
@@ -188,9 +192,9 @@ def request_out(r) -> dict:
         "body": r.body,
         "status": r.status,
         "status_label": r.get_status_display(),
-        "requested_by": user_brief(r.requested_by),
+        "requested_by": user_brief(r.requested_by, r.org_id),
         "team": {"id": r.team.pk, "name": r.team.name} if r.team_id else None,
-        "to_user": user_brief(r.to_user) if r.to_user_id else None,
+        "to_user": user_brief(r.to_user, r.org_id) if r.to_user_id else None,
         "task_id": r.task_id,
         "due_date": r.due_date,
         "response_note": r.response_note,
@@ -211,6 +215,6 @@ def attachment_out(a) -> dict:
         "replaces_id": a.replaces_id,
         "note": a.note,
         "url": f"{settings.SITE_URL}/api/attachments/{a.pk}/download",
-        "created_by": user_brief(a.created_by),
+        "created_by": user_brief(a.created_by, a.target_org_id),
         "created_at": a.created_at,
     }

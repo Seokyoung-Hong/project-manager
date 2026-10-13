@@ -104,6 +104,14 @@ class CoreClient:
             {"discord_user_id": did, "guild_id": guild_id, "channel_id": channel_id},
         )
 
+    def set_org_nickname(self, did: str, guild_id: str, nickname: str) -> dict:
+        """`/표시이름`이 부른다. 실행자 본인의 조직 표시 이름만 바뀐다(대상 사용자 인자 없음).
+        `{"org_id", "org_name", "display_name"}` — display_name은 바뀐 뒤 그 조직에서 보이는 이름."""
+        return self._bot(
+            "/orgs/nickname",
+            {"discord_user_id": did, "guild_id": guild_id, "nickname": nickname},
+        )
+
     # --- 봇 명령 (행위자는 연결된 사람. core가 discord_user_id로 찾는다) ---
 
     def _bot(self, path: str, body: dict) -> dict:

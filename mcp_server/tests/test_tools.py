@@ -172,6 +172,22 @@ def test_profile_required_message_passes_through():
     assert str(e.value) == body["detail"]
 
 
+def test_real_name_required_message_passes_through():
+    """계정 실명이 비어 core가 403 real_name_required를 주면 문구를 그대로 낸다(IMPL-PLAN-13 §4.4)."""
+    import httpx
+
+    from mcp_server.core_client import Core
+
+    body = {
+        "detail": "실명을 먼저 입력해 주세요: http://x/settings/profile",
+        "error": "real_name_required",
+    }
+    core = Core("t", transport=httpx.MockTransport(lambda r: httpx.Response(403, json=body)))
+    with pytest.raises(CoreError) as e:
+        core.get("/api/tasks/1")
+    assert str(e.value) == body["detail"]
+
+
 def test_blocked_orgs_header_is_shown():
     """목록 응답 헤더 X-Blocked-Orgs(막힌 조직 안내)를 결과에 붙인다."""
     import httpx

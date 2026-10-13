@@ -9,6 +9,7 @@ from ninja.errors import HttpError
 
 from notes import services as ns
 from orgs.models import Team
+from orgs.names import display_for
 from projects.services import visible_projects
 from tasks.services import get_visible_task
 
@@ -32,12 +33,14 @@ def note_out(n, *, viewer, body: bool = True, transcript: bool = False) -> dict:
         "project_name": n.project.name if n.project_id else "",
         "team_id": n.team_id,
         "created_on": n.created_on,
-        "created_by": n.created_by.display_name,
+        "created_by": display_for(n.created_by, n.org_id),
         "tags": n.tags,
         "version": n.version,
         "updated_at": n.updated_at,
         "task_ids": visible_task_ids(n, viewer),
-        "attendees": [{"id": u.pk, "display_name": u.display_name} for u in n.attendees.all()],
+        "attendees": [
+            {"id": u.pk, "display_name": display_for(u, n.org_id)} for u in n.attendees.all()
+        ],
         "recording": None
         if rec is None
         else {
