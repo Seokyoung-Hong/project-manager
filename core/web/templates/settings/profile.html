@@ -8,8 +8,8 @@
   <div class="notice warn" role="alert"><span aria-hidden="true">⚠</span><span>유달리를 이용하려면 실명을 입력해 주세요.{% if form.next.value %} 저장하면 이전 화면으로 이동합니다.{% endif %}</span></div>
   {% endif %}
   <form method="post" class="stack">{% csrf_token %}
-    {# 충돌 후보는 실명 칸 바로 아래. 후보 버튼은 아래 별도 폼(form="pick-real-name")을 제출한다 —
-       본 폼의 빈 실명 칸 HTML 검증에 막히지 않고, 실명 칸에서 Enter를 눌러도 후보가 눌리지 않는다. 서버 검증은 같다. #}
+    {% comment %}충돌 후보는 실명 칸 바로 아래. 후보 버튼은 아래 별도 폼(form="pick-real-name")을 제출한다 —
+       본 폼의 빈 실명 칸 HTML 검증에 막히지 않고, 실명 칸에서 Enter를 눌러도 후보가 눌리지 않는다. 서버 검증은 같다.{% endcomment %}
     {% with f=form.real_name %}{% include "_field.html" %}{% endwith %}
     {% if real_name_candidates %}{# COPY:real_name.candidates #}
     <div class="stack gap-2">

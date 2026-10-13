@@ -50,7 +50,11 @@ def test_profile_candidates_pick_and_clear(client, member):
     page = client.get("/settings/profile").content.decode()
     # 후보 버튼은 별도 폼(pick-real-name)을 제출한다 — 본 폼의 빈 실명 칸 HTML 검증에 막히지 않는다
     assert 'form="pick-real-name" name="real_name" value="김나"' in page
-    assert 'id="pick-real-name"' in page and 'name="display_name" value="팀원"' in page
+    assert (
+        "{#" not in page
+        and 'id="pick-real-name"' in page
+        and 'name="display_name" value="팀원"' in page
+    )
     # 후보 폼이 실제로 보내는 값 그대로
     client.post("/settings/profile", {"real_name": "김나", "display_name": "팀원", "next": ""})
     member.refresh_from_db()
