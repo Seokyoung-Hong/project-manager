@@ -75,7 +75,19 @@ def test_pc_route_requires_own_server(client, member, admin, fake_net):
     assert src.route == "direct" and src.server is None
 
 
-def test_codex_source_needs_own_pc_and_takes_no_url_or_key(client, member, admin, fake_net):
+def test_codex_option_hidden_and_ignored_when_off(client, member, fake_net):
+    client.force_login(member)
+    assert 'value="codex"' not in client.get(reverse("settings_ai")).content.decode()
+    pc = SttServer.objects.create(owner=member, name="내 PC", machine_id="m1")
+    url = "http://localhost:11434/v1"
+    assert _add(client, backend="codex", base_url=url, server=pc.pk).status_code == 302
+    assert not AiSource.objects.get(kind="personal").is_codex  # 꺼져 있으면 OpenAI 호환으로 저장
+
+
+def test_codex_source_needs_own_pc_and_takes_no_url_or_key(
+    client, member, admin, fake_net, settings
+):
+    settings.ASSIST_CODEX_ENABLED = True
     mine = SttServer.objects.create(owner=member, name="내 PC", machine_id="m1")
     other = SttServer.objects.create(owner=admin, name="남의 PC", machine_id="m2")
     client.force_login(member)

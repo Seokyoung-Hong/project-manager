@@ -45,9 +45,10 @@
   <div class="row">
     <button class="btn primary">고른 후보로 태스크 만들기</button>
     <button type="button" class="btn" data-ai-retry>후보 다시 뽑기</button>
+    <button type="button" class="btn" data-ai-close>닫기</button>
   </div>
   {% else %}
   <p class="muted">AI가 태스크 후보를 찾지 못했습니다. 원문 내용을 확인한 뒤 [후보 다시 뽑기]를 눌러 주세요.</p>
-  <div class="row"><button type="button" class="btn" data-ai-retry>후보 다시 뽑기</button></div>
+  <div class="row"><button type="button" class="btn" data-ai-retry>후보 다시 뽑기</button><button type="button" class="btn" data-ai-close>닫기</button></div>
   {% endif %}
 </form>

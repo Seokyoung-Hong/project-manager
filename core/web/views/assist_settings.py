@@ -7,6 +7,7 @@
 import ipaddress
 import re
 
+from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db import IntegrityError
@@ -84,6 +85,7 @@ def _page(request, status=200, **extra):
         "sources": _sources(request.user),
         "servers": _servers(request),
         "personal_max": AiSource.MAX_PERSONAL,
+        "codex_on": settings.ASSIST_CODEX_ENABLED,
         **extra,
     }
     ctx["personal_count"] = sum(s.kind == "personal" for s in ctx["sources"])
@@ -100,7 +102,7 @@ def _save_personal(user, src: AiSource, post) -> None:
     """개인 AI 저장. 주소 판정(net.classify)과 PC 소유자 불변식 1(§5.3)을 여기 한 곳에서 지킨다."""
     errors = {}
     name = post.get("name", "").strip()
-    codex = post.get("backend") == "codex"
+    codex = post.get("backend") == "codex" and settings.ASSIST_CODEX_ENABLED
     url = CODEX_URL if codex else post.get("base_url", "").strip().rstrip("/")
     model = post.get("model", "").strip()
     if not name or len(name) > 50:
@@ -196,7 +198,11 @@ def ai_row(request, source_id: int):
     src = _mine(request, source_id)
     if request.method != "POST":
         src.error_label = error_text(src.last_error)
-        return render(request, "settings/_ai_source.html", {"s": src, "servers": _servers(request)})
+        return render(
+            request,
+            "settings/_ai_source.html",
+            {"s": src, "servers": _servers(request), "codex_on": settings.ASSIST_CODEX_ENABLED},
+        )
     if request.POST.get("action") == "toggle":
         src.enabled = not src.enabled
         src.save(update_fields=["enabled"])

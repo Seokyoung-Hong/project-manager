@@ -226,6 +226,9 @@ class _Conn(http.client.HTTPConnection):
 
     def connect(self):
         self.sock = socket.create_connection((self._ip, self.port), CONNECT_S)
+        self.raw_sock = (
+            self.sock
+        )  # TLS 감싸기 전 소켓 — 감시 타이머가 핸드셰이크 중에도 끊을 수 있게
         self.sock.settimeout(self.timeout)
 
 
@@ -273,8 +276,8 @@ def _request(
     def expire():
         # 머리줄·본문을 1바이트씩 흘려 읽기마다 타임아웃을 피해도 전체 데드라인에 소켓을 끊는다
         expired.set()
-        for s in sock:
-            with contextlib.suppress(OSError):
+        for s in [*sock, getattr(conn, "raw_sock", None)]:
+            with contextlib.suppress(OSError, AttributeError):
                 s.shutdown(socket.SHUT_RDWR)
 
     watchdog = threading.Timer(timeout_s, expire)

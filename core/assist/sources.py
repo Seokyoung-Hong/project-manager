@@ -2,6 +2,7 @@
 
 from dataclasses import dataclass
 
+from django.conf import settings
 from django.utils import timezone
 
 
@@ -88,6 +89,8 @@ def _plan(user, org, *, skip_job_id=None) -> list[Attempt]:
                 out.append(Attempt("org", r))
         elif not r.enabled or not r.base_url:
             continue
+        elif r.is_codex and not settings.ASSIST_CODEX_ENABLED:
+            continue  # Codex 경로를 끈 배포: 이미 등록한 행도 건너뛴다(남은 것이 없으면 no_source)
         elif r.route == "pc":
             s = r.server  # PC를 끊으면 NULL, 남의 PC면 불변식 1 위반 → 뺀다
             if s is not None and s.owner_id == user.pk and online(s, timezone.now()):

@@ -91,9 +91,15 @@ def claim(server, codex: int | None = None) -> dict | None:
             if not ai_on(job.user, job.org):
                 _finish(job, "failed", error="org_disabled")
                 continue
-            keys = {a.key for a in _plan(job.user, job.org, skip_job_id=job.pk)}
-            if ("pc", job.source_id) not in keys:
+            now = {a.key: a for a in _plan(job.user, job.org, skip_job_id=job.pk)}
+            attempt = now.get(("pc", job.source_id))
+            if attempt is None:
                 _fall_through(job, "no_source")  # 그 사이 끈 공급원·권한·PC 바뀜 → 다음 AI
+                continue
+            if attempt.server is None or attempt.server.pk != server.pk:
+                # 공급원의 PC를 바꿨다: 옛 PC에는 주지 않고 되돌려 워커가 지금 PC로 다시 배정한다
+                job.status, job.route, job.server, job.claimed_at = "queued", "", None, None
+                job.save(update_fields=["status", "route", "server", "claimed_at"])
                 continue
             if job.source.is_codex and not codex:
                 _fall_through(job, "codex_link_update" if codex is None else "codex_missing")

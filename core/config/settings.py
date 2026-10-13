@@ -183,6 +183,8 @@ DISCORD_CLIENT_SECRET = os.environ.get("DISCORD_CLIENT_SECRET", "")
 CREDENTIAL_KEY = os.environ.get("CREDENTIAL_KEY", "")
 # AI 자동완성 워커 스레드 수(purge 컨테이너, IMPL-PLAN-12 §4.1). 0이면 워커를 띄우지 않는다(되돌리기).
 ASSIST_WORKERS = int(os.environ.get("ASSIST_WORKERS", "3"))
+# 개인 AI "Codex(내 구독, 내 PC)" 경로. 실제 Codex CLI에서 도구 경계·기동이 검증될 때까지 끈다(코드·시험은 남김).
+ASSIST_CODEX_ENABLED = os.environ.get("ASSIST_CODEX_ENABLED", "0") == "1"
 # 내 PC 연결 한 줄 설치(/link/install.ps1 등)가 302로 보내는 udally-link 저장소 원본 주소.
 # 저장소·커밋이 정해지면 커밋 sha로 고정한다(태그는 옮길 수 있다). IMPL-PLAN-11-local-stt-link §10.1
 # 옛 이름 STT_SCRIPT_BASE도 읽는다(udally-stt → udally-link, 새 이름 우선).

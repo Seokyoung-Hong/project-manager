@@ -7,7 +7,7 @@
   <p class="error" role="alert"><span aria-hidden="true">⚠</span> {{ error_text }}</p>
   <div class="row">
     <button type="button" class="btn sm" data-ai-retry>다시 쓰기</button>
-    {% if job.error in setup_errors %}<a class="btn sm" href="{% url 'settings_ai' %}">AI 설정 열기</a>{% endif %}{# COPY:ai_open_settings (임시) #}
+    {% if job.error in setup_errors %}<a class="btn sm" href="{% url 'settings_ai' %}">AI 설정 열기</a>{% endif %}{# COPY:ai_open_settings #}
     <button type="button" class="btn sm" data-ai-drop>버리기</button>{# COPY:ai_discard #}
   </div>
   {% elif shape == "line" %}

@@ -5,7 +5,7 @@
 {% with codex=v.is_codex|default:False %}
 <label class="field">종류<select class="select" name="backend" aria-describedby="ai-backend-help-{{ prefix }}">
   <option value="openai"{% if not codex and v.backend != "codex" %} selected{% endif %}>OpenAI 호환 AI 서버</option>
-  <option value="codex"{% if codex or v.backend == "codex" %} selected{% endif %}>Codex(내 구독, 내 PC)</option>
+  {% if codex_on or codex %}<option value="codex"{% if codex or v.backend == "codex" %} selected{% endif %}>Codex(내 구독, 내 PC)</option>{% endif %}
 </select></label>{# COPY:assist_src_backend #}
 <p id="ai-backend-help-{{ prefix }}" class="muted t12">Codex는 선택한 내 PC에 설치·로그인된 Codex CLI로 사용합니다. AI 서버 주소와 키는 입력하지 않습니다. 구독 인증 정보는 내 PC에 보관됩니다.</p>{# COPY:assist_src_codex_help #}
 <div class="stack ai-openai-only">
@@ -28,6 +28,6 @@
 <p id="ai-pc-help-{{ prefix }}" class="muted t12">PC 내부(localhost) 또는 사설망 주소는 선택한 내 PC를 거쳐 요청합니다. 공개 HTTPS 주소에는 PC 선택이 필요하지 않습니다.</p>{# COPY:assist_src_pc_help #}
 {% else %}
 <p class="muted t12 ai-openai-only">PC 내부 또는 사설망의 AI를 사용하려면 먼저 [<a href="{% url 'settings_stt' %}">내 PC 연결</a>]에서 PC를 연결해 주세요.</p>{# COPY:assist_src_pc_none #}
-<p class="muted t12 ai-codex-only">Codex를 사용하려면 먼저 [<a href="{% url 'settings_stt' %}">내 PC 연결</a>]에서 Codex가 설치된 PC를 연결해 주세요.</p>{# COPY:assist_src_codex_pc_none (임시) #}
+<p class="muted t12 ai-codex-only">Codex를 사용하려면 [<a href="{% url 'settings_stt' %}">내 PC 연결</a>]에서 Codex가 설치되어 있고 로그인된 PC를 먼저 연결해 주세요.</p>{# COPY:assist_src_codex_pc_none #}
 {% endif %}
 </div>

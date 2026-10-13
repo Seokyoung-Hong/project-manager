@@ -62,7 +62,8 @@ def test_job_goes_only_to_owners_pc_with_ai_capability(client, org, member, admi
     assert job.status == "running" and forged.status == "queued"
 
 
-def test_codex_source_sends_backend_without_url_or_key(client, org, member):
+def test_codex_source_sends_backend_without_url_or_key(client, org, member, settings):
+    settings.ASSIST_CODEX_ENABLED = True
     server, tok = _link(client, member)
     job = _job(member, org, server)
     AiSource.objects.filter(pk=job.source_id).update(base_url=CODEX_URL, model="")
@@ -75,8 +76,9 @@ def test_codex_source_sends_backend_without_url_or_key(client, org, member):
     assert "ai_job" not in _ai(client, tok, ai_job_id=job.pk)  # 하는 중이면 새로 안 준다
 
 
-def test_codex_job_skips_pc_without_codex_capability(client, org, member):
+def test_codex_job_skips_pc_without_codex_capability(client, org, member, settings):
     """옛 link(codex 표시 없음)·Codex 없는 PC에는 Codex 작업을 주지 않고 다음 AI로 넘긴다."""
+    settings.ASSIST_CODEX_ENABLED = True
     server, tok = _link(client, member)
     job = _job(member, org, server)
     AiSource.objects.filter(pk=job.source_id).update(base_url=CODEX_URL, model="")
@@ -94,6 +96,56 @@ def test_codex_job_skips_pc_without_codex_capability(client, org, member):
     assert "ai_job" not in _ai(client, tok, codex=0)  # 새 link인데 Codex CLI가 없음
     again.refresh_from_db()
     assert again.tried[0]["error"] == "codex_missing"
+
+
+def test_codex_off_skips_existing_codex_source(client, org, member):
+    """Codex 경로를 끈 배포(기본): 이미 등록한 Codex 행도 PC로 보내지 않고 건너뛴다."""
+    server, tok = _link(client, member)
+    job = _job(member, org, server)
+    AiSource.objects.filter(pk=job.source_id).update(base_url=CODEX_URL)
+    assert "ai_job" not in _ai(client, tok, codex=1)
+    job.refresh_from_db()
+    assert job.status == "queued" and job.tried[0]["error"] == "no_source"
+
+
+def test_claim_rebound_pc_is_not_sent_to_old_pc(org, member, monkeypatch):
+    """공급원의 PC를 A→B로 바꾸면 A는 대기 작업을 받지 않는다(Sol 재검토 재현)."""
+    from django.utils import timezone
+
+    from assist import pc
+    from notes.models import SttServer
+
+    monkeypatch.setattr(
+        "assist.prompts.build_messages", lambda *a: [{"role": "user", "content": "CANARY"}]
+    )
+    old = SttServer.objects.create(
+        owner=member, name="old", machine_id="old", last_seen_at=timezone.now()
+    )
+    new = SttServer.objects.create(
+        owner=member, name="new", machine_id="new", last_seen_at=timezone.now()
+    )
+    source = AiSource.objects.create(
+        user=member,
+        name="AI",
+        base_url="http://localhost:11434/v1",
+        model="m",
+        route="pc",
+        server=old,
+    )
+    job = AiJob.objects.create(
+        user=member,
+        org=org,
+        kind="field",
+        field="task.title",
+        route="pc",
+        source=source,
+        server=old,
+    )
+    source.server = new
+    source.save(update_fields=["server"])
+    assert pc.claim(old) is None
+    job.refresh_from_db()
+    assert job.status == "queued" and job.route == "" and job.server is None and job.tried == []
 
 
 def test_claim_rechecks_switch_and_source_before_sending(client, org, member):
