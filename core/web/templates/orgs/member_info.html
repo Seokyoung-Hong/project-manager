@@ -11,7 +11,7 @@
     <form method="post" action="{% url 'member_nickname' m.pk %}" class="stack">{% csrf_token %}
       <input type="hidden" name="next" value="{{ request.path }}">
       <label class="field">조직 표시 이름<input class="input" name="nickname" value="{{ m.nickname }}" maxlength="50" placeholder="{{ user.display_name }}"><span class="helptext">이 조직에서만 쓰는 이름입니다. 비워 두면 계정 표시 이름({{ user.display_name }})이 보입니다.</span></label>
-      <div><button class="btn primary">조직 표시 이름 저장</button></div>
+      <div><button class="btn">조직 표시 이름 저장</button></div>
     </form>
     {% endif %}
   </section>

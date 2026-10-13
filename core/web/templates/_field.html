@@ -1,0 +1,8 @@
+{% comment %}필드 하나 출력(_fields.html이 반복한다). 라벨 위, 입력 100%, 도움말은 아래 작은 글씨.{% endcomment %}
+{% if f.is_hidden %}{{ f }}{% elif f.widget_type == "checkbox" %}
+<label class="check">{{ f }} {{ f.label }}</label>
+{% for e in f.errors %}<div class="error">{{ e }}</div>{% endfor %}
+{% else %}
+<label class="field">{{ f.label }}{{ f }}{% if f.help_text %}<span class="helptext">{{ f.help_text|safe }}</span>{% endif %}</label>
+{% for e in f.errors %}<div class="error">{{ e }}</div>{% endfor %}
+{% endif %}

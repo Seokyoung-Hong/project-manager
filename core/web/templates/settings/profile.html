@@ -8,16 +8,20 @@
   <div class="notice warn" role="alert"><span aria-hidden="true">⚠</span><span>실명을 입력해야 유달리를 이용할 수 있습니다. 저장하면 보던 화면으로 돌아갑니다.</span></div>
   {% endif %}
   <form method="post" class="stack">{% csrf_token %}
-    {% include "_fields.html" %}
+    {# 충돌 후보는 실명 칸 바로 아래. 후보 버튼은 아래 별도 폼(form="pick-real-name")을 제출한다 —
+       본 폼의 빈 실명 칸 HTML 검증에 막히지 않고, 실명 칸에서 Enter를 눌러도 후보가 눌리지 않는다. 서버 검증은 같다. #}
+    {% with f=form.real_name %}{% include "_field.html" %}{% endwith %}
     {% if real_name_candidates %}{# COPY:real_name.candidates #}
-    {# 고르기 버튼은 같은 이름(real_name)으로 값을 보낸다 — 입력칸보다 뒤에 있어 버튼 값이 쓰인다(QueryDict는 마지막 값). #}
     <div class="stack gap-2">
-      <p class="t13 muted">조직마다 다른 실명이 입력되어 있었습니다. 맞는 이름을 고르거나 위 칸에 직접 입력해 주세요.</p>
-      <div class="row gap-2">{% for c in real_name_candidates %}<button class="btn sm" name="real_name" value="{{ c }}">{{ c }}(으)로 저장</button>{% endfor %}</div>
+      <p class="t13 muted">조직마다 다른 실명이 입력되어 있었습니다. 맞는 이름을 고르거나 위 실명 칸에 직접 입력해 주세요.</p>
+      <div class="row gap-2">{% for c in real_name_candidates %}<button class="btn sm" form="pick-real-name" name="real_name" value="{{ c }}">{{ c }} 저장</button>{% endfor %}</div>
     </div>
     {% endif %}
+    {% with f=form.display_name %}{% include "_field.html" %}{% endwith %}
+    {{ form.next }}
     <div><button class="btn primary">프로필 저장</button></div>
   </form>
+  {% if real_name_candidates %}<form method="post" id="pick-real-name" hidden>{% csrf_token %}<input type="hidden" name="display_name" value="{{ user.display_name }}"><input type="hidden" name="next" value="{{ form.next.value|default:'' }}"></form>{% endif %}
 </div>
 <div class="card">
   <h2>Discord 연결</h2>
@@ -34,7 +38,7 @@
   <p class="muted t13">해제하면 DM 알림이 멈춥니다. Discord에서 봇에게 <code>연결해제</code>를 보내도 됩니다.</p>
   {% else %}
   <p class="conn"><span class="conn-state off">미연결</span></p>
-  <form method="post" action="{% url 'discord_link' %}">{% csrf_token %}<button class="btn primary">Discord 연결 코드 받기</button></form>
+  <form method="post" action="{% url 'discord_link' %}">{% csrf_token %}<button class="btn">Discord 연결 코드 받기</button></form>
   <p class="muted t13">봇과 같은 서버에 있어야 하고, 서버 우클릭 → 개인정보 보호 설정에서 &lsquo;서버 멤버의 DM 허용&rsquo;이 켜져 있어야 DM이 도착합니다.</p>
   {% endif %}
 </div>

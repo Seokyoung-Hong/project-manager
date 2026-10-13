@@ -46,11 +46,12 @@ def test_profile_candidates_pick_and_clear(client, member):
     member.settings = {"real_name_candidates": ["김가", "김나"]}
     member.save()
     client.force_login(member)
-    assert "김나(으)로 저장" in client.get("/settings/profile").content.decode()
-    # 고르기 버튼은 입력칸 뒤에 같은 이름으로 온다 — 마지막 값이 쓰인다
-    client.post(
-        "/settings/profile", {"real_name": ["", "김나"], "display_name": "팀원", "next": ""}
-    )
+    page = client.get("/settings/profile").content.decode()
+    # 후보 버튼은 별도 폼(pick-real-name)을 제출한다 — 본 폼의 빈 실명 칸 HTML 검증에 막히지 않는다
+    assert 'form="pick-real-name" name="real_name" value="김나"' in page
+    assert 'id="pick-real-name"' in page and 'name="display_name" value="팀원"' in page
+    # 후보 폼이 실제로 보내는 값 그대로
+    client.post("/settings/profile", {"real_name": "김나", "display_name": "팀원", "next": ""})
     member.refresh_from_db()
     assert member.real_name == "김나" and "real_name_candidates" not in member.settings
 
@@ -78,10 +79,14 @@ def test_admin_member_list_shows_real_name_and_edits_nickname(client, org, admin
     m.refresh_from_db()
     assert m.nickname == "백엔드 팀원"
     assert "백엔드 팀원" in client.get(f"/orgs/{org.pk}/teams").content.decode()
-    # 실명으로 표시 조직: 폼 대신 배지, 저장은 거절
+    # 실명으로 표시 조직: 행마다 폼 대신 표 위 공통 안내 한 줄(조직 설정 링크), 실명 보조 행 생략, 저장은 거절
     client.post(f"/orgs/{org.pk}/member-fields", {"show_real_name": "on"})
     body = client.get(f"/orgs/{org.pk}/teams").content.decode()
-    assert "실명으로 표시 중" in body and f"/orgs/memberships/{m.pk}/nickname" not in body
+    assert f"/orgs/{org.pk}/settings#member-info" in body
+    assert (
+        f"/orgs/memberships/{m.pk}/nickname" not in body
+        and '<span class="muted">실명</span>' not in body
+    )
     client.post(f"/orgs/memberships/{m.pk}/nickname", {"nickname": "다른 이름"})
     m.refresh_from_db()
     assert m.nickname == "백엔드 팀원"

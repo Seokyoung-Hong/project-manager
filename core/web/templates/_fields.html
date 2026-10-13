@@ -1,8 +1,2 @@
-{% comment %}폼 필드 공통 출력. as_p 대신 이걸 쓴다 — 라벨 위, 입력 100%, 도움말은 아래 작은 글씨.{% endcomment %}
-{% for f in form %}{% if f.is_hidden %}{{ f }}{% elif f.widget_type == "checkbox" %}
-<label class="check">{{ f }} {{ f.label }}</label>
-{% for e in f.errors %}<div class="error">{{ e }}</div>{% endfor %}
-{% else %}
-<label class="field">{{ f.label }}{{ f }}{% if f.help_text %}<span class="helptext">{{ f.help_text|safe }}</span>{% endif %}</label>
-{% for e in f.errors %}<div class="error">{{ e }}</div>{% endfor %}
-{% endif %}{% endfor %}
+{% comment %}폼 필드 공통 출력. as_p 대신 이걸 쓴다 — 모양은 _field.html.{% endcomment %}
+{% for f in form %}{% include "_field.html" %}{% endfor %}

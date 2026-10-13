@@ -113,6 +113,8 @@
   window.addEventListener("submit", function (e) {
     var form = e.target, sub = e.submitter;
     var el = sub && sub.hasAttribute("data-confirm") ? sub : form.hasAttribute("data-confirm") ? form : null;
+    // data-confirm-if="선택자": 폼 안에서 이 선택자가 맞을 때만 묻는다(예: 옵션을 켤 때만).
+    if (el && el.dataset.confirmIf && !form.querySelector(el.dataset.confirmIf)) el = null;
     if (!el) return;
     if (form.dataset.confirmed) { delete form.dataset.confirmed; return; }
     e.preventDefault(); e.stopImmediatePropagation();

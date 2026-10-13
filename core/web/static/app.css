@@ -625,8 +625,14 @@ table.grid code { overflow-wrap: anywhere; }
 .member-skills-cell { min-width: 300px; }
 .member-skills-form { flex-wrap: nowrap; }
 .member-skills-input { width: 220px; min-width: 200px; max-width: 220px; flex: 0 1 220px; }
-.table-scroll { max-width: 100%; overflow-x: auto; }
+/* position: relative — 안쪽 .sr-only(절대 위치) 라벨이 페이지 폭을 넓히지 않고 표 스크롤 안에 머물게 한다 */
+.table-scroll { position: relative; max-width: 100%; overflow-x: auto; }
 .table-scroll-hint { display: none; }
+/* 조직 설정 → 구성원 정보 항목 표: 폼 640px 제한을 풀고 칸마다 최소 폭을 줘 형식 선택값이 잘리지 않게 한다 */
+#member-info form.stack { max-width: none; }
+.member-fields-table td:first-child .input { width: 72px; }
+.member-fields-table .select { min-width: 128px; }
+.member-fields-table td:nth-child(2) .input, .member-fields-table td:nth-child(5) .input, .member-fields-table .textarea { min-width: 180px; }
 
 /* ---- 13. 대화상자 ---- */
 /* 공용 확인 창(base.html #confirm, app.js askConfirm): 결과 문장 하나 + [행동] [그대로 두기] */

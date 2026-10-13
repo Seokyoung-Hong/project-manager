@@ -6,6 +6,9 @@
     <h2>멤버</h2>
   </div>
   <p class="muted t13">관리자 {{ admin_count }}명. 마지막 관리자는 역할을 바꾸거나 제거할 수 없습니다.</p>
+  {% if show_real_name %}{# COPY:members.real_name_locked #}
+  <div class="notice t13"><span class="grow">이 조직은 구성원 이름을 실명으로 표시하므로 조직 표시 이름을 바꿀 수 없습니다. <a href="{% url 'org_settings' org.pk %}#member-info">조직 설정 → 구성원 정보</a>에서 바꿉니다.</span></div>
+  {% endif %}
   <p class="table-scroll-hint">멤버 정보와 스킬 태그는 좌우로 이동해 확인해 주세요.</p>
   <div class="table-scroll member-table-scroll" tabindex="0" role="region" aria-label="조직 멤버 관리, 좌우로 스크롤 가능">
   <table class="grid member-table">
@@ -16,9 +19,9 @@
       {% with name=r.m.user|name_in:org %}
       <td>{{ name }}{% if r.pending %} <span class="badge">가입 전</span>{% endif %}<div class="muted t13">{{ r.m.user.display_name }} · {{ r.m.user.username }}</div>
         {# 관리자는 조직 옵션과 무관하게 계정 실명을 본다(IMPL-PLAN-13 §6.2). 이 화면은 관리자 분기만 그린다. #}
-        <div class="t13">{% if r.m.user.real_name %}<span class="muted">실명</span> {{ r.m.user.real_name }}{% elif not r.pending %}<span class="badge warn">실명 미입력</span>{% endif %}</div>{# COPY:members.real_name_missing #}
-        {% if show_real_name %}<span class="badge" title="조직 설정에서 실명으로 표시를 켜 두어 조직 표시 이름을 바꿀 수 없습니다.">실명으로 표시 중</span>{# COPY:members.real_name_locked #}
-        {% else %}<form method="post" action="{% url 'member_nickname' r.m.pk %}" class="row gap-2">{% csrf_token %}
+        {# 실명으로 표시하는 조직은 이름 칸이 곧 실명이라 실명 보조 행을 생략하고 미입력만 표시한다. #}
+        <div class="t13">{% if r.m.user.real_name %}{% if not show_real_name %}<span class="muted">실명</span> {{ r.m.user.real_name }}{% endif %}{% elif not r.pending %}<span class="badge warn">실명 미입력</span>{% endif %}</div>{# COPY:members.real_name_missing #}
+        {% if not show_real_name %}<form method="post" action="{% url 'member_nickname' r.m.pk %}" class="row gap-2">{% csrf_token %}
           <label class="sr-only" for="member-nick-{{ r.m.pk }}">{{ name }} 조직 표시 이름</label>
           <input class="input member-skills-input" id="member-nick-{{ r.m.pk }}" name="nickname" value="{{ r.m.nickname }}" maxlength="50" placeholder="{{ r.m.user.display_name }}">
           <button class="btn sm">표시 이름 저장</button>
