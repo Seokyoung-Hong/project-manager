@@ -61,12 +61,15 @@ def on_heartbeat(server, data: dict) -> dict:
     if current:
         live = AiJob.objects.filter(pk=current, server=server, status="running").exists()
         return {} if live else {"ai_cancel": True}  # 취소 중이거나 더는 이 PC 작업이 아님
-    job = claim(server)
+    job = claim(server, codex=bool(data.get("codex")))
     return {"ai_job": job} if job else {}
 
 
-def claim(server) -> dict | None:
-    """대기 중인 PC 작업 하나를 running으로 바꾸고 PC에 줄 내용을 돌려준다(불변식 2)."""
+def claim(server, codex: bool = False) -> dict | None:
+    """대기 중인 PC 작업 하나를 running으로 바꾸고 PC에 줄 내용을 돌려준다(불변식 2).
+
+    Codex 작업은 heartbeat에 codex=1(Codex CLI 있음)을 보낸 PC에만 준다. 아니면(옛 link 포함) 다음 AI로 넘긴다.
+    """
     mine = AiJob.objects.filter(status="queued", route="pc", server=server, user_id=server.owner_id)
     for pk in mine.order_by("created_at", "id").values_list("pk", flat=True)[:5]:
         with transaction.atomic():
@@ -77,6 +80,9 @@ def claim(server) -> dict | None:
                 .first()
             )
             if job is None:
+                continue
+            if not codex and job.source and job.source.is_codex:
+                _fall_through(job, "codex_missing")
                 continue
             try:
                 payload = _payload(job)

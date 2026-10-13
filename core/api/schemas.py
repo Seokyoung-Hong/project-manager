@@ -653,6 +653,7 @@ class SttHeartbeatIn(Schema):
     models: list[dict] = []
     # AI 자동완성(IMPL-PLAN-12 §6.2). ai=1인 PC에만 ai_job을 준다. ai_job_id = 지금 처리 중인 AI 작업.
     ai: int = 0
+    codex: int = 0  # Codex CLI가 있는 PC(udally-link 새 버전)만 1 — Codex 작업 배정 조건
     ai_job_id: int | None = None
 
 

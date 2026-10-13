@@ -66,13 +66,27 @@ def test_codex_source_sends_backend_without_url_or_key(client, org, member):
     server, tok = _link(client, member)
     job = _job(member, org, server)
     AiSource.objects.filter(pk=job.source_id).update(base_url=CODEX_URL, model="")
-    got = _ai(client, tok)["ai_job"]
+    got = _ai(client, tok, codex=1)["ai_job"]
     assert got["backend"] == "codex" and got["url"] == "" and got["api_key"] == ""
     assert got["model"] == "" and got["timeout_s"] >= 180 and got["messages"] == MSGS
     r = _report(client, tok, job.pk, status="failed", error="codex_auth")
     job.refresh_from_db()
     assert r.json()["status"] == "queued" and job.tried[0]["error"] == "codex_auth"
     assert "ai_job" not in _ai(client, tok, ai_job_id=job.pk)  # 하는 중이면 새로 안 준다
+
+
+def test_codex_job_skips_pc_without_codex_capability(client, org, member):
+    """옛 link(codex 표시 없음)·Codex 없는 PC에는 Codex 작업을 주지 않고 다음 AI로 넘긴다."""
+    server, tok = _link(client, member)
+    job = _job(member, org, server)
+    AiSource.objects.filter(pk=job.source_id).update(base_url=CODEX_URL, model="")
+    plain = _job(member, org, server)  # 같은 PC의 OpenAI 호환 작업은 그대로 받는다
+    got = _ai(client, tok)
+    assert got["ai_job"]["id"] == plain.pk
+    job.refresh_from_db()
+    assert job.status == "queued" and job.route == "" and job.server is None
+    assert job.tried == [{"route": "pc", "source_id": job.source_id, "error": "codex_missing"}]
+    assert AiSource.objects.get(pk=job.source_id).last_error == "codex_missing"
 
 
 def test_cancel_is_delivered_and_finishes_once(client, org, member):
