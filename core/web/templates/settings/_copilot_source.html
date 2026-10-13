@@ -1,0 +1,9 @@
+{# AI 사용 순서의 GitHub Copilot 행 아래쪽(모델 고르기). s: AiSource(is_copilot). 키 칸은 없다. #}
+{% if copilot_on %}
+<form method="post" action="{% url 'settings_ai_copilot_model' s.pk %}" class="row">{% csrf_token %}
+  <label class="field">모델<select class="select" name="model">{% for m in copilot_models %}<option value="{{ m }}"{% if m == s.model %} selected{% endif %}>{{ m }}</option>{% endfor %}</select></label>{# COPY:assist_copilot_model #}
+  <div><button class="btn sm">모델 적용</button></div>{# COPY:assist_copilot_model_apply #}
+</form>
+{% else %}
+<p class="notice warn"><span>⚠ 현재 GitHub Copilot 연결을 사용할 수 없어 이 AI는 건너뜁니다.</span></p>{# COPY:assist_copilot_off #}
+{% endif %}

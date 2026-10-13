@@ -16,4 +16,11 @@ def ai_on(request):
             return False
         return _ai_on(user, current_org(request))
 
-    return {"ai_on": SimpleLazyObject(get)}
+    from . import copilot
+
+    on = copilot.enabled()  # 설정값만 본다(질의 없음)
+    return {
+        "ai_on": SimpleLazyObject(get),
+        "copilot_on": on,
+        "copilot_models": copilot.models() if on else [],
+    }

@@ -2,6 +2,7 @@
 
 from django.urls import path
 
+from .views import assist_copilot
 from .views import assist_settings as v
 
 urlpatterns = [
@@ -17,6 +18,12 @@ urlpatterns = [
     path("settings/ai/<int:source_id>/delete", v.ai_delete, name="settings_ai_delete"),
     path("settings/ai/<int:source_id>/test", v.ai_test, name="settings_ai_test"),
     path("settings/ai/<int:source_id>/models", v.ai_models, name="settings_ai_models"),
+    path("settings/ai/copilot", assist_copilot.copilot_connect, name="settings_ai_copilot"),
+    path(
+        "settings/ai/<int:source_id>/copilot-model",
+        assist_copilot.copilot_model,
+        name="settings_ai_copilot_model",
+    ),
     # 조직 AI [연결 시험]·[모델 불러오기](조직 관리자)
     path("orgs/<int:org_id>/settings/assist-test", v.org_assist_test, name="org_assist_test"),
     path("orgs/<int:org_id>/settings/assist-models", v.org_assist_models, name="org_assist_models"),

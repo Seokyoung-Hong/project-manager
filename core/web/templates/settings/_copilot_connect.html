@@ -1,0 +1,7 @@
+{# 개인 AI 추가 > GitHub Copilot(assist/copilot.py). 꺼진 배포(ASSIST_COPILOT_ENABLED·런타임 주소 없음)에서는 아무것도 그리지 않는다. #}
+{% if copilot_on %}
+<div class="stack">
+  <p class="muted t13">연결된 GitHub 계정의 Copilot 구독으로 유달리 서버가 요청합니다. 키 입력과 내 PC 연결은 필요하지 않으며, 사용량은 내 Copilot 구독에 포함됩니다.</p>{# COPY:assist_copilot_help #}
+  <form method="post" action="{% url 'settings_ai_copilot' %}">{% csrf_token %}<button class="btn">GitHub Copilot으로 연결</button></form>{# COPY:assist_copilot_connect #}
+</div>
+{% endif %}

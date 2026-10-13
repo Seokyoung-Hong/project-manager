@@ -17,7 +17,7 @@ _PATTERNS = [
     # GitHub 토큰. 설치(ghs_)·사용자(ghu_)·refresh(ghr_)는 접두어로 구분된다.
     re.compile(r"gh[sur]_[A-Za-z0-9]{20,}"),
     re.compile(
-        r"(?i)(GITHUB_APP_PRIVATE_KEY|GITHUB_CLIENT_SECRET|GITHUB_WEBHOOK_SECRET|CREDENTIAL_KEY)=\S+"
+        r"(?i)(GITHUB_APP_PRIVATE_KEY|GITHUB_CLIENT_SECRET|GITHUB_WEBHOOK_SECRET|CREDENTIAL_KEY|COPILOT_CONNECTION_TOKEN)=\S+"
     ),
     re.compile(r"-----BEGIN [A-Z ]*PRIVATE KEY-----.*?-----END [A-Z ]*PRIVATE KEY-----", re.S),
 ]

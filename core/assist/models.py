@@ -83,6 +83,12 @@ class AiSource(models.Model):
     def is_codex(self) -> bool:
         return self.base_url == CODEX_URL
 
+    @property
+    def is_copilot(self) -> bool:
+        from .copilot import URL
+
+        return self.base_url == URL
+
 
 class AiJob(models.Model):
     """AI 작업 한 번(§3.2). 메시지 본문은 저장하지 않는다 — 실행 직전에 요청자 권한으로 다시 조립한다(§10.2)."""
