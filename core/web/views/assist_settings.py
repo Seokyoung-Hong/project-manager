@@ -18,10 +18,10 @@ from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
-from assist import codex_login, net
+from assist import codex_login, net, oauth
 from assist.models import CODEX_URL, AiSource, AllowedHost
 from common.errors import ServiceError
-from github.crypto import decrypt, encrypt
+from github.crypto import encrypt
 from notes import transcription as tx
 from notes.models import SttServer
 from ops import services as ops_services
@@ -87,6 +87,7 @@ def _page(request, status=200, **extra):
         "servers": _servers(request),
         "personal_max": AiSource.MAX_PERSONAL,
         "codex_on": settings.ASSIST_CODEX_ENABLED,
+        "oauth_providers": oauth.available(),
         **extra,
     }
     ctx["personal_count"] = sum(s.kind == "personal" for s in ctx["sources"])
@@ -153,8 +154,8 @@ def _save_personal(user, src: AiSource, post) -> None:
                     "api_key": "서버의 암호화 설정이 없어 키를 저장할 수 없습니다. 서비스 운영자에게 문의해 주세요."  # COPY:assist_src_key_no_crypto
                 }
             ) from None
-    elif post.get("clear_key") == "on":
-        src.api_key = ""
+    elif post.get("clear_key") == "on" or (url != src.base_url and oauth.is_hf_blob(src.api_key)):
+        src.api_key = ""  # HF 토큰(갱신 토큰 포함)을 다른 주소로 보내지 않는다
     if url != src.base_url or route != src.route:
         src.last_error, src.last_ok_at = "", None
     src.name, src.base_url, src.model, src.route, src.server = name, url, model, route, server
@@ -291,6 +292,8 @@ def ai_delete(request, source_id: int):
         return HttpResponseForbidden()
     src.delete()
     messages.success(request, f"개인 AI ‘{src.name}’을 삭제했습니다.")  # COPY:assist_src_deleted
+    if note := oauth.REVOKE_NOTE.get(src.base_url):
+        messages.info(request, note)
     return redirect("settings_ai")
 
 
@@ -300,8 +303,8 @@ def _source_result(request, source_id: int, *, fill: bool):
     # 화면이 버튼을 그리지 않는다(PC 경로는 v1에서 시험 없음, §6.2)
     if src.kind != "personal" or src.route != "direct":
         return HttpResponseForbidden()
-    key = decrypt(src.api_key[len(_ENC) :]) if src.api_key.startswith(_ENC) else ""
     try:
+        key = oauth.source_key(src)  # HF OAuth면 만료 전에 갱신
         models = net.list_models(src.base_url, api_key=key, org=False, timeout_s=5)
     except net.NetError as e:
         src.last_error = e.code

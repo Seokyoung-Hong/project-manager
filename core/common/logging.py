@@ -16,8 +16,10 @@ _PATTERNS = [
     re.compile(r"/webhooks/\d+/[A-Za-z0-9_\-]{20,}"),
     # GitHub 토큰. 설치(ghs_)·사용자(ghu_)·refresh(ghr_)는 접두어로 구분된다.
     re.compile(r"gh[sur]_[A-Za-z0-9]{20,}"),
+    # 개인 AI OAuth로 받은 OpenRouter 키(sk-or-)·HF 토큰(hf_)(assist/oauth.py).
+    re.compile(r"sk-or-[A-Za-z0-9_-]{20,}|hf_[A-Za-z0-9_]{20,}"),
     re.compile(
-        r"(?i)(GITHUB_APP_PRIVATE_KEY|GITHUB_CLIENT_SECRET|GITHUB_WEBHOOK_SECRET|CREDENTIAL_KEY)=\S+"
+        r"(?i)(GITHUB_APP_PRIVATE_KEY|GITHUB_CLIENT_SECRET|GITHUB_WEBHOOK_SECRET|CREDENTIAL_KEY|HF_OAUTH_CLIENT_SECRET)=\S+"
     ),
     re.compile(r"-----BEGIN [A-Z ]*PRIVATE KEY-----.*?-----END [A-Z ]*PRIVATE KEY-----", re.S),
 ]

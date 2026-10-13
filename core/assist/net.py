@@ -8,6 +8,7 @@ IP 고정·리다이렉트 거부·1MB 상한. 기존 _stt_call·validate_stt_ur
 - http.client를 직접 쓰므로 리다이렉트를 따라가지 않고 프록시 환경 변수도 보지 않는다.
 """
 
+import base64
 import contextlib
 import http.client
 import ipaddress
@@ -16,7 +17,7 @@ import socket
 import ssl
 import threading
 import time
-from urllib.parse import urlsplit
+from urllib.parse import urlencode, urlsplit
 
 from common.errors import ServiceError
 
@@ -256,8 +257,18 @@ def _status_error(status: int) -> NetError:
 
 
 def _request(
-    method: str, base_url: str, path: str, *, body=None, api_key="", org=False, timeout_s=30
+    method: str,
+    base_url: str,
+    path: str,
+    *,
+    body=None,
+    api_key="",
+    org=False,
+    timeout_s=30,
+    form=None,
+    basic=None,
 ) -> dict:
+    """form: x-www-form-urlencoded 본문(OAuth 토큰 교환), basic: (id, 비밀) Basic 인증."""
     parts, ip = check(base_url, org=org)
     cls = _TLSConn if parts.scheme == "https" else _Conn
     port = parts.port or (443 if parts.scheme == "https" else 80)
@@ -265,10 +276,16 @@ def _request(
     headers = {"Accept": "application/json"}
     if api_key:
         headers["Authorization"] = f"Bearer {api_key}"
+    elif basic:
+        pair = base64.b64encode(f"{basic[0]}:{basic[1]}".encode()).decode()
+        headers["Authorization"] = f"Basic {pair}"
     data = None
     if body is not None:
         data = json.dumps(body).encode()
         headers["Content-Type"] = "application/json"
+    elif form is not None:
+        data = urlencode(form).encode()
+        headers["Content-Type"] = "application/x-www-form-urlencoded"
     deadline = time.monotonic() + timeout_s
     expired = threading.Event()
     sock = []  # 응답이 Connection: close면 getresponse 뒤 conn.sock이 None이 되므로 미리 잡아 둔다

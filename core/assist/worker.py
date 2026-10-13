@@ -195,8 +195,9 @@ def advance(job, token, code=None, status_from=("running",)):
 
 def _endpoint(job, route):
     """(주소, 키, 모델, 조직 AI 여부). 키는 여기서만 복호화한다."""
-    from github.crypto import decrypt
     from orgs.settings import effective, secret_value
+
+    from . import oauth
 
     if route == "org":
         return (
@@ -206,7 +207,7 @@ def _endpoint(job, route):
             True,
         )
     s = job.source
-    key = decrypt(s.api_key[4:]) if (s.api_key or "").startswith("enc:") else ""
+    key = oauth.source_key(s)  # HF OAuth면 만료 전에 갱신
     return s.base_url, key, s.model, False
 
 

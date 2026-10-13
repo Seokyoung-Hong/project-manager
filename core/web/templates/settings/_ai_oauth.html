@@ -1,0 +1,10 @@
+{# 키 없이 로그인으로 개인 AI 연결(assist/oauth.py). oauth_providers: 버튼을 그릴 공급자. 문구는 임시(COPY:키). #}
+{% if oauth_providers %}
+<div class="stack">
+  <p class="muted t13">AI 서비스 계정으로 로그인해 키를 복사하지 않고 개인 AI를 연결할 수 있습니다. 연결하면 해당 서비스의 키 또는 접근 권한이 암호화되어 저장되며, 업무 내용은 유달리 서버가 해당 서비스로 전송합니다. 요금과 처리 국가는 해당 서비스의 조건에 따릅니다.</p>{# COPY:assist_oauth_help #}
+  <div class="row">
+    {% if "openrouter" in oauth_providers %}<form method="post" action="{% url 'settings_ai_oauth' 'openrouter' %}">{% csrf_token %}<button class="btn">OpenRouter 계정으로 연결</button></form>{# COPY:assist_oauth_openrouter #}{% endif %}
+    {% if "hf" in oauth_providers %}<form method="post" action="{% url 'settings_ai_oauth' 'hf' %}">{% csrf_token %}<button class="btn">Hugging Face 계정으로 연결</button></form>{# COPY:assist_oauth_hf #}{% endif %}
+  </div>
+</div>
+{% endif %}

@@ -2,6 +2,7 @@
 
 from django.urls import path
 
+from .views import assist_oauth as oa
 from .views import assist_settings as v
 
 urlpatterns = [
@@ -20,6 +21,13 @@ urlpatterns = [
     path(
         "settings/ai/<int:source_id>/codex", v.ai_codex, name="settings_ai_codex"
     ),  # GET 로그인 상태·POST action=login|logout
+    # OAuth로 개인 AI 연결(OpenRouter·Hugging Face). 콜백 주소는 assist.oauth.callback_url과 같아야 한다.
+    path("settings/ai/oauth/<str:provider>", oa.ai_oauth_start, name="settings_ai_oauth"),
+    path(
+        "settings/ai/oauth/<str:provider>/callback",
+        oa.ai_oauth_callback,
+        name="settings_ai_oauth_callback",
+    ),
     # 조직 AI [연결 시험]·[모델 불러오기](조직 관리자)
     path("orgs/<int:org_id>/settings/assist-test", v.org_assist_test, name="org_assist_test"),
     path("orgs/<int:org_id>/settings/assist-models", v.org_assist_models, name="org_assist_models"),
