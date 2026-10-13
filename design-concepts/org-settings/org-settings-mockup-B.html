@@ -1,0 +1,601 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>조직 설정 시안 B</title>
+<style>
+/* ---- 토큰: core/web/static/app.css와 같은 값 ---- */
+:root {
+  color-scheme: light;
+  --c-bg: #F8F5EE; --c-surface: #FFFDF8; --c-soft: #EFE9DC; --c-fill: #E6E0D1; --c-line: #E2DFD4; --c-line-strong: #8A8677;
+  --c-ink: #33372D; --c-muted: #64655A; --c-faint: #8A8A7C;
+  --c-accent: #A63E2E; --c-accent-strong: #873022; --c-accent-soft: #F6E1D6; --c-on-accent: #FFFDF6;
+  --c-yellow: #F5D575; --c-sage: #DCE8D5; --c-sage-strong: #8CAA73; --c-coral: #F4C1AC;
+  --c-danger: #A52F2B; --c-danger-soft: #FBE3DE; --c-success: #2F6B3A; --c-success-soft: #DCE8D5;
+  --c-warning: #84520A; --c-warning-soft: #FBEFCB; --c-info: #285480; --c-info-soft: #E3ECF5;
+  --f-display: 'Jua', Pretendard, sans-serif;
+  --f-body: Pretendard, -apple-system, 'Apple SD Gothic Neo', 'Noto Sans KR', 'Malgun Gothic', sans-serif;
+  --f-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --fs-2xs: 11px; --fs-xs: 12px; --fs-sm: 13px; --fs-md: 14px; --fs-task: 15px; --fs-lg: 16px; --fs-xl: 20px; --fs-2xl: 24px; --fs-3xl: 30px; --fs-page: 38px;
+  --sp-1: 4px; --sp-2: 8px; --sp-3: 12px; --sp-4: 16px; --sp-5: 20px; --sp-6: 24px; --sp-8: 32px; --sp-10: 40px;
+  --r-xs: 6px; --r-sm: 8px; --r-md: 12px; --r-lg: 18px; --r-xl: 24px; --r-pill: 999px;
+  --sh-1: 0 2px 0 rgba(51, 55, 45, .04); --sh-2: 0 6px 15px rgba(51, 55, 45, .08); --sh-pop: 0 16px 36px rgba(34, 41, 31, .16);
+  --scrim: rgba(36, 41, 33, .38);
+  --dur-fast: 180ms; --dur-base: 200ms; --ease: ease; --ease-out: cubic-bezier(.2, .8, .2, 1);
+  --header-h: 80px;
+  --z-sticky: 4; --z-header: 10; --z-overlay: 20; --z-dropdown: 30; --z-toast: 60;
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --c-bg: #242921; --c-surface: #30362C; --c-soft: #3C4434; --c-fill: #465040; --c-line: #4A5143; --c-line-strong: #8A9480;
+  --c-ink: #F5F0DF; --c-muted: #BDC2B3; --c-faint: #8F9984;
+  --c-accent: #FFC3AD; --c-accent-strong: #FFD8C8; --c-accent-soft: #533B30; --c-on-accent: #3A1E16;
+  --c-yellow: #675723; --c-sage: #3D563C; --c-sage-strong: #8CAA73; --c-coral: #654638;
+  --c-danger: #FFB2A6; --c-danger-soft: #4A2A26; --c-success: #A9D99A; --c-success-soft: #34472F;
+  --c-warning: #F5CA86; --c-warning-soft: #4A3D22; --c-info: #A9CDF4; --c-info-soft: #2A3A4C;
+  --sh-1: 0 2px 0 rgba(0, 0, 0, .12); --sh-2: 0 6px 15px rgba(0, 0, 0, .22); --sh-pop: 0 16px 36px rgba(0, 0, 0, .40);
+  --scrim: rgba(0, 0, 0, .52);
+}
+
+/* ---- 기본 ---- */
+* { box-sizing: border-box; }
+html { font-family: var(--f-body); font-size: var(--fs-md); line-height: 1.55; color: var(--c-ink); background: var(--c-bg); word-break: keep-all; }
+body { margin: 0; background: var(--c-bg); height: 100vh; display: flex; flex-direction: column; }
+button, input, select, textarea { font: inherit; color: inherit; }
+a { color: var(--c-accent); text-underline-offset: 2px; }
+h1, h2, h3 { margin: 0; font-weight: 700; letter-spacing: -0.02em; text-wrap: balance; }
+p { margin: 0; text-wrap: pretty; }
+:focus-visible { outline: 3px solid var(--c-accent); outline-offset: 2px; }
+.muted { color: var(--c-muted); } .t12 { font-size: var(--fs-xs); line-height: 18px; } .t13 { font-size: var(--fs-sm); line-height: 19px; }
+.row { display: flex; flex-wrap: wrap; gap: var(--sp-2) var(--sp-4); align-items: center; }
+.stack { display: flex; flex-direction: column; gap: var(--sp-2); }
+.mono { font-family: var(--f-mono); }
+
+/* ---- 시안 조작 막대(시안 전용, 앱 아님) ---- */
+.mock-bar { flex: none; display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2) var(--sp-4); padding: var(--sp-2) var(--sp-4); background: var(--c-ink); color: var(--c-bg); font-size: var(--fs-sm); }
+.mock-bar b { font-weight: 700; margin-right: var(--sp-2); }
+.mock-bar .seg { display: inline-flex; gap: 2px; padding: 2px; border-radius: var(--r-pill); background: color-mix(in srgb, var(--c-bg) 18%, transparent); }
+.mock-bar .seg button { border: 0; background: none; color: inherit; padding: 4px 12px; border-radius: var(--r-pill); cursor: pointer; }
+.mock-bar .seg button[aria-pressed="true"] { background: var(--c-bg); color: var(--c-ink); font-weight: 700; }
+body.shot .mock-bar { display: none; }
+.stage { flex: 1; min-height: 0; display: flex; justify-content: center; background: var(--c-bg); }
+body.narrow .stage { background: var(--c-fill); padding: var(--sp-4) 0; }
+.app { container: app / inline-size; position: relative; width: 100%; min-width: 0; height: 100%; overflow: hidden; display: flex; flex-direction: column; background: var(--c-bg); }
+body.narrow .app { width: 390px; border-radius: var(--r-xl); box-shadow: var(--sh-pop); }
+
+/* ---- 셸 머리줄 ---- */
+.header { flex: none; height: var(--header-h); display: flex; align-items: center; gap: var(--sp-5); padding: 0 var(--sp-8); border-bottom: 1px solid var(--c-line); background: var(--c-bg); }
+.logo { font-family: var(--f-display); font-size: var(--fs-2xl); display: inline-flex; align-items: center; gap: var(--sp-2); }
+.logo small { font-family: var(--f-body); font-size: var(--fs-sm); color: var(--c-muted); font-weight: 600; }
+.nav { display: flex; gap: var(--sp-1); padding: 5px; border-radius: var(--r-pill); background: var(--c-soft); overflow-x: auto; }
+.nav a { display: inline-flex; align-items: center; height: 40px; padding: 0 15px; border-radius: var(--r-pill); color: var(--c-muted); text-decoration: none; white-space: nowrap; }
+.nav a[aria-current="page"] { background: var(--c-surface); color: var(--c-ink); font-weight: 700; box-shadow: var(--sh-2); }
+.avatar { margin-left: auto; min-width: 40px; height: 40px; padding: 0 10px; border-radius: var(--r-pill); background: var(--c-soft); border: 1px solid var(--c-line); display: inline-flex; align-items: center; justify-content: center; font-weight: 700; }
+.scroller { flex: 1; min-height: 0; overflow-y: auto; }
+
+/* ---- 공통 부품(app.css 그대로) ---- */
+.page-head { display: flex; flex-direction: column; gap: 2px; }
+.page-head > h1 { font-family: var(--f-display); font-weight: 400; font-size: var(--fs-page); line-height: 1.25; align-self: flex-start; position: relative; z-index: 0; }
+.page-head > h1::after { content: ""; position: absolute; z-index: -1; left: -4px; right: -8px; bottom: 4px; height: 14px; background: var(--c-yellow); border-radius: 10px 4px 12px 6px; transform: rotate(-1deg); opacity: .85; }
+.card { background: var(--c-surface); border: 1px solid var(--c-line); border-radius: var(--r-lg); padding: var(--sp-6); display: flex; flex-direction: column; gap: var(--sp-4); min-width: 0; }
+.card > h2, .card-head h2 { font-family: var(--f-display); font-weight: 400; font-size: var(--fs-2xl); line-height: 1.35; }
+.card-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--sp-2) var(--sp-4); }
+.box { background: var(--c-soft); border: 1px solid var(--c-line); border-radius: var(--r-lg); padding: var(--sp-4); }
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 40px; padding: 0 18px; border-radius: var(--r-pill); border: 1px solid var(--c-line); background: var(--c-surface); color: var(--c-ink); font-weight: 600; cursor: pointer; text-decoration: none; white-space: nowrap; transition: background var(--dur-fast) var(--ease); }
+.btn:hover { background: var(--c-soft); } .btn:active { transform: translateY(1px); }
+.btn.primary { background: var(--c-accent); border-color: var(--c-accent); color: var(--c-on-accent); }
+.btn.primary:hover { background: var(--c-accent-strong); }
+.btn.sm { height: 36px; padding: 0 14px; font-size: var(--fs-sm); }
+.btn.link { height: auto; padding: 0; border: 0; background: none; color: var(--c-accent); font-weight: 600; }
+.btn.link:hover { text-decoration: underline; }
+.btn.danger { border-color: var(--c-danger); color: var(--c-danger); }
+.btn.danger:hover { background: var(--c-danger-soft); }
+.input, .select, .textarea { width: 100%; height: 42px; padding: 0 14px; border: 1px solid var(--c-line-strong); border-radius: var(--r-md); background: var(--c-surface); color: var(--c-ink); }
+.textarea { height: auto; padding: 10px 14px; resize: vertical; line-height: 1.6; }
+.input:focus, .select:focus, .textarea:focus { outline: none; border-color: var(--c-accent); box-shadow: 0 0 0 3px var(--c-accent-soft); }
+.input:disabled, .select:disabled, .textarea:disabled { background: var(--c-soft); color: var(--c-muted); }
+input[type=checkbox], input[type=radio] { accent-color: var(--c-accent); width: 18px; height: 18px; }
+label.field { display: flex; flex-direction: column; gap: 6px; font-size: var(--fs-sm); color: var(--c-muted); font-weight: 600; }
+label.field > .input, label.field > .select, label.field > .textarea { color: var(--c-ink); font-weight: 400; max-width: 420px; }
+label.field > .textarea { max-width: 560px; }
+.helptext { font-size: var(--fs-xs); line-height: 16px; color: var(--c-muted); font-weight: 400; }
+.req { color: var(--c-accent); font-weight: 700; }
+label.check { display: inline-flex; align-items: center; gap: var(--sp-2); min-height: 44px; cursor: pointer; }
+.notice { display: flex; align-items: flex-start; gap: var(--sp-2); padding: 14px 16px; border-radius: var(--r-lg); background: var(--c-sage); color: var(--c-ink); }
+.notice.warn { background: var(--c-warning-soft); color: var(--c-warning); }
+.notice.bad { background: var(--c-danger-soft); color: var(--c-danger); }
+.badge { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; padding: 1px 8px; border-radius: var(--r-xs); font-size: var(--fs-xs); line-height: 18px; background: var(--c-soft); color: var(--c-muted); font-weight: 600; }
+.badge.primary { background: var(--c-yellow); color: var(--c-ink); }
+.badge.danger { background: var(--c-danger-soft); color: var(--c-danger); }
+.badge.ok { background: var(--c-success-soft); color: var(--c-success); }
+.badge.warn { background: var(--c-warning-soft); color: var(--c-warning); }
+.badge.info { background: var(--c-info-soft); color: var(--c-info); }
+.chip { display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 14px; border: 1px solid var(--c-line); border-radius: var(--r-pill); background: var(--c-surface); color: var(--c-ink); text-decoration: none; white-space: nowrap; font-size: var(--fs-sm); cursor: pointer; }
+.chip:hover { background: var(--c-soft); }
+table.grid { width: 100%; border-collapse: separate; border-spacing: 0; }
+table.grid th, table.grid td { text-align: left; padding: 12px 10px; border-bottom: 1px solid var(--c-line); vertical-align: middle; }
+table.grid th { font-size: var(--fs-xs); font-weight: 700; color: var(--c-muted); background: var(--c-soft); }
+table.grid th:first-child { border-radius: var(--r-md) 0 0 var(--r-md); } table.grid th:last-child { border-radius: 0 var(--r-md) var(--r-md) 0; }
+table.grid thead th { border-bottom: 0; }
+.initial { flex: none; width: 32px; height: 32px; border-radius: 50%; background: var(--c-fill); display: inline-flex; align-items: center; justify-content: center; font-size: var(--fs-xs); font-weight: 700; }
+.radio-card { display: flex; gap: var(--sp-3); align-items: flex-start; padding: var(--sp-3) var(--sp-4); border: 1px solid var(--c-line); border-radius: var(--r-md); background: var(--c-surface); cursor: pointer; }
+.radio-card:has(input:checked) { border-color: var(--c-accent); box-shadow: 0 0 0 3px var(--c-accent-soft); }
+.radio-card input { margin-top: 3px; flex: none; }
+.radio-card b { display: block; }
+input.switch { position: relative; width: 44px; height: 26px; flex: none; appearance: none; -webkit-appearance: none; margin: 0; border-radius: var(--r-pill); background: var(--c-fill); border: 1px solid var(--c-line-strong); cursor: pointer; transition: background var(--dur-fast) var(--ease); }
+input.switch::after { content: ""; position: absolute; top: 2px; left: 2px; width: 20px; height: 20px; border-radius: 50%; background: var(--c-surface); box-shadow: var(--sh-1); transition: transform var(--dur-fast) var(--ease); }
+input.switch:checked { background: var(--c-accent); border-color: var(--c-accent); }
+input.switch:checked::after { transform: translateX(18px); background: var(--c-on-accent); }
+.toast { position: absolute; left: 50%; bottom: 28px; z-index: var(--z-toast); padding: 12px 22px; border-radius: var(--r-pill); background: var(--c-ink); color: var(--c-bg); box-shadow: var(--sh-pop); transform: translateX(-50%); font-weight: 600; white-space: nowrap; }
+.toast[hidden] { display: none; }
+dialog { width: min(520px, calc(100vw - 32px)); border: 1px solid var(--c-line); border-radius: var(--r-lg); padding: var(--sp-6); background: var(--c-surface); color: var(--c-ink); box-shadow: var(--sh-pop); }
+dialog::backdrop { background: var(--scrim); }
+dialog .acts { display: flex; justify-content: flex-end; gap: var(--sp-2); margin-top: var(--sp-5); flex-wrap: wrap; }
+
+.badge.high { background: var(--c-accent-soft); color: var(--c-accent); }
+/* =====================================================================
+   시안 B — 위쪽 가로 탭 + 본문, 구성원 관리는 하위 탭, 구성원 패널은 목록 안에서 펼침
+   ===================================================================== */
+.b-wrap { padding: var(--sp-8) var(--sp-10) var(--sp-10); display: flex; flex-direction: column; gap: var(--sp-6); }
+.tabs { display: flex; gap: var(--sp-1); align-items: center; padding: 5px; border-radius: var(--r-xl); background: var(--c-soft); align-self: flex-start; max-width: 100%; overflow-x: auto; scrollbar-width: none; }
+.tabs button { height: 40px; padding: 0 var(--sp-4); display: inline-flex; align-items: center; gap: 6px; border-radius: var(--r-pill); border: 0; background: none; color: var(--c-muted); white-space: nowrap; cursor: pointer; }
+.tabs button:hover { color: var(--c-ink); }
+.tabs button[aria-current="page"] { background: var(--c-surface); color: var(--c-ink); font-weight: 700; box-shadow: var(--sh-2); }
+.tabs .sep { flex: none; display: inline-flex; align-items: center; gap: var(--sp-2); padding: 0 var(--sp-2) 0 var(--sp-3); font-size: var(--fs-xs); color: var(--c-muted); font-weight: 700; white-space: nowrap; }
+.tabs .sep::before { content: ""; width: 1px; height: 22px; background: var(--c-line-strong); }
+.subtabs { display: flex; gap: var(--sp-2); flex-wrap: wrap; }
+.subtabs button { height: 36px; padding: 0 14px; border: 1px solid var(--c-line); border-radius: var(--r-pill); background: var(--c-surface); cursor: pointer; font-size: var(--fs-sm); white-space: nowrap; }
+.subtabs button[aria-pressed="true"] { background: var(--c-ink); border-color: var(--c-ink); color: var(--c-bg); font-weight: 700; }
+.sec-desc { color: var(--c-muted); font-size: var(--fs-sm); max-width: 70ch; }
+
+/* 내 정보: 왼쪽 폼 + 오른쪽 다른 사람에게 보이는 모습 */
+.me-split { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(300px, 1fr); gap: var(--sp-6); align-items: start; }
+.form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: var(--sp-5); align-items: start; }
+.name-off { padding: var(--sp-3) var(--sp-4); border-radius: var(--r-md); background: var(--c-soft); font-size: var(--fs-sm); }
+.sub-h { font-size: var(--fs-task); font-weight: 700; padding-top: var(--sp-4); border-top: 1px solid var(--c-line); }
+.seen { position: sticky; top: var(--sp-4); display: flex; flex-direction: column; gap: var(--sp-4); padding: var(--sp-5); border-radius: var(--r-xl); background: var(--c-sage); }
+.seen h2 { font-family: var(--f-display); font-weight: 400; font-size: var(--fs-xl); }
+.seen-box { background: var(--c-surface); border-radius: var(--r-lg); padding: var(--sp-4); display: flex; flex-direction: column; gap: var(--sp-2); }
+.seen-box .cap { font-size: var(--fs-xs); color: var(--c-muted); font-weight: 700; }
+.sample { display: inline-flex; align-items: center; gap: 6px; padding: 2px 10px 2px 4px; border-radius: var(--r-pill); background: var(--c-soft); font-weight: 600; align-self: flex-start; }
+.sample .initial { width: 22px; height: 22px; font-size: 10px; background: var(--c-surface); }
+.links { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
+.save-row { display: flex; align-items: center; gap: var(--sp-3); flex-wrap: wrap; padding-top: var(--sp-4); border-top: 1px solid var(--c-line); }
+
+/* 구성원 목록: 행이 펼쳐져 패널이 된다 */
+.m-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--sp-2); }
+.m-item { border: 1px solid var(--c-line); border-radius: var(--r-lg); background: var(--c-surface); }
+.m-item.open { border-color: var(--c-accent); box-shadow: 0 0 0 3px var(--c-accent-soft); }
+.m-sum, .m-head { display: grid; grid-template-columns: minmax(0, 2fr) 110px 110px 120px 24px; gap: var(--sp-3); align-items: center; }
+.m-sum { padding: var(--sp-3) var(--sp-4); cursor: pointer; width: 100%; border: 0; background: none; text-align: left; border-radius: var(--r-lg); }
+.m-sum:hover { background: color-mix(in srgb, var(--c-soft) 50%, transparent); }
+.m-sum .caret { color: var(--c-muted); transition: transform var(--dur-fast) var(--ease); }
+.m-item.open .caret { transform: rotate(180deg); }
+.m-head { padding: 0 var(--sp-4); font-size: var(--fs-xs); font-weight: 700; color: var(--c-muted); }
+.who { display: flex; align-items: center; gap: var(--sp-3); min-width: 0; }
+.who .nm { font-weight: 700; }
+.m-body { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr); gap: var(--sp-6); padding: var(--sp-4) var(--sp-5) var(--sp-5); border-top: 1px solid var(--c-line); }
+.m-col { display: flex; flex-direction: column; gap: var(--sp-3); min-width: 0; }
+.m-col h3 { font-size: var(--fs-task); }
+.ro { display: grid; grid-template-columns: 96px 1fr; gap: var(--sp-1) var(--sp-3); font-size: var(--fs-sm); margin: 0; }
+.ro dt { color: var(--c-muted); } .ro dd { margin: 0; }
+.lock { font-size: var(--fs-xs); color: var(--c-muted); font-weight: 400; }
+.mob { display: none; }
+
+/* 이름 표시 방식: 켜고 끌 때의 차이를 표로 */
+.toggle-row { display: flex; align-items: center; gap: var(--sp-4); padding: var(--sp-4) var(--sp-5); border-radius: var(--r-lg); border: 1px solid var(--c-line); background: var(--c-bg); }
+.toggle-row label { flex: 1; cursor: pointer; }
+table.cmp td:first-child { font-weight: 600; width: 34%; }
+table.cmp td.now, table.cmp th.now { background: var(--c-accent-soft); }
+
+/* 요청할 정보 항목: 목록 | 편집 + 이 항목 미리보기 */
+.fd { display: grid; grid-template-columns: 300px minmax(0, 1fr); gap: var(--sp-6); align-items: start; }
+.f-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.f-list button.it { width: 100%; text-align: left; display: flex; flex-direction: column; gap: 4px; padding: var(--sp-3) var(--sp-4); border: 1px solid var(--c-line); border-radius: var(--r-md); background: var(--c-bg); cursor: pointer; }
+.f-list button.it[aria-current="true"] { border-color: var(--c-accent); background: var(--c-accent-soft); }
+.f-list .it b { font-size: var(--fs-task); }
+.f-list .it .row { gap: 6px; }
+.f-list .it.del b { text-decoration: line-through; color: var(--c-muted); }
+.f-ed { display: flex; flex-direction: column; gap: var(--sp-4); padding: var(--sp-5); border-radius: var(--r-lg); border: 1px solid var(--c-line); background: var(--c-bg); }
+.kinds { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--sp-2); }
+.kinds .radio-card { padding: var(--sp-2) var(--sp-3); flex-direction: column; gap: 2px; font-size: var(--fs-sm); }
+.kinds .radio-card .k-top { display: flex; align-items: center; gap: var(--sp-2); }
+.kinds .radio-card input { margin: 0; }
+label.field.choices { display: none; }
+.f-ed:has(.kinds input[value="choice"]:checked) label.field.choices { display: flex; }
+.f-req { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2) var(--sp-3); padding: var(--sp-3); border-radius: var(--r-md); background: var(--c-surface); border: 1px solid var(--c-line); }
+.f-req .impact { flex-basis: 100%; font-size: var(--fs-sm); }
+.f-req .impact[hidden] { display: none; }
+.one-pv { border: 2px dashed var(--c-line-strong); border-radius: var(--r-lg); padding: var(--sp-4); background: var(--c-surface); display: flex; flex-direction: column; gap: var(--sp-2); }
+.one-pv .cap { font-size: var(--fs-xs); font-weight: 700; color: var(--c-muted); }
+.ed-foot { display: flex; gap: var(--sp-2); flex-wrap: wrap; align-items: center; }
+dialog.wide { width: min(640px, calc(100vw - 32px)); }
+dialog .pv-body { display: flex; flex-direction: column; gap: var(--sp-4); margin-top: var(--sp-4); }
+.setting-row { display: grid; grid-template-columns: minmax(260px, 1.4fr) minmax(200px, 1fr); gap: var(--sp-4); padding: var(--sp-3) 0; border-top: 1px solid var(--c-line); align-items: center; }
+.setting-row:first-of-type { border-top: 0; }
+
+@container app (max-width: 1100px) {
+  .b-wrap { padding: var(--sp-6); }
+  .me-split { grid-template-columns: minmax(0, 1fr); }
+  .seen { position: static; }
+  .fd { grid-template-columns: 240px minmax(0, 1fr); }
+}
+@container app (max-width: 850px) {
+  .fd, .m-body { grid-template-columns: minmax(0, 1fr); }
+}
+@container app (max-width: 700px) {
+  .header { height: auto; flex-wrap: wrap; padding: var(--sp-3) var(--sp-4); gap: var(--sp-2) var(--sp-3); }
+  .header .nav { order: 3; width: 100%; }
+  .b-wrap { padding: var(--sp-4); gap: var(--sp-4); }
+  .page-head > h1 { font-size: var(--fs-3xl); }
+  /* 가로 탭은 한 줄 스크롤, 오른쪽 끝을 흐려 더 있음을 알린다 */
+  .tabs { align-self: stretch; border-radius: var(--r-pill); -webkit-mask-image: linear-gradient(90deg, #000 85%, transparent); mask-image: linear-gradient(90deg, #000 85%, transparent); }
+  .subtabs { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
+  .card { padding: 18px; }
+  .btn, .input, .select, .subtabs button, .tabs button { min-height: 44px; } .input, .select, .textarea { font-size: var(--fs-lg); }
+  .m-head { display: none; }
+  .m-sum { grid-template-columns: minmax(0, 1fr) 24px; min-height: 64px; }
+  .m-sum .c-role, .m-sum .c-team, .m-sum .c-dc { display: none; }
+  .mob { display: inline; }
+  .m-body { padding: var(--sp-4); }
+  .kinds { grid-template-columns: minmax(0, 1fr); }
+  .setting-row { grid-template-columns: minmax(0, 1fr); }
+  table.cmp td, table.cmp th { padding: 10px 8px; font-size: var(--fs-sm); }
+}
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
+</style>
+</head>
+<body>
+<div class="mock-bar" role="toolbar" aria-label="시안 보기 설정">
+  <b>시안 B · 위쪽 가로 탭 + 목록 안 펼침</b>
+  <span>폭</span><span class="seg" data-ctl="w"><button data-v="wide">데스크톱</button><button data-v="narrow">모바일 390</button></span>
+  <span>테마</span><span class="seg" data-ctl="theme"><button data-v="light">라이트</button><button data-v="dark">다크</button></span>
+  <span>보는 사람</span><span class="seg" data-ctl="viewer"><button data-v="admin">관리자(홍석영)</button><button data-v="member">구성원(강태민)</button></span>
+</div>
+<div class="stage">
+  <div class="app" id="app">
+    <header class="header">
+      <span class="logo">유달리 <small>산돌이</small></span>
+      <nav class="nav" aria-label="주 메뉴"><a href="#">오늘</a><a href="#">태스크</a><a href="#">프로젝트</a><a href="#">회의록</a><a href="#">팀</a><a href="#" aria-current="page">설정</a></nav>
+      <span class="avatar" id="avatar">석영</span>
+    </header>
+    <div class="scroller" id="scroller"><div class="b-wrap" id="main"></div></div>
+    <div class="toast" id="toast" role="status" hidden></div>
+  </div>
+</div>
+<dialog id="confirm"><p id="confirm-text"></p><div class="acts"><button class="btn" id="confirm-no">그대로 두기</button><button class="btn primary" id="confirm-ok"></button></div></dialog>
+<dialog id="pv-all" class="wide" aria-labelledby="pv-title"><div class="card-head"><h2 id="pv-title" style="font-family:var(--f-display);font-weight:400;font-size:var(--fs-2xl)">구성원에게 보이는 모습</h2><button class="btn sm" id="pv-close">닫기</button></div><p class="t13 muted">구성원이 내 정보 탭에서 보는 구성원 정보 칸입니다(관리자 본인 값으로 채움).</p><div class="pv-body" id="pv-body"></div></dialog>
+<script>
+/* ---------- 가짜 데이터 ---------- */
+const S = {
+  viewer: 'admin', tab: 'me', member: null, showReal: false, mobileInTab: false,
+  fields: [
+    { id: 'f1', label: '학번', kind: 'text', required: true, help: '숫자 8자리로 적어 주세요.', choices: [] },
+    { id: 'f2', label: '학과', kind: 'choice', required: true, help: '', choices: ['컴퓨터공학과', '전자공학과', '산업디자인학과', '기타'] },
+    { id: 'f3', label: '연락 가능한 시간', kind: 'long', required: false, help: '요일과 시간대를 적어 주세요. 예: 평일 저녁 7시 이후', choices: [] },
+    { id: 'f4', label: 'GitHub 아이디', kind: 'text', required: false, help: '', choices: [] },
+  ],
+  members: [
+    { id: 1, real: '홍석영', nick: '석영', user: 'seokyoung', role: '관리자', team: '기획', discord: true, v: { f1: '20231234', f2: '컴퓨터공학과', f3: '평일 저녁', f4: 'Seokyoung-Hong' } },
+    { id: 2, real: '김민지', nick: '민지', user: 'minji.k', role: '구성원', team: '디자인', discord: true, v: { f1: '20240117', f2: '산업디자인학과', f3: '', f4: '' } },
+    { id: 3, real: '이준호', nick: '준호', user: 'junho', role: '구성원', team: '개발', discord: false, v: { f1: '20220455', f2: '컴퓨터공학과', f3: '주말 오후', f4: 'junho-dev' } },
+    { id: 4, real: '박서연', nick: '', user: 'seoyeon', role: '구성원', team: '개발', discord: true, v: { f1: '20230981', f2: '전자공학과', f3: '', f4: '' } },
+    { id: 5, real: '강태민', nick: '태민', user: 'taemin', role: '구성원', team: '기획', discord: false, v: { f1: '', f2: '', f3: '', f4: '' } },
+    { id: 6, real: '정하은', nick: '하은', user: 'haeun', role: '구성원', team: '디자인', discord: true, v: { f1: '20240302', f2: '', f3: '', f4: '' } },
+    { id: 7, real: '', nick: '최도윤', user: '', role: '구성원', team: '개발', discord: false, pending: true, v: { f1: '', f2: '', f3: '', f4: '' } },
+  ],
+};
+const ME = () => S.members.find(m => m.id === (S.viewer === 'admin' ? 1 : 5));
+const TABS = [
+  ['me', '내 정보', 'me'], ['members', '구성원 관리', 'admin'], ['work', '태스크·프로젝트', 'admin'], ['notify', '알림', 'admin'],
+  ['ai', 'AI', 'admin'], ['meeting', '회의·전사', 'admin'], ['integrations', '연동', 'admin'], ['org', '조직 관리', 'admin'],
+];
+const OTHER = {
+  work: ['생성 기본값', '진행·검토', '변경 사유', '기한', '프로젝트 권한', '프로젝트 기본값'],
+  notify: ['기한 알림', '막힘·검토 알림', '주간 보고', '채널 게시', 'GitHub 알림'],
+  ai: ['AI 자동완성·이용 권한', '조직 AI 연결·한도·시험', '외부 AI 쓰기 허용', '태스크 작업 권한', '조직·요청 관리 권한'],
+  meeting: ['녹음 운영', '공개·보관', '전사 용어', '전사 수단·이용 권한·전사 서버'],
+  integrations: ['GitHub', 'Discord'],
+  org: ['저장 공간', '정책 변경 이력', '위험 구역'],
+};
+const KIND = {
+  text: ['짧은 글', '한 줄, 200자까지', '예: 학번'],
+  long: ['긴 글', '여러 줄, 2000자까지', '예: 가능한 시간'],
+  choice: ['선택지', '목록에서 하나 고름', '예: 학과'],
+};
+
+/* ---------- 도우미 ---------- */
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const shown = m => S.showReal ? (m.real || m.nick) : (m.nick || m.user || m.real);
+const init1 = s => esc((s || '?').slice(0, 1));
+const isPending = m => !!m.pending;
+const missing = m => S.fields.filter(f => f.required && !m.v[f.id]).length;
+const emptyCount = f => S.members.filter(m => !isPending(m) && !m.v[f.id]).length;
+function toast(t) { const el = $('#toast'); el.textContent = t; el.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(() => el.hidden = true, 3000); }
+function ask(text, ok, danger) {
+  return new Promise(res => {
+    const d = $('#confirm'); $('#confirm-text').textContent = text; const b = $('#confirm-ok'); b.textContent = ok;
+    b.className = 'btn ' + (danger ? 'danger' : 'primary');
+    b.onclick = () => { d.close(); res(true); }; $('#confirm-no').onclick = () => { d.close(); res(false); };
+    d.oncancel = () => res(false); d.showModal(); $('#confirm-no').focus();
+  });
+}
+
+/* 구성원 정보 칸(_member_info_fields.html 견본). disabled=미리보기 */
+function infoFields(m, { disabled = false, prefix = 'v', adminMode = false } = {}) {
+  if (!S.fields.length) return '<p class="muted t13">이 조직은 구성원 정보를 받지 않습니다.</p>';
+  return S.fields.map(f => {
+    const val = m ? (m.v[f.id] || '') : '';
+    const req = f.required ? ' <span class="req">필수</span>' : '';
+    const dis = disabled ? ' disabled' : '';
+    const nm = `${prefix}-${f.id}`;
+    let ctl;
+    if (f.kind === 'long') ctl = `<textarea class="textarea" rows="3" name="${nm}"${dis}>${esc(val)}</textarea>`;
+    else if (f.kind === 'choice') ctl = `<select class="select" name="${nm}"${dis}><option value="">고르기…</option>${f.choices.filter(Boolean).map(c => `<option${c === val ? ' selected' : ''}>${esc(c)}</option>`).join('')}</select>`;
+    else ctl = `<input class="input" name="${nm}" value="${esc(val)}"${dis}>`;
+    const warn = adminMode && f.required && !val ? ' <span class="badge warn">비어 있음</span>' : '';
+    return `<label class="field"><span>${esc(f.label || '(이름 없는 항목)')}${req}${warn}</span>${ctl}${f.help ? `<span class="helptext">${esc(f.help)}</span>` : ''}</label>`;
+  }).join('');
+}
+
+
+/* ---------- 시안 B 렌더 ---------- */
+S.sub = 'list'; S.sel = 'f1';
+const SUBS = [['list', '구성원'], ['invites', '가입 전·초대'], ['names', '이름 표시 방식'], ['fields', '요청할 정보 항목'], ['tags', '팀·기술 태그']];
+
+function renderTabs() {
+  let h = '';
+  for (const [code, label, who] of TABS) {
+    if (who === 'admin' && S.viewer !== 'admin') continue;
+    if (code === 'members') h += '<span class="sep">조직 관리</span>';
+    const warn = code === 'me' && missing(ME()) ? ' <span class="badge warn">입력 필요</span>' : '';
+    h += `<button data-tab="${code}"${S.tab === code ? ' aria-current="page"' : ''}>${label}${warn}</button>`;
+  }
+  return `<nav class="tabs" aria-label="조직 설정 탭">${h}</nav>`;
+}
+
+function seenBox(me, nick = me.nick, real = me.real) {
+  const name = S.showReal ? (real || me.real) : (nick || me.user);
+  return `<div class="seen-box"><span class="cap">담당자 칸 · 회의록 참석자</span><span class="sample"><span class="initial">${init1(name)}</span>${esc(name)}</span></div>
+  <div class="seen-box"><span class="cap">구성원 목록(다른 구성원이 볼 때)</span><div class="who"><span class="initial">${init1(name)}</span><div><div class="nm">${esc(name)}</div><div class="t12 muted">${me.role} · ${esc(me.team)}</div></div></div></div>
+  <div class="seen-box"><span class="cap">관리자만 보는 정보</span><dl class="ro"><dt>실명</dt><dd>${esc(real || me.real)}</dd>${S.fields.map(f => `<dt>${esc(f.label)}</dt><dd>${esc(me.v[f.id]) || '<span class="muted">비어 있음</span>'}</dd>`).join('')}</dl></div>`;
+}
+
+function renderMe() {
+  const me = ME(); const miss = missing(me);
+  const nick = S.showReal
+    ? `<div class="stack"><span class="t13 muted" style="font-weight:600">조직 표시 이름</span><p class="name-off">이 조직은 구성원 이름을 실명으로 표시합니다. 조직 표시 이름은 쓰지 않습니다.</p></div>`
+    : `<label class="field"><span>조직 표시 이름</span><input class="input" id="me-nick" value="${esc(me.nick)}" maxlength="30"><span class="helptext">이 조직에서만 쓰는 이름입니다. 비우면 계정 표시 이름이 보입니다.</span></label>`;
+  return `${miss ? `<p class="notice warn"><span aria-hidden="true">⚠</span><span>필수 항목 ${miss}개를 입력해야 산돌이 조직을 쓸 수 있습니다.</span></p>` : ''}
+  <div class="me-split">
+    <form class="card" onsubmit="return false">
+      <h2>내 정보</h2>
+      <div class="form-grid">
+        <label class="field"><span>실명 <span class="badge">계정 공통</span></span><input class="input" id="me-real" value="${esc(me.real)}" maxlength="30"><span class="helptext">모든 조직에 반영됩니다. 다른 조직에서도 이 실명으로 바뀝니다. 조직 관리자는 열람만 할 수 있습니다.</span></label>
+        ${nick}
+      </div>
+      <h3 class="sub-h">구성원 정보 <span class="lock">산돌이 조직이 요청한 항목 · 관리자도 고칠 수 있습니다</span></h3>
+      <div class="form-grid">${infoFields(me, { prefix: 'me' })}</div>
+      <div class="save-row"><button class="btn primary" id="me-save">내 정보 저장</button><span class="muted t13">이름과 구성원 정보를 함께 저장합니다.</span></div>
+    </form>
+    <aside class="seen" aria-label="다른 사람에게 보이는 모습"><h2>다른 사람에게 이렇게 보입니다</h2><div class="stack" id="seen">${seenBox(me)}</div>
+      <p class="t12">입력하는 대로 바뀝니다. 저장해야 실제로 반영됩니다.</p></aside>
+  </div>
+  <div class="links"><a class="chip" href="#">업무 규칙 보기 ↗</a><a class="chip" href="#">알림·첫 화면 설정 ↗</a><a class="chip" href="#">계정 표시 이름·비밀번호 ↗</a></div>`;
+}
+
+function memberBody(m) {
+  const miss = missing(m);
+  return `<div class="m-body">
+    <div class="m-col">
+      <h3>계정 공통 <span class="lock">열람만</span></h3>
+      <dl class="ro"><dt>실명</dt><dd>${m.real ? esc(m.real) : '<span class="muted">실명 미입력</span>'}</dd><dt>아이디</dt><dd>${m.user ? '@' + esc(m.user) : '가입 전'}</dd></dl>
+      <p class="t12 muted">실명과 계정 표시 이름은 본인만 바꿀 수 있는 계정 정보입니다.</p>
+      <h3>조직 안 역할</h3>
+      <div class="row"><select class="select" style="max-width:160px" aria-label="${esc(shown(m))} 역할"><option${m.role === '구성원' ? ' selected' : ''}>구성원</option><option${m.role === '관리자' ? ' selected' : ''}>관리자</option></select><button class="btn sm">역할 바꾸기</button></div>
+      <dl class="ro"><dt>소속 팀</dt><dd>${esc(m.team)}</dd><dt>기술 태그</dt><dd><span class="badge">React</span> <span class="badge">Figma</span></dd></dl>
+      <div class="row">${m.pending ? '<button class="btn sm">개인 초대 링크 복사</button>' : ''}<a href="#" class="t13">사람별 할 일 양</a><button class="btn sm danger" data-remove>조직에서 제거</button></div>
+    </div>
+    <div class="m-col">
+      <h3>이 조직에 제공한 정보</h3>
+      ${miss && !m.pending ? `<p class="notice warn t13"><span aria-hidden="true">⚠</span><span>필수 항목 ${miss}개가 비어 있어 이 구성원은 조직을 쓸 수 없습니다.</span></p>` : ''}
+      ${S.showReal ? '<p class="t13 muted">이 조직은 실명으로 표시하므로 조직 표시 이름 칸이 없습니다.</p>' : `<label class="field"><span>조직 표시 이름</span><input class="input" id="p-nick" value="${esc(m.nick)}" maxlength="30"></label>`}
+      ${infoFields(m, { prefix: 'p', adminMode: true })}
+      <div class="row"><button class="btn primary" id="p-save">저장</button><span class="t12 muted">필수 항목을 비운 채로도 저장됩니다. 기록은 정책 변경 이력에 남습니다.</span></div>
+    </div></div>`;
+}
+
+function subList() {
+  const items = S.members.map(m => {
+    const open = S.member === m.id;
+    const badges = (m.pending ? ' <span class="badge info">가입 전</span>' : '') + (missing(m) && !m.pending ? ' <span class="badge warn">입력 필요</span>' : '');
+    const sub = m.pending ? '가입 전' : `실명 ${esc(m.real)} · @${esc(m.user)}`;
+    return `<li class="m-item${open ? ' open' : ''}" id="m-${m.id}"><button class="m-sum" data-member="${m.id}" aria-expanded="${open}">
+      <span class="who"><span class="initial">${init1(shown(m))}</span><span style="min-width:0"><span class="nm">${esc(shown(m))}</span>${badges}<div class="t12 muted">${sub}<span class="mob"> · ${m.role}</span></div></span></span>
+      <span class="c-role">${m.role === '관리자' ? '<span class="badge primary">관리자</span>' : '구성원'}</span><span class="c-team">${esc(m.team)}</span>
+      <span class="c-dc">${m.discord ? '<span class="badge ok">연결됨</span>' : '<span class="muted t13">연결 안 됨</span>'}</span><span class="caret" aria-hidden="true">▾</span></button>
+      ${open ? memberBody(m) : ''}</li>`;
+  }).join('');
+  return `<section class="card"><div class="card-head"><h2>구성원</h2><span class="muted t13">${S.members.length}명 · 행을 누르면 그 자리에서 펼쳐집니다</span></div>
+    <div class="m-head"><span>이름</span><span>역할</span><span>소속 팀</span><span>Discord</span><span></span></div><ul class="m-list">${items}</ul></section>`;
+}
+
+function subInvites() {
+  return `<section class="card"><h2>가입 전 구성원</h2><p class="sec-desc">아직 계정이 없는 사람을 먼저 담당자로 넣어 둡니다. 가입하면 같은 자리에 이어집니다.</p>
+    <div class="row"><label class="field" style="flex:1;min-width:200px"><span>이름</span><input class="input" placeholder="예: 최도윤"></label><button class="btn" style="align-self:flex-end">가입 전 구성원 추가</button></div></section>
+  <section class="card"><div class="card-head"><h2>초대 링크</h2><button class="btn sm">초대 링크 만들기</button></div>
+    <table class="grid"><thead><tr><th>링크</th><th>사용</th><th>만료</th><th></th></tr></thead><tbody><tr><td class="mono t13">udally.sio2.kr/i/7Kq2…</td><td>3 / 10</td><td>10월 21일</td><td><button class="btn sm danger" aria-label="초대 링크 7Kq2 폐기">폐기</button></td></tr></tbody></table>
+    <label class="check t13"><input type="checkbox" checked> 관리자만 초대 링크를 만들 수 있음</label></section>`;
+}
+
+function cmpTable(on) {
+  const me = ME();
+  const rows = [
+    ['목록·담당자 칸·회의록 참석자', `<span class="sample"><span class="initial">${init1(me.nick)}</span>${esc(me.nick)}</span>`, `<span class="sample"><span class="initial">${init1(me.real)}</span>${esc(me.real)}</span>`],
+    ['내 정보의 조직 표시 이름 칸', '있음 · 본인이 바꿈', '없음'],
+    ['구성원 패널의 조직 표시 이름 칸', '있음 · 관리자가 고칠 수 있음', '없음'],
+    ['이미 저장된 조직 표시 이름', '그대로 보임', '지우지 않고 보관 · 끄면 다시 보임'],
+    ['실명이 없는 가입 전 구성원', '입력한 이름', '입력한 이름'],
+  ];
+  return `<table class="grid cmp"><thead><tr><th>어디에서</th><th class="${on ? '' : 'now'}">끄면${on ? '' : ' (선택)'}</th><th class="${on ? 'now' : ''}">켜면${on ? ' (선택)' : ''}</th></tr></thead>
+    <tbody>${rows.map(([a, b, c]) => `<tr><td>${a}</td><td class="${on ? '' : 'now'}">${b}</td><td class="${on ? 'now' : ''}">${c}</td></tr>`).join('')}</tbody></table>`;
+}
+function subNames() {
+  return `<section class="card"><h2>이름 표시 방식</h2>
+    <p class="sec-desc">이 조직 안에서 사람 이름이 나오는 모든 곳에 적용됩니다. 켜고 끌 때 무엇이 바뀌는지 아래 표에서 확인해 주세요.</p>
+    <div class="toggle-row"><input type="checkbox" class="switch" id="real-sw"${S.showReal ? ' checked' : ''}><label for="real-sw"><b>구성원 이름을 실명으로 표시</b><br><span class="t13 muted">끄면 구성원이 정한 조직 표시 이름을 씁니다.</span></label></div>
+    <div id="cmp">${cmpTable(S.showReal)}</div>
+    <div><button class="btn primary" id="names-save">이름 표시 방식 저장</button></div></section>`;
+}
+
+function fieldItem(f, i) {
+  const n = emptyCount(f);
+  return `<li><button class="it${f._del ? ' del' : ''}" data-sel="${f.id}" aria-current="${S.sel === f.id}"><span class="t12 muted">${i + 1}번째 질문</span><b>${esc(f.label || '(이름 없는 항목)')}</b>
+    <span class="row"><span class="badge">${KIND[f.kind][0]}</span>${f.required ? '<span class="badge high">필수</span>' : ''}${n ? `<span class="t12 muted">${n}명 비어 있음</span>` : ''}</span></button></li>`;
+}
+function fieldEditor(f) {
+  if (!f) return '<div class="f-ed"><p class="muted">왼쪽에서 항목을 고르거나 새 항목을 추가해 주세요.</p></div>';
+  const n = emptyCount(f); const i = S.fields.indexOf(f);
+  const kinds = Object.entries(KIND).map(([k, [nm, d, ex]]) => `<label class="radio-card"><span class="k-top"><input type="radio" name="kind" value="${k}"${f.kind === k ? ' checked' : ''} data-f="${f.id}" data-k="kind"><b>${nm}</b></span><span class="t12 muted">${d}</span><span class="t12 muted">${ex}</span></label>`).join('');
+  return `<div class="f-ed" id="f-ed">
+    <div class="card-head"><b>${i + 1}번째 질문 편집</b><span class="ed-foot"><button class="btn sm" data-move="-1" aria-label="${esc(f.label)} 위로"${i === 0 ? ' disabled' : ''}>↑ 위로</button><button class="btn sm" data-move="1" aria-label="${esc(f.label)} 아래로"${i === S.fields.length - 1 ? ' disabled' : ''}>↓ 아래로</button></span></div>
+    <label class="field"><span>항목 이름 <span class="helptext">구성원에게 보이는 질문 제목</span></span><input class="input" value="${esc(f.label)}" maxlength="50" data-f="${f.id}" data-k="label"></label>
+    <div class="stack"><span class="t13 muted" style="font-weight:600">형식</span><div class="kinds">${kinds}</div></div>
+    <label class="field choices"><span>선택지 <span class="helptext">한 줄에 하나, 50자·30개까지</span></span><textarea class="textarea" rows="4" data-f="${f.id}" data-k="choices">${esc(f.choices.join('\n'))}</textarea></label>
+    <label class="field"><span>도움말</span><input class="input" value="${esc(f.help)}" maxlength="200" data-f="${f.id}" data-k="help" placeholder="예: 숫자 8자리로 적어 주세요."><span class="helptext">입력칸 아래에 회색 글로 보입니다.</span></label>
+    <div class="f-req"><input type="checkbox" class="switch" id="req-${f.id}" data-f="${f.id}" data-k="required"${f.required ? ' checked' : ''}><label for="req-${f.id}"><b>필수</b> <span class="t13 muted">비워 두면 조직을 쓸 수 없습니다(관리자 포함).</span></label>
+      <p class="impact notice warn" id="impact" ${f.required && n ? '' : 'hidden'}><span aria-hidden="true">⚠</span><span>지금 <b>${n}명</b>이 비워 두었습니다. 필수로 저장하면 입력할 때까지 조직을 쓸 수 없습니다(관리자 포함).</span></p></div>
+    <div class="one-pv"><span class="cap">이 항목은 구성원에게 이렇게 보입니다</span><div id="one-pv"></div></div>
+    <div class="ed-foot"><label class="check t13"><input type="checkbox" data-f="${f.id}" data-k="delete"${f._del ? ' checked' : ''}> 이 항목 삭제</label><span class="t12 muted" style="margin-left:auto">지금 ${S.members.filter(m => !m.pending).length - n}명이 입력했습니다.</span></div>
+  </div>`;
+}
+function onePreview() {
+  const f = S.fields.find(x => x.id === S.sel); const box = document.getElementById('one-pv'); if (!f || !box) return;
+  const keep = S.fields; S.fields = [f]; box.innerHTML = infoFields(ME(), { disabled: true, prefix: 'pv' }); S.fields = keep;
+}
+function subFields() {
+  return `<section class="card"><div class="card-head"><h2>요청할 정보 항목</h2><button class="btn sm" id="pv-open">구성원 화면 전체 미리보기</button></div>
+    <p class="sec-desc">구성원에게 받을 질문을 만드는 곳입니다. 답은 구성원이 <b>내 정보</b>에서 쓰고, 관리자는 구성원 목록에서 펼쳐 고칩니다. 질문을 고르면 편집 칸이 열리고, 그 안에서 구성원 화면에 어떻게 보이는지 확인합니다.</p>
+    <p class="notice warn"><span aria-hidden="true">⚠</span><span>민감정보·고유식별정보(주민등록번호 등)·금융정보는 요구할 수 없습니다(<a href="#">이용약관 제6조</a>).</span></p>
+    <div class="fd">
+      <div class="stack"><ul class="f-list" id="f-list">${S.fields.map(fieldItem).join('')}</ul>
+        <div class="row" style="gap:6px"><input class="input" id="new-label" maxlength="50" placeholder="새 질문 이름" aria-label="새 항목 이름" style="flex:1;min-width:0"><button class="btn sm" id="new-add">추가</button></div>
+        <span class="t12 muted">항목 30개 · 이름 50자 · 선택지 50자×30개까지</span></div>
+      ${fieldEditor(S.fields.find(x => x.id === S.sel))}
+    </div>
+    <div class="save-row"><button class="btn primary" id="fields-save">정보 항목 저장</button><span class="muted t13">저장 전까지 구성원 화면은 바뀌지 않습니다.</span></div></section>`;
+}
+function subTags() {
+  return `<section class="card"><h2>팀·기술 태그 정책</h2>
+    <div class="setting-row"><div><b>구성원이 직접 팀을 고를 수 있음</b><p class="t13 muted">끄면 관리자만 소속 팀을 정합니다.</p></div><label class="check"><input type="checkbox" checked> 허용</label></div>
+    <div class="setting-row"><div><b>기술 태그를 자유롭게 추가</b><p class="t13 muted">끄면 관리자가 만든 태그 중에서만 고릅니다.</p></div><label class="check"><input type="checkbox"> 허용</label></div>
+    <div><button class="btn primary">팀·기술 태그 정책 저장</button></div></section>`;
+}
+function renderMembers() {
+  const body = { list: subList, invites: subInvites, names: subNames, fields: subFields, tags: subTags }[S.sub]();
+  return `<nav class="subtabs" aria-label="구성원 관리 하위 메뉴">${SUBS.map(([c, l]) => `<button data-sub="${c}" aria-pressed="${S.sub === c}">${l}</button>`).join('')}</nav>${body}`;
+}
+function renderOther(code) {
+  const label = TABS.find(t => t[0] === code)[1];
+  return OTHER[code].map((s, i) => `<details class="card"${i === 0 ? ' open' : ''}><summary style="cursor:pointer;font-weight:700">${s}</summary>
+    <div class="setting-row"><div><b>예시 설정</b><p class="t13 muted">시안에서는 이 탭의 항목을 줄였습니다. 구현은 계획서 §3 매핑을 따릅니다.</p></div><select class="select" style="max-width:240px" aria-label="예시 설정"><option>조직 값</option></select></div></details>`).join('') + `<div><button class="btn primary">${label} 설정 저장</button></div>`;
+}
+
+function renderAll() {
+  document.documentElement.dataset.theme = S.theme;
+  for (const [k, v] of [['w', S.w], ['theme', S.theme], ['viewer', S.viewer]])
+    document.querySelectorAll(`[data-ctl=${k}] button`).forEach(b => b.setAttribute('aria-pressed', b.dataset.v === v));
+  document.body.classList.toggle('narrow', S.w === 'narrow');
+  $('#avatar').textContent = shown(ME());
+  const t = S.tab;
+  const body = t === 'me' ? renderMe() : t === 'members' ? renderMembers() : renderOther(t);
+  $('#main').innerHTML = `<div class="page-head"><h1>조직 설정</h1><p class="muted">산돌이 · ${S.viewer === 'admin' ? '관리자' : '구성원'}로 보는 중</p></div>${renderTabs()}${body}`;
+  onePreview();
+}
+function keepScroll(fn) { const k = $('#scroller').scrollTop; fn(); $('#scroller').scrollTop = k; }
+
+document.addEventListener('click', async e => {
+  const t = e.target;
+  const ctl = t.closest('[data-ctl] button');
+  if (ctl) { const k = ctl.parentElement.dataset.ctl; S[k] = ctl.dataset.v; if (k === 'viewer') { S.tab = 'me'; S.member = null; } renderAll(); return; }
+  const tab = t.closest('[data-tab]'); if (tab) { S.tab = tab.dataset.tab; S.member = null; renderAll(); return; }
+  const sub = t.closest('[data-sub]'); if (sub) { S.sub = sub.dataset.sub; S.member = null; keepScroll(renderAll); return; }
+  const mem = t.closest('[data-member]');
+  if (mem) { const id = +mem.dataset.member; S.member = S.member === id ? null : id; keepScroll(renderAll); document.querySelector(`#m-${id} .m-sum`).focus({ preventScroll: true }); if (S.member) document.getElementById('m-' + id).scrollIntoView({ block: 'nearest', behavior: 'smooth' }); return; }
+  const sel = t.closest('[data-sel]'); if (sel) { S.sel = sel.dataset.sel; keepScroll(renderAll); if (S.w === 'narrow' || innerWidth <= 850) $('#f-ed')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); return; }
+  const mv = t.closest('[data-move]');
+  if (mv) { const i = S.fields.findIndex(f => f.id === S.sel), j = i + +mv.dataset.move; [S.fields[i], S.fields[j]] = [S.fields[j], S.fields[i]]; keepScroll(renderAll); return; }
+  if (t.id === 'pv-open') { const keep = S.fields; S.fields = S.fields.filter(f => !f._del); $('#pv-body').innerHTML = infoFields(ME(), { disabled: true, prefix: 'pa' }); S.fields = keep; $('#pv-all').showModal(); return; }
+  if (t.id === 'pv-close') { $('#pv-all').close(); return; }
+  if (t.id === 'me-save') {
+    const me = ME(); const real = $('#me-real').value.trim(); if (!real) { toast('실명을 입력해 주세요.'); return; }
+    const before = missing(me); me.real = real; if ($('#me-nick')) me.nick = $('#me-nick').value.trim();
+    S.fields.forEach(f => { const el = document.querySelector(`[name="me-${f.id}"]`); if (el) me.v[f.id] = el.value.trim(); });
+    keepScroll(renderAll);
+    toast(before && !missing(me) ? '이제 산돌이 조직을 쓸 수 있습니다.' : missing(me) ? `저장했습니다. 필수 항목 ${missing(me)}개가 아직 비었습니다.` : '내 정보를 저장했습니다.'); return;
+  }
+  if (t.id === 'p-save') {
+    const m = S.members.find(x => x.id === S.member); const before = missing(m);
+    if ($('#p-nick')) m.nick = $('#p-nick').value.trim();
+    S.fields.forEach(f => { const el = document.querySelector(`[name="p-${f.id}"]`); if (el) m.v[f.id] = el.value.trim(); });
+    keepScroll(renderAll);
+    toast(before && !missing(m) ? '이제 이 구성원은 조직을 쓸 수 있습니다.' : missing(m) ? `저장했습니다. 필수 항목 ${missing(m)}개가 아직 비었습니다.` : '저장했습니다.'); return;
+  }
+  if (t.closest('[data-remove]')) { const m = S.members.find(x => x.id === S.member); if (await ask(`${shown(m)} 님을 산돌이 조직에서 제거합니다. 맡은 태스크의 담당은 비워집니다.`, `${shown(m)} 제거`, true)) toast('시안에서는 제거하지 않습니다.'); return; }
+  if (t.id === 'names-save') {
+    const on = $('#real-sw').checked;
+    if (on && !S.showReal && !await ask('켜면 이 조직의 모든 구성원에게 실명이 표시됩니다. 본인과 관리자 모두 조직 표시 이름을 변경할 수 없습니다. 실명으로 표시를 켜시겠습니까?', '실명으로 표시 켜기')) return;
+    S.showReal = on; keepScroll(renderAll); toast(on ? '이제 구성원 이름을 실명으로 표시합니다.' : '이제 조직 표시 이름으로 표시합니다.'); return;
+  }
+  if (t.id === 'new-add') {
+    const lb = $('#new-label').value.trim(); if (!lb) { $('#new-label').focus(); return; }
+    const f = { id: 'f' + Date.now(), label: lb, kind: 'text', required: false, help: '', choices: [] };
+    S.fields.push(f); S.sel = f.id; keepScroll(renderAll); return;
+  }
+  if (t.id === 'fields-save') {
+    const turned = S.fields.filter(f => f.required && !f._wasReq && emptyCount(f));
+    if (turned.length) {
+      const n = Math.max(...turned.map(emptyCount));
+      if (!await ask(`${turned.map(f => `‘${f.label}’`).join(', ')}을(를) 필수로 바꿉니다. 지금 ${n}명이 비워 두어, 입력할 때까지 조직을 쓸 수 없게 됩니다(관리자 포함).`, '필수로 저장')) return;
+    }
+    S.fields = S.fields.filter(f => !f._del); S.fields.forEach(f => f._wasReq = f.required);
+    if (!S.fields.find(f => f.id === S.sel)) S.sel = S.fields[0]?.id;
+    keepScroll(renderAll); toast('정보 항목을 저장했습니다.');
+  }
+});
+document.addEventListener('input', e => {
+  const el = e.target;
+  if (el.id === 'real-sw') { $('#cmp').innerHTML = cmpTable(el.checked); return; }
+  if (el.id === 'me-nick' || el.id === 'me-real') { $('#seen').innerHTML = seenBox(ME(), $('#me-nick')?.value.trim(), $('#me-real').value.trim()); return; }
+  const f = S.fields.find(x => x.id === el.dataset.f); if (!f) return;
+  const k = el.dataset.k;
+  if (k === 'label' || k === 'help') f[k] = el.value;
+  if (k === 'choices') f.choices = el.value.split('\n').map(s => s.trim()).filter(Boolean);
+  if (k === 'kind') f.kind = el.value;
+  if (k === 'required') { f.required = el.checked; $('#impact').hidden = !(f.required && emptyCount(f)); }
+  if (k === 'delete') f._del = el.checked;
+  const i = S.fields.indexOf(f); const li = document.querySelectorAll('#f-list > li')[i];
+  if (li) li.outerHTML = fieldItem(f, i);
+  onePreview();
+});
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && S.member && !document.querySelector('dialog[open]')) { S.member = null; keepScroll(renderAll); } });
+
+/* ---------- 시작: ?tab=members&sub=fields&member=5&w=narrow&theme=dark&shot=1 ---------- */
+const q = new URLSearchParams(location.search);
+S.theme = q.get('theme') || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+S.w = q.get('w') || 'wide';
+S.viewer = q.get('viewer') || 'admin';
+S.tab = q.get('tab') || 'me';
+S.sub = q.get('sub') || 'list';
+S.member = q.get('member') ? +q.get('member') : null;
+if (q.get('real') === '1') S.showReal = true;
+S.fields.forEach(f => f._wasReq = f.required);
+if (q.get('shot')) document.body.classList.add('shot');
+renderAll();
+if (S.member) document.getElementById('m-' + S.member)?.scrollIntoView({ block: 'start' });
+if (q.get('sec') === 'fields' && innerWidth <= 850) $('#f-ed')?.scrollIntoView({ block: 'start' });
+</script>
+</body>
+</html>
