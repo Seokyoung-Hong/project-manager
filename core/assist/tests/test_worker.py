@@ -56,7 +56,7 @@ def fake(monkeypatch):
 
 
 def run_once():
-    for job_id in worker.claim(10):
+    for job_id, _ in worker.claim(10):
         worker.run(job_id)
 
 
@@ -233,8 +233,8 @@ def test_claim_field_first(on, member, admin, task):
     d = create_doc(org=on, actor=member, title="문서", body_md="본문")
     doc_job = services.create_job(member, on, field="doc.fill", target=f"doc:{d.pk}")
     field_job = services.create_job(admin, on, field="task.title", target=f"task:{task.pk}")
-    assert worker.claim(1) == [field_job.pk]
-    assert worker.claim(5) == [doc_job.pk]
+    assert worker.claim(5, long_limit=0) == [(field_job.pk, False)]  # 칸 몫 자리엔 긴 작업 안 집음
+    assert worker.claim(5) == [(doc_job.pk, True)]
     assert worker.claim(5) == []
 
 
@@ -266,6 +266,30 @@ def test_sweep(on, member, admin, task):
     assert (hung.status, hung.error) == ("failed", "timeout")  # 다음 항목 없음
     assert pc_job.status == "queued" and pc_job.route == "org"
     assert pc_job.tried[0]["error"] == "pc_unlinked"
+
+
+def test_sweep_expires_running_job_on_online_pc(on, member, task):
+    """켜져 있는 PC가 결과를 끝내 보내지 않으면 timeout_s + 여유 뒤 다음 AI로(슬롯·내용을 붙잡지 않게)."""
+    srv = SttServer.objects.create(
+        owner=member, name="PC", machine_id="m", last_seen_at=timezone.now()
+    )
+    kw = dict(user=member, org=on, kind="field", field="task.title", target_type="task")
+    fresh = AiJob.objects.create(
+        **kw, target_id=task.pk, route="pc", server=srv, status="running", claimed_at=timezone.now()
+    )
+    old = AiJob.objects.create(
+        **kw,
+        target_id=task.pk,
+        route="pc",
+        server=srv,
+        status="running",
+        claimed_at=timezone.now() - timedelta(days=9),
+    )
+    worker.sweep()
+    fresh.refresh_from_db()
+    old.refresh_from_db()
+    assert fresh.status == "running"
+    assert old.status in ("queued", "failed") and old.tried[0]["error"] == "timeout"
 
 
 def test_start_disabled(settings, monkeypatch):

@@ -123,3 +123,14 @@ def test_line_and_list_outputs():
         prompts.parse_output(line, '{"options": []}')
     text = AiJob(kind="field", field="task.done_when")
     assert len(prompts.parse_output(text, "가" * 1000)) == 300
+
+
+def test_project_lines_hidden_when_requester_cannot_see_project(org, project, member, outsider):
+    """초안·연결 태스크로 문서는 보여도 프로젝트를 못 보면 이름·목적을 맥락에 넣지 않는다."""
+    from assist import context
+
+    project.purpose = "숨긴 목적"
+    project.save(update_fields=["purpose"])
+    d = create_doc(org=org, actor=member, project=project, title="문서")
+    assert ("프로젝트 목적", "숨긴 목적") in context.doc_ctx(member, d)
+    assert all(label != "프로젝트 목적" for label, _ in context.doc_ctx(outsider, d))

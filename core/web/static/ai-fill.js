@@ -143,7 +143,7 @@ function onFragment(st) {
 // 저장 전 폼 칸: 이미 채웠다. 되돌리기 + 후보 넘기기
 function filled(st) {
   const n = st.opts.length;
-  st.panel.innerHTML = `<div class="ai-bar t13"><span class="sr-only">AI가 칸을 채웠습니다.</span>${
+  st.panel.innerHTML = `<div class="ai-bar t13"><span class="sr-only">AI가 칸을 채웠습니다. 내용을 확인한 뒤 저장해 주세요.</span>${
     n > 1 ? `<button type="button" class="btn link" data-ai-step="-1" aria-label="이전 후보">‹</button><span>${st.i + 1}/${n}</span><button type="button" class="btn link" data-ai-step="1" aria-label="다음 후보">›</button>` : ""
   }<button type="button" class="btn link" data-ai-undo>되돌리기</button></div>`; // COPY:ai_filled·ai_undo
 }
@@ -155,7 +155,7 @@ function preview(st) {
   const shown = st.text
     ? `<textarea class="textarea" rows="5" readonly aria-label="AI가 쓴 글 미리보기">${esc(v)}</textarea>`
     : `<p class="ai-preview">${esc(v)}</p>`;
-  st.panel.innerHTML = `<div class="ai-bar t13 stack"><span class="sr-only">AI 미리보기입니다. 적용해야 저장됩니다.</span>${shown}<div class="row">${
+  st.panel.innerHTML = `<div class="ai-bar t13 stack"><span class="sr-only">${st.text ? "AI 결과 미리보기입니다. [적용] 또는 [뒤에 붙이기]를 눌러야 저장됩니다." : "AI 결과 미리보기입니다. [적용]을 눌러야 저장됩니다."}</span>${shown}<div class="row">${
     n > 1 ? `<button type="button" class="btn link" data-ai-step="-1" aria-label="이전 후보">‹</button><span>${st.i + 1}/${n}</span><button type="button" class="btn link" data-ai-step="1" aria-label="다음 후보">›</button>` : ""
   }<button type="button" class="btn sm primary" data-ai-use="replace">적용</button>${
     st.text ? '<button type="button" class="btn sm" data-ai-use="append">뒤에 붙이기</button>' : ""
@@ -262,7 +262,7 @@ if (dlg) {
     const s = e.detail.xhr.status;
     const t = e.detail.target;
     if (s < 400 || !(dlg.contains(t) || t?.closest?.(".ai-inline"))) return;
-    if (![400, 403, 409, 429].includes(s)) e.detail.serverResponse = '<p class="error" role="alert" id="ai-job"><span aria-hidden="true">⚠</span> 요청을 처리하지 못했습니다. 잠시 뒤 다시 시도해 주세요.</p>'; // COPY:ai_err_unknown
+    if (![400, 403, 409, 429].includes(s)) e.detail.serverResponse = '<p class="error" role="alert" id="ai-job"><span aria-hidden="true">⚠</span> 요청을 처리하지 못했습니다. 잠시 후 다시 시도해 주세요.</p>'; // COPY:ai_err_unknown
     e.detail.shouldSwap = true;
     e.detail.isError = false;
   });

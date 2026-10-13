@@ -8,11 +8,13 @@ IP 고정·리다이렉트 거부·1MB 상한. 기존 _stt_call·validate_stt_ur
 - http.client를 직접 쓰므로 리다이렉트를 따라가지 않고 프록시 환경 변수도 보지 않는다.
 """
 
+import contextlib
 import http.client
 import ipaddress
 import json
 import socket
 import ssl
+import threading
 import time
 from urllib.parse import urlsplit
 
@@ -265,16 +267,37 @@ def _request(
         data = json.dumps(body).encode()
         headers["Content-Type"] = "application/json"
     deadline = time.monotonic() + timeout_s
+    expired = threading.Event()
+    sock = []  # 응답이 Connection: close면 getresponse 뒤 conn.sock이 None이 되므로 미리 잡아 둔다
+
+    def expire():
+        # 머리줄·본문을 1바이트씩 흘려 읽기마다 타임아웃을 피해도 전체 데드라인에 소켓을 끊는다
+        expired.set()
+        for s in sock:
+            with contextlib.suppress(OSError):
+                s.shutdown(socket.SHUT_RDWR)
+
+    watchdog = threading.Timer(timeout_s, expire)
+    watchdog.daemon = True
+    watchdog.start()
     try:
+        conn.connect()
+        sock.append(conn.sock)
+        if expired.is_set():
+            raise NetError("timeout")
         conn.request(method, parts.path.rstrip("/") + path, body=data, headers=headers)
         resp = conn.getresponse()
         if resp.status != 200:
             raise _status_error(resp.status)
         buf = bytearray()
         while True:
-            if time.monotonic() > deadline:
+            left = deadline - time.monotonic()
+            if left <= 0:
                 raise NetError("timeout")
-            chunk = resp.read(65536)
+            if resp.isclosed():  # 본문을 다 읽어 http.client가 소켓을 닫았다
+                break
+            sock[0].settimeout(max(0.1, left))  # 읽기마다 남은 시간만
+            chunk = resp.read1(65536)
             if not chunk:
                 break
             buf += chunk
@@ -285,8 +308,9 @@ def _request(
     except TimeoutError:
         raise NetError("timeout") from None
     except (OSError, http.client.HTTPException):
-        raise NetError("connect_failed") from None
+        raise NetError("timeout" if expired.is_set() else "connect_failed") from None
     finally:
+        watchdog.cancel()
         conn.close()
     try:
         out = json.loads(buf)

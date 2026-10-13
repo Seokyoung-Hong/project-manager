@@ -85,8 +85,31 @@ def test_codex_job_skips_pc_without_codex_capability(client, org, member):
     assert got["ai_job"]["id"] == plain.pk
     job.refresh_from_db()
     assert job.status == "queued" and job.route == "" and job.server is None
-    assert job.tried == [{"route": "pc", "source_id": job.source_id, "error": "codex_missing"}]
-    assert AiSource.objects.get(pk=job.source_id).last_error == "codex_missing"
+    # codex 칸 없음 = Codex를 모르는 옛 udally-link
+    assert job.tried == [{"route": "pc", "source_id": job.source_id, "error": "codex_link_update"}]
+    assert AiSource.objects.get(pk=job.source_id).last_error == "codex_link_update"
+    _report(client, tok, plain.pk, status="done", content='{"options":["가"]}')
+    again = _job(member, org, server)
+    AiSource.objects.filter(pk=again.source_id).update(base_url=CODEX_URL)
+    assert "ai_job" not in _ai(client, tok, codex=0)  # 새 link인데 Codex CLI가 없음
+    again.refresh_from_db()
+    assert again.tried[0]["error"] == "codex_missing"
+
+
+def test_claim_rechecks_switch_and_source_before_sending(client, org, member):
+    """대기 중에 조직 스위치·개인 AI를 끄면 PC로 내용이 나가지 않는다(§10.2)."""
+    server, tok = _link(client, member)
+    off_src = _job(member, org, server)
+    AiSource.objects.filter(pk=off_src.source_id).update(enabled=False)
+    assert "ai_job" not in _ai(client, tok)
+    off_src.refresh_from_db()
+    assert off_src.status == "queued" and off_src.tried[0]["error"] == "no_source"
+    job = _job(member, org, server)
+    org.settings = {**(org.settings or {}), "assist.enabled": False}
+    org.save(update_fields=["settings"])
+    assert "ai_job" not in _ai(client, tok)
+    job.refresh_from_db()
+    assert job.status == "failed" and job.error == "org_disabled"
 
 
 def test_cancel_is_delivered_and_finishes_once(client, org, member):

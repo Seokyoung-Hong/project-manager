@@ -82,7 +82,17 @@ def test_org_level_and_daily_limit(org, member, admin):
                 status="done",
                 claimed_at=timezone.now(),
             )
-    # 집히지 않고 끝난 작업·tried에만 있는 시도는 세지 않는다
+    # 집히지 않고 끝난 작업·보내기 전에 넘긴 시도는 세지 않고, 조직 AI로 보냈다가 넘어간 시도는 센다
+    AiJob.objects.create(
+        user=member,
+        org=org,
+        kind="field",
+        field="x",
+        route="direct",
+        status="done",
+        tried=[{"route": "org", "source_id": None, "error": "no_source"}],
+        claimed_at=timezone.now(),
+    )
     AiJob.objects.create(
         user=member, org=org, kind="field", field="x", route="org", status="failed"
     )
@@ -96,7 +106,7 @@ def test_org_level_and_daily_limit(org, member, admin):
         tried=[{"route": "org", "source_id": None, "error": "timeout"}],
         claimed_at=timezone.now(),
     )
-    assert today_org_count(member, org) == 2
+    assert today_org_count(member, org) == 3
     assert routes(member, org) == []  # 멤버 한도 도달
     assert org_capped(member, org) and not org_capped(admin, org)  # 작업 만들기 오류 코드 rate
     assert routes(admin, org) == ["org"]  # 관리자 예외

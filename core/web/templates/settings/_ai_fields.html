@@ -6,11 +6,11 @@
   <option value="openai"{% if not codex and v.backend != "codex" %} selected{% endif %}>OpenAI 호환 AI 서버</option>
   <option value="codex"{% if codex or v.backend == "codex" %} selected{% endif %}>Codex(내 구독, 내 PC)</option>
 </select></label>{# COPY:assist_src_backend #}
-<p id="ai-backend-help-{{ prefix }}" class="muted t12">Codex는 고른 내 PC에 설치·로그인된 Codex CLI로 씁니다. 주소·키는 필요 없고, 구독 정보는 PC 밖으로 나가지 않습니다.</p>{# COPY:assist_src_codex_help #}
-<label class="field">AI 서버 주소(OpenAI 호환일 때)<input class="input" name="base_url" value="{% if not codex %}{{ v.base_url|default:'' }}{% endif %}" maxlength="300" inputmode="url" spellcheck="false" aria-describedby="ai-url-help-{{ prefix }}"></label>
+<p id="ai-backend-help-{{ prefix }}" class="muted t12">Codex는 선택한 내 PC에 설치·로그인된 Codex CLI로 사용합니다. AI 서버 주소와 키는 입력하지 않습니다. 구독 인증 정보는 내 PC에 보관됩니다.</p>{# COPY:assist_src_codex_help #}
+<label class="field">AI 서버 주소(OpenAI 호환 AI 서버용)<input class="input" name="base_url" value="{% if not codex %}{{ v.base_url|default:'' }}{% endif %}" maxlength="300" inputmode="url" spellcheck="false" aria-describedby="ai-url-help-{{ prefix }}"></label>
 <p id="ai-url-help-{{ prefix }}" class="muted t12">/v1까지 입력해 주세요. 예: https://api.example.com/v1, http://localhost:11434/v1</p>{# COPY:assist_src_url_help #}
 <label class="field">모델<input class="input" name="model" value="{{ v.model|default:'' }}" maxlength="200" list="ai-models-{{ prefix }}" spellcheck="false" aria-describedby="ai-model-help-{{ prefix }}"></label>{# COPY:assist_src_model #}
-<p id="ai-model-help-{{ prefix }}" class="muted t12">Codex는 비우면 Codex 기본 모델을 씁니다.</p>{# COPY:assist_src_model_codex_help #}
+<p id="ai-model-help-{{ prefix }}" class="muted t12">모델을 비워 두면 선택한 내 PC의 Codex 기본 모델을 사용합니다.</p>{# COPY:assist_src_model_codex_help #}
 {% endwith %}
 <datalist id="ai-models-{{ prefix }}"></datalist>
 <label class="field">키<input class="input" type="password" name="api_key" value="" autocomplete="new-password" placeholder="{% if key_set %}설정됨{% else %}미설정{% endif %} · 변경할 때만 입력"></label>{# COPY:assist_src_key #}

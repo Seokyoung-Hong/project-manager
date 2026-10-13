@@ -32,6 +32,7 @@ PC_ERRORS = {
     "pc_error",
     "codex_missing",
     "codex_auth",
+    "codex_link_update",
 }
 LIVE = ("running", "cancelling")
 _ENC = "enc:"
@@ -61,15 +62,21 @@ def on_heartbeat(server, data: dict) -> dict:
     if current:
         live = AiJob.objects.filter(pk=current, server=server, status="running").exists()
         return {} if live else {"ai_cancel": True}  # 취소 중이거나 더는 이 PC 작업이 아님
-    job = claim(server, codex=bool(data.get("codex")))
+    job = claim(server, codex=data.get("codex"))
     return {"ai_job": job} if job else {}
 
 
-def claim(server, codex: bool = False) -> dict | None:
+def claim(server, codex: int | None = None) -> dict | None:
     """대기 중인 PC 작업 하나를 running으로 바꾸고 PC에 줄 내용을 돌려준다(불변식 2).
 
-    Codex 작업은 heartbeat에 codex=1(Codex CLI 있음)을 보낸 PC에만 준다. 아니면(옛 link 포함) 다음 AI로 넘긴다.
+    배정 직전에 조직 스위치·이 공급원이 지금 실행 순서에 있는지(켜짐·권한·한도)를 다시 본다(§10.2) —
+    대기 중에 스위치나 개인 AI를 끄면 PC로 내용이 나가지 않는다.
+    Codex 작업은 heartbeat에 codex=1(Codex CLI 있음)을 보낸 PC에만 준다. codex 칸이 없으면 Codex를 모르는
+    옛 udally-link(codex_link_update), 0이면 Codex 미설치(codex_missing)로 다음 AI로 넘긴다.
     """
+    from .services import ai_on
+    from .sources import _plan
+
     mine = AiJob.objects.filter(status="queued", route="pc", server=server, user_id=server.owner_id)
     for pk in mine.order_by("created_at", "id").values_list("pk", flat=True)[:5]:
         with transaction.atomic():
@@ -81,8 +88,15 @@ def claim(server, codex: bool = False) -> dict | None:
             )
             if job is None:
                 continue
-            if not codex and job.source and job.source.is_codex:
-                _fall_through(job, "codex_missing")
+            if not ai_on(job.user, job.org):
+                _finish(job, "failed", error="org_disabled")
+                continue
+            keys = {a.key for a in _plan(job.user, job.org, skip_job_id=job.pk)}
+            if ("pc", job.source_id) not in keys:
+                _fall_through(job, "no_source")  # 그 사이 끈 공급원·권한·PC 바뀜 → 다음 AI
+                continue
+            if job.source.is_codex and not codex:
+                _fall_through(job, "codex_link_update" if codex is None else "codex_missing")
                 continue
             try:
                 payload = _payload(job)
@@ -117,8 +131,14 @@ def _payload(job) -> dict:
     }
     if src.is_codex:
         # PC의 Codex CLI(사용자 구독)로 실행. 키·주소 없음, 에이전트 기동이 느려 시간 상한을 넉넉히.
-        out.update(backend="codex", url="", api_key="", timeout_s=max(spec.timeout_s, 180))
+        out.update(backend="codex", url="", api_key="", timeout_s=timeout_s(job))
     return out
+
+
+def timeout_s(job) -> int:
+    """PC에 주는 시간 상한. Codex는 에이전트 기동이 느려 넉넉히. worker.sweep이 이것 + 여유로 정체를 정리한다."""
+    t = prompts.spec_of(job).timeout_s
+    return max(t, 180) if job.source and job.source.is_codex else t
 
 
 def _verify(job, content: str) -> str:

@@ -23,6 +23,7 @@ ERROR_CODES = (
     "cancelled",
     "codex_missing",
     "codex_auth",
+    "codex_link_update",  # PC의 udally-link가 Codex를 모르는 옛 버전(heartbeat에 codex 칸 없음)
     "rate",
 )
 CODEX_URL = (

@@ -36,8 +36,8 @@ await import(pathToFileURL(copy).href);
 const [inp, auto] = document.querySelectorAll("[data-ai]");
 const b1 = inp.parentElement.querySelector(".ai-spark");
 assert.ok(b1 && inp.parentElement.classList.contains("ai-wrap"), "아이콘이 칸 안에");
-assert.equal(b1.getAttribute("aria-label"), "할 일 AI 자동완성");
-assert.ok(!document.body.textContent.includes("AI로 쓰기"), "글자 버튼 없음");
+assert.equal(b1.getAttribute("aria-label"), "할 일 AI로 쓰기"); // COPY:ai_write
+assert.ok(!b1.textContent.trim(), "글자 없는 아이콘 버튼");
 assert.ok(document.querySelector("[data-ai-mode] .ai-ico"), "모드 버튼 앞 아이콘");
 
 // 1) 폼 칸: 누르면 스피너 → 결과가 오면 첫 후보로 채움, ‹ ›, 되돌리기

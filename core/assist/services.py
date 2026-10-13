@@ -6,9 +6,11 @@
 
 from datetime import timedelta
 
+from django.db import transaction
 from django.http import Http404
 from django.utils import timezone
 
+from accounts.models import User
 from common.errors import ServiceError
 from orgs.settings import effective
 
@@ -41,8 +43,6 @@ def create_job(user, org, *, field: str, target: str, user_input: str = "", opti
     from orgs.services import is_member
 
     from . import context, fields
-    from .models import AiJob
-    from .sources import org_capped, plan
 
     if org is None or not is_member(user, org):
         raise Http404
@@ -88,6 +88,16 @@ def create_job(user, org, *, field: str, target: str, user_input: str = "", opti
                 }
             )  # COPY:assist_pick_template
         options = {"template_id": tid}
+    with transaction.atomic():
+        # 같은 사람의 요청을 줄 세운다: 동시 요청이 세기와 만들기 사이에 끼어 한도(동시 2·시간당·조직 하루)를 넘지 않게
+        User.objects.select_for_update().filter(pk=user.pk).first()
+        return _create_locked(user, org, kind, field, ttype, obj, user_input, options)
+
+
+def _create_locked(user, org, kind, field, ttype, obj, user_input, options):
+    from .models import AiJob
+    from .sources import org_capped, plan
+
     now = timezone.now()
     mine = AiJob.objects.filter(user=user)
     if mine.filter(status__in=AiJob.ACTIVE).count() >= MAX_ACTIVE:
@@ -212,8 +222,8 @@ def today_org_count(user, org) -> int:
 
 
 def purge_old_jobs() -> int:
-    """끝난 작업 7일 뒤 삭제(purge_expired가 하루 한 번)."""
+    """만든 지 7일 지난 작업 삭제(purge_expired가 하루 한 번)."""
     from .models import AiJob
 
     cutoff = timezone.now() - timedelta(days=KEEP_DAYS)
-    return AiJob.objects.filter(finished_at__lt=cutoff).delete()[0]
+    return AiJob.objects.filter(created_at__lt=cutoff).delete()[0]  # 처리방침: 만든 날부터 7일

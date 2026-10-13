@@ -17,7 +17,6 @@ from datetime import timedelta
 
 from django.conf import settings
 from django.db import close_old_connections, transaction
-from django.db.models import Case, IntegerField, Value, When
 from django.http import Http404
 from django.utils import timezone
 
@@ -30,7 +29,7 @@ TICK = 1
 SWEEP_EVERY = 10
 GRACE = timedelta(seconds=60)  # running 시간 초과 = claimed_at + timeout_s + 60초
 
-_busy = set()  # 풀에서 도는 작업 id
+_busy = {}  # 풀에서 도는 작업 id → 긴 작업(문서·회의록·후보)인가
 _busy_lock = threading.Lock()
 _started = False
 
@@ -58,9 +57,11 @@ def _loop(pool, n):
                 sweep()
             with _busy_lock:
                 free = n - len(_busy)
-            for job_id in claim(free):
+                # 짧은 칸 작업용으로 1개를 남긴다(긴 회의록이 풀을 다 잡지 않게). 워커가 1개면 예약 없음.
+                long_free = free if n == 1 else max(0, n - 1 - sum(_busy.values()))
+            for job_id, is_long in claim(free, long_free):
                 with _busy_lock:
-                    _busy.add(job_id)
+                    _busy[job_id] = is_long
                 pool.submit(_run_in_pool, job_id)
         except Exception as e:  # noqa: BLE001 — 루프를 살린다
             log.error("assist loop %s", type(e).__name__)
@@ -76,34 +77,44 @@ def _run_in_pool(job_id):
         log.error("assist job %s %s", job_id, type(e).__name__)
     finally:
         with _busy_lock:
-            _busy.discard(job_id)
+            _busy.pop(job_id, None)
         close_old_connections()
 
 
-def claim(limit: int) -> list[int]:
-    """queued(route direct·org·"") 작업을 짧은 칸 먼저 limit개 집어 running으로. Postgres는 SKIP LOCKED."""
+def claim(limit: int, long_limit: int | None = None) -> list[tuple[int, bool]]:
+    """queued(route direct·org·"") 작업을 짧은 칸 먼저 limit개 집어 running으로. Postgres는 SKIP LOCKED.
+
+    긴 작업(칸이 아닌 것)은 long_limit개까지만 — 나머지 자리는 칸 작업 몫. (id, 긴 작업인가) 목록.
+    """
     from .models import AiJob
 
     if limit <= 0:
         return []
+    long_limit = limit if long_limit is None else long_limit
     now = timezone.now()
     with transaction.atomic():
-        ids = list(
-            AiJob.objects.select_for_update(skip_locked=True)
-            .filter(status="queued", route__in=("direct", "org", ""))
-            .annotate(
-                _p=Case(
-                    When(kind="field", then=Value(0)), default=Value(1), output_field=IntegerField()
-                )
-            )
-            .order_by("_p", "created_at")
-            .values_list("pk", flat=True)[:limit]
+        queued = AiJob.objects.select_for_update(skip_locked=True).filter(
+            status="queued", route__in=("direct", "org", "")
         )
+        short = list(
+            queued.filter(kind="field").order_by("created_at").values_list("pk", flat=True)[:limit]
+        )
+        n_long = min(limit - len(short), long_limit)
+        long = (
+            list(
+                queued.exclude(kind="field")
+                .order_by("created_at")
+                .values_list("pk", flat=True)[:n_long]
+            )
+            if n_long > 0
+            else []
+        )
+        ids = short + long
         if ids:
             AiJob.objects.filter(pk__in=ids, status="queued").update(
                 status="running", claimed_at=now
             )
-    return ids
+    return [(i, False) for i in short] + [(i, True) for i in long]
 
 
 # ---------- 상태 바꾸기 ----------
@@ -354,6 +365,7 @@ def sweep() -> None:
     from notes.transcription import online
 
     from .models import AiJob
+    from .pc import timeout_s as pc_timeout
     from .services import expire_if_stale
 
     now = timezone.now()
@@ -388,6 +400,11 @@ def sweep() -> None:
             code = "pc_unlinked"
         elif not online(job.server, now):
             code = "pc_offline"
+        elif (
+            job.status != "queued"
+            and job.claimed_at + timedelta(seconds=pc_timeout(job)) + GRACE < now
+        ):
+            code = "timeout"  # 켜져 있는 PC가 결과를 끝내 안 보냄 — 슬롯·내용을 붙잡지 않게
         else:
             if job.status == "queued":
                 expire_if_stale(job)

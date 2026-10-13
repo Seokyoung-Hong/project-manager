@@ -82,7 +82,12 @@ def org_id_of(kind: str, obj):
 # ---------- 맥락 조립: ctx(user, obj) -> [(label, text)] ----------
 
 
-def _project_lines(project):
+def _project_lines(user, project):
+    """프로젝트 이름·목적. 요청자가 그 프로젝트를 볼 수 없으면 빈 목록(초안·연결 태스크로 숨긴 프로젝트가 새지 않게)."""
+    from projects.services import visible_projects
+
+    if project is None or not visible_projects(user).filter(pk=project.pk).exists():
+        return []
     out = [("프로젝트", project.name)]
     if project.purpose:
         out.append(("프로젝트 목적", project.purpose))
@@ -94,7 +99,7 @@ def task_ctx(user, task):
     from projects.docs import visible_docs
     from tasks.services import visible_tasks
 
-    out = _project_lines(task.project)
+    out = _project_lines(user, task.project)
     out.append(("태스크 제목", task.title))
     for label, value in (
         ("설명", task.description),
@@ -136,7 +141,7 @@ def project_ctx(user, project):
     from tasks.models import Task
     from tasks.services import visible_tasks
 
-    out = _project_lines(project)
+    out = _project_lines(user, project)
     titles = (
         visible_tasks(user)
         .filter(project=project, status__in=Task.OPEN)
@@ -164,7 +169,7 @@ def org_ctx(user, org):
 def doc_ctx(user, doc):
     out = [("문서 제목", doc.title)]
     if doc.project_id:
-        out[:0] = _project_lines(doc.project)
+        out[:0] = _project_lines(user, doc.project)
     if doc.body_md:
         out.append(("본문", doc.body_md[:4000]))
     return out
@@ -182,7 +187,7 @@ def request_ctx(user, req):
 
 
 def issue_ctx(user, issue):
-    return _project_lines(issue.connection.project) + [
+    return _project_lines(user, issue.connection.project) + [
         (f"GitHub 이슈 #{issue.number}", issue.title),
         ("이슈 본문", issue.body or ""),  # 사본 5000자(github/services.py가 자른다)
     ]

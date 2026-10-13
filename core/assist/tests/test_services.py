@@ -187,10 +187,14 @@ def test_apply_refusals(on, member, admin, task):
 
 
 def test_purge_old_jobs(on, member):
+    """처리방침대로 만든 날 기준 7일(끝난 날이 최근이어도 지운다)."""
     old = AiJob.objects.create(user=member, org=on, kind="field", field="task.title", status="done")
-    AiJob.objects.filter(pk=old.pk).update(finished_at=timezone.now() - timedelta(days=8))
+    AiJob.objects.filter(pk=old.pk).update(
+        created_at=timezone.now() - timedelta(days=8),
+        finished_at=timezone.now() - timedelta(days=6),
+    )
     AiJob.objects.create(user=member, org=on, kind="field", field="task.title", status="queued")
-    assert svc.purge_old_jobs() == 1
+    assert svc.purge_old_jobs() == 1 and not AiJob.objects.filter(pk=old.pk).exists()
 
 
 def test_apply_mode_append(on, member):

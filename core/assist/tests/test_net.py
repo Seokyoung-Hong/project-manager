@@ -202,6 +202,15 @@ class _H(BaseHTTPRequestHandler):
             self._send(302, headers={"Location": "http://169.254.169.254/"})
         elif p.startswith("/big"):
             self._send(200, b"{" + b" " * (net.MAX_BODY + 10) + b"}")
+        elif p.startswith("/drip"):  # 0.2초마다 1바이트: 읽기마다의 타임아웃은 피하는 서버
+            body = b"{" + b" " * 200 + b"}"
+            self.send_response(200)
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            for b in body:
+                self.wfile.write(bytes([b]))
+                self.wfile.flush()
+                time.sleep(0.2)
         elif p.startswith("/slow"):
             time.sleep(1.5)
             self._send(200, b"{}")
@@ -274,6 +283,13 @@ def test_chat_timeout_and_400_status(fake_llm):
     with pytest.raises(NetError) as e:
         net.chat("http://llm.corp.example/s400", {}, org=True)
     assert e.value.code == "http_4xx" and e.value.status == 400
+
+
+def test_slow_drip_body_hits_total_deadline(fake_llm):
+    t0 = time.monotonic()
+    with pytest.raises(NetError) as e:
+        net.chat("http://llm.corp.example/drip", {}, org=True, timeout_s=1)
+    assert e.value.code == "timeout" and time.monotonic() - t0 < 3
 
 
 def test_proxy_env_ignored(fake_llm, monkeypatch):

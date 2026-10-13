@@ -44,9 +44,10 @@ ERROR_TEXT = {
     "pc_offline": "요청을 보낼 내 PC에 연결할 수 없습니다. PC에서 내 PC 연결을 실행한 뒤 다시 시도해 주세요.",  # COPY:assist_err_pc_offline
     "pc_unlinked": "개인 AI에 연결된 내 PC가 없습니다. 설정 > AI에서 [PC 다시 고르기]를 눌러 연결할 PC를 선택해 주세요.",  # COPY:assist_err_pc_unlinked
     "pc_error": "내 PC에서 AI 서버에 요청하지 못했습니다. PC의 연결 상태와 AI 서버 주소·모델·키를 확인해 주세요.",  # COPY:assist_err_pc_error
-    "codex_missing": "PC에 Codex CLI가 없습니다. Codex를 설치한 뒤 다시 시도해 주세요.",  # COPY:assist_err_codex_missing
-    "codex_auth": "PC의 Codex가 로그인되어 있지 않습니다. PC에서 codex login을 실행해 주세요.",  # COPY:assist_err_codex_auth
-    "rate": "오늘 쓸 수 있는 조직 AI 횟수를 다 썼습니다. 내일 다시 쓰거나 개인 AI를 등록해 주세요.",  # COPY:assist_err_rate
+    "codex_missing": "선택한 내 PC에 Codex가 설치되어 있지 않습니다. 해당 PC에 Codex를 설치하고 로그인한 뒤 다시 시도해 주세요.",  # COPY:assist_err_codex_missing
+    "codex_link_update": "선택한 내 PC의 udally-link가 Codex를 지원하지 않는 버전입니다. 해당 PC의 udally-link를 최신 버전으로 업데이트한 뒤 다시 시도해 주세요.",  # COPY:assist_err_codex_link_update
+    "codex_auth": "선택한 내 PC의 Codex에 로그인되어 있지 않습니다. 해당 PC에서 `codex login`으로 로그인한 뒤 다시 시도해 주세요.",  # COPY:assist_err_codex_auth
+    "rate": "오늘의 조직 AI 사용 한도에 도달했습니다. 내일 다시 시도하거나 설정 > AI에서 개인 AI를 등록해 주세요.",  # COPY:assist_err_rate
     # 작업(자동완성) 쪽 코드. no_source는 "쓸 AI가 없음"과 "대상을 더 볼 수 없음" 둘 다다(assist.worker).
     "no_source": "사용 가능한 AI가 없거나 대상에 접근할 수 없습니다. 대상 접근 권한과 설정 > AI의 사용 여부·사용 순서를 확인하고, 조직 AI는 관리자에게 등록·권한·하루 한도 확인을 요청해 주세요.",  # COPY:assist_err_no_source
     "no_worker": "AI 작업을 처리할 수 없어 요청이 중단되었습니다. 잠시 후 다시 요청하고, 계속되면 서비스 운영자에게 문의해 주세요.",  # COPY:assist_err_no_worker
@@ -126,7 +127,7 @@ def _save_personal(user, src: AiSource, post) -> None:
         if server is None:
             raise ServiceError(
                 {
-                    "server": "Codex는 내 PC에서 실행합니다. Codex가 설치·로그인된 내 PC를 골라 주세요."  # COPY:assist_src_codex_pc_required
+                    "server": "Codex를 사용할 내 PC를 선택해 주세요. 해당 PC에 Codex가 설치되어 있고 로그인되어 있어야 합니다."  # COPY:assist_src_codex_pc_required
                 }
             )
         src.api_key = ""  # 구독 토큰은 PC 밖으로 나오지 않는다 — 키를 받지 않는다

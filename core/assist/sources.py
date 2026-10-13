@@ -2,7 +2,6 @@
 
 from dataclasses import dataclass
 
-from django.db.models import Q
 from django.utils import timezone
 
 
@@ -21,21 +20,31 @@ class Attempt:
 
 
 def org_count(user, org, *, skip_job_id=None) -> int:
-    """오늘(KST) 이 조직에서 이 사람이 조직 AI로 실행한(또는 실행 대기 중인) 작업 수.
+    """오늘(KST) 이 조직에서 이 사람이 조직 AI로 보낸(또는 보낼 차례인) 작업 수.
 
-    tried에 남은 지난 시도가 아니라 지금 route=org인 작업만 센다. 집히지 않고 끝난(no_worker·취소) 것은 빼다.
+    지금 route=org인 작업 + 조직 AI로 보냈다가 실패해 다음 AI로 넘어간 작업(tried)을 함께 센다.
+    집히지 않고 끝난(no_worker·취소) 것과 보내기 전에 넘긴 시도(NOT_SENT)는 빼다.
+    ponytail: tried(JSON)를 파이썬에서 본다 — 사람·조직·하루로 좁혀 많아야 수백 행. 커지면 보낸 횟수 칸을 둔다.
     """
     from common.dates import kst_day_range, today_kst
 
     from .models import AiJob
 
     start, _ = kst_day_range(today_kst())
-    qs = AiJob.objects.filter(user=user, org=org, route="org", created_at__gte=start).exclude(
-        Q(claimed_at__isnull=True) & Q(status__in=("failed", "cancelled"))
-    )
+    qs = AiJob.objects.filter(user=user, org=org, created_at__gte=start)
     if skip_job_id:
         qs = qs.exclude(pk=skip_job_id)
-    return qs.count()
+    n = 0
+    for route, status, claimed, tried in qs.values_list("route", "status", "claimed_at", "tried"):
+        sent_before = any(
+            t.get("route") == "org" and t.get("error") not in NOT_SENT for t in tried or []
+        )
+        now_org = route == "org" and not (claimed is None and status in ("failed", "cancelled"))
+        n += sent_before or now_org
+    return n
+
+
+NOT_SENT = ("no_source", "org_disabled")  # 조직 AI로 보내기 전에 넘긴 시도(worker.run의 재검사)
 
 
 def org_usable(user, org, *, skip_job_id=None, ignore_limit=False) -> bool:
