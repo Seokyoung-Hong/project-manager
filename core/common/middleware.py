@@ -38,6 +38,7 @@ _NO_USER_PREFIXES = {"rt", "api", "static"}
 # 계정 실명이 비어도 열 수 있는 화면: 입력 화면(프로필), 로그인·로그아웃·가입, 문서, 동의, 탈퇴, 기계용 경로.
 _REAL_NAME_OPEN = {
     "profile", "logout", "login", "signup", "privacy", "terms", "consent", "consents", "account",
+    "consent_withdraw", "token_revoke",  # 동의 철회·토큰 폐기는 실명 없이도(권리 행사)
     "password_reset_confirm", "healthz", "github_login", "github_login_confirm", "github_callback",
     "oauth_metadata", "oauth_register", "oauth_token", "skills_install", "skills_bundle", "link_script",
 }  # fmt: skip
