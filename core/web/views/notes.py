@@ -103,6 +103,10 @@ def org_notes(request, org_id):
             extras["transcribe_options"] = opts
             extras["transcribe_org_reason"] = org_reason
             extras["can_transcribe_upload"] = any(not o["disabled"] for o in opts)
+            if extras["can_transcribe_upload"]:
+                from .transcribe import glossary_ctx
+
+                extras.update(glossary_ctx(rec, request.user))
         if rec is not None:
             # 전사 진행(전사문 쪽 상태). 회의록 본문과 별개다.
             from notes.models import TranscriptionJob
@@ -202,7 +206,7 @@ def note_transcribe(request, note_id):
     """올린 녹음을 전사 대기열에 넣는다. 실행은 Node 음성 서비스나 고른 내 PC가 한다."""
     from notes import transcription as tx
 
-    from .transcribe import parse_choice
+    from .transcribe import parse_choice, posted_glossary
 
     note = _note_or_404(request.user, note_id)
     rec = getattr(note, "recording", None)
@@ -211,7 +215,7 @@ def note_transcribe(request, note_id):
     choice = request.POST.get("choice", "")
     picked = parse_choice(note.org, request.user, choice) if choice else {}
     try:
-        tx.request_upload(rec, actor=request.user, **picked)
+        tx.request_upload(rec, actor=request.user, glossary=posted_glossary(request), **picked)
         messages.success(request, "전사를 대기열에 넣었습니다. 끝나면 아래에 전사문이 보입니다.")
     except (ServiceError, Forbidden) as e:
         messages.error(request, " ".join(e.errors.values()))

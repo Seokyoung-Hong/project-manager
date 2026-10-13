@@ -204,7 +204,7 @@ def purge_codes() -> int:
 
 def job_payload(job) -> dict:
     """PC에 주는 작업. 이름·참여자·조직 키·서버 주소는 주지 않는다(전사문 조립은 core가 한다)."""
-    from .services import meeting_glossary
+    from .services import job_glossary
 
     rec = job.recording
     return {
@@ -214,7 +214,8 @@ def job_payload(job) -> dict:
         "source": rec.source,
         "segments": rec.segments if rec.source == "discord" else [],
         "tracks": list(rec.tracks.exclude(audio="").values_list("discord_user_id", flat=True)),
-        "glossary": meeting_glossary(rec, viewer=job.server.owner),  # PC 주인이 못 보는 용어는 빼고
+        # 고친 값이 있으면 그대로(사람이 직접 친 값), 없으면 PC 주인이 못 보는 용어를 빼고 자동으로
+        "glossary": job_glossary(job, viewer=job.server.owner),
         "language": "ko",
     }
 

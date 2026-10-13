@@ -862,7 +862,7 @@ def transcription_claim(request):
         **tx._retry_payload(job),
         "stt": stt,
         "names": notes_svc.speaker_names(rec),
-        "glossary": notes_svc.meeting_glossary(rec),
+        "glossary": notes_svc.job_glossary(job),  # 전사 메뉴에서 고쳤으면 그 값
     }
 
 

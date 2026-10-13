@@ -395,6 +395,67 @@ def test_glossary_fits_prompt_budget(enabled, admin, member):
     assert g and sum(_cost(t) + 1 for t in g.split(", ")) <= PROMPT_TOKENS
 
 
+def test_glossary_order_members_manual_and_doc_bodies(enabled, admin, member):
+    """이름 → 프로젝트 구성원 → 직접 입력(프로젝트 → 조직, 합침) → 자동 추출(제목·문서 본문)."""
+    from notes.services import glossary_terms
+    from orgs.services import add_team_member, set_locks
+    from projects.docs import create_doc
+    from projects.services import set_project_settings
+
+    p = create_project(org=enabled, name="학식개편", actor=admin, owners=[admin])
+    team = create_team(org=enabled, name="백엔드", actor=admin)
+    p.teams.add(team)
+    mate = User.objects.create_user("mate", password="pw12345678", display_name="구성원갑")
+    outsider = User.objects.create_user("out", password="pw12345678", display_name="밖사람")
+    for u in (mate, outsider):
+        OrgMembership.objects.create(org=enabled, user=u, role="member")
+    add_team_member(team, mate, admin)
+    set_org_settings(enabled, {**enabled.settings, "meeting.glossary": "조직용어\nGraphQL"}, admin)
+    enabled.refresh_from_db()
+    set_project_settings(p, {"meeting.glossary": "프로젝트용어, 조직용어"}, actor=admin)
+    p.refresh_from_db()
+    for body in ("Kubernetes 배포파이프 정리했습니다", "Kubernetes 배포파이프 https://x.io/ab"):
+        create_doc(org=enabled, project=p, actor=admin, title="문서", body_md=body)
+    create_doc(org=enabled, project=p, actor=admin, title="문서", body_md="한번만용어")
+    rec = _rec(enabled, member, project=p)
+    terms, dropped = glossary_terms(rec)
+    assert not dropped
+    order = ["팀원", "구성원갑", "프로젝트용어", "조직용어", "GraphQL", "Kubernetes", "배포파이프"]
+    assert [t for t in terms if t in order] == order
+    assert "밖사람" not in terms  # 프로젝트 회의는 프로젝트 구성원만
+    for noise in ("한번만용어", "정리했습니다", "https", "x.io"):
+        assert noise not in terms
+    # 조직이 잠그면 프로젝트 용어는 빠진다(조직 용어만)
+    set_locks(enabled, ["meeting.glossary"], admin)
+    rec.note.org.refresh_from_db()
+    assert "프로젝트용어" not in glossary_terms(rec)[0] and "조직용어" in glossary_terms(rec)[0]
+
+
+def test_glossary_reports_dropped_names_and_manual_terms(enabled, admin, member):
+    from notes.services import glossary_terms
+
+    long_terms = [f"아주긴직접입력용어{i:02d}번" for i in range(20)]
+    set_org_settings(enabled, {**enabled.settings, "meeting.glossary": ",".join(long_terms)}, admin)
+    enabled.refresh_from_db()
+    terms, dropped = glossary_terms(_rec(enabled, member))
+    assert terms[0] == "팀원" and dropped and set(dropped) <= set(long_terms)
+    assert not set(dropped) & set(terms)
+
+
+def test_project_settings_show_only_project_glossary(client, enabled, admin, project):
+    set_org_settings(enabled, {**enabled.settings, "meeting.glossary": "조직만의용어"}, admin)
+    client.force_login(admin)
+    r = client.post(
+        f"/projects/{project.pk}/settings", {"meeting.glossary": "프로젝트만의용어"}, follow=True
+    )
+    assert r.status_code == 200
+    project.refresh_from_db()
+    assert project.settings["meeting.glossary"] == "프로젝트만의용어"
+    page = client.get(f"/projects/{project.pk}/settings").content.decode()
+    textarea = page.split('name="meeting.glossary"')[1].split("</textarea>")[0]
+    assert "프로젝트만의용어" in textarea and "조직만의용어" not in textarea
+
+
 # ---------- 회의록 사용자 API ----------
 
 

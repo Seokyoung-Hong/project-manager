@@ -751,18 +751,39 @@ def check_request(rec, actor, engine: str, server=None) -> None:
 
 
 @transaction.atomic
-def request_retry(rec, *, engine: str, model: str, actor, info: dict | None = None, server=None):
-    """다시 전사 요청(전사 메뉴). 돌고 있는 작업은 취소 중으로, 대기 작업은 새 요청으로 바꾼다."""
+def request_retry(
+    rec,
+    *,
+    engine: str,
+    model: str,
+    actor,
+    info: dict | None = None,
+    server=None,
+    glossary: str | None = None,
+):
+    """다시 전사 요청(전사 메뉴). 돌고 있는 작업은 취소 중으로, 대기 작업은 새 요청으로 바꾼다.
+
+    glossary: 전사 메뉴에서 고친 용어집(None이면 보낼 때 자동으로 만든다).
+    """
     rec = VoiceRecording.objects.select_for_update().select_related("note__org").get(pk=rec.pk)
     check_request(rec, actor, engine, server)
     kind = "upload" if rec.source == "upload" and not rec.jobs.exists() else "retry"
     return _enqueue(
-        rec, engine=engine, model=model, actor=actor, info=info, kind=kind, server=server
+        rec,
+        engine=engine,
+        model=model,
+        actor=actor,
+        info=info,
+        kind=kind,
+        server=server,
+        glossary=glossary,
     )
 
 
 @transaction.atomic
-def request_upload(rec, *, actor, engine: str = "", model: str = "", info=None, server=None):
+def request_upload(
+    rec, *, actor, engine: str = "", model: str = "", info=None, server=None, glossary=None
+):
     """올린 녹음 [전사 시작]. 수단을 고르지 않으면 조직 기본 수단·모델로 대기열에 넣는다."""
     rec = VoiceRecording.objects.select_for_update().select_related("note__org").get(pk=rec.pk)
     if rec.source != "upload":
@@ -775,12 +796,41 @@ def request_upload(rec, *, actor, engine: str = "", model: str = "", info=None, 
             raise ServiceError({"engine": NO_ENGINE})
     check_request(rec, actor, engine, server)
     return _enqueue(
-        rec, engine=engine, model=model, actor=actor, info=info, kind="upload", server=server
+        rec,
+        engine=engine,
+        model=model,
+        actor=actor,
+        info=info,
+        kind="upload",
+        server=server,
+        glossary=glossary,
     )
 
 
-def _enqueue(rec, *, engine: str, model: str, actor, info, kind: str, server=None):
+def clean_glossary(text: str) -> str:
+    """전사 메뉴에서 고친 용어집 → 저장할 값(", "로 이은 용어). 길이·전사 prompt 한도를 넘으면 ServiceError."""
+    from .services import GLOSSARY_MAX, fit_budget, split_terms
+
+    if len(text) > GLOSSARY_MAX:
+        raise ServiceError(
+            {"glossary": f"용어집은 {GLOSSARY_MAX}자를 넘을 수 없습니다."}  # COPY:glossary_too_long
+        )
+    picked, dropped = fit_budget(split_terms(text))
+    if dropped:
+        raise ServiceError(
+            {
+                # COPY:glossary_over_budget
+                "glossary": "용어집이 전사 서버 한도를 넘습니다. 다음 용어를 빼거나 줄여 주세요: "
+                + ", ".join(dropped)
+            }
+        )
+    return ", ".join(picked)
+
+
+def _enqueue(rec, *, engine: str, model: str, actor, info, kind: str, server=None, glossary=None):
     org = rec.note.org
+    if glossary is not None:
+        glossary = clean_glossary(glossary)
     if rec.status not in ("draft", "done"):
         raise ServiceError({"job": "회의 전사가 끝난 뒤 다시 전사해 주세요."})
     if why := retry_block(rec):
@@ -814,6 +864,7 @@ def _enqueue(rec, *, engine: str, model: str, actor, info, kind: str, server=Non
         audio_ms=a,
         segments_total=n,
         stats=_job_stats(org, engine, model, info, server if engine == "pc" else None),
+        glossary=glossary,
     )
 
 

@@ -28,6 +28,8 @@
 {% elif row.spec.key == "meeting.stt_model" and org %}
 {% include "orgs/_stt_model_select.html" with current=row.value %}
 <button type="button" class="btn sm" hx-post="{% url 'org_stt_apply' org.pk %}" hx-target="#stt-test-result" hx-include="closest form">모델 적용</button>
+{% elif row.spec.key == "meeting.glossary" %}
+<textarea id="setting-{{ row.spec.key }}" class="textarea setting-text" name="{{ row.spec.key }}" rows="3" maxlength="{{ row.spec.hi }}"{% if row.spec.help %} aria-describedby="setting-help-{{ row.spec.key }}"{% endif %}>{{ row.value }}</textarea>
 {% else %}
 <input id="setting-{{ row.spec.key }}" class="input setting-text" name="{{ row.spec.key }}" value="{{ row.value }}"{% if row.spec.help %} aria-describedby="setting-help-{{ row.spec.key }}"{% endif %}>
 {% if row.spec.key == "meeting.stt_url" and org %}<button type="button" class="btn sm" hx-post="{% url 'org_stt_test' org.pk %}" hx-target="#stt-test-result" hx-include="closest form">연결 시험</button>
