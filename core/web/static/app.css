@@ -248,6 +248,8 @@ details[open] > summary .caret { transform: rotate(180deg); }
   text-align: right;
 }
 .site-footer .foot-policy { align-items: center; }
+/* 정책 줄은 라벨 | 링크 묶음 두 칸이다(링크를 칸마다 두면 셋째가 다음 줄 가운데로 떨어진다) */
+.site-footer .foot-links { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--sp-1) var(--sp-4); }
 /* 좁은 인증 카드 폭에서도 저작권 한 줄이 끊기지 않게 오른쪽 칸은 글 폭만 */
 .site-footer .foot-top { grid-template-columns: minmax(0, 1fr) auto; }
 .site-footer .foot-label,
@@ -292,7 +294,8 @@ details[open] > summary .caret { transform: rotate(180deg); }
     text-align: center;
   }
   .site-footer .foot-policy { row-gap: var(--sp-1); }
-  .site-footer .foot-policy > a,
+  .site-footer .foot-links { justify-content: flex-start; }
+  .site-footer .foot-links > a,
   .site-footer .biz-email > a {
     display: inline-flex;
     align-items: center;
@@ -524,10 +527,6 @@ select.pill { padding-right: 8px; }
 .today-btn.in { background: var(--c-soft); color: var(--c-muted); }
 .today-btn.auto { background: var(--c-accent-soft); border-color: transparent; color: var(--c-accent); }
 /* API 메서드 · 응답 코드 */
-.method { min-width: 64px; padding: 0 var(--sp-2); border-radius: var(--r-sm); font-size: var(--fs-xs); line-height: 24px; font-weight: 700; text-align: center; background: var(--c-soft); color: var(--c-ink); }
-.method.m-get { background: var(--c-info-soft); color: var(--c-info); } .method.m-post { background: var(--c-success-soft); color: var(--c-success); }
-.method.m-patch { background: var(--c-warning-soft); color: var(--c-warning); } .method.m-put { background: var(--c-violet-soft); color: var(--c-violet); }
-.method.m-delete { background: var(--c-danger-soft); color: var(--c-danger); }
 .badge.resp-2 { background: var(--c-success-soft); color: var(--c-success); }
 .badge.resp-4, .badge.resp-5 { background: var(--c-danger-soft); color: var(--c-danger); }
 .badge.pr-merged { background: var(--c-violet-soft); color: var(--c-violet); }
@@ -1128,13 +1127,6 @@ details > summary { cursor: pointer; font-weight: 600; }
 .issue-body { white-space: pre-wrap; overflow-wrap: anywhere; }
 
 /* ---- 21. API 문서 ---- */
-.op { border: 1px solid var(--c-line); border-radius: var(--r-lg); background: var(--c-surface); }
-.op > summary { display: flex; flex-wrap: wrap; gap: var(--sp-2) var(--sp-3); align-items: center; min-height: 52px; padding: var(--sp-2) var(--sp-4); }
-.op[open] { border-color: var(--c-sage-strong); background: color-mix(in srgb, var(--c-sage) 40%, var(--c-surface)); }
-.op .path { font-family: var(--f-mono); font-size: var(--fs-sm); font-weight: 600; }
-.op .grow { flex: 1 1 160px; min-width: 0; }
-.op pre, pre.code { margin: 0; padding: 10px 12px; border: 1px solid var(--c-line); border-radius: var(--r-md); background: var(--c-surface); overflow-x: auto; font-size: var(--fs-xs); line-height: 18px; }
-.op-body { padding: 0 var(--sp-3) var(--sp-3); }
 
 /* ---- 22. 설정 ---- */
 .settings-heading { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: var(--sp-2) var(--sp-4); }
@@ -1656,3 +1648,8 @@ form:has(option[value="person"]:checked) .person-only { display: flex; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
 }
+/* API 문서: Swagger UI는 밝은 화면 전제라 다크 모드에서도 밝은 판 위에 그린다(글자 대비 유지) */
+.swagger-card { background: #fff; color: #3b4151; color-scheme: light; padding: var(--sp-2) var(--sp-3); overflow-x: auto; }
+.swagger-card .swagger-ui .wrapper { padding: 0; max-width: none; }
+/* 설명의 엔터를 그대로(표준 Markdown은 한 줄 줄바꿈을 공백으로 합친다). 들여쓰기는 서버가 swagger_spec에서 살린다 */
+.swagger-card .swagger-ui :is(.markdown, .renderedMarkdown) p { white-space: pre-wrap; }

@@ -1275,8 +1275,9 @@ def test_spec_upload_saves_and_shows_endpoints(logged, project):
     )
     assert r.status_code == 302
     body = logged.get(f"/projects/{project.pk}/api").content.decode()
-    assert "/tasks" in body
-    assert "tasks" in body
+    assert "swagger-ui-bundle.js" in body and "?part=spec" in body  # 표시는 Swagger UI
+    spec = logged.get(f"/projects/{project.pk}/api?part=spec").json()
+    assert "/tasks" in spec["paths"]
 
 
 def test_api_tab_requires_membership(client, outsider, project):

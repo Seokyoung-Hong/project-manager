@@ -439,7 +439,7 @@ ul, ol { margin: 0; padding: 0; list-style: none; }
 .lp-logo, .anchors a, .top-cta .login { min-height: 44px; display: inline-flex; align-items: center; }
 .anchors a { min-width: 44px; justify-content: center; }
 .btn, .week-map a, .faq-list summary { min-height: 44px; }
-.site-footer .foot-policy > a, .site-footer .biz-email > a { display: inline-flex; align-items: center; min-height: 44px; }
+.site-footer .foot-links > a, .site-footer .biz-email > a { display: inline-flex; align-items: center; min-height: 44px; }
 /* 바닥글 끝선 = .wrap 콘텐츠 폭(1180 - 좌우 24, 700px 이하 16) */
 .site-footer { padding-inline: var(--sp-6); }
 .site-footer .foot-in { max-width: calc(1180px - var(--sp-6) * 2); }

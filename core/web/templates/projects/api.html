@@ -1,21 +1,9 @@
-{% extends "base.html" %}{% block title %}{{ project.name }} · API 문서{% endblock %}
+{% extends "base.html" %}{% load static %}{% block title %}{{ project.name }} · API 문서{% endblock %}
 {% block main %}
 {% include "projects/_tabs.html" %}
 <div class="card">
   <div class="card-head">
-    <div class="stack">
-      {% if api %}
-      <div class="row">
-        <span class="t20 fw-7">{{ api.title }}</span>
-        <span class="badge">{{ api.version }}</span>
-      </div>
-      <span class="t13 mono">{{ api.server }}</span>
-      <span class="t12 muted">OpenAPI {{ api.openapi }}</span>
-      {% if api.desc %}<p class="muted t13">{{ api.desc }}</p>{% endif %}
-      {% else %}
-      <span class="t17 fw-7">API 문서</span>
-      {% endif %}
-    </div>
+    <span class="t17 fw-7">API 문서</span>
     <div class="stack">
       <form method="post" enctype="multipart/form-data" class="row">{% csrf_token %}
         <input class="input grow" aria-label="OpenAPI 문서 URL" name="url" value="{{ spec_obj.source_url }}" placeholder="https://example.com/openapi.json">
@@ -32,14 +20,21 @@
   <p class="t12 muted">서버가 읽을 수 없는 주소(예: localhost)라면 파일로 올려 주세요.</p>
   {% endif %}
 </div>
-{% if api %}
-<section class="card">
-  <div class="card-head">
-    <input class="input auto" name="q" value="{{ q }}" placeholder="경로·요약 검색" aria-label="엔드포인트 검색"
-           hx-get="{% url 'project_api' project.pk %}?part=endpoints" hx-target="#endpoints" hx-swap="outerHTML"
-           hx-trigger="keyup changed delay:300ms">
-  </div>
-  {% include "projects/_endpoints.html" %}
-</section>
+{% if spec_obj %}
+{# 표시는 Swagger UI(swagger-ui-dist 5.33.2, Apache-2.0, static/vendor/swagger-ui)에 맡긴다. 설명의 줄바꿈·들여쓰기(Markdown)와 스키마 표를 원본 그대로 보여 준다. #}
+<link rel="stylesheet" href="{% static 'vendor/swagger-ui/swagger-ui.css' %}">
+<section class="card swagger-card"><div id="swagger-ui"></div></section>
+<script src="{% static 'vendor/swagger-ui/swagger-ui-bundle.js' %}"></script>
+<script>
+  SwaggerUIBundle({
+    url: "{% url 'project_api' project.pk %}?part=spec",
+    dom_id: "#swagger-ui",
+    deepLinking: true,
+    filter: true,
+    docExpansion: "list",
+    defaultModelsExpandDepth: 1,
+    displayRequestDuration: true,
+  });
+</script>
 {% endif %}
 {% endblock %}

@@ -1,6 +1,7 @@
 import ipaddress
 import json
 import logging
+import re
 import socket
 from datetime import date
 from urllib.error import URLError
@@ -29,13 +30,6 @@ EDITABLE = {"name", "purpose", "owners", "status", "teams"}
 
 SPEC_MAX = 5 * 1024 * 1024
 SPEC_TIMEOUT = 10
-METHOD_COLOR = {
-    "get": "#1F6F82",
-    "post": "#12793F",
-    "patch": "#A85B00",
-    "put": "#2F6FBF",
-    "delete": "#C92A37",
-}
 
 
 def _log(project, field, old, new, actor, source, token=None, note=""):
@@ -892,6 +886,36 @@ def fetch_spec(url: str) -> dict:
     return parse_spec(raw, source=url)
 
 
+_LIST_ITEM = re.compile(r"\s*([-*+]|\d+[.)])\s")
+
+
+def _keep_indent(text: str) -> str:
+    """줄 앞 탭·공백을 지워지지 않는 공백(U+00A0)으로. Markdown은 이어지는 줄의 들여쓰기를 지운다.
+    목록 줄(중첩 들여쓰기가 의미를 가짐)과 ``` 코드 블록 안은 그대로 둔다."""
+    out, fence = [], False
+    for line in text.split("\n"):
+        if line.lstrip().startswith("```"):
+            fence = not fence
+        elif not fence and line[:1] in (" ", "\t") and not _LIST_ITEM.match(line):
+            body = line.lstrip(" \t")
+            lead = line[: len(line) - len(body)].replace("\t", "    ")
+            line = "\u00a0" * len(lead) + body
+        out.append(line)
+    return "\n".join(out)
+
+
+def swagger_spec(spec):
+    """화면(Swagger UI)에 넘길 사본: 모든 description의 줄 앞 들여쓰기를 살린다. 저장된 원본은 그대로."""
+    if isinstance(spec, dict):
+        return {
+            k: _keep_indent(v) if k == "description" and isinstance(v, str) else swagger_spec(v)
+            for k, v in spec.items()
+        }
+    if isinstance(spec, list):
+        return [swagger_spec(v) for v in spec]
+    return spec
+
+
 def set_api_spec(project, spec: dict, *, source_url: str, actor, source: str = "web") -> ApiSpec:
     if not is_member(actor, project.org):
         raise ServiceError({"org": "이 조직에 속해 있지 않아 작업할 수 없습니다."})
@@ -901,99 +925,3 @@ def set_api_spec(project, spec: dict, *, source_url: str, actor, source: str = "
         defaults={"spec": spec, "source_url": source_url[:500], "uploaded_by": actor},
     )
     return obj
-
-
-def spec_view(spec: dict, q: str = "") -> dict:
-    """OpenAPI 문서를 태그별 그룹으로 바꾼다. 화면에 필요한 것만 뽑는다."""
-    q = (q or "").strip().lower()
-    info = spec.get("info") or {}
-    tag_desc = {
-        t.get("name"): t.get("description", "")
-        for t in (spec.get("tags") or [])
-        if isinstance(t, dict)
-    }
-    groups, order = {}, []
-    for path, ops in (spec.get("paths") or {}).items():
-        if not isinstance(ops, dict):
-            continue
-        for method, op in ops.items():
-            m = method.lower()
-            if m not in METHOD_COLOR or not isinstance(op, dict):
-                continue
-            summary = op.get("summary") or ""
-            if q and q not in f"{path} {summary} {m}".lower():
-                continue
-            tag = ((op.get("tags") or ["기타"]) or ["기타"])[0]
-            if tag not in groups:
-                groups[tag] = {"tag": tag, "desc": tag_desc.get(tag, ""), "ops": []}
-                order.append(tag)
-            body = None
-            content = (op.get("requestBody") or {}).get("content") or {}
-            for ctype, c in content.items():
-                example = (c or {}).get("example")
-                body = {
-                    "type": ctype,
-                    "example": json.dumps(example, ensure_ascii=False, indent=2) if example else "",
-                }
-                break
-            params = []
-            for pa in op.get("parameters") or []:
-                if not isinstance(pa, dict):
-                    continue
-                sc = pa.get("schema") or {}
-                bits = [pa.get("in", ""), sc.get("type", "string")]
-                if pa.get("required"):
-                    bits.append("필수")
-                if sc.get("enum"):
-                    bits.append(" | ".join(str(x) for x in sc["enum"]))
-                if sc.get("default") is not None:
-                    bits.append(f"기본 {sc['default']}")
-                params.append(
-                    {
-                        "name": pa.get("name", ""),
-                        "meta": " · ".join(b for b in bits if b),
-                        "desc": pa.get("description", ""),
-                    }
-                )
-            responses = []
-            for code, r in (op.get("responses") or {}).items():
-                code = str(code)
-                responses.append(
-                    {
-                        "code": code,
-                        "desc": (r or {}).get("description", ""),
-                        "bg": "#B9E6CB"
-                        if code.startswith("2")
-                        else "#F6C9C4"
-                        if code.startswith("4")
-                        else "#F0F4F6",
-                        "color": "#0B3D22"
-                        if code.startswith("2")
-                        else "#6B1410"
-                        if code.startswith("4")
-                        else "#636D7A",
-                    }
-                )
-            groups[tag]["ops"].append(
-                {
-                    "method": m.upper(),
-                    "color": METHOD_COLOR[m],
-                    "path": path,
-                    "summary": summary,
-                    "desc": op.get("description", ""),
-                    "auth": bool(op.get("security")),
-                    "params": params,
-                    "body": body,
-                    "responses": responses,
-                }
-            )
-    out = [groups[t] for t in order]
-    return {
-        "title": info.get("title") or "제목 없는 API",
-        "version": f"v{info['version']}" if info.get("version") else "버전 없음",
-        "openapi": spec.get("openapi") or spec.get("swagger") or "—",
-        "server": ((spec.get("servers") or [{}])[0] or {}).get("url") or "서버 정보 없음",
-        "desc": info.get("description", ""),
-        "groups": out,
-        "count": sum(len(g["ops"]) for g in out),
-    }

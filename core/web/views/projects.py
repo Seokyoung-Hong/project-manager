@@ -5,6 +5,7 @@ from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db.models import Count
+from django.http import Http404, JsonResponse
 from django.shortcuts import redirect, render
 from django.urls import reverse
 from django.views.decorators.http import require_POST
@@ -32,7 +33,7 @@ from projects.services import (
     set_governance_extra,
     set_project_settings,
     set_visibility,
-    spec_view,
+    swagger_spec,
     update_project,
     visible_projects,
 )
@@ -529,18 +530,15 @@ def project_api(request, project_id):
             error = " ".join(e.errors.values())
 
     obj = getattr(project, "api_spec", None)
-    q = request.GET.get("q", "")
-    ctx = {
-        "project": project,
-        "tab": "api",
-        "q": q,
-        "error": error,
-        "spec_obj": obj,
-        "api": spec_view(obj.spec, q) if obj else None,
-    }
-    if request.GET.get("part") == "endpoints":
-        return render(request, "projects/_endpoints.html", ctx)
-    return render(request, "projects/api.html", ctx)
+    if request.GET.get("part") == "spec":  # Swagger UI가 읽는 원본 문서
+        if obj is None:
+            raise Http404
+        return JsonResponse(swagger_spec(obj.spec))
+    return render(
+        request,
+        "projects/api.html",
+        {"project": project, "tab": "api", "error": error, "spec_obj": obj},
+    )
 
 
 def _can_edit_project_settings(user, project) -> bool:

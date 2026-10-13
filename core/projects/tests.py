@@ -30,7 +30,6 @@ from projects.services import (
     set_api_spec,
     set_governance_extra,
     set_project_settings,
-    spec_view,
     update_project,
 )
 from reports.services import org_status
@@ -490,41 +489,6 @@ def test_spec_saved_and_replaced(project, admin):
     assert obj2.source_url == "b.json"
 
 
-def test_spec_view_groups_by_tag():
-    v = spec_view(SAMPLE_SPEC)
-    assert v["title"] == "학식 API"
-    assert v["version"] == "v1.0.0"
-    assert v["count"] == 2
-    assert [g["tag"] for g in v["groups"]] == ["tasks"]
-    ops = {op["method"]: op for op in v["groups"][0]["ops"]}
-    assert ops["POST"]["auth"] is True
-    assert ops["POST"]["body"]["example"]
-    assert ops["GET"]["params"][0]["name"] == "limit"
-
-
-def test_spec_view_search_filters():
-    v = spec_view(SAMPLE_SPEC, q="생성")
-    assert v["count"] == 1
-    assert v["groups"][0]["ops"][0]["method"] == "POST"
-    v2 = spec_view(SAMPLE_SPEC, q="없는말")
-    assert v2["count"] == 0
-
-
-def test_spec_view_method_colors():
-    v = spec_view(SAMPLE_SPEC)
-    ops = {op["method"]: op for op in v["groups"][0]["ops"]}
-    assert ops["GET"]["color"] == "#1F6F82"
-    assert ops["POST"]["color"] == "#12793F"
-
-
-def test_spec_view_handles_missing_fields():
-    v = spec_view({"paths": {"/x": {"get": {}}}})
-    assert v["title"] == "제목 없는 API"
-    assert v["version"] == "버전 없음"
-    assert v["server"] == "서버 정보 없음"
-    assert v["count"] == 1
-
-
 # ---------- 프로젝트 문서 (GitHub 없이도 남기는 기록) ----------
 
 
@@ -733,3 +697,13 @@ def test_project_can_restore_registry_default_over_org(org, admin, project):
     # 이력도 "켬 → 끔"으로 남는다(없던 값의 표시는 조직 값).
     log = ChangeLog.objects.get(target_type="project", field="task.review_required")
     assert (log.old_value, log.new_value) == ("켬", "끔")
+
+
+def test_swagger_spec_keeps_indent_but_not_lists_or_code():
+    from projects.services import swagger_spec
+
+    d = "첫 줄\n\t탭 들여쓰기\n  공백 둘\n- 목록\n  - 중첩 목록\n```\n    코드\n```"
+    out = swagger_spec({"paths": {"/x": {"get": {"description": d}}}, "info": {"title": "t"}})
+    lines = out["paths"]["/x"]["get"]["description"].split("\n")
+    assert lines[1] == "\u00a0" * 4 + "탭 들여쓰기" and lines[2] == "\u00a0\u00a0공백 둘"
+    assert lines[4] == "  - 중첩 목록" and lines[6] == "    코드"  # 목록·코드 블록은 그대로
