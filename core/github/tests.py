@@ -29,6 +29,7 @@ from github.models import (
     RepoIssue,
     TaskGitLink,
 )
+from web.test_integrations_move import frag
 
 pytestmark = pytest.mark.django_db
 
@@ -475,8 +476,8 @@ def test_user_install_settings_link_points_to_user_settings(
     gh, client, org, admin, fake_user_github
 ):
     _user_install(org, admin)
-    body = _login(client).get(f"/orgs/{org.pk}/github").content.decode()
-    assert "https://github.com/settings/installations/99" in body
+    _login(client)
+    assert "https://github.com/settings/installations/99" in frag("github", admin, org)
 
 
 def test_user_install_team_page_does_not_500(gh, client, org, admin, team, fake_user_github):
@@ -730,7 +731,7 @@ def test_installed_callback_rejects_install_the_user_does_not_own(
 
 def test_install_button_needs_github_identity(gh, client, org, admin):
     _login(client)
-    body = client.get(f"/orgs/{org.pk}/github").content.decode()
+    body = frag("github", admin, org)
     # 계정 연결로 먼저 보내고, 연결이 끝나면 설치로 이어 간다(next)
     assert f'href="/settings/github?next=/orgs/{org.pk}/github/install"' in body
     assert f'href="/orgs/{org.pk}/github/install"' not in body

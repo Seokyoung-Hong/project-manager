@@ -32,7 +32,7 @@ ALLOWED = {
     # user_brief dict 키 — B 갈래가 조직 이름으로 채운다(reports/services.py)
     "orgs/capacity.html": r"\b[rc]\.user\.display_name\b",
     # DiscordChannelAlert.display_name = Discord 닉네임(사람 계정과 무관)
-    "orgs/discord.html": r"\b[am]\.display_name\|default:[am]\.discord_user_id",
+    "orgs/settings/_discord.html": r"\b[am]\.display_name\|default:[am]\.discord_user_id",
 }
 # C 갈래 뷰: DB 이름순은 조직 표시 이름과 어긋난다 → sort_by_name
 VIEWS = (

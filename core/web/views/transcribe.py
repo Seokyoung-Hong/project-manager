@@ -12,7 +12,6 @@ from django.contrib.auth.decorators import login_required
 from django.db.models import Q
 from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect, render
-from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
@@ -24,7 +23,7 @@ from orgs import services as osv
 from orgs.names import display_for
 from orgs.settings import SPECS, STT_KEYS, display, effective, secret_value
 
-from .common import not_admin, org_or_404
+from .common import not_admin, org_or_404, settings_tab_url
 from .notes import audio_ctx
 from .orgs import _settings_from_post, stt_models
 
@@ -105,31 +104,24 @@ def _server_rows(org, keys):
 def org_transcribe(request, org_id):
     org = org_or_404(request.user, org_id)
     admin = osv.is_admin(request.user, org)
-    view = "server" if admin and request.GET.get("view") == "server" else "jobs"
-    ctx = {
-        "org": org,
-        "tab": "transcribe",
-        "is_admin": admin,
-        "view": view,
-        **_jobs_ctx(org, request.user),
-    }
-    if view == "server":
-        ctx["policy_rows"] = _server_rows(org, POLICY_KEYS)
-        ctx["rows"] = _server_rows(org, [k for k in STT_KEYS if k not in POLICY_KEYS])
-        ctx["pc_online"] = (
-            SttServer.objects.filter(
-                owner__org_memberships__org=org,
-                last_seen_at__gt=timezone.now() - tx.ONLINE_FOR,
-            )
-            .distinct()
-            .count()
-        )
+    if admin and request.GET.get("view") == "server":  # 옛 주소 -> 설정 / 회의·전사
+        return redirect(settings_tab_url(org, "meeting", "stt"))
+    ctx = {"org": org, "tab": "transcribe", "is_admin": admin, **_jobs_ctx(org, request.user)}
     return render(request, "orgs/transcribe.html", ctx)
 
 
 def stt_ctx(request, org) -> dict:
-    """설정 → 회의·전사 탭 전사 섹션의 맥락(IMPL-PLAN-14 §10.1 계약). A0 껍데기 — D 갈래가 채운다."""
-    return {}
+    """설정 → 회의·전사 탭 전사 섹션의 맥락(IMPL-PLAN-14 §10.1). 호출자가 관리자를 이미 확인했다."""
+    return {
+        "org": org,
+        "policy_rows": _server_rows(org, POLICY_KEYS),
+        "rows": _server_rows(org, [k for k in STT_KEYS if k not in POLICY_KEYS]),
+        "pc_online": SttServer.objects.filter(
+            owner__org_memberships__org=org, last_seen_at__gt=timezone.now() - tx.ONLINE_FOR
+        )
+        .distinct()
+        .count(),
+    }
 
 
 @require_POST
@@ -149,7 +141,7 @@ def org_transcribe_server(request, org_id):
         messages.success(request, "전사 서버 설정을 저장했습니다.")
     except ServiceError as e:
         messages.error(request, " ".join(e.errors.values()))
-    return redirect(reverse("org_transcribe", args=[org.pk]) + "?view=server")
+    return redirect(settings_tab_url(org, "meeting", "stt"))
 
 
 @login_required

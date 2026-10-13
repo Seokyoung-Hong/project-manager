@@ -9,6 +9,7 @@ from common.errors import ServiceError
 from orgs import channels as ch
 from orgs.models import DiscordChannelAlert
 from tasks.models import Notice
+from web.test_integrations_move import frag
 
 from . import discord as dc
 
@@ -266,11 +267,11 @@ def test_web_status_allow_revoke_and_toggle(linked_team, bot, client, admin, lin
     alerts(bot, [v(777, "외부인")])
     client.force_login(admin)
     url = f"/orgs/{linked_org.pk}/discord"
-    page = client.get(url).content.decode()
+    page = frag("discord", admin, linked_org)
     assert "권한 밖 1명" in page and "외부인" in page
     row = DiscordChannelAlert.objects.get(discord_user_id="777")
     client.post(f"{url}/alerts/{row.pk}/allow")
-    assert "허용 · 외부인" in client.get(url).content.decode()
+    assert "허용 · 외부인" in frag("discord", admin, linked_org)
     client.post(f"{url}/alerts/{row.pk}/revoke")
     assert DiscordChannelAlert.objects.count() == 0
     client.post(f"{url}/managed", {"kind": "team", "id": linked_team.pk, "managed": "1"})
@@ -294,7 +295,7 @@ def test_web_is_admin_only_and_install_link_has_new_permissions(
         "permissions=268504080" in client.get(f"/orgs/{linked_org.pk}/discord/connect")["Location"]
     )
     ch.record_guild_report(linked_org, 3088, True)
-    assert "권한 갱신 필요" in client.get(f"/orgs/{linked_org.pk}/discord").content.decode()
+    assert "권한 갱신 필요" in frag("discord", admin, linked_org)
 
 
 # ---------- 결함 수정: 한 채널은 한 대상에만, 깜빡임, 길드 검증, 자동 관리 확인 ----------
@@ -440,4 +441,5 @@ def test_rest_unlink_needs_the_users_discord_permission(
 def test_guild_report_shows_denied_intent(linked_org, bot, client, admin):
     bot("/guild-report", {"guild_id": "9001", "permissions": 268504080, "intent_denied": True})
     client.force_login(admin)
-    assert "서버 멤버 인텐트 꺼짐" in client.get(f"/orgs/{linked_org.pk}/discord").content.decode()
+    linked_org.refresh_from_db()
+    assert "서버 멤버 인텐트 꺼짐" in frag("discord", admin, linked_org)

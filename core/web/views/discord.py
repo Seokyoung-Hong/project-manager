@@ -16,14 +16,14 @@ from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.http import Http404
-from django.shortcuts import redirect, render
+from django.shortcuts import redirect
 from django.views.decorators.http import require_POST
 
 from common.errors import ServiceError
 from orgs import channels
 from orgs import discord as dc
 
-from .common import not_admin, org_or_404
+from .common import not_admin, org_or_404, settings_tab_url
 
 # VIEW_CHANNEL | SEND_MESSAGES | MANAGE_CHANNELS | MANAGE_ROLES. 봇이 사람의 권한을 넘겨받는 통로가 되면
 # 안 되므로 이 넷만 받는다(IMPL-PLAN-3 §채널 명령). Manage Roles는 자동 관리(IMPL-PLAN-5 사용자 결정 3)용이다.
@@ -32,8 +32,14 @@ AUTHORIZE = "https://discord.com/oauth2/authorize"
 
 
 def discord_ctx(request, org) -> dict:
-    """설정 → 연동 탭 Discord 섹션의 맥락(IMPL-PLAN-14 §10.1 계약). A0 껍데기 — D 갈래가 채운다."""
-    return {}
+    """설정 → 연동 탭 Discord 섹션의 맥락(IMPL-PLAN-14 §10.1). 호출자가 관리자·기능 켜짐을 이미 확인했다."""
+    return {
+        "org": org,
+        "rows": channels.overview(org),
+        "watching": channels.watching(org),
+        "intent_denied": org.discord_intent_denied,
+        "reauthorize": channels.needs_reauthorization(org),
+    }
 
 
 def _redirect_uri() -> str:
@@ -51,19 +57,7 @@ def org_discord(request, org_id):
     org = org_or_404(request.user, org_id)
     if denied := not_admin(request, org, "Discord 연동"):
         return denied
-    return render(
-        request,
-        "orgs/discord.html",
-        {
-            "org": org,
-            "is_admin": True,
-            "tab": "discord",
-            "rows": channels.overview(org),
-            "watching": channels.watching(org),
-            "intent_denied": org.discord_intent_denied,
-            "reauthorize": channels.needs_reauthorization(org),
-        },
-    )
+    return redirect(settings_tab_url(org, "integrations", "discord"))
 
 
 @login_required
@@ -80,7 +74,7 @@ def discord_alert(request, org_id, alert_id, action):
         channels.resolve(org, alert_id, action, request.user)
     except ServiceError as e:
         messages.error(request, " ".join(e.errors.values()))
-    return redirect("org_discord", org_id=org.pk)
+    return redirect(settings_tab_url(org, "integrations", "discord"))
 
 
 @login_required
@@ -100,7 +94,7 @@ def discord_managed(request, org_id):
         )
     except ServiceError as e:
         messages.error(request, " ".join(e.errors.values()))
-    return redirect("org_discord", org_id=org.pk)
+    return redirect(settings_tab_url(org, "integrations", "discord"))
 
 
 @login_required
@@ -152,7 +146,7 @@ def discord_installed(request):
         )
     except ServiceError as e:
         messages.error(request, " ".join(e.errors.values()))
-    return redirect("org_discord", org_id=org.pk)
+    return redirect(settings_tab_url(org, "integrations", "discord"))
 
 
 @login_required
@@ -167,4 +161,4 @@ def discord_unlink(request, org_id):
         messages.success(request, "Discord 서버 연결을 해제했습니다.")
     except ServiceError as e:
         messages.error(request, " ".join(e.errors.values()))
-    return redirect("org_discord", org_id=org.pk)
+    return redirect(settings_tab_url(org, "integrations", "discord"))
