@@ -1,0 +1,43 @@
+{# AI 작업 한 건(IMPL-PLAN-12 §7.1). 진행 중이면 1초마다 상태를 묻고(바뀐 때만 다시 그림), 끝나면 미리보기와 반영 버튼. 결과는 글로만 넣는다(|safe 금지). 문구는 임시 — COPY:ai_job_* #}
+<div class="stack" id="ai-job"{% if active %} data-ai-active="{% url 'assist_job_cancel' job.pk %}" hx-get="{% url 'assist_job' job.pk %}?s={{ job.status }}" hx-trigger="every 1s" hx-swap="outerHTML"{% endif %}>
+  {% if active %}
+  <p role="status">{% if job.status == "queued" %}AI 작업이 차례를 기다리고 있습니다.{% elif job.status == "running" %}AI가 쓰는 중입니다. 대화상자를 닫으면 작업을 취소합니다.{% else %}AI 작업을 취소하는 중입니다.{% endif %}</p>
+  {% if job.status != "cancelling" %}<div class="row"><button type="button" class="btn sm" hx-post="{% url 'assist_job_cancel' job.pk %}" hx-target="#ai-job" hx-swap="outerHTML">AI 작업 취소</button></div>{% endif %}
+  {% elif error_text %}
+  <p class="error" role="alert"><span aria-hidden="true">⚠</span> {{ error_text }}</p>
+  <div class="row"><button type="button" class="btn sm" data-ai-retry>다시 쓰기</button></div>
+  {% elif shape == "line" %}
+  <p class="t13 muted">하나를 고르면 칸에 넣습니다. 칸의 저장 방식대로 저장됩니다.</p>
+  <div class="stack">
+    {% for o in options %}<button type="button" class="btn" data-ai-value="{{ o }}">{{ o }}</button>
+    {% empty %}<p class="muted">AI가 고를 만한 글을 내지 못했습니다. [다시 쓰기]를 눌러 주세요.</p>{% endfor %}
+  </div>
+  <div class="row"><button type="button" class="btn sm" data-ai-retry>다시 쓰기</button></div>
+  {% elif shape == "list" %}
+  <form class="stack" hx-post="{% url 'checklist_add' job.target_id %}" hx-target="#checklist" hx-swap="innerHTML" data-ai-done>
+    <fieldset class="choice-fieldset">
+      <legend>추가할 체크 항목</legend>
+      {% for o in items %}<label class="check"><input type="checkbox" name="text" value="{{ o }}" checked> {{ o }}</label>
+      {% empty %}<p class="muted">AI가 체크 항목을 내지 못했습니다. [다시 쓰기]를 눌러 주세요.</p>{% endfor %}
+    </fieldset>
+    <div class="row">
+      {% if items %}<button class="btn primary">고른 항목 추가</button>{% endif %}
+      <button type="button" class="btn" data-ai-retry>다시 쓰기</button>
+    </div>
+  </form>
+  {% else %}
+  <div class="md-view md"><textarea class="md-src textarea" rows="8" readonly data-ai-result aria-label="AI가 쓴 글 미리보기">{{ job.result }}</textarea></div>
+  <div class="row">
+    {% if shape == "text" %}
+    <button type="button" class="btn primary" data-ai-use="replace">칸 내용 바꾸기</button>
+    <button type="button" class="btn" data-ai-use="append">칸 뒤에 붙이기</button>
+    {% else %}
+    <button type="button" class="btn primary" data-ai-apply="{% url 'assist_job_apply' job.pk %}">본문에 적용</button>
+    {% endif %}
+    <button type="button" class="btn" data-ai-retry>다시 쓰기</button>
+  </div>
+  {% if shape != "text" %}<p class="t12 muted">적용하면 지금 본문이 이전 버전에 남습니다.</p>{% endif %}
+  {% endif %}
+  {% if source_line %}<p class="t12 muted">쓴 AI: {{ source_line }}</p>{% endif %}
+  {% if org_line %}<p class="t12 muted">{{ org_line }}</p>{% endif %}
+</div>

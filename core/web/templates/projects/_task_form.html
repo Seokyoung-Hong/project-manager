@@ -1,13 +1,13 @@
 <form id="task-form" class="stack box" hx-post="{% url 'project_task_create' project.pk %}" hx-target="#task-form" hx-swap="outerHTML"{% if not form_open %} hidden{% endif %}>
   <h2 class="t17">{{ project.name }}에 태스크 만들기</h2>
   {{ form.idem }}
-  <label class="field">할 일<input class="input lg" name="title" value="{{ form.title.value|default:'' }}" placeholder="해야 할 일" required autofocus></label>
+  <label class="field">할 일<input class="input lg" name="title" value="{{ form.title.value|default:'' }}" placeholder="해야 할 일" required autofocus{% if ai_on %} data-ai="newtask.title" data-ai-target="project:{{ project.pk }}"{% endif %}></label>
   <div class="row">
     <label class="field">담당자 (1명)<select class="select auto" name="assignee">{% for u in form.fields.assignee.queryset %}<option value="{{ u.pk }}"{% if form.assignee.value|stringformat:"s" == u.pk|stringformat:"s" %} selected{% endif %}>{% if u.pk == user.pk %}나 ({{ u.display_name }}){% else %}{{ u.display_name }}{% endif %}</option>{% endfor %}</select></label>
     <label class="field">중요도 (1~10)<select class="select auto" name="priority">{% for v, label in form.fields.priority.choices %}<option value="{{ v }}"{% if form.priority.value|stringformat:"s" == v|stringformat:"s" %} selected{% endif %}>{{ label }}</option>{% endfor %}</select></label>
     {% include "projects/_due_fields.html" with prefix="task" %}
   </div>
-  {% if form.require_done_when %}<label class="field">완료 조건 (필수)<input class="input" name="done_when" maxlength="300" value="{{ form.done_when.value|default:'' }}" placeholder="무엇을 보면 끝났다고 할 수 있나요?" required></label>{% endif %}
+  {% if form.require_done_when %}<label class="field">완료 조건 (필수)<input class="input" name="done_when" maxlength="300" value="{{ form.done_when.value|default:'' }}" placeholder="무엇을 보면 끝났다고 할 수 있나요?" required{% if ai_on %} data-ai="newtask.done_when" data-ai-target="project:{{ project.pk }}"{% endif %}></label>{% endif %}
   {% for e in form.non_field_errors %}<div class="error">{{ e }}</div>{% endfor %}
   {% for f in form %}{% for e in f.errors %}<div class="error">{{ f.label }}: {{ e }}</div>{% endfor %}{% endfor %}
   <div class="row">

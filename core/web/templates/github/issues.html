@@ -58,6 +58,9 @@
     <button class="btn sm primary">내 태스크로 가져오기</button>
   </form>
   {% endif %}
+  {% if ai_on %}{# 태스크 후보 뽑기(IMPL-PLAN-12 §7.4). 이미 가져온 이슈면 후보는 그 태스크 하위로. 문구 임시 — COPY:ai_extract_issue #}
+  <button type="button" class="btn sm" data-ai-mode="extract.issue" data-ai-target="issue:{{ issue.pk }}" data-ai-title="태스크 후보 뽑기" aria-label="#{{ issue.number }} 이슈를 AI로 나눠 가져오기">AI로 나눠 가져오기</button>
+  {% endif %}
 </div>
 {% empty %}
 <div class="card">

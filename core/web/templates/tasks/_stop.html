@@ -4,7 +4,7 @@
   <input type="hidden" name="from" value="panel">
   <input type="hidden" name="status" value="{{ reject_pending }}">
   <label class="label" for="stop-reason-{{ task.pk }}">반려 사유</label>
-  <textarea id="stop-reason-{{ task.pk }}" class="textarea" name="reason" rows="2" data-md data-toolbar="bottom" data-focus placeholder="무엇을 고쳐야 하나요? (필수)">{{ stop_draft }}</textarea>
+  <textarea id="stop-reason-{{ task.pk }}" class="textarea" name="reason" rows="2" data-md data-toolbar="bottom" data-focus{% if ai_on %} data-ai="task.stop_reason" data-ai-target="task:{{ task.pk }}"{% endif %} placeholder="무엇을 고쳐야 하나요? (필수)">{{ stop_draft }}</textarea>
   {% if stop_error %}<div class="error">{{ stop_error }}</div>{% endif %}
   <div class="row">
     <button class="btn sm primary">반려</button>
@@ -17,7 +17,7 @@
   {% if block_pending %}<input type="hidden" name="confirm_block" value="1">{% endif %}
   <label class="label" for="stop-reason-{{ task.pk }}">{% if block_pending or task.is_blocked %}막힘 사유{% else %}일시정지 사유{% endif %}</label>
   <p class="t13">개인 사정이나 다른 작업으로 중단할 때는 일시정지입니다. 외부 요인으로 진행할 수 없을 때는 막힘입니다.</p>
-  <textarea id="stop-reason-{{ task.pk }}" class="textarea" name="reason" rows="2" data-md data-toolbar="bottom"{% if block_pending %} data-focus{% endif %}
+  <textarea id="stop-reason-{{ task.pk }}" class="textarea" name="reason" rows="2" data-md data-toolbar="bottom"{% if block_pending %} data-focus{% endif %}{% if ai_on %} data-ai="task.stop_reason" data-ai-target="task:{{ task.pk }}"{% endif %}
             placeholder="{% if block_pending or task.is_blocked %}무엇 때문에 막혔나요? (필수){% else %}왜 잠시 멈췄나요? (선택){% endif %}">{{ stop_draft }}</textarea>
   {% if stop_error %}<div class="error">{{ stop_error }}</div>{% endif %}
   <div class="row">

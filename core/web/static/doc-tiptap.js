@@ -308,6 +308,7 @@ function editor(T, root) {
     tb.destroy();
     ed.destroy();
   };
+  root._flush = settle; // ai-fill.js [본문에 적용] 전에 저장 큐를 비운다(이전 버전에 적용 직전 상태가 남게)
   root.dataset.ready = "1";
   window.udallyEditor = ed; // 콘솔·브라우저 시험용
 }

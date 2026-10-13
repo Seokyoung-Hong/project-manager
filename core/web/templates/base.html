@@ -148,10 +148,21 @@
     </div>
   </form>
 </dialog>
+{% if user.is_authenticated %}
+{# AI 자동완성 대화상자(IMPL-PLAN-12 §7.1). 버튼은 ai_on일 때 템플릿이 단 [data-ai]에만 붙으므로 여기서는 스위치를 보지 않는다(쪽마다 질의를 늘리지 않게). #}
+<dialog id="ai-dlg" aria-labelledby="ai-dlg-title" data-url="{% url 'assist_job_create' %}">
+  <div class="stack">
+    <h2 id="ai-dlg-title" class="t20">AI로 쓰기</h2>
+    <div id="ai-dlg-body" aria-live="polite"></div>
+    <div class="row"><button type="button" class="btn" data-ai-close>닫기</button></div>
+  </div>
+</dialog>
+{% endif %}
 <script src="{% static 'app.js' %}"></script>
 {% if user.is_authenticated and current_org %}<script src="{% static 'realtime.js' %}"></script>{% endif %}
 <script type="module" src="{% static 'md-field.js' %}"></script>
 <script type="module" src="{% static 'doc-tiptap.js' %}"></script>
+{% if user.is_authenticated %}<script type="module" src="{% static 'ai-fill.js' %}"></script>{% endif %}
 {% if user.is_authenticated %}{# WebMCP: 브라우저 안의 AI 에이전트에게 태스크 도구를 넘긴다 #}
 <script src="{% static 'webmcp.js' %}"></script>{% endif %}
 </body>

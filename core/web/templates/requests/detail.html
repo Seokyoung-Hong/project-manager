@@ -46,14 +46,14 @@
     {% endif %}
     <label class="field">기한(선택)<input type="date" name="due_date" class="input"{% if req.due_date %} value="{{ req.due_date|date:"Y-m-d" }}"{% endif %}></label>
     {% endif %}
-    <label class="field">메모(선택)<input name="note" class="input" maxlength="300"></label>
+    <label class="field">메모(선택)<input name="note" class="input" maxlength="300"{% if ai_on %} data-ai="request.note" data-ai-target="request:{{ req.pk }}"{% endif %}></label>
     <button class="btn primary">수락</button>
   </form>
 </section>
 <section class="card">
   <h2>거절</h2>
   <form method="post" action="{% url 'request_act' req.pk 'decline' %}" class="row">{% csrf_token %}
-    <label class="field grow">사유(선택)<input name="note" class="input" maxlength="300"></label>
+    <label class="field grow">사유(선택)<input name="note" class="input" maxlength="300"{% if ai_on %} data-ai="request.note" data-ai-target="request:{{ req.pk }}"{% endif %}></label>
     <button class="btn danger">거절</button>
   </form>
 </section>
@@ -64,7 +64,7 @@
 {% endif %}
 {% if can_complete %}
 <form method="post" action="{% url 'request_act' req.pk 'complete' %}" class="row">{% csrf_token %}
-  <label class="field grow">완료 메모(선택)<input name="note" class="input" maxlength="300"></label>
+  <label class="field grow">완료 메모(선택)<input name="note" class="input" maxlength="300"{% if ai_on %} data-ai="request.note" data-ai-target="request:{{ req.pk }}"{% endif %}></label>
   <button class="btn primary">요청 완료 처리</button>
 </form>
 {% endif %}

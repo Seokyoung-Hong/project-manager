@@ -51,9 +51,25 @@
       <a class="btn sm note-back" href="?{% if scope %}scope={{ scope }}{% endif %}#doc-list">← 문서 목록</a>
       {% if path %}<nav class="doc-path t13" aria-label="상위 문서">{% for p in path %}<a href="?doc={{ p.pk }}">{{ p.title }}</a> / {% endfor %}</nav>{% endif %}
       <span class="grow"></span>
+      {% if ai_on %}{# AI 자동완성 문서 모드(IMPL-PLAN-12 §7.3). 문구 임시 — COPY:ai_doc_* #}
+      <details class="menu">
+        <summary class="btn sm">AI로 쓰기</summary>
+        <div class="menu-list">
+          <button type="button" data-ai-mode="doc.fill" data-ai-target="doc:{{ doc.pk }}" data-ai-title="AI로 본문 채우기">AI로 본문 채우기</button>
+          <button type="button" data-ai-mode="doc.continue" data-ai-target="doc:{{ doc.pk }}" data-ai-title="AI로 이어 쓰기">AI로 이어 쓰기</button>
+          {% if templates %}
+          <select id="ai-tpl-{{ doc.pk }}" class="select" aria-label="AI가 따를 템플릿">
+            <option value="">템플릿 고르기</option>
+            {% for t in templates %}<option value="{{ t.pk }}">{{ t.title }}</option>{% endfor %}
+          </select>
+          <button type="button" data-ai-mode="doc.template" data-ai-target="doc:{{ doc.pk }}" data-ai-select="#ai-tpl-{{ doc.pk }}" data-ai-title="AI로 템플릿 틀에 맞춰 다시 쓰기">AI로 템플릿 틀에 맞춰 다시 쓰기</button>
+          {% endif %}
+        </div>
+      </details>
+      {% endif %}
       <span id="note-status" class="note-save-status" data-state="saved" aria-live="polite">저장됨 · v{{ doc.version }} · {{ doc.updated_at|date:"n/j H:i" }}</span>
     </div>
-    <input class="title-input" data-note-field="title" value="{{ doc.title }}" aria-label="제목">
+    <input class="title-input" data-note-field="title" value="{{ doc.title }}" aria-label="제목"{% if ai_on %} data-ai="doc.title" data-ai-target="doc:{{ doc.pk }}"{% endif %}>
     <div class="row t13 muted doc-meta">
       <span class="badge">{% if doc.project %}프로젝트 · {{ doc.project.name }}{% elif doc.team %}팀 · {{ doc.team.name }}{% else %}조직 전체{% endif %}</span>
       <span>만든 사람 {{ doc.created_by.display_name }}</span>
@@ -114,7 +130,7 @@
   <form class="stack" method="post" action="{% if project %}{% url 'doc_new' project.pk %}{% else %}{% url 'org_doc_new' org.pk %}{% endif %}">{% csrf_token %}
     <input type="hidden" name="next" value="{{ request.path }}{% if scope %}?scope={{ scope }}{% endif %}">
     <h2 id="doc-new-title">새 문서</h2>
-    <label class="field"><span class="label">제목</span><input class="input" name="title" placeholder="제목 없는 문서" autofocus></label>
+    <label class="field"><span class="label">제목</span><input class="input" name="title" placeholder="제목 없는 문서" autofocus{% if ai_on %} data-ai="newdoc.title" data-ai-target="{% if project %}project:{{ project.pk }}{% else %}org:{{ org.pk }}{% endif %}"{% endif %}></label>
     <label class="field">
       <span class="label">위치(상위 문서)</span>
       <select class="select" name="parent">
