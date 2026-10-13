@@ -989,6 +989,10 @@ SPECS: dict[str, Spec] = {
     ]
 }
 
+# 덮어쓰지 않고 조직 값과 합치는 설정. 프로젝트 값은 조직 값이 아니라 기본값과 비교해 정규화한다
+# (조직 값과 같다고 지우면 조직 값이 바뀔 때 프로젝트가 넣은 값이 사라진다).
+MERGED_KEYS = ("meeting.glossary",)
+
 # 전사 서버·모델 설정. 조직 설정 화면이 아니라 전사 메뉴에서 바꾼다(IMPL-PLAN-10-transcribe-menu).
 STT_KEYS = (
     "meeting.stt_url",
@@ -1141,7 +1145,7 @@ def clean(scope: str, data: dict, *, allow_locked: bool = False, org=None) -> di
         if err:
             errors[key] = err
             continue
-        if scope == "project" and org is not None:
+        if scope == "project" and org is not None and key not in MERGED_KEYS:
             base = effective(key, org=org)
             same = (list(value) == list(base)) if spec.kind == "set" else value == base
         else:

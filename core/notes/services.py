@@ -354,6 +354,7 @@ GLOSSARY_KEY = "meeting.glossary"
 GLOSSARY_MAX = 1000  # 전사 메뉴에서 고친 용어집 입력 상한(글자)
 # 문서 본문 추출 상한: 문서 수·문서당 앞부분 글자. 본문이 커도 질의·처리가 이 이상 늘지 않는다.
 BODY_DOCS, BODY_CHARS = 50, 20_000
+MEMBER_CAP = 200  # 구성원 이름 상한
 _URL = re.compile(r"\S+://\S+")
 # 본문의 한글 용어 중 서술어·부사형 끝말(…다·…요·…한·…적)은 고유어가 아니라고 보고 뺀다.
 _PREDICATE_END = set("다요고서면며게지니한된할될던적음함됨임")
@@ -420,15 +421,17 @@ def glossary_terms(rec, viewer=None) -> tuple[list[str], list[str]]:
 
     people = get_user_model().objects.filter(is_active=True, org_memberships__org=org)
     if project is not None:
+        # 구성원 이름은 공개 정보 — 팀 가시성으로 거르지 않는다(사용자 결정 10-13)
         people = people.filter(
             Q(pk__in=project.owners.values("pk")) | Q(team_memberships__team__projects=project)
         )
     elif note.team_id and teams.filter(pk=note.team_id).exists():
         people = people.filter(team_memberships__team_id=note.team_id)
+    # 20명 넘게 참여하는 회의는 없다고 가정한다(사용자 결정 10-13). 이름순 MEMBER_CAP명까지, 넘친 이름은 누락 목록에
     members = list(
-        # ponytail: 이름순 200명까지. 넘치는 조직은 예산이 어차피 자른다
-        people.order_by("display_name").values_list("display_name", flat=True).distinct()[:200]
+        people.order_by("display_name").values_list("display_name", flat=True).distinct()
     )
+    members, over_cap = members[:MEMBER_CAP], members[MEMBER_CAP:]
     manual = split_terms(org_settings.effective(GLOSSARY_KEY, org=org))
     if project is not None:
         manual = split_terms(org_settings.project_value(GLOSSARY_KEY, project)) + manual
@@ -484,7 +487,7 @@ def glossary_terms(rec, viewer=None) -> tuple[list[str], list[str]]:
     auto = [t for t, n in counts.most_common() if n >= 2]
     auto += sorted((t for t, n in body.items() if n >= 2), key=lambda t: (-own[t], -body[t], t))
     picked, dropped = fit_budget(first + auto)
-    return picked, [t for t in dropped if t in first]
+    return picked, [t for t in dropped if t in first] + [t for t in over_cap if t not in first]
 
 
 @transaction.atomic

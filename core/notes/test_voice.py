@@ -442,6 +442,30 @@ def test_glossary_reports_dropped_names_and_manual_terms(enabled, admin, member)
     assert not set(dropped) & set(terms)
 
 
+def test_glossary_names_beyond_budget_are_reported_not_silently_cut(enabled, admin, member):
+    from notes.services import glossary_terms
+
+    for i in range(210):
+        u = User.objects.create_user(f"u{i}", password="pw12345678", display_name=f"사람{i:03d}")
+        OrgMembership.objects.create(org=enabled, user=u, role="member")
+    terms, dropped = glossary_terms(_rec(enabled, member))
+    assert "사람209" in dropped  # 200명째 뒤도 빠짐 목록에 남는다
+    assert {f"사람{i:03d}" for i in range(210)} <= set(terms) | set(dropped)
+
+
+def test_project_glossary_equal_to_org_value_survives_org_change(enabled, admin, project):
+    """합치는 설정은 조직 값과 같아도 프로젝트 값을 지우지 않는다(조직 값이 바뀌어도 남는다)."""
+    from orgs.settings import project_value
+    from projects.services import set_project_settings
+
+    set_org_settings(enabled, {**enabled.settings, "meeting.glossary": "공통용어"}, admin)
+    enabled.refresh_from_db()
+    set_project_settings(project, {"meeting.glossary": "공통용어"}, actor=admin)
+    set_org_settings(enabled, {**enabled.settings, "meeting.glossary": "새용어"}, admin)
+    project.refresh_from_db()
+    assert project_value("meeting.glossary", project) == "공통용어"
+
+
 def test_project_settings_show_only_project_glossary(client, enabled, admin, project):
     set_org_settings(enabled, {**enabled.settings, "meeting.glossary": "조직만의용어"}, admin)
     client.force_login(admin)
