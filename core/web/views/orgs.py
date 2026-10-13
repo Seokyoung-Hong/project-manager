@@ -9,7 +9,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
 from django.db.models import Count, Prefetch
-from django.http import Http404, HttpResponseForbidden
+from django.http import Http404, HttpResponseBadRequest, HttpResponseForbidden
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
@@ -202,35 +202,10 @@ def _member_teams(request, org):
 
 @login_required
 def org_teams(request, org_id):
-    """조직 → 팀. 멤버·태그·초대·팀을 한 화면에서 관리한다."""
+    """조직 → 팀(관리자). 구성원·초대는 설정 → 구성원 관리(IMPL-PLAN-14 §4)."""
     org = org_or_404(request.user, org_id)
     if not can_admin(request.user, org):
         return _member_teams(request, org)
-    load = {r["assignee_id"]: r for r in org_status(org, viewer=request.user)["by_assignee"]}
-    memberships = sorted(
-        org.memberships.select_related("user", "user__github").prefetch_related(
-            "user__teams"  # 표의 소속 팀 배지
-        ),
-        key=lambda m: display_for(m.user, org),
-    )
-    personal = {
-        i.for_user_id: i
-        for i in org.invites.filter(for_user__isnull=False, revoked_at__isnull=True, use_count=0)
-    }
-    # 마지막 관리자는 services.remove_member가 거부한다 — 버튼도 그 규칙을 그대로 보여 준다
-    last_admin = sum(1 for m in memberships if m.role == "admin") <= 1
-    rows = [
-        {
-            "m": m,
-            "load": load.get(m.user_id),
-            "can_remove": not (m.role == "admin" and last_admin),
-            "pending": osv.is_pending(m.user),
-            "invite": personal.get(m.user_id),
-            "info": member_info.rows(m),
-            "info_missing": member_info.missing(m),
-        }
-        for m in memberships
-    ]
     teams = [
         {
             "team": t,
@@ -248,14 +223,7 @@ def org_teams(request, org_id):
         "orgs/teams.html",
         {
             "org": org,
-            "rows": rows,
-            "admin_count": sum(1 for r in rows if r["m"].role == "admin"),
-            "invites": org.invites.filter(revoked_at__isnull=True, for_user__isnull=True),
-            "form": InviteForm(),
-            "site_url": settings.SITE_URL,
             "team_rows": teams,
-            # 실명으로 표시 조직은 조직 표시 이름을 아무도 못 바꾼다(orgs.services.set_nickname)
-            "show_real_name": member_info.definition(org)["show_real_name"],
             "is_admin": True,
             "tab": "teams",
         },
@@ -824,6 +792,8 @@ def org_member_fields(request, org_id):
     if denied := not_admin(request, org, "조직 설정"):
         return denied
     part = request.POST.get("part", "")
+    if part not in ("", "names", "fields"):
+        return HttpResponseBadRequest()
     kwargs = {}
     if part in ("", "names"):
         kwargs["show_real_name"] = request.POST.get("show_real_name") == "on"
@@ -974,8 +944,8 @@ def org_stt_apply(request, org_id):
             error = ""
     if not error:
         try:
-            osv.set_org_settings(
-                org, {**(org.settings or {}), "meeting.stt_model": model}, request.user
+            org = osv.set_org_settings(
+                org, {"meeting.stt_model": model}, request.user, only=("meeting.stt_model",)
             )
         except ServiceError as e:
             error = " ".join(e.errors.values())

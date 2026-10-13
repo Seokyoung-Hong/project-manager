@@ -367,6 +367,7 @@ def set_tags(membership, tags, actor):
     membership.save(update_fields=["tags"])
 
 
+@transaction.atomic
 def set_nickname(membership, value, actor, source: str = "web") -> OrgMembership:
     """조직 표시 이름을 바꾼다(IMPL-PLAN-13 §6.4). 본인 또는 조직 관리자만. 빈 값 = 계정 표시 이름 사용.
 
@@ -376,7 +377,7 @@ def set_nickname(membership, value, actor, source: str = "web") -> OrgMembership
     from tasks.models import ChangeLog
 
     from . import names
-    from .member_info import definition
+    from .member_info import definition, lock_definition
 
     org, user = membership.org, membership.user
     if actor != user and not is_admin(actor, org):
@@ -384,7 +385,8 @@ def set_nickname(membership, value, actor, source: str = "web") -> OrgMembership
         raise Forbidden(
             {"nickname": "본인 또는 조직 관리자만 조직 표시 이름을 변경할 수 있습니다."}
         )
-    if definition(org)["show_real_name"]:
+    # 조직 행을 잠그고 최신 정의로 본다 — 요청 중 실명으로 표시가 켜지면 거절(nickname 쓰기까지 같은 트랜잭션)
+    if definition(lock_definition(org))["show_real_name"]:
         # COPY:nickname.real_name_org
         raise ServiceError(
             {

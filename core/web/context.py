@@ -34,6 +34,7 @@ NAV_BY_URL = {
     "org_notes": "org",
     "org_docs": "org",
     "org_settings": "org",
+    "org_member_info": "org",  # POST 오류 때 내 정보를 다시 그린다
     "org_discord": "org",
     "org_issues": "org",
     "org_github": "org",

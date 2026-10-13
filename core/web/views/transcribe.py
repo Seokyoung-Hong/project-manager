@@ -131,12 +131,13 @@ def org_transcribe_server(request, org_id):
     org, deny = _admin_org(request, org_id)
     if deny:
         return deny
-    keep = {k: v for k, v in (org.settings or {}).items() if k not in STT_KEYS}
     try:
-        osv.set_org_settings(
+        # 전사 키만 부분 저장 — 그 사이 다른 탭이 저장한 값·숨김 키를 되돌리지 않는다(IMPL-PLAN-14 §9.1)
+        org = osv.set_org_settings(
             org,
-            {**keep, **_settings_from_post(request.POST, [SPECS[k] for k in STT_KEYS])},
+            _settings_from_post(request.POST, [SPECS[k] for k in STT_KEYS]),
             request.user,
+            only=STT_KEYS,
         )
         messages.success(request, "전사 서버 설정을 저장했습니다.")
     except ServiceError as e:

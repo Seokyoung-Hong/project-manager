@@ -189,3 +189,44 @@ def test_org_menu_and_shell_links(client, org, admin, member):
     assert 'class="settings-shell in-tab"' in body
     # 탭 없는 주소 = 모바일 설정 목록 화면
     assert 'class="settings-shell"' in client.get(_url(org)).content.decode()
+
+
+def test_stt_save_keeps_other_tabs_and_hidden_key(client, org, admin, monkeypatch):
+    """전사 서버 저장은 전사 키만 바꾼다 — 요청 전에 읽은 낡은 조직 객체로도 다른 탭 값을 되돌리지 않고,
+    저장돼 있던 숨김 키 때문에 실패하지 않는다."""
+    from web.views import transcribe
+
+    stale = Organization.objects.get(pk=org.pk)
+    set_org_settings(org, {"task.default_priority": 3}, admin)  # 그 사이 다른 탭 저장
+    Organization.objects.filter(pk=org.pk).update(
+        settings={**Organization.objects.get(pk=org.pk).settings, HIDDEN: True}
+    )
+    monkeypatch.setattr(transcribe, "_admin_org", lambda request, org_id: (stale, None))
+    client.force_login(admin)
+    client.post(f"/orgs/{org.pk}/transcribe/server", {"meeting.stt_timeout_s": "60"})
+    org.refresh_from_db()
+    assert org.settings["meeting.stt_timeout_s"] == 60
+    assert org.settings["task.default_priority"] == 3 and org.settings[HIDDEN] is True
+
+
+def test_member_fields_unknown_part_400(client, org, admin):
+    client.force_login(admin)
+    assert client.post(f"/orgs/{org.pk}/member-fields", {"part": "x"}).status_code == 400
+
+
+def test_nickname_checks_latest_real_name_policy(org, admin, member):
+    """요청 전에 읽은 멤버십(낡은 정의)으로도 그 사이 켜진 '실명으로 표시'를 지킨다 — 본인·관리자·옛 경로."""
+    from common.errors import ServiceError
+    from orgs.member_info import save_me
+    from orgs.services import set_nickname
+
+    stale = [_m(org, member) for _ in range(3)]
+    set_definition(org, admin, show_real_name=True)
+    for call in (
+        lambda: save_me(stale[0], nickname="몰래"),
+        lambda: admin_save(stale[1], admin, nickname="몰래"),
+        lambda: set_nickname(stale[2], "몰래", member),
+    ):
+        with pytest.raises(ServiceError):
+            call()
+    assert _m(org, member).nickname == ""

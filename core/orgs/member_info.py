@@ -130,6 +130,22 @@ def set_definition(org, actor, *, show_real_name=None, fields=None):
     return org
 
 
+def lock_definition(org):
+    """조직 행을 잠그고 member_fields를 다시 읽어 org에 넣는다(같은 트랜잭션 안에서).
+
+    실명으로 표시·필수 항목 검사가 요청 전에 읽은 낡은 정의를 믿지 않게 한다 — set_definition과 같은 행 잠금이라
+    정의 변경과 표시 이름·구성원 정보 저장이 차례로 지나간다.
+    """
+    from .models import Organization
+
+    org.member_fields = (
+        Organization.objects.select_for_update()
+        .values_list("member_fields", flat=True)
+        .get(pk=org.pk)
+    )
+    return org
+
+
 def summary(d: dict) -> str:
     # COPY:member_fields.summary_show_real_name
     parts = ["실명으로 표시 " + ("켬" if d["show_real_name"] else "끔")]
@@ -212,6 +228,7 @@ def save_me(membership, *, real_name=None, nickname=None, values=None):
 
     from .services import set_nickname
 
+    lock_definition(membership.org)
     errors, info, nick = {}, None, None
     if real_name is not None:
         try:
@@ -249,6 +266,7 @@ def admin_save(membership, actor, *, nickname=None, values=None):
 
     org, user = membership.org, membership.user
     require_admin(actor, org)
+    lock_definition(org)
     errors, info, nick = {}, None, None
     if nickname is not None:
         nick = _check_nickname(membership, nickname, errors)
