@@ -1608,6 +1608,7 @@ form:has(option[value="person"]:checked) .person-only { display: flex; }
 #ai-dlg form.stack > .row:last-child { position: static; margin: 0; padding: var(--sp-3) 0 0; background: none; }
 /* 태스크 후보: 넓은 대화상자 + 열 최소 폭(담당자·프로젝트·제목이 읽히게). 좁은 화면은 표 가로 스크롤 */
 #ai-dlg:has(.ai-cand) { max-width: 1160px; }
+#ai-dlg form.ai-cand { max-width: none; }
 .ai-cand table.grid { min-width: 900px; table-layout: fixed; }
 .ai-cand th:nth-child(1) { width: 64px; }
 .ai-cand th:nth-child(3) { width: 180px; }
