@@ -5,12 +5,20 @@
 PC는 자기에게 배정된 작업만 보고, 받을 수 있는 것은 진행 숫자·구간 결과(rows)·세부 정보·오류 코드뿐이다.
 """
 
-from django.http import FileResponse, JsonResponse
+from django.http import FileResponse, Http404, JsonResponse
 from ninja import Router
 from ninja.errors import HttpError
 
 from api.auth import SttTokenAuth
-from api.schemas import SttDeviceIn, SttDeviceTokenIn, SttHeartbeatIn, SttJobReportIn
+from api.schemas import (
+    SttAiReportIn,
+    SttDeviceIn,
+    SttDeviceTokenIn,
+    SttHeartbeatIn,
+    SttJobReportIn,
+)
+from assist import pc as assist_pc
+from assist.models import AiJob
 from notes import services as notes_svc
 from notes import stt_link
 from notes import transcription as tx
@@ -167,3 +175,19 @@ def job_report(request, job_id: int, payload: SttJobReportIn):
     except tx.StaleClaim:
         raise HttpError(409, "이 PC가 맡은 작업이 아닙니다.") from None
     return {"status": job.status, "cancel": job.status == "cancelling"}
+
+
+@router.patch("/ai-jobs/{int:job_id}", response=dict)
+def ai_job_report(request, job_id: int, payload: SttAiReportIn):
+    """AI 작업 결과(IMPL-PLAN-12 §6.2). 끝날 때 한 번. 이 PC 주인이 요청한 작업만(§5.3-3)."""
+    if len(payload.content.encode()) > AiJob.MAX_RESULT:
+        return _detail(413, "AI 결과가 용량 한도 256KB를 넘었습니다.")
+    if payload.usage is not None and _too_big(payload.usage):
+        return _detail(422, "사용량 정보가 너무 큽니다.")
+    try:
+        job = assist_pc.report(job_id, request.stt_server, payload.dict())
+    except Http404:
+        raise HttpError(404, "AI 작업을 찾을 수 없습니다.") from None
+    except assist_pc.Finished:
+        raise HttpError(409, "이미 끝난 AI 작업입니다.") from None
+    return {"status": job.status}
