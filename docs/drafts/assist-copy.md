@@ -216,3 +216,51 @@
 - assist_url_blocked는 루프백 등 등록해도 차단되는 주소를 허용할 수 있다고 보장하지 않습니다.
 - 개인 AI 경로의 최근 오류에는 조직 전용 허용 호스트 안내만 표시하지 않습니다.
 - 국외 이전 동의의 법적 근거와 조직별 수신자 고지의 구체화는 privacy-v3.md·terms-v2.md 끝의 ‘검토 필요’에 정리했습니다. L10의 DOC_VERSIONS 변경과 로그인 재동의는 구현 담당 작업이며 이 산출물은 코드를 바꾸지 않습니다.
+
+## 추가 키
+
+칸 안 AI 버튼과 칸 아래 패널, Codex 종류 선택 도입 뒤 추가된 문구입니다. **AI 문구 26행: 신규 키 제안 24개(표시 없는 자리 7개와 Codex 구분 오류 키 1개 포함), 기존 키 재확정 2개**입니다. 기존 표의 같은 키는 이 절의 문구를 우선합니다. 약관 시행일 문장은 별도 제안이며 AI 키 수에는 포함하지 않습니다.
+
+| 키 | 위치(파일:줄) | 현재 임시 문구 | 최종 문구 |
+|---|---|---|---|
+| ai_autocomplete_cancel | core/web/static/ai-fill.js:17 | AI 자동완성 취소 | AI 자동완성 취소 |
+| ai_cancelled | core/web/static/ai-fill.js:111 | AI 자동완성을 취소했습니다. | AI 자동완성을 취소했습니다. |
+| ai_filled | core/web/static/ai-fill.js:146 | AI가 칸을 채웠습니다. | AI가 칸을 채웠습니다. 내용을 확인한 뒤 저장해 주세요. |
+| ai_undo | core/web/static/ai-fill.js:148 | 되돌리기 | 되돌리기 |
+| ai_preview | core/web/static/ai-fill.js:158 | AI 미리보기입니다. 적용해야 저장됩니다. | AI 결과 미리보기입니다. [적용] 또는 [뒤에 붙이기]를 눌러야 저장됩니다. |
+| ai_apply | core/web/static/ai-fill.js:160 | 적용 | 적용 |
+| ai_append | core/web/static/ai-fill.js:161 | 뒤에 붙이기 | 뒤에 붙이기 |
+| ai_discard | core/web/static/ai-fill.js:129,162 | 버리기 | 버리기 |
+| assist_err_codex_missing | core/web/views/assist_settings.py:47 | PC에 Codex CLI가 없습니다. Codex를 설치한 뒤 다시 시도해 주세요. | 선택한 내 PC에 Codex가 설치되어 있지 않습니다. 해당 PC에 Codex를 설치하고 로그인한 뒤 다시 시도해 주세요. |
+| assist_err_codex_link_update（신규 원인 구분 키 제안） | core/web/views/assist_settings.py:47（현재 codex_missing 공용, 분기 추가 필요） | 옛 udally-link의 Codex 미지원과 Codex 미설치를 같은 오류로 표시 | 선택한 내 PC의 udally-link가 Codex를 지원하지 않는 버전입니다. 해당 PC의 udally-link를 최신 버전으로 업데이트한 뒤 다시 시도해 주세요. |
+| assist_err_codex_auth | core/web/views/assist_settings.py:48 | PC의 Codex가 로그인되어 있지 않습니다. PC에서 codex login을 실행해 주세요. | 선택한 내 PC의 Codex에 로그인되어 있지 않습니다. 해당 PC에서 `codex login`으로 로그인한 뒤 다시 시도해 주세요. |
+| assist_err_rate | core/web/views/assist_settings.py:49 | 오늘 쓸 수 있는 조직 AI 횟수를 다 썼습니다. 내일 다시 쓰거나 개인 AI를 등록해 주세요. | 오늘의 조직 AI 사용 한도에 도달했습니다. 내일 다시 시도하거나 설정 > AI에서 개인 AI를 등록해 주세요. |
+| assist_src_backend | core/web/templates/settings/_ai_fields.html:5-8 | 종류 / OpenAI 호환 AI 서버 / Codex(내 구독, 내 PC) | 종류 / OpenAI 호환 AI 서버 / Codex(내 구독, 내 PC) |
+| assist_src_codex_help | core/web/templates/settings/_ai_fields.html:9 | Codex는 고른 내 PC에 설치·로그인된 Codex CLI로 씁니다. 주소·키는 필요 없고, 구독 정보는 PC 밖으로 나가지 않습니다. | Codex는 선택한 내 PC에 설치·로그인된 Codex CLI로 사용합니다. AI 서버 주소와 키는 입력하지 않습니다. 구독 인증 정보는 내 PC에 보관됩니다. |
+| assist_src_codex_pc_required | core/web/views/assist_settings.py:129 | Codex는 내 PC에서 실행합니다. Codex가 설치·로그인된 내 PC를 골라 주세요. | Codex를 사용할 내 PC를 선택해 주세요. 해당 PC에 Codex가 설치되어 있고 로그인되어 있어야 합니다. |
+| assist_src_codex_via | core/web/templates/settings/_ai_source.html:13 | {name}의 Codex CLI로 씁니다. | {name}에 설치된 Codex로 요청합니다. |
+| assist_src_model_codex_help | core/web/templates/settings/_ai_fields.html:13 | Codex는 비우면 Codex 기본 모델을 씁니다. | 모델을 비워 두면 선택한 내 PC의 Codex 기본 모델을 사용합니다. |
+| assist_src_codex_badge（표시 없는 자리） | core/web/templates/settings/_ai_source.html:8 | Codex(내 구독) | Codex(내 구독) |
+| assist_src_codex_default_model（표시 없는 자리） | core/web/templates/settings/_ai_source.html:9 | Codex 기본 모델 | Codex 기본 모델 |
+| assist_src_model_empty（표시 없는 자리） | core/web/templates/settings/_ai_source.html:9 | 모델 미입력 | 모델 미입력 |
+| assist_src_kind_label（표시 없는 자리） | core/web/templates/settings/_ai_fields.html:5 | 종류 | 종류 |
+| assist_src_openai_url_label（표시 없는 자리） | core/web/templates/settings/_ai_fields.html:10 | AI 서버 주소(OpenAI 호환일 때) | AI 서버 주소(OpenAI 호환 AI 서버용) |
+| ai_previous_candidate（표시 없는 자리） | core/web/static/ai-fill.js:147,159 | 이전 후보 | 이전 후보 |
+| ai_next_candidate（표시 없는 자리） | core/web/static/ai-fill.js:147,159 | 다음 후보 | 다음 후보 |
+| ai_job_running（재확정） | core/web/templates/assist/_job.html:4 | AI가 쓰는 중입니다. / 기존 초안: 대화상자를 닫으면 작업이 취소됩니다. | AI가 작성 중입니다. 취소하려면 [AI 작업 취소]를 눌러 주세요. |
+| ai_err_unknown（재확정） | core/web/static/ai-fill.js:265 | 요청을 처리하지 못했습니다. 잠시 뒤 다시 시도해 주세요. / 기존 초안: 대화상자를 닫고 다시 시도해 주세요. | 요청을 처리하지 못했습니다. 잠시 후 다시 시도해 주세요. |
+
+- `assist_src_backend`의 선택지 묶음과 `assist_src_kind_label`의 라벨은 같은 ‘종류’를 사용합니다. 라벨을 별도 키로 분리할 때도 화면에 중복 출력하지 않습니다.
+- `ai_job_running`은 대화상자와 칸 아래 패널 모두 실제로 제공하는 [AI 작업 취소]를 안내합니다. 대화상자 닫기·칸 안 스피너 재클릭의 취소 동작은 각 버튼의 접근성 이름으로 알립니다.
+- `ai_preview`의 [뒤에 붙이기]는 긴 글 미리보기에만 있습니다. 한 줄 후보에는 “AI 결과 미리보기입니다. [적용]을 눌러야 저장됩니다.”로 분기합니다.
+- `codex_missing`만으로는 구버전 udally-link의 기능 미지원과 Codex 미설치를 확정할 수 없습니다. 구현 담당자는 PC 기능 지원 정보로 구버전을 먼저 구분하여 `assist_err_codex_link_update`를 표시하고, Codex 실행 파일 부재가 확인된 경우만 `assist_err_codex_missing`을 표시해 주세요. 원인 확인이 안 된 상태에는 “선택한 내 PC에서 Codex를 사용할 수 없습니다. udally-link 버전과 Codex 설치·로그인 상태를 확인해 주세요.”를 사용합니다. 이 문서는 원인 분기를 구현하지 않았습니다.
+- 구독 인증 정보 보관 안내는 업무 내용이 PC에만 머문다는 뜻이 아닙니다. 입력과 필요한 맥락은 Codex의 AI 서비스로 전송될 수 있으므로 기존 전송 고지를 유지합니다.
+
+### 약관 부칙 시행일
+
+| 키 | 위치(파일:줄) | 현재 임시 문구 | 최종 문구 |
+|---|---|---|---|
+| terms_effective_date（문장 제안, AI 키 수 제외） | core/web/content/terms.md:151（부칙） | 이 약관은 배포 시 확정한 시행일부터 적용합니다. | 이 약관은 2026년 10월 13일부터 시행합니다. |
+
+약관 원본 및 HTML은 수정하지 않았습니다. 문구 적용 담당자가 두 산출물의 시행일을 함께 반영해 주세요.
+
