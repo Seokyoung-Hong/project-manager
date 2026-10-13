@@ -37,12 +37,12 @@
   <button type="button" class="btn sm" data-action="toggle" data-target="#sub-add-{{ task.pk }}" data-alt="입력 닫기">하위 태스크 추가</button>
   <div id="sub-add-{{ task.pk }}" class="stack" hidden>
   <form class="row" hx-post="{% url 'subtask_create' task.pk %}" hx-target="#panel" hx-swap="innerHTML">
-    <input class="input" name="title" required placeholder="하위 태스크 제목" aria-label="하위 태스크 제목">
+    <input class="input" name="title" required placeholder="하위 태스크 제목" aria-label="하위 태스크 제목"{% if ai_on %} data-ai="subtask.title" data-ai-target="task:{{ task.pk }}"{% endif %}>
     <select name="assignee" class="select auto" aria-label="하위 담당자">
       {% for u in org_members %}<option value="{{ u.pk }}"{% if u.pk == user.pk %} selected{% endif %}>{% if u.pk == user.pk %}나 ({{ u.display_name }}){% else %}{{ u.display_name }}{% endif %}</option>{% endfor %}
     </select>
     <input class="input auto" type="date" name="due_date" value="{{ sub.suggested_due }}" aria-label="하위 기한">
-    {% if sub.need_done_when %}<input class="input" name="done_when" required placeholder="완료 조건" aria-label="하위 완료 조건">{% endif %}
+    {% if sub.need_done_when %}<input class="input" name="done_when" required placeholder="완료 조건" aria-label="하위 완료 조건"{% if ai_on %} data-ai="subtask.done_when" data-ai-target="task:{{ task.pk }}"{% endif %}>{% endif %}
     <button class="btn sm">하위 만들기</button>
   </form>
   {% if sub.candidates %}

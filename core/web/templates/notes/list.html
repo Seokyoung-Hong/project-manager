@@ -58,9 +58,15 @@
   <section class="card note-editor-card" id="note-editor">
     <div class="note-editor-toolbar">
       <a class="btn sm note-back" href="?scope={{ scope }}{% if tag %}&amp;tag={{ tag|urlencode }}{% endif %}#note-list">← 회의록 목록</a>
+      {% if ai_on %}{# AI 자동완성 회의록·태스크 후보(IMPL-PLAN-12 §7.3·§7.4). 문구 임시 — COPY:ai_minutes·ai_extract #}
+      <span class="grow"></span>
+      <button type="button" class="btn sm" data-ai-mode="meeting.minutes" data-ai-target="doc:{{ note.pk }}"{% if not recording.transcript_md %} disabled aria-describedby="ai-minutes-why"{% endif %}>AI로 회의록 쓰기</button>
+      {% if not recording.transcript_md %}<span id="ai-minutes-why" class="t12 muted">전사문이 있어야 쓸 수 있습니다.</span>{% endif %}
+      <button type="button" class="btn sm" data-ai-mode="extract.meeting" data-ai-target="doc:{{ note.pk }}">태스크 후보 뽑기</button>
+      {% endif %}
       <span id="note-status" class="note-save-status" data-state="saved" aria-live="polite">저장됨 · v{{ note.version }} · {{ note.updated_at|date:"n/j H:i" }}</span>
     </div>
-    <input class="title-input" data-note-field="title" value="{{ note.title }}" aria-label="제목">
+    <input class="title-input" data-note-field="title" value="{{ note.title }}" aria-label="제목"{% if ai_on %} data-ai="doc.title" data-ai-target="doc:{{ note.pk }}"{% endif %}>
     <details class="note-meta-box">
       <summary class="t13"><span class="label">회의 정보</span>
         <span class="muted">{% if note.project %}{{ note.project.name }}{% else %}조직 공통{% endif %} · {{ note.created_on|date:"n/j H:i" }} · {{ note.created_by.display_name }}{% if note.tags %} · {{ note.tags|join:", " }}{% endif %}</span></summary>

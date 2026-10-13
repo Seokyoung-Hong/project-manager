@@ -41,7 +41,7 @@
         </form>
         {% if sub.due_warn %}<div class="notice warn" role="status"><span>⚠ 기한이 상위 {{ sub.group.number }}({{ sub.group.due_date|date:"n월 j일" }})보다 늦습니다.</span></div>{% endif %}
         {% endif %}
-        <input class="title-input" name="value" value="{{ task.title }}" aria-label="제목" data-autosave
+        <input class="title-input" name="value" value="{{ task.title }}" aria-label="제목" data-autosave{% if ai_on %} data-ai="task.title" data-ai-target="task:{{ task.pk }}"{% endif %}
                hx-post="{% url 'task_text' task.pk 'title' %}" hx-trigger="change" hx-swap="none">
         <p class="muted t13">{{ task.status_hint }}</p>
         {# 보이는 라벨이 붙은 2열 목록(b-workspace 중-1). hx-post는 셀렉트 자신에 둔다. 폼에 두면 submit에만 반응한다. #}
@@ -92,7 +92,7 @@
             <form class="meta-wide">
               <input type="hidden" name="version" value="{{ task.version }}">
               <label class="field">기한 미정 사유
-                <input class="input" name="no_due_reason" value="{{ task.no_due_reason }}" placeholder="기한 미정 사유"
+                <input class="input" name="no_due_reason" value="{{ task.no_due_reason }}" placeholder="기한 미정 사유"{% if ai_on %} data-ai="task.no_due_reason" data-ai-target="task:{{ task.pk }}"{% endif %}
                        hx-post="{% url 'task_meta' task.pk %}" hx-target="#panel" hx-swap="innerHTML" hx-trigger="change">
               </label>
             </form>
@@ -112,21 +112,21 @@
       </div>
       {% if task.is_stopped or block_pending or reject_pending %}{% include "tasks/_stop.html" %}{% endif %}
       <label class="field">다음 행동
-        <input class="input" name="value" value="{{ task.next_action }}" placeholder="다음에 할 일을 한 문장으로 적어 주세요." data-autosave hx-post="{% url 'task_text' task.pk 'next_action' %}" hx-trigger="change" hx-swap="none">
+        <input class="input" name="value" value="{{ task.next_action }}" placeholder="다음에 할 일을 한 문장으로 적어 주세요." data-autosave{% if ai_on %} data-ai="task.next_action" data-ai-target="task:{{ task.pk }}"{% endif %} hx-post="{% url 'task_text' task.pk 'next_action' %}" hx-trigger="change" hx-swap="none">
       </label>
       <div class="md-field"><label for="task-notes-{{ task.pk }}">진행 메모</label>
-        <textarea id="task-notes-{{ task.pk }}" class="textarea notes" name="value" data-md data-toolbar="bottom" data-autosave{% if focus_notes %} data-focus{% endif %} placeholder="지금까지 한 일, 막힌 점, 다음에 할 일"
+        <textarea id="task-notes-{{ task.pk }}" class="textarea notes" name="value" data-md data-toolbar="bottom" data-autosave{% if focus_notes %} data-focus{% endif %}{% if ai_on %} data-ai="task.notes" data-ai-target="task:{{ task.pk }}"{% endif %} placeholder="지금까지 한 일, 막힌 점, 다음에 할 일"
                   hx-post="{% url 'task_text' task.pk 'notes' %}" hx-trigger="change, keyup changed delay:600ms" hx-swap="none">{{ task.notes }}</textarea>
       </div>
       <div class="md-field"><label for="task-done-{{ task.pk }}">완료 조건</label>
-        <textarea id="task-done-{{ task.pk }}" class="textarea" name="value" rows="2" data-md data-toolbar="bottom" data-autosave placeholder="끝났다고 볼 조건을 적습니다." hx-post="{% url 'task_text' task.pk 'done_when' %}" hx-trigger="change" hx-swap="none">{{ task.done_when }}</textarea>
+        <textarea id="task-done-{{ task.pk }}" class="textarea" name="value" rows="2" data-md data-toolbar="bottom" data-autosave{% if ai_on %} data-ai="task.done_when" data-ai-target="task:{{ task.pk }}"{% endif %} placeholder="끝났다고 볼 조건을 적습니다." hx-post="{% url 'task_text' task.pk 'done_when' %}" hx-trigger="change" hx-swap="none">{{ task.done_when }}</textarea>
       </div>
       {% if series %}{% include "tasks/_series.html" %}{% endif %}
     </div>
     <div class="stack panel-folds">
       <details class="fold" data-section="description"><summary>설명{% if not task.description %} <span class="muted">내용 없음</span>{% endif %}</summary>
         <div class="md-field"><label for="task-desc-{{ task.pk }}" class="sr-only">설명</label>
-          <textarea id="task-desc-{{ task.pk }}" class="textarea" name="value" rows="{{ desc_rows }}" data-md data-toolbar="bottom" data-autosave placeholder="무엇을 하는 태스크인지 적습니다." hx-post="{% url 'task_text' task.pk 'description' %}" hx-trigger="change" hx-swap="none">{{ task.description }}</textarea>
+          <textarea id="task-desc-{{ task.pk }}" class="textarea" name="value" rows="{{ desc_rows }}" data-md data-toolbar="bottom" data-autosave{% if ai_on %} data-ai="task.description" data-ai-target="task:{{ task.pk }}"{% endif %} placeholder="무엇을 하는 태스크인지 적습니다." hx-post="{% url 'task_text' task.pk 'description' %}" hx-trigger="change" hx-swap="none">{{ task.description }}</textarea>
         </div>
       </details>
       <details class="fold" data-section="checklist"><summary>체크리스트 <span class="muted">{{ checklist_done }}/{{ checklist|length }}</span></summary>

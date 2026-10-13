@@ -7,7 +7,7 @@
   <button type="button" class="btn link" data-action="toggle" data-target="#{{ prefix }}-nodue" data-alt="{% if reason %}기한 없이 만들기{% else %}기한 정하기{% endif %}">{% if reason %}기한 정하기{% else %}기한 없이 만들기{% endif %}</button>
 </div>
 <label class="field" id="{{ prefix }}-nodue" data-nodue{% if not reason %} hidden{% endif %}>기한 미정 사유
-  <input class="input" name="no_due_reason" list="{{ prefix }}-nodue-reasons" value="{{ reason }}" maxlength="200" placeholder="고르거나 직접 입력해 주세요">
+  <input class="input" name="no_due_reason" list="{{ prefix }}-nodue-reasons" value="{{ reason }}" maxlength="200" placeholder="고르거나 직접 입력해 주세요"{% if ai_on %} data-ai="task.no_due_reason" data-ai-target="{% if project.pk %}project:{{ project.pk }}{% endif %}" data-ai-target-from="project:project"{% endif %}>
   <datalist id="{{ prefix }}-nodue-reasons"><option value="다른 일이 끝나야 정할 수 있음"><option value="아직 범위가 정해지지 않음"></datalist>
 </label>
 {% endwith %}

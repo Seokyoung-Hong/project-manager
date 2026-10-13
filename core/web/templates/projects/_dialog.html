@@ -2,8 +2,8 @@
   <h2 class="t20">{% if project %}프로젝트 수정{% else %}새 프로젝트{% endif %}</h2>
   <input type="hidden" name="org" value="{{ org.pk }}">
   {{ form.version }}
-  <label class="field">이름<input class="input" name="name" value="{{ form.name.value|default:'' }}" required autofocus></label>
-  <label class="field">목적<textarea class="textarea" name="purpose" rows="2">{{ form.purpose.value|default:'' }}</textarea></label>
+  <label class="field">이름<input class="input" name="name" value="{{ form.name.value|default:'' }}" required autofocus{% if ai_on %} data-ai="project.name" data-ai-target="{% if project %}project:{{ project.pk }}{% else %}org:{{ org.pk }}{% endif %}"{% endif %}></label>
+  <label class="field">목적<textarea class="textarea" name="purpose" rows="2"{% if ai_on %} data-ai="project.purpose" data-ai-target="{% if project %}project:{{ project.pk }}{% else %}org:{{ org.pk }}{% endif %}"{% endif %}>{{ form.purpose.value|default:'' }}</textarea></label>
   <fieldset class="choice-fieldset">
     <legend>관리자 (여러 명 가능)</legend>
     <div class="chips">{% for u in members %}<label class="chip"><input type="checkbox" name="owners" value="{{ u.pk }}"{% if u.pk in checked_owner_ids %} checked{% endif %}>{{ u.display_name }}</label>{% endfor %}</div>

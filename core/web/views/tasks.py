@@ -8,6 +8,7 @@ from datetime import date, timedelta
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.db import transaction
 from django.db.models import Q
 from django.http import Http404, HttpResponse, HttpResponseNotModified, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
@@ -544,8 +545,12 @@ def _checklist(request, task, error=None):
 @require_POST
 def checklist_add(request, task_id):
     task = task_or_404(request.user, task_id)
+    # 여러 줄(AI 자동완성 [고른 항목 추가], IMPL-PLAN-12 §7.1)이면 줄마다 한 항목, 최대 20개
+    lines = [s for t in request.POST.getlist("text") for s in t.splitlines() if s.strip()][:20]
     try:
-        ts.checklist_add(task, request.POST.get("text", ""), actor=request.user)
+        with transaction.atomic():
+            for text in lines or [""]:  # 비어 있으면 서비스가 "내용을 입력해 주세요."
+                ts.checklist_add(task, text, actor=request.user)
     except ServiceError as e:
         return _checklist(request, task, error=" ".join(e.errors.values()))
     return trigger(_checklist(request, task), "task-changed", task)

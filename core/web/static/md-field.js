@@ -298,6 +298,12 @@ function field(T, ta) {
   dom.addEventListener("compositionend", () => setTimeout(later)); // 조합이 끝난 뒤의 트랜잭션까지 기다린다
   box.addEventListener("focusout", (e) => { if (!box.contains(e.relatedTarget)) commit(); });
   ta._mdCommit = commit;
+  // 바깥(ai-fill.js [칸 내용 바꾸기])에서 값을 넣는다. 실제 조작으로 보고 바로 저장 경로(change)를 태운다.
+  ta._mdSet = (md) => {
+    touch();
+    ed.commands.setContent(T.preprocess(md), { contentType: "markdown" });
+    commit();
+  };
 
   // 초점 위임: app.js의 data-focus·toggle과 라벨 클릭이 숨은 textarea 대신 편집기로 간다
   ta.focus = () => ed.commands.focus("end");
