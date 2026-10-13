@@ -645,6 +645,18 @@ class SttDeviceTokenIn(Schema):
     device_code: str = Field(max_length=200)
 
 
+class SttCodexLoginIn(Schema):
+    """PC가 Codex 로그인 진행을 보고한다: 인증 주소·사용자 코드(한 번), 끝(done·로그인 여부) 또는 오류 코드.
+    토큰·계정 정보는 받지 않는다."""
+
+    url: str = Field("", max_length=200)
+    code: str = Field("", max_length=20)
+    expires_in: int = Field(0, ge=0, le=86400)
+    done: bool = False
+    logged_in: bool | None = None
+    error: str = Field("", max_length=40)
+
+
 class SttHeartbeatIn(Schema):
     version: str = Field("", max_length=20)
     job_id: int | None = None

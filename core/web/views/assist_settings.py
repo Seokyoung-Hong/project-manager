@@ -18,10 +18,11 @@ from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
-from assist import net
+from assist import codex_login, net
 from assist.models import CODEX_URL, AiSource, AllowedHost
 from common.errors import ServiceError
 from github.crypto import decrypt, encrypt
+from notes import transcription as tx
 from notes.models import SttServer
 from ops import services as ops_services
 from ops.access import ops_required
@@ -215,6 +216,51 @@ def ai_row(request, source_id: int):
         return _page(request, status=400, edit_id=src.pk, edit_errors=e.errors)
     messages.success(request, f"개인 AI ‘{src.name}’ 설정을 저장했습니다.")  # COPY:assist_src_saved
     return redirect("settings_ai")
+
+
+CODEX_LOGIN_ERRORS = {
+    "codex_missing": "선택한 내 PC에서 Codex를 찾지 못했습니다. 해당 PC에 Codex를 설치한 뒤 다시 시도해 주세요.",  # COPY:codex_login_err_missing
+    "codex_docker": "Docker로 설치한 udally-link에서는 Codex를 사용할 수 없습니다. uv로 설치한 udally-link에서 사용해 주세요.",  # COPY:codex_login_err_docker
+    "login_failed": "Codex 로그인을 완료하지 못했습니다. 다시 시도해 주세요.",  # COPY:codex_login_err_failed
+    "bad_login_url": "내 PC가 예상하지 않은 로그인 주소를 보내 로그인을 중단했습니다. udally-link와 Codex를 최신 버전으로 업데이트한 뒤 다시 시도해 주세요.",  # COPY:codex_login_err_url
+    "pc_error": "내 PC에서 Codex 로그인을 시작하지 못했습니다. PC의 연결 상태를 확인한 뒤 다시 시도해 주세요.",  # COPY:codex_login_err_pc
+}
+
+
+def _codex_ctx(src, error=""):
+    server = src.server
+    row = codex_login.current(server)
+    ctx = {
+        "s": src,
+        "server": server,
+        "row": row,
+        "dev": codex_login.device(server),
+        "online": tx.online(server),
+        "error": error,
+    }
+    if row and row.state in codex_login.OPEN:
+        ctx["polling"] = True
+        ctx["minutes"] = max(1, round((row.expires_at - timezone.now()).total_seconds() / 60))
+    if row and row.state == "failed":
+        ctx["error"] = ctx["error"] or CODEX_LOGIN_ERRORS.get(
+            row.error, CODEX_LOGIN_ERRORS["pc_error"]
+        )
+    return ctx
+
+
+@login_required
+def ai_codex(request, source_id: int):
+    """Codex 행의 로그인 상태 조각. POST action=login|logout은 그 PC에 명령을 건다(PC 주인만)."""
+    src = _mine(request, source_id)
+    if not src.is_codex or src.server is None or src.server.owner_id != request.user.pk:
+        return HttpResponseForbidden()
+    error = ""
+    if request.method == "POST":
+        try:
+            codex_login.start(request.user, src.server, request.POST.get("action", ""))
+        except ServiceError as e:
+            error = next(iter(e.errors.values()))
+    return render(request, "settings/_codex_login.html", _codex_ctx(src, error))
 
 
 def _servers(request):

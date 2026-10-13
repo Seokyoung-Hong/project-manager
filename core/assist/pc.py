@@ -16,7 +16,7 @@ from django.utils import timezone
 
 from github.crypto import decrypt
 
-from . import extract, prompts
+from . import codex_login, extract, prompts
 from .models import AiJob, AiSource
 
 log = logging.getLogger(__name__)
@@ -69,7 +69,11 @@ def on_heartbeat(server, data: dict) -> dict:
     """
     if not data.get("ai"):
         return {}  # 옛 PC(능력 표시 없음)는 전사만
-    return {"codex_versions": codex_versions(), **_assign(server, data)}
+    return {
+        "codex_versions": codex_versions(),
+        **codex_login.on_heartbeat(server),
+        **_assign(server, data),
+    }
 
 
 def _assign(server, data: dict) -> dict:

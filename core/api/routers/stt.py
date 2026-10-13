@@ -12,11 +12,13 @@ from ninja.errors import HttpError
 from api.auth import SttTokenAuth
 from api.schemas import (
     SttAiReportIn,
+    SttCodexLoginIn,
     SttDeviceIn,
     SttDeviceTokenIn,
     SttHeartbeatIn,
     SttJobReportIn,
 )
+from assist import codex_login
 from assist import pc as assist_pc
 from assist.models import AiJob
 from notes import services as notes_svc
@@ -191,3 +193,15 @@ def ai_job_report(request, job_id: int, payload: SttAiReportIn):
     except assist_pc.Finished:
         raise HttpError(409, "이미 끝난 AI 작업입니다.") from None
     return {"status": job.status}
+
+
+@router.post("/codex-login/{int:login_id}", response=dict)
+def codex_login_report(request, login_id: int, payload: SttCodexLoginIn):
+    """웹에서 시작한 Codex 로그인·로그아웃 진행 보고. 이 PC에 온 요청만."""
+    try:
+        row = codex_login.report(request.stt_server, login_id, payload.dict())
+    except Http404:
+        raise HttpError(404, "Codex 로그인 요청을 찾을 수 없습니다.") from None
+    except codex_login.Finished:
+        raise HttpError(409, "이미 끝났거나 만료된 Codex 로그인 요청입니다.") from None
+    return {"state": row.state}

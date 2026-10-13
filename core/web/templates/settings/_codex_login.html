@@ -1,0 +1,27 @@
+{# Codex 행 로그인 상태(웹에서 기기 코드 로그인). s: AiSource, row: CodexLogin|None, dev: PC가 보낸 Codex 상태. 토큰은 다루지 않는다. #}
+<div id="codex-login-{{ s.pk }}" class="stack"{% if polling %} hx-get="{% url 'settings_ai_codex' s.pk %}" hx-trigger="every 3s" hx-swap="outerHTML"{% endif %} aria-live="polite">
+{% if dev.docker %}
+  <p class="muted t13">{{ server.name }}의 udally-link는 Docker로 설치되어 Codex를 사용할 수 없습니다. Codex를 사용하려면 이 PC에 udally-link를 uv로 설치해 주세요.</p>{# COPY:codex_login_docker_help #}
+{% elif row.state == "requested" %}
+  <p class="conn"><span class="conn-state warn">요청 중</span> <span class="t13">{{ server.name }}에 Codex {% if row.action == "logout" %}로그아웃{% else %}로그인{% endif %}을 요청했습니다. PC가 응답하기를 기다리는 중입니다.</span></p>{# COPY:codex_login_requested #}
+  {% if not online %}<p class="muted t12">{{ server.name }}이(가) 연결되어 있지 않습니다. PC를 켜고 udally-link를 실행해 주세요.</p>{% endif %}{# COPY:codex_login_offline #}
+{% elif row.state == "code" %}
+  <p class="notice warn" role="note">⚠ 이 화면에서 직접 [Codex 로그인]을 누른 경우에만 코드를 입력해 주세요. 다른 사람이 보내 준 코드를 입력하면 그 사람의 PC가 내 Codex 구독을 사용하게 됩니다.</p>{# COPY:codex_login_phishing #}
+  <dl class="panel-meta">
+    <dt>1. 인증 주소</dt><dd><a href="{{ row.url }}" target="_blank" rel="noopener noreferrer">{{ row.url }}</a></dd>{# COPY:codex_login_step_url #}
+    <dt>2. 코드</dt><dd><code class="mono t20">{{ row.code }}</code></dd>{# COPY:codex_login_step_code #}
+    <dt>남은 시간</dt><dd>약 {{ minutes }}분</dd>
+  </dl>
+  <p class="muted t12">인증 주소에서 ChatGPT 계정으로 로그인한 뒤 코드를 입력해 주세요. 완료되면 이 화면이 자동으로 바뀝니다.</p>{# COPY:codex_login_code_help #}
+{% else %}
+  <p class="conn">{% if dev.login %}<span class="conn-state on">로그인됨</span> <span class="t13">{{ server.name }}의 Codex에 로그인되어 있습니다.</span>{% elif dev.login is False %}<span class="conn-state off">로그아웃됨</span> <span class="t13">{{ server.name }}의 Codex에 로그인되어 있지 않습니다.</span>{% else %}<span class="conn-state off">확인 전</span> <span class="t13">{{ server.name }}의 Codex 로그인 상태를 아직 확인하지 못했습니다.</span>{% endif %}</p>{# COPY:codex_login_state #}
+  {% if row.state == "expired" %}<p class="muted t12">코드가 만료되었습니다. 다시 로그인하려면 [Codex 로그인]을 눌러 주세요.</p>{% endif %}{# COPY:codex_login_expired #}
+{% endif %}
+{% if error %}<p class="error" role="alert">⚠ {{ error }}</p>{% endif %}
+{% if not dev.docker %}
+  <div class="row">
+    {% if not polling %}{% if not dev.login %}<button type="button" class="btn sm" hx-post="{% url 'settings_ai_codex' s.pk %}" hx-vals='{"action": "login"}' hx-target="#codex-login-{{ s.pk }}" hx-swap="outerHTML">Codex 로그인</button>{% endif %}{# COPY:codex_login_btn #}
+    {% if dev.login %}<button type="button" class="btn sm" hx-post="{% url 'settings_ai_codex' s.pk %}" hx-vals='{"action": "logout"}' hx-target="#codex-login-{{ s.pk }}" hx-swap="outerHTML">Codex 로그아웃</button>{% endif %}{% endif %}{# COPY:codex_logout_btn #}
+  </div>
+{% endif %}
+</div>

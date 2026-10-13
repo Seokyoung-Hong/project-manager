@@ -160,7 +160,7 @@ IGNORE = {
     "github_githubinstallation", "github_gitrelease", "github_gitevent", "github_githubteamlink",
     "api_integrationstatus", "ops_opsauditlog",
     # AI 자동완성(IMPL-PLAN-12 §4.4): 요청자 한 사람만 보므로 대화상자가 폴링한다
-    "assist_aisource", "assist_aijob", "assist_allowedhost",
+    "assist_aisource", "assist_aijob", "assist_allowedhost", "assist_codexlogin",  # Codex 로그인: 폴링
 }  # fmt: skip
 IGNORE_PREFIXES = ("portfolio_", "orgs_discord")
 

@@ -161,3 +161,32 @@ class AllowedHost(models.Model):
 
     def __str__(self):
         return self.host
+
+
+class CodexLogin(models.Model):
+    """웹에서 시작한 Codex 로그인·로그아웃 한 건(PC당 하나, 진행 중 1개).
+
+    토큰·auth.json은 PC 밖으로 나오지 않는다. 여기엔 기기 코드 화면에 필요한 인증 주소·사용자 코드·만료만
+    잠깐 두고, 끝나거나 만료되면 지운다(assist.codex_login.tidy). 로그인 여부는 SttServer.device["codex"].
+    """
+
+    STATES = [
+        ("requested", "PC에 요청함"),
+        ("code", "코드 표시 중"),
+        ("done", "끝남"),
+        ("failed", "실패"),
+        ("expired", "만료"),
+    ]
+    server = models.OneToOneField(
+        "notes.SttServer", on_delete=models.CASCADE, related_name="codex_login"
+    )
+    action = models.CharField(max_length=10, default="login")  # login | logout
+    state = models.CharField(max_length=10, choices=STATES, default="requested")
+    url = models.CharField(max_length=200, blank=True)
+    code = models.CharField(max_length=20, blank=True)
+    expires_at = models.DateTimeField(null=True, blank=True)
+    error = models.CharField(max_length=40, blank=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"Codex {self.action} #{self.pk}"

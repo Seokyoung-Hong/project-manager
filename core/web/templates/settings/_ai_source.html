@@ -12,6 +12,7 @@
   {% elif s.route == "pc" and not s.server and not servers %}<p class="notice warn"><span>⚠ 개인 AI에 연결된 내 PC가 없습니다. [<a href="{% url 'settings_stt' %}">내 PC 연결</a>]에서 PC를 연결한 뒤 [PC 다시 고르기]에서 선택해 주세요.</span></p>{# COPY:assist_src_pc_unlinked_none #}
   {% elif s.route == "pc" and not s.server %}<p class="notice warn"><span>⚠ 개인 AI에 연결된 내 PC가 없습니다. [PC 다시 고르기]에서 연결할 내 PC를 선택해 주세요.</span></p>{# COPY:assist_src_pc_unlinked #}
   {% elif s.is_codex %}<p class="muted t13">{{ s.server.name }}에 설치된 Codex로 요청합니다.</p>{# COPY:assist_src_codex_via #}
+  <div hx-get="{% url 'settings_ai_codex' s.pk %}" hx-trigger="load" hx-swap="outerHTML"></div>
   {% elif s.route == "pc" %}<p class="muted t13">{{ s.base_url }} · 내 PC {{ s.server.name }}을 거쳐 요청합니다.</p>{# COPY:assist_src_pc_via #}
   {% else %}<p class="muted t13">{{ s.base_url }}</p>{% endif %}
   {% if s.last_error %}<p class="error">⚠ 최근 오류: {{ s.error_label }}</p>{% endif %}{# COPY:assist_src_last_error #}
