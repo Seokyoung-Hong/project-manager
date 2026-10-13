@@ -74,6 +74,7 @@ def org_capped(user, org) -> bool:
 def _plan(user, org, *, skip_job_id=None) -> list[Attempt]:
     from notes.transcription import online
 
+    from .copilot import enabled as copilot_enabled
     from .models import AiSource
     from .services import ai_on
 
@@ -91,6 +92,8 @@ def _plan(user, org, *, skip_job_id=None) -> list[Attempt]:
             continue
         elif r.is_codex and not settings.ASSIST_CODEX_ENABLED:
             continue  # Codex 경로를 끈 배포: 이미 등록한 행도 건너뛴다(남은 것이 없으면 no_source)
+        elif r.is_copilot and not copilot_enabled():
+            continue  # Copilot을 끈 배포: 이미 등록한 행도 건너뛴다
         elif r.route == "pc":
             s = r.server  # PC를 끊으면 NULL, 남의 PC면 불변식 1 위반 → 뺀다
             if s is not None and s.owner_id == user.pk and online(s, timezone.now()):

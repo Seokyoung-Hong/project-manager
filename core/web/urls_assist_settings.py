@@ -2,6 +2,7 @@
 
 from django.urls import path
 
+from .views import assist_copilot
 from .views import assist_oauth as oa
 from .views import assist_settings as v
 
@@ -27,6 +28,12 @@ urlpatterns = [
         "settings/ai/oauth/<str:provider>/callback",
         oa.ai_oauth_callback,
         name="settings_ai_oauth_callback",
+    ),
+    path("settings/ai/copilot", assist_copilot.copilot_connect, name="settings_ai_copilot"),
+    path(
+        "settings/ai/<int:source_id>/copilot-model",
+        assist_copilot.copilot_model,
+        name="settings_ai_copilot_model",
     ),
     # 조직 AI [연결 시험]·[모델 불러오기](조직 관리자)
     path("orgs/<int:org_id>/settings/assist-test", v.org_assist_test, name="org_assist_test"),

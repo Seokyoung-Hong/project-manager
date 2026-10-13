@@ -20,7 +20,7 @@ from django.db import close_old_connections, transaction
 from django.http import Http404
 from django.utils import timezone
 
-from . import extract, prompts
+from . import copilot, extract, prompts
 from .net import NetError, chat
 
 log = logging.getLogger("assist")
@@ -207,6 +207,8 @@ def _endpoint(job, route):
             True,
         )
     s = job.source
+    if s.is_copilot:  # 요청자 자신의 GitHub 토큰(_plan이 user=job.user 행만 고른다)
+        return s.base_url, copilot.token_for(job.user), s.model, False
     key = oauth.source_key(s)  # HF OAuth면 만료 전에 갱신
     return s.base_url, key, s.model, False
 
@@ -220,6 +222,8 @@ def _cancelled(job) -> bool:
 def _ask(ep, messages, spec, state, *, want_json):
     """한 번 묻고 (내용, usage). json_object를 400으로 거부하면 그 항목에선 없이 다시 묻는다(§11.2)."""
     url, key, model, org = ep
+    if url == copilot.URL:  # JSON 강제 옵션 없음 — 형식은 프롬프트와 parse_output 재질문이 맞춘다
+        return copilot.chat(messages, token=key, model=model, timeout_s=spec.timeout_s)
     payload = {
         "model": model,
         "messages": messages,

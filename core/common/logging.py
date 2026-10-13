@@ -19,7 +19,7 @@ _PATTERNS = [
     # 개인 AI OAuth로 받은 OpenRouter 키(sk-or-)·HF 토큰(hf_)(assist/oauth.py).
     re.compile(r"sk-or-[A-Za-z0-9_-]{20,}|hf_[A-Za-z0-9_]{20,}"),
     re.compile(
-        r"(?i)(GITHUB_APP_PRIVATE_KEY|GITHUB_CLIENT_SECRET|GITHUB_WEBHOOK_SECRET|CREDENTIAL_KEY|HF_OAUTH_CLIENT_SECRET)=\S+"
+        r"(?i)(GITHUB_APP_PRIVATE_KEY|GITHUB_CLIENT_SECRET|GITHUB_WEBHOOK_SECRET|CREDENTIAL_KEY|HF_OAUTH_CLIENT_SECRET|COPILOT_CONNECTION_TOKEN)=\S+"
     ),
     re.compile(r"-----BEGIN [A-Z ]*PRIVATE KEY-----.*?-----END [A-Z ]*PRIVATE KEY-----", re.S),
 ]

@@ -169,6 +169,20 @@ services:
     ports:
       - "${MCP_PORT:-127.0.0.1:8080}:8080"   # 기본은 루프백만. 밖에 공개하려면 .env에서 포트만 쓴다
 
+  copilot:                       # 개인 AI "GitHub Copilot(내 구독)" 런타임(core/assist/copilot.py). purge의 AI 워커가 부른다
+    profiles: ["copilot"]        # 기본 미기동. 켜는 법: COMPOSE_PROFILES에 copilot + ASSIST_COPILOT_ENABLED=1 + COPILOT_RUNTIME_URL=copilot:4321
+    build: ./copilot_runtime
+    environment:
+      COPILOT_CONNECTION_TOKEN: ${COPILOT_CONNECTION_TOKEN:-}   # core와 나누는 비밀(.env). 비우면 같은 망의 누구나 붙는다
+    expose:
+      - "4321"                    # purge만 부른다. 호스트 포트로 공개하지 않는다.
+    tmpfs:
+      - /home/copilot/.copilot    # 세션 상태. 요청마다 지우므로 보관하지 않는다
+    mem_limit: 512m               # 유휴 약 186MiB(측정). 넘치면 이 컨테이너가 먼저 죽는다(작업은 다음 AI로 넘어간다)
+    oom_score_adj: 1000
+    restart: unless-stopped
+    logging: *logging
+
   cloudflared:
     profiles: ["tunnel"]         # TUNNEL_TOKEN 없이는 기동에 실패한다 → 기본에서 뺀다
     image: cloudflare/cloudflared:latest

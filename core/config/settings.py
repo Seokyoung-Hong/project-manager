@@ -193,6 +193,15 @@ ASSIST_CODEX_VERSIONS = [
 # 콜백 주소: {SITE_URL}/settings/ai/oauth/hf/callback. OpenRouter PKCE는 앱 등록·비밀이 없다.
 HF_OAUTH_CLIENT_ID = os.environ.get("HF_OAUTH_CLIENT_ID", "")
 HF_OAUTH_CLIENT_SECRET = os.environ.get("HF_OAUTH_CLIENT_SECRET", "")
+# 개인 AI "GitHub Copilot(내 구독)". GitHub App에 Copilot 권한을 받을 때까지 끈다(기본 0).
+# 꺼져 있거나 런타임 주소(compose copilot 서비스, `copilot --headless`)가 비면 연결 버튼을 숨기고
+# 이미 등록한 행도 건너뛴다. 토큰은 GitHub App 사용자 토큰을 그대로 쓴다(assist/copilot.py).
+ASSIST_COPILOT_ENABLED = os.environ.get("ASSIST_COPILOT_ENABLED", "0") == "1"
+COPILOT_RUNTIME_URL = os.environ.get("COPILOT_RUNTIME_URL", "")
+COPILOT_CONNECTION_TOKEN = os.environ.get("COPILOT_CONNECTION_TOKEN", "")  # 런타임과 나누는 비밀
+COPILOT_MODELS = [  # 고를 수 있는 모델(쉼표 구분), 첫째가 기본값
+    m.strip() for m in os.environ.get("COPILOT_MODELS", "gpt-5-mini").split(",") if m.strip()
+] or ["gpt-5-mini"]
 # 내 PC 연결 한 줄 설치(/link/install.ps1 등)가 302로 보내는 udally-link 저장소 원본 주소.
 # 저장소·커밋이 정해지면 커밋 sha로 고정한다(태그는 옮길 수 있다). IMPL-PLAN-11-local-stt-link §10.1
 # 옛 이름 STT_SCRIPT_BASE도 읽는다(udally-stt → udally-link, 새 이름 우선).
