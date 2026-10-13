@@ -6,7 +6,7 @@
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.http import Http404, HttpResponseRedirect
+from django.http import Http404, HttpResponsePermanentRedirect, HttpResponseRedirect
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_POST
@@ -110,10 +110,10 @@ def settings_stt(request):
         {
             "settings_tab": "stt",
             "rows": [_server_ctx(s) for s in servers],
-            "install_ps1": f"irm {base}/stt/install.ps1 | iex",
-            "install_sh": f"curl -fsSL {base}/stt/install.sh | sh",
-            "uninstall_ps1": f"irm {base}/stt/uninstall.ps1 | iex",
-            "uninstall_sh": f"curl -fsSL {base}/stt/uninstall.sh | sh",
+            "install_ps1": f"irm {base}/link/install.ps1 | iex",
+            "install_sh": f"curl -fsSL {base}/link/install.sh | sh",
+            "uninstall_ps1": f"irm {base}/link/uninstall.ps1 | iex",
+            "uninstall_sh": f"curl -fsSL {base}/link/uninstall.sh | sh",
             "link_url": base + stt_link.LINK_PATH,
             "now": timezone.now(),
         },
@@ -154,8 +154,15 @@ def stt_unlink(request, server_id):
     return redirect("settings_stt")
 
 
-def stt_script(request, name):
-    """한 줄 설치 스크립트 → udally-stt 저장소 원본으로 302(§10.1). 로그인 없이 연다."""
+def link_script(request, name):
+    """한 줄 설치 스크립트 → udally-link 저장소 원본으로 302(§10.1). 로그인 없이 연다."""
     if name not in SCRIPTS:
         raise Http404
-    return HttpResponseRedirect(f"{settings.STT_SCRIPT_BASE}/scripts/{name}")
+    return HttpResponseRedirect(f"{settings.LINK_SCRIPT_BASE}/scripts/{name}")
+
+
+def old_script(request, name):
+    """옛 주소 /stt/<스크립트>(udally-stt 시절 안내) → /link/<스크립트>로 301."""
+    if name not in SCRIPTS:
+        raise Http404
+    return HttpResponsePermanentRedirect(f"/link/{name}")

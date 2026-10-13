@@ -183,10 +183,13 @@ DISCORD_CLIENT_SECRET = os.environ.get("DISCORD_CLIENT_SECRET", "")
 CREDENTIAL_KEY = os.environ.get("CREDENTIAL_KEY", "")
 # AI 자동완성 워커 스레드 수(purge 컨테이너, IMPL-PLAN-12 §4.1). 0이면 워커를 띄우지 않는다(되돌리기).
 ASSIST_WORKERS = int(os.environ.get("ASSIST_WORKERS", "3"))
-# 내 PC 전사 서버 한 줄 설치(/stt/install.ps1 등)가 302로 보내는 udally-stt 저장소 원본 주소.
+# 내 PC 연결 한 줄 설치(/link/install.ps1 등)가 302로 보내는 udally-link 저장소 원본 주소.
 # 저장소·커밋이 정해지면 커밋 sha로 고정한다(태그는 옮길 수 있다). IMPL-PLAN-11-local-stt-link §10.1
-STT_SCRIPT_BASE = os.environ.get(
-    "STT_SCRIPT_BASE", "https://raw.githubusercontent.com/Seokyoung-Hong/udally-stt/main"
+# 옛 이름 STT_SCRIPT_BASE도 읽는다(udally-stt → udally-link, 새 이름 우선).
+LINK_SCRIPT_BASE = (
+    os.environ.get("LINK_SCRIPT_BASE")
+    or os.environ.get("STT_SCRIPT_BASE")
+    or "https://raw.githubusercontent.com/Seokyoung-Hong/udally-link/main"
 ).rstrip("/")
 # 설정이 없으면 GitHub 화면과 버튼을 아예 그리지 않는다(개발·테스트 환경).
 GITHUB_ENABLED = bool(GITHUB_APP_ID and GITHUB_APP_PRIVATE_KEY and CREDENTIAL_KEY)

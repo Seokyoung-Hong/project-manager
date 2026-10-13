@@ -511,13 +511,16 @@ def test_format_transcript_matches_node():
 
 
 def test_install_script_redirects_to_configured_base(client, settings):
-    settings.STT_SCRIPT_BASE = "https://raw.githubusercontent.com/acct/udally-stt/abc123"
-    r = client.get("/stt/install.ps1")
+    settings.LINK_SCRIPT_BASE = "https://raw.githubusercontent.com/acct/udally-link/abc123"
+    r = client.get("/link/install.ps1")
     assert r.status_code == 302
     assert (
         r["Location"]
-        == "https://raw.githubusercontent.com/acct/udally-stt/abc123/scripts/install.ps1"
+        == "https://raw.githubusercontent.com/acct/udally-link/abc123/scripts/install.ps1"
     )
+    assert client.get("/link/evil.ps1").status_code == 404
+    r = client.get("/stt/uninstall.sh")  # 옛 주소
+    assert r.status_code == 301 and r["Location"] == "/link/uninstall.sh"
     assert client.get("/stt/evil.ps1").status_code == 404
 
 
@@ -526,7 +529,7 @@ def test_settings_page_pull_unlink_and_panel_options(client, enabled, admin, mem
     server, token = _pc(client, member)
     client.force_login(member)
     page = client.get("/settings/stt").content.decode()
-    assert "내 데스크톱" in page and "/stt/install.ps1 | iex" in page and "켜짐" in page
+    assert "내 데스크톱" in page and "/link/install.ps1 | iex" in page and "켜짐" in page
     r = client.post(f"/settings/stt/{server.pk}/pull", {"model": "small"})
     assert "받는 중" in r.content.decode() and 'hx-trigger="every 3s"' in r.content.decode()
     assert (
@@ -750,7 +753,7 @@ def test_no_deadlock_between_pc_claim_and_org_retry(enabled, admin, member):
     assert job.status == "cancelled" and job.error == "pc_disabled"
 
 
-# ---------- udally-stt link.py 계약(967e4ec) ----------
+# ---------- udally-link(옛 udally-stt) link.py 계약(967e4ec) ----------
 
 
 def _upload_job(client, org, member, server):

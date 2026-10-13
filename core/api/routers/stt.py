@@ -29,7 +29,7 @@ from notes.models import TranscriptionJob
 router = Router(tags=["stt"], auth=SttTokenAuth(), throttle=[])
 
 # PC가 보낼 수 있는 오류 코드. 목록 밖이면 pc_error로 바꾼다.
-# 계획서 목록 + udally-stt link.py가 실제로 보내는 값. out_of_memory는 PC가 구간 실패로 보고하지만 와도 받는다.
+# 계획서 목록 + udally-link link.py가 실제로 보내는 값. out_of_memory는 PC가 구간 실패로 보고하지만 와도 받는다.
 PC_ERRORS = {
     "model_not_ready",
     "download_failed",

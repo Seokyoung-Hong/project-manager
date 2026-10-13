@@ -262,7 +262,8 @@ urlpatterns = [
     path("settings/stt/<int:server_id>", stt_link.stt_server_row, name="stt_server_row"),
     path("settings/stt/<int:server_id>/pull", stt_link.stt_pull, name="stt_pull"),
     path("settings/stt/<int:server_id>/unlink", stt_link.stt_unlink, name="stt_unlink"),
-    path("stt/<str:name>", stt_link.stt_script, name="stt_script"),
+    path("link/<str:name>", stt_link.link_script, name="link_script"),
+    path("stt/<str:name>", stt_link.old_script),  # 옛 udally-stt 안내 주소 → 301
     path("settings/consents", settings.consents, name="consents"),
     path("settings/consents/<str:target>", settings.consent, name="consent"),
     path(
