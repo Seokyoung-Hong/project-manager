@@ -33,12 +33,12 @@ LINK_PATH = "/link"
 
 # 사용자 문구 — 임시(docs/drafts/local-stt-link-copy.md)
 TOO_MANY_SERVERS = (
-    f"전사 서버는 한 사람당 {MAX_SERVERS}대까지 연결할 수 있습니다. "
-    "쓰지 않는 서버를 끊은 뒤 다시 허용해 주세요."  # COPY:too_many_servers
+    f"내 PC는 한 사람당 {MAX_SERVERS}대까지 연결할 수 있습니다. "
+    "사용하지 않는 PC의 연결을 끊은 뒤 다시 허용해 주세요."  # COPY:too_many_servers
 )
 LINK_APPROVED_NOTICE = (
-    "내 PC 전사 서버 '{name}'을(를) 연결했습니다. 직접 연결한 PC가 아니라면 "
-    "내 PC 연결 화면에서 바로 끊어 주세요."  # COPY:link_approved_notice
+    "내 PC ‘{name}’을 연결했습니다. 직접 연결한 PC가 아니라면 "
+    "[내 PC 연결]에서 바로 연결을 끊어 주세요."  # COPY:link_approved_notice
 )
 
 
@@ -274,7 +274,7 @@ def set_pull(server: SttServer, model: str) -> None:
     item = next((m for m in tx.parse_models(server.models) if m["id"] == model), None)
     if item is None or not item["fits"]:
         raise ServiceError(
-            {"model": "이 PC에서 쓸 수 있는 모델을 골라 주세요."}
+            {"model": "이 PC에서 사용할 수 있는 전사 모델을 선택해 주세요."}
         )  # COPY:pull_not_fits
     if item["status"] == "ready":
         server.default_model, server.pull_model = model, ""

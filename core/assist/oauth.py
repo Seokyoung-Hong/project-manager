@@ -35,8 +35,8 @@ PROVIDERS = {
 # 행을 지워도 공급자 쪽 키·권한은 남는다. OpenRouter는 사용자 키로 자기 키를 지우는 API가 없고(관리 키 필요),
 # HF 권한 회수 API도 문서에 없어 사용자가 직접 지우게 안내한다.
 REVOKE_NOTE = {
-    OPENROUTER_URL: "OpenRouter에서 발급된 키는 유달리에서 삭제되지 않습니다. 더 이상 사용하지 않으면 OpenRouter 설정 > API Keys(openrouter.ai/settings/keys)에서 키를 삭제해 주세요.",  # COPY:assist_oauth_revoke_openrouter
-    HF_URL: "Hugging Face에서 유달리에 준 권한은 유달리에서 회수되지 않습니다. 더 이상 사용하지 않으면 Hugging Face 설정 > Connected Apps(huggingface.co/settings/connected-applications)에서 권한을 회수해 주세요.",  # COPY:assist_oauth_revoke_hf
+    OPENROUTER_URL: "유달리에서 개인 AI를 삭제해도 OpenRouter의 키는 남습니다. 더 이상 사용하지 않으면 OpenRouter 설정 > API Keys(openrouter.ai/settings/keys)에서 발급된 키를 직접 삭제해 주세요.",  # COPY:assist_oauth_revoke_openrouter
+    HF_URL: "유달리에서 개인 AI를 삭제해도 Hugging Face의 앱 권한은 남습니다. 더 이상 사용하지 않으면 Hugging Face 설정 > Connected Apps(huggingface.co/settings/connected-applications)에서 권한을 직접 회수해 주세요.",  # COPY:assist_oauth_revoke_hf
 }
 
 

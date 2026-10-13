@@ -30,7 +30,7 @@ def copilot_connect(request):
         return redirect("settings_ai")
     if AiSource.objects.filter(user=user, base_url=copilot.URL).exists():
         messages.info(
-            request, "GitHub Copilot은 이미 등록되어 있습니다."
+            request, "GitHub Copilot이 이미 개인 AI로 등록되어 있습니다."
         )  # COPY:assist_copilot_exists
         return redirect("settings_ai")
     if AiSource.objects.filter(user=user, kind="personal").count() >= AiSource.MAX_PERSONAL:
@@ -66,6 +66,6 @@ def copilot_model(request, source_id: int):
     src.model = model
     src.save(update_fields=["model"])
     messages.success(
-        request, f"GitHub Copilot 모델을 {model}(으)로 바꿨습니다."
+        request, f"GitHub Copilot 모델을 {model}로 변경했습니다."
     )  # COPY:assist_copilot_model_saved
     return redirect("settings_ai")

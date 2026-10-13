@@ -43,7 +43,7 @@ PC_ERRORS = {
 }
 ROW_TEXT_MAX = 2000  # 구간 하나의 전사 글자 수 상한
 PC_ERROR_ALIASES = {"no_audio": "audio_unavailable"}  # 같은 뜻의 다른 이름
-MIN_VERSION_TEXT = "전사 서버 프로그램이 오래되었습니다. 설치 명령을 다시 실행해 업데이트해 주세요."  # COPY:pc_update_needed
+MIN_VERSION_TEXT = "내 PC 연결 프로그램이 오래되었습니다. 해당 PC에서 설치 명령을 다시 실행하여 업데이트해 주세요."  # COPY:pc_update_needed
 
 
 def _too_big(*values) -> bool:

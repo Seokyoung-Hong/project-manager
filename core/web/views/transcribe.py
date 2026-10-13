@@ -179,7 +179,7 @@ def options(org, rec, user):
                 out.append(
                     {
                         "value": "",
-                        "label": f"{'내 PC(' + s.name + ')' if many else '내 PC'} · 꺼져 있음",  # COPY:pc_offline_option
+                        "label": f"{'내 PC(' + s.name + ')' if many else '내 PC'} · 연결되지 않음",  # COPY:pc_offline_option
                         "eta": "",
                         "disabled": True,
                     }

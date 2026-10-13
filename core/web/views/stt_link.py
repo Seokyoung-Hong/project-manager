@@ -19,13 +19,11 @@ from notes.models import SttServer
 
 SCRIPTS = {"install.ps1", "install.sh", "uninstall.ps1", "uninstall.sh"}
 
-LINK_NOT_FOUND = (
-    "코드를 찾을 수 없습니다. PC 화면에 보이는 코드를 다시 확인해 주세요."  # COPY:link_not_found
+LINK_NOT_FOUND = "연결 코드를 찾을 수 없습니다. 내 PC 화면에 표시된 코드를 다시 확인해 주세요."  # COPY:link_not_found
+LINK_TOO_MANY = "연결 코드를 여러 번 잘못 입력했습니다. {minutes}분 후 다시 시도해 주세요."  # COPY:link_too_many
+LINK_EXPIRED = (
+    "코드가 만료되었습니다. 내 PC에서 연결 명령을 다시 실행해 주세요."  # COPY:link_expired
 )
-LINK_TOO_MANY = (
-    "코드를 여러 번 잘못 입력했습니다. {minutes}분 뒤 다시 시도해 주세요."  # COPY:link_too_many
-)
-LINK_EXPIRED = "코드가 만료되었습니다. PC에서 연결 명령을 다시 실행해 주세요."  # COPY:link_expired
 
 
 def _device_lines(device) -> list[tuple[str, str]]:
@@ -150,7 +148,7 @@ def stt_unlink(request, server_id):
     server = _mine(request, server_id)
     name = server.name
     stt_link.unlink(server)
-    messages.success(request, f"'{name}' 연결을 끊었습니다.")  # COPY:unlink_done
+    messages.success(request, f"내 PC ‘{name}’의 연결을 끊었습니다.")  # COPY:unlink_done
     return redirect("settings_stt")
 
 

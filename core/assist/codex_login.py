@@ -79,7 +79,9 @@ def start(user, server, action: str) -> CodexLogin:
         raise ServiceError({"action": "알 수 없는 동작입니다."})
     if device(server).get("docker"):
         raise ServiceError(
-            {"codex": "Docker로 설치한 udally-link에서는 Codex를 사용할 수 없습니다."}
+            {
+                "codex": "Docker로 설치한 udally-link에서는 Codex를 사용할 수 없습니다. 해당 PC에 udally-link를 uv로 설치해 주세요."
+            }
         )  # COPY:codex_login_docker
     row, _ = CodexLogin.objects.select_for_update().get_or_create(
         server=server, defaults={"state": "done"}

@@ -277,3 +277,127 @@
 - [내 PC 연결]은 기존 설정 링크를 유지합니다. [PC 다시 고르기]는 같은 개인 AI의 수정 영역을 가리킵니다.
 - 경고 아이콘은 문구에 포함하지 않고 화면에서 별도로 표시합니다. Codex 안내는 설치와 로그인 두 조건을 함께 안내합니다.
 - 이 절은 최종 문구 제안이며 코드에는 적용하지 않았습니다.
+
+
+## 추가 키 3
+
+AI 자동완성 2차와 core 전체 COPY 대조에서 누락된 실제 키 **92개**, 기존 job_error_* 묶음을 구체화한 키 **13개**, 표시 없는 Codex 코드 라벨·버전 목록의 신규 제안 **5개**, 총 **110행**입니다. udally 하위 코드는 제외했습니다. AI 외 기존 전사·PC 연결·용어집 키도 누락 방지를 위해 같은 절에 정리했습니다. 기존 추가 키의 assist_err_codex_link_update 제안은 이미 구현된 같은 키를 가리키므로 중복 행으로 세지 않습니다.
+
+| 키 | 위치(파일:줄) | 현재 임시 문구 | 최종 문구 |
+|---|---|---|---|
+| pc_update_needed | core/api/routers/stt.py:46 | 전사 서버 프로그램이 오래되었습니다. 설치 명령을 다시 실행해 업데이트해 주세요. | 내 PC 연결 프로그램이 오래되었습니다. 해당 PC에서 설치 명령을 다시 실행하여 업데이트해 주세요. |
+| codex_login_docker | core/assist/codex_login.py:58 | Docker로 설치한 udally-link에서는 Codex를 사용할 수 없습니다. | Docker로 설치한 udally-link에서는 Codex를 사용할 수 없습니다. 해당 PC에 udally-link를 uv로 설치해 주세요. |
+| assist_oauth_revoke_openrouter | core/assist/oauth.py:38 | OpenRouter에서 발급된 키는 유달리에서 삭제되지 않습니다. 더 이상 사용하지 않으면 OpenRouter 설정 > API Keys(openrouter.ai/settings/keys)에서 키를 삭제해 주세요. | 유달리에서 개인 AI를 삭제해도 OpenRouter의 키는 남습니다. 더 이상 사용하지 않으면 OpenRouter 설정 > API Keys(openrouter.ai/settings/keys)에서 발급된 키를 직접 삭제해 주세요. |
+| assist_oauth_revoke_hf | core/assist/oauth.py:39 | Hugging Face에서 유달리에 준 권한은 유달리에서 회수되지 않습니다. 더 이상 사용하지 않으면 Hugging Face 설정 > Connected Apps(huggingface.co/settings/connected-applications)에서 권한을 회수해 주세요. | 유달리에서 개인 AI를 삭제해도 Hugging Face의 앱 권한은 남습니다. 더 이상 사용하지 않으면 Hugging Face 설정 > Connected Apps(huggingface.co/settings/connected-applications)에서 권한을 직접 회수해 주세요. |
+| draft_pc_transcribing | core/notes/services.py:555 | 회의록 초안이 준비된 상태입니다. 전사문은 진행자 PC에서 만드는 중입니다. | 회의록 초안이 준비되었습니다. 전사문은 진행자의 PC에서 만드는 중입니다. |
+| too_many_servers | core/notes/stt_link.py:37 | 전사 서버는 한 사람당 {max}대까지 연결할 수 있습니다. 쓰지 않는 서버를 끊은 뒤 다시 허용해 주세요. | 내 PC는 한 사람당 {max}대까지 연결할 수 있습니다. 사용하지 않는 PC의 연결을 끊은 뒤 다시 허용해 주세요. |
+| link_approved_notice | core/notes/stt_link.py:41 | 내 PC 전사 서버 '{name}'을(를) 연결했습니다. 직접 연결한 PC가 아니라면 내 PC 연결 화면에서 바로 끊어 주세요. <링크> | 내 PC ‘{name}’을 연결했습니다. 직접 연결한 PC가 아니라면 [내 PC 연결]에서 바로 연결을 끊어 주세요. |
+| pull_not_fits | core/notes/stt_link.py:278 | 이 PC에서 쓸 수 있는 모델을 골라 주세요. | 이 PC에서 사용할 수 있는 전사 모델을 선택해 주세요. |
+| pc_disabled_by_org | core/notes/transcription.py:43 | 이 조직은 멤버 PC로 전사하지 않도록 설정되어 있습니다. | 이 조직은 구성원의 PC로 전사하지 않도록 설정되어 있습니다. |
+| pc_offline | core/notes/transcription.py:46 | 고른 PC가 꺼져 있습니다. PC에서 전사 서버를 켠 뒤 다시 시도해 주세요. | 선택한 내 PC에 연결할 수 없습니다. 해당 PC에서 내 PC 연결을 실행한 뒤 다시 시도해 주세요. |
+| pc_not_mine | core/notes/transcription.py:48 | 내 PC 전사 서버만 고를 수 있습니다. | 본인이 연결한 내 PC만 선택할 수 있습니다. |
+| pc_no_model | core/notes/transcription.py:49 | 내 PC에 준비된 모델을 골라 주세요. | 선택한 내 PC에 준비된 전사 모델을 선택해 주세요. |
+| org_stt_no_permission | core/notes/transcription.py:50 | 조직 전사 수단은 조직 관리자만 쓸 수 있습니다. 내 PC를 연결해 전사해 주세요. | 조직의 전사 서버와 OpenAI 키는 관리자만 사용할 수 있습니다. 내 PC를 연결하여 전사해 주세요. |
+| org_stt_already_used | core/notes/transcription.py:53 | 이 녹음은 이미 조직 전사 수단으로 전사했습니다. 내 PC로 전사하거나 조직 관리자에게 요청해 주세요. | 이 녹음은 이미 조직의 전사 서버 또는 OpenAI 키로 전사했습니다. 내 PC로 전사하거나 조직 관리자에게 요청해 주세요. |
+| no_access | core/notes/transcription.py:55 | 이 녹음을 볼 수 있는 사람만 전사할 수 있습니다. | 이 녹음에 접근할 수 있는 사람만 전사할 수 있습니다. |
+| pc_model_label | core/notes/transcription.py:108<br>core/notes/transcription.py:116 | 내 PC · {모델 표시 이름} / 내 PC({서버 이름}) · {모델 표시 이름} | 내 PC · {model_name} / 내 PC({name}) · {model_name} |
+| glossary_too_long | core/notes/transcription.py:816 | 용어집은 {GLOSSARY_MAX}자를 넘을 수 없습니다. | 전사 용어집은 {max}자까지 입력할 수 있습니다. 용어를 줄인 뒤 다시 시도해 주세요. |
+| glossary_over_budget | core/notes/transcription.py:822 | 용어집이 전사 서버 한도를 넘습니다. 다음 용어를 빼거나 줄여 주세요: {용어, …} | 전사 용어집이 전사 서버의 한도를 넘었습니다. 다음 용어를 빼거나 줄여 주세요: {terms} |
+| setting_glossary_label | core/orgs/settings.py:820 | 전사 용어집 | 전사 용어집 |
+| setting_glossary_help | core/orgs/settings.py:820 | 전사 정확도를 높이려고 전사 서버에 미리 알려 주는 용어입니다. 쉼표나 줄바꿈으로 구분해 주세요. 프로젝트 설정의 용어는 조직 용어와 합쳐지며 프로젝트 용어가 먼저 들어갑니다. 참여자·구성원 이름 다음, 자동으로 뽑은 용어보다 먼저 들어가고, 한도를 넘는 용어는 빠집니다. | 전사 서버에 미리 알려 줄 이름과 용어입니다. 쉼표나 줄바꿈으로 구분해 주세요. 조직과 프로젝트의 용어는 합쳐서 사용하며 프로젝트 용어가 먼저 들어갑니다. 참여자·구성원 이름 다음에, 자동으로 찾은 용어보다 먼저 들어갑니다. 한도를 넘는 용어는 제외됩니다. |
+| tracks_zip | core/web/templates/notes/_tracks_download.html:3 | 참여자별 녹음 한 번에 내려받기(zip) · {N}명 · {총 크기} | 참여자별 녹음 한 번에 내려받기(zip) · {n}명 · {size} |
+| tracks_each | core/web/templates/notes/_tracks_download.html:4 | 참여자별로 하나씩 내려받기 | 참여자별 녹음 하나씩 내려받기 |
+| menu_glossary_label | core/web/templates/orgs/_glossary_field.html:2 | 이번 전사 용어집 | 이번 전사 용어집 |
+| menu_glossary_help | core/web/templates/orgs/_glossary_field.html:4 | 전사 서버에 미리 알려 줄 이름과 용어입니다. 쉼표나 줄바꿈으로 구분해 주세요. 비우면 용어집 없이 전사합니다. 한도를 넘으면 전사를 시작하지 않습니다. | 전사 서버에 미리 알려 줄 이름과 용어입니다. 쉼표나 줄바꿈으로 구분해 주세요. 비우면 용어집 없이 전사합니다. 입력한 용어가 한도를 넘으면 전사를 시작하지 않습니다. |
+| menu_glossary_dropped | core/web/templates/orgs/_glossary_field.html:4 | 한도를 넘어 빠진 용어: {용어, …} | 한도를 넘어 제외된 용어: {terms} |
+| no_options | core/web/templates/orgs/_transcribe_panel.html:20 | 다시 전사에 쓸 수 있는 모델이 없습니다. 전사 서버 보기에서 서버 주소나 OpenAI 키를 저장하거나, 설정의 내 PC 연결에서 PC를 연결해 주세요. | 전사에 사용할 수 있는 모델이 없습니다. [전사 서버 보기]에서 서버 주소 또는 OpenAI 키를 저장하거나 [내 PC 연결]에서 PC를 연결해 주세요. |
+| job_waiting_pc | core/web/templates/orgs/_transcribe_progress.html:5 | PC를 기다리는 중 / 고른 PC가 꺼져 있습니다. PC에서 전사 서버가 켜지면 시작하며, 하루가 지나면 취소됩니다. | 선택한 PC의 연결을 기다리는 중입니다. 해당 PC에서 내 PC 연결이 실행되면 시작하며, 하루가 지나면 취소됩니다. |
+| server_view_intro | core/web/templates/orgs/transcribe.html:11 | 회의가 끝나면 진행자의 PC가 켜져 있으면 그 PC로, 아니면 이 서버와 모델로 전사문을 만듭니다. 로컬 전사 서버가 없으면 조직 OpenAI 키로 전사합니다. | 회의가 끝나면 연결된 진행자의 PC로 전사합니다. 사용할 수 없으면 조직에 등록한 전사 서버와 모델을 사용하며, 전사 서버가 없으면 조직의 OpenAI 키로 전사합니다. |
+| pc_online_count | core/web/templates/orgs/transcribe.html:12 | 멤버 PC 연결 {N}대 켜짐 | 구성원 PC · 연결된 PC {n}대 |
+| server_advanced | core/web/templates/orgs/transcribe.html:16 | 고급 설정 · 조직 전사 서버 주소 직접 입력 | 고급 설정 · 조직 전사 서버 주소 직접 입력 |
+| assist_oauth_help | core/web/templates/settings/_ai_oauth.html:4 | AI 서비스 계정으로 로그인해 키를 복사하지 않고 개인 AI를 연결할 수 있습니다. 연결하면 해당 서비스의 키 또는 접근 권한이 암호화되어 저장되며, 업무 내용은 유달리 서버가 해당 서비스로 전송합니다. 요금과 처리 국가는 해당 서비스의 조건에 따릅니다. | AI 서비스 계정으로 로그인하여 키를 복사하지 않고 개인 AI를 연결할 수 있습니다. OpenRouter 발급 키 또는 Hugging Face 접근·갱신 토큰은 암호화하여 저장합니다. 업무 내용은 유달리 서버가 해당 서비스와 모델 처리 사업자로 전송합니다. 요금·처리 국가·보관 조건은 해당 서비스와 모델의 조건에 따릅니다. 조직의 [AI 자동완성 사용]이 켜져 있을 때만 이 조직의 내용을 전송합니다. |
+| assist_oauth_openrouter | core/web/templates/settings/_ai_oauth.html:6 | OpenRouter 계정으로 연결 | OpenRouter 계정으로 연결 |
+| assist_oauth_hf | core/web/templates/settings/_ai_oauth.html:7 | Hugging Face 계정으로 연결 | Hugging Face 계정으로 연결 |
+| assist_src_state_unusable | core/web/templates/settings/_ai_source.html:7 | 사용 불가 | 사용 불가 |
+| assist_src_copilot_via | core/web/templates/settings/_ai_source.html:14 | 연결된 GitHub 계정의 Copilot 구독으로 유달리 서버가 요청합니다. | 이미 연결한 GitHub 계정의 토큰과 Copilot 구독을 사용하여 유달리 서버가 GitHub로 업무 내용을 전송합니다. |
+| codex_login_docker_help | core/web/templates/settings/_codex_login.html:4 | {server.name}의 udally-link는 Docker로 설치되어 Codex를 사용할 수 없습니다. Codex를 사용하려면 이 PC에 udally-link를 uv로 설치해 주세요. | {name}의 udally-link는 Docker로 설치되어 Codex를 사용할 수 없습니다. Codex를 사용하려면 해당 PC에 udally-link를 uv로 설치해 주세요. |
+| codex_login_requested | core/web/templates/settings/_codex_login.html:6 | 요청 중 / {server.name}에 Codex {action}을 요청했습니다. PC가 응답하기를 기다리는 중입니다. | 요청 중 / {name}에 Codex {action}을 요청했습니다. PC의 응답을 기다리는 중입니다. |
+| codex_login_offline | core/web/templates/settings/_codex_login.html:7 | {server.name}이(가) 연결되어 있지 않습니다. PC를 켜고 udally-link를 실행해 주세요. | {name}에 연결할 수 없습니다. 해당 PC를 켜고 내 PC 연결을 실행해 주세요. |
+| codex_login_phishing | core/web/templates/settings/_codex_login.html:9 | 이 화면에서 직접 [Codex 로그인]을 누른 경우에만 코드를 입력해 주세요. 다른 사람이 보내 준 코드를 입력하면 그 사람의 PC가 내 Codex 구독을 사용하게 됩니다. | 이 화면에서 직접 [Codex 로그인]을 눌러 시작한 경우에만 코드를 입력해 주세요. 다른 사람이 보내 준 코드를 입력하면 그 사람의 PC가 내 Codex 구독을 사용할 수 있습니다. |
+| codex_login_step_url | core/web/templates/settings/_codex_login.html:11 | 1. 인증 주소 {row.url} | 1. 인증 주소 / {url} |
+| codex_login_copy | core/web/templates/settings/_codex_login.html:14 | 코드 복사 | 코드 복사 |
+| codex_login_copied | core/web/templates/settings/_codex_login.html:14 | 코드 복사됨 | 코드 복사됨 |
+| codex_login_left | core/web/templates/settings/_codex_login.html:16 | 남은 시간: 약 {minutes}분 | 남은 시간: 약 {minutes}분 |
+| codex_login_code_help | core/web/templates/settings/_codex_login.html:17 | 인증 주소에서 ChatGPT 계정으로 로그인한 뒤 코드를 입력해 주세요. 완료되면 이 화면이 자동으로 바뀝니다. | 인증 주소가 https://auth.openai.com/으로 시작하는지 확인한 뒤 ChatGPT 계정으로 로그인하고 코드를 입력해 주세요. 완료되면 이 화면의 상태가 자동으로 바뀝니다. 구독 인증 정보는 내 PC에 보관됩니다. |
+| codex_login_state | core/web/templates/settings/_codex_login.html:19 | 로그인됨 / {server.name}의 Codex에 로그인되어 있습니다. / 로그아웃됨 / {server.name}의 Codex에 로그인되어 있지 않습니다. / 확인 전 / {server.name}의 Codex 로그인 상태를 아직 확인하지 못했습니다. | 로그인됨 / {name}의 Codex에 로그인되어 있습니다. / 로그아웃됨 / {name}의 Codex에 로그인되어 있지 않습니다. / 확인 전 / {name}의 Codex 로그인 상태를 아직 확인하지 못했습니다. |
+| codex_login_expired | core/web/templates/settings/_codex_login.html:20 | 코드가 만료되었습니다. 다시 로그인하려면 [Codex 로그인]을 눌러 주세요. | 로그인 요청 또는 코드가 만료되었습니다. 다시 로그인하려면 [Codex 로그인]을 눌러 주세요. |
+| codex_login_btn | core/web/templates/settings/_codex_login.html:25 | Codex 로그인 | Codex 로그인 |
+| codex_logout_btn | core/web/templates/settings/_codex_login.html:26 | Codex 로그아웃 | Codex 로그아웃 |
+| assist_copilot_help | core/web/templates/settings/_copilot_connect.html:4 | 연결된 GitHub 계정의 Copilot 구독으로 유달리 서버가 요청합니다. 키 입력과 내 PC 연결은 필요하지 않으며, 사용량은 내 Copilot 구독에 포함됩니다. | 이미 연결한 GitHub 계정의 토큰을 Copilot 인증에도 사용합니다. 키 입력과 내 PC 연결은 필요하지 않으며 유달리 서버가 GitHub로 업무 내용을 전송합니다. 사용 한도·요금·보관 조건은 내 Copilot 구독과 선택한 모델의 조건에 따릅니다. 조직의 [AI 자동완성 사용]이 켜져 있을 때만 이 조직의 내용을 전송합니다. |
+| assist_copilot_connect | core/web/templates/settings/_copilot_connect.html:5 | GitHub Copilot으로 연결 | GitHub Copilot으로 연결 |
+| assist_copilot_model | core/web/templates/settings/_copilot_source.html:4 | 모델 / {m} | 모델 |
+| assist_copilot_model_apply | core/web/templates/settings/_copilot_source.html:5 | 모델 적용 | 모델 적용 |
+| assist_copilot_off | core/web/templates/settings/_copilot_source.html:8 | 현재 GitHub Copilot 연결을 사용할 수 없어 이 AI는 건너뜁니다. | 현재 GitHub Copilot 연결을 사용할 수 없어 AI 사용 순서에서 건너뜁니다. |
+| pull_failed | core/web/templates/settings/_stt_server.html:8 | 모델을 받지 못했습니다. {오류} | 전사 모델을 받지 못했습니다. {error} |
+| pull_started | core/web/templates/settings/_stt_server.html:17 | 모델을 받는 중입니다. 다 받으면 회의 자동 전사에 이 모델을 씁니다. / 모델을 적용했습니다. / 회의 자동 전사 모델: {이름} / 모델을 적용하면 내가 진행한 회의를 이 PC로 자동 전사합니다. | 전사 모델을 받는 중입니다. 받기가 끝나면 회의 자동 전사에 사용합니다. / 전사 모델을 적용했습니다. / 회의 자동 전사 모델: {model_name} / 전사 모델을 적용하면 내가 진행한 회의를 이 PC로 자동 전사합니다. |
+| unlink_confirm | core/web/templates/settings/_stt_server.html:27 | '{name}' 연결을 끊습니다. 이 PC는 더 이상 전사하지 않고, 진행 중인 전사는 조직 수단으로 넘기거나 취소합니다. 다시 쓰려면 PC에서 연결 명령을 다시 실행해야 합니다. [연결 끊기] | 내 PC ‘{name}’의 연결을 끊습니다. 이 PC로 새 전사를 시작하지 않으며 진행 중인 전사는 조직의 전사 서버·OpenAI 키로 넘기거나 취소합니다. 이 PC를 사용하는 개인 AI도 요청할 수 없습니다. 다시 연결하려면 해당 PC에서 연결 명령을 실행해 주세요. / 연결 끊기 |
+| settings_ai_add_account | core/web/templates/settings/ai.html:18 | 계정으로 연결 | 계정으로 연결 |
+| settings_ai_add_manual | core/web/templates/settings/ai.html:21 | 직접 입력 | 직접 입력 |
+| settings_stt_title | core/web/templates/settings/stt.html:6 | 내 PC 전사 서버 | 내 PC 전사 서버 |
+| settings_stt_intro | core/web/templates/settings/stt.html:7 | PC에서 명령 한 줄을 실행하고 화면에 뜬 코드를 {링크}에 입력하면 연결됩니다. PC가 켜져 있는 동안 내가 볼 수 있는 회의록의 녹음을 그 PC로 전사합니다. 포트를 열 필요가 없습니다. | 내 PC에서 설치·연결 명령을 실행하고 표시된 코드를 {link_url}에 입력해 주세요. PC가 연결되어 있는 동안 접근할 수 있는 회의록의 녹음을 이 PC로 전사할 수 있습니다. 포트를 열 필요가 없습니다. |
+| install_windows_help | core/web/templates/settings/stt.html:11 | PowerShell에 붙여 넣어 실행해 주세요. Docker가 있으면 Docker로, 없으면 uv로 설치합니다. 관리자 권한은 필요하지 않습니다. | 내 PC의 PowerShell에 붙여 넣어 실행해 주세요. Docker가 있으면 Docker로, 없으면 uv로 설치합니다. Codex는 uv로 설치한 udally-link에서만 사용할 수 있습니다. 관리자 권한은 필요하지 않습니다. |
+| install_unix_help | core/web/templates/settings/stt.html:16 | 터미널에 붙여 넣어 실행해 주세요. 다시 실행하면 최신 판으로 업데이트합니다. | 내 PC의 터미널에 붙여 넣어 실행해 주세요. 다시 실행하면 최신 버전으로 업데이트합니다. |
+| install_advanced_help | core/web/templates/settings/stt.html:20 | 설치 스크립트는 실행 전에 열어 볼 수 있습니다: install.ps1 · install.sh. 이미 udally-link를 설치했다면 udally-link connect로 연결합니다. | 설치 스크립트는 실행 전에 열어 볼 수 있습니다: install.ps1 · install.sh. 이미 udally-link를 설치했다면 udally-link connect로 연결합니다. |
+| install_uninstall_help | core/web/templates/settings/stt.html:23 | 제거하면 이 화면의 연결도 함께 끊깁니다. 받은 모델 파일은 남으며, 지우는 방법은 제거 명령이 알려 줍니다. | 제거하면 이 화면의 PC 연결도 끊깁니다. 받은 모델 파일은 남으며 삭제 방법은 제거 명령이 안내합니다. |
+| settings_stt_empty | core/web/templates/settings/stt.html:28 | 연결한 PC가 없습니다 / 위 명령을 PC에서 실행하면 그 PC로 회의 녹음을 전사할 수 있습니다. | 연결한 PC가 없습니다 / 위 명령을 내 PC에서 실행하면 회의 녹음을 이 PC로 전사할 수 있습니다. |
+| link_title | core/web/templates/settings/stt_link.html:5 | 내 PC를 전사 서버로 연결 | 내 PC를 전사 서버로 연결 |
+| link_code_help | core/web/templates/settings/stt_link.html:8 | PC에서 실행한 연결 명령이 보여 준 코드 8자리를 입력해 주세요. | 내 PC에서 직접 실행한 연결 명령에 표시된 코드 8자리를 입력해 주세요. |
+| link_consent | core/web/templates/settings/stt_link.html:17 | ⚠ 직접 PC에서 연결 명령을 실행한 경우에만 허용해 주세요. 다른 사람이 보내 준 코드를 허용하면 그 사람의 PC가 내 계정으로 내가 볼 수 있는 녹음을 전사합니다. | 내 PC에서 직접 연결 명령을 실행한 경우에만 허용해 주세요. 다른 사람이 보내 준 코드를 허용하면 그 사람의 PC가 내 계정으로 접근할 수 있는 녹음을 전사합니다. |
+| link_done | core/web/templates/settings/stt_link.html:34 | '{name}'을(를) 연결했습니다. PC 화면으로 돌아가 주세요. | 연결됨 / 내 PC ‘{name}’을 연결했습니다. PC 화면으로 돌아가 주세요. |
+| link_denied | core/web/templates/settings/stt_link.html:35 | 연결을 거절했습니다. 이 PC는 내 계정에 연결되지 않습니다. | 거절함 / 연결을 거절했습니다. 이 PC는 내 계정에 연결되지 않습니다. |
+| link_expired | core/web/templates/settings/stt_link.html:36<br>core/web/views/stt_link.py:28 | 코드가 만료되었습니다. PC에서 연결 명령을 다시 실행해 주세요. | 코드가 만료되었습니다. 내 PC에서 연결 명령을 다시 실행해 주세요. |
+| assist_copilot_no_github | core/web/views/assist_copilot.py:28 | GitHub 계정이 연결되어 있지 않습니다. 프로필에서 GitHub 계정을 먼저 연결해 주세요. | GitHub 계정이 연결되어 있지 않습니다. 프로필에서 GitHub 계정을 먼저 연결해 주세요. |
+| assist_copilot_exists | core/web/views/assist_copilot.py:34 | GitHub Copilot은 이미 등록되어 있습니다. | GitHub Copilot이 이미 개인 AI로 등록되어 있습니다. |
+| assist_copilot_name | core/web/views/assist_copilot.py:46 | GitHub Copilot | GitHub Copilot |
+| assist_copilot_added | core/web/views/assist_copilot.py:54 | GitHub Copilot을 개인 AI로 등록했습니다. | GitHub Copilot을 개인 AI로 등록했습니다. |
+| assist_copilot_model_saved | core/web/views/assist_copilot.py:70 | GitHub Copilot 모델을 {model}(으)로 바꿨습니다. | GitHub Copilot 모델을 {model}로 변경했습니다. |
+| assist_oauth_err_state | core/web/views/assist_oauth.py:13 | 연결 확인 정보가 만료되었거나 일치하지 않습니다. 연결을 다시 시작해 주세요. | 연결 확인 정보가 만료되었거나 일치하지 않습니다. 연결을 다시 시작해 주세요. |
+| assist_oauth_err_denied | core/web/views/assist_oauth.py:14 | 연결이 취소되었거나 승인되지 않았습니다. 연결하려면 다시 시작해 승인해 주세요. | 연결을 취소했거나 해당 서비스에서 승인하지 않았습니다. 연결하려면 설정 > AI에서 다시 시작해 주세요. |
+| assist_oauth_err_exchange | core/web/views/assist_oauth.py:15 | AI 서비스에서 연결 정보를 받지 못했습니다. 잠시 후 연결을 다시 시작해 주세요. | AI 서비스에서 연결 정보를 받지 못했습니다. 잠시 후 설정 > AI에서 연결을 다시 시작해 주세요. |
+| assist_oauth_err_limit | core/web/views/assist_oauth.py:16 | 개인 AI 등록 한도인 {AiSource.MAX_PERSONAL}개에 도달했습니다. 사용하지 않는 개인 AI를 삭제한 뒤 다시 연결해 주세요. | 개인 AI 등록 한도인 {max}개에 도달했습니다. 사용하지 않는 개인 AI를 삭제한 뒤 다시 연결해 주세요. |
+| assist_oauth_connected | core/web/views/assist_oauth.py:42 | 개인 AI ‘{src.name}’을 연결했습니다. 모델은 {src.model}이며 [{src.name} 수정]에서 바꿀 수 있습니다. | 개인 AI ‘{name}’을 연결했습니다. 현재 모델은 {model}이며 [{name} 수정]에서 변경할 수 있습니다. |
+| codex_login_err_missing | core/web/views/assist_settings.py:246 | 선택한 내 PC에서 Codex를 찾지 못했습니다. 해당 PC에 Codex를 설치한 뒤 다시 시도해 주세요. | 선택한 내 PC에서 Codex를 찾지 못했습니다. 해당 PC에 Codex를 설치한 뒤 다시 시도해 주세요. |
+| codex_login_err_docker | core/web/views/assist_settings.py:247 | Docker로 설치한 udally-link에서는 Codex를 사용할 수 없습니다. uv로 설치한 udally-link에서 사용해 주세요. | Docker로 설치한 udally-link에서는 Codex를 사용할 수 없습니다. 해당 PC에 udally-link를 uv로 설치해 주세요. |
+| codex_login_err_failed | core/web/views/assist_settings.py:248 | Codex 로그인을 완료하지 못했습니다. 다시 시도해 주세요. | Codex 로그인 또는 로그아웃을 완료하지 못했습니다. 다시 시도해 주세요. |
+| codex_login_err_url | core/web/views/assist_settings.py:249 | 내 PC가 예상하지 않은 로그인 주소를 보내 로그인을 중단했습니다. udally-link와 Codex를 최신 버전으로 업데이트한 뒤 다시 시도해 주세요. | 내 PC가 허용되지 않은 인증 주소를 보내 로그인을 중단했습니다. 해당 PC의 udally-link와 Codex를 업데이트한 뒤 다시 시도해 주세요. |
+| codex_login_err_pc | core/web/views/assist_settings.py:250 | 내 PC에서 Codex 로그인을 시작하지 못했습니다. PC의 연결 상태를 확인한 뒤 다시 시도해 주세요. | 내 PC에서 Codex 로그인 또는 로그아웃을 처리하지 못했습니다. 해당 PC의 연결 상태를 확인한 뒤 다시 시도해 주세요. |
+| link_not_found | core/web/views/stt_link.py:23 | 코드를 찾을 수 없습니다. PC 화면에 보이는 코드를 다시 확인해 주세요. | 연결 코드를 찾을 수 없습니다. 내 PC 화면에 표시된 코드를 다시 확인해 주세요. |
+| link_too_many | core/web/views/stt_link.py:26 | 코드를 여러 번 잘못 입력했습니다. {minutes}분 뒤 다시 시도해 주세요. | 연결 코드를 여러 번 잘못 입력했습니다. {minutes}분 후 다시 시도해 주세요. |
+| unlink_done | core/web/views/stt_link.py:153 | '{name}' 연결을 끊었습니다. | 내 PC ‘{name}’의 연결을 끊었습니다. |
+| job_runner_pc | core/web/views/transcribe.py:46 | {주인}님의 PC({서버 이름}) | {owner_name}님의 PC({name}) |
+| job_runner_pc_gone | core/web/views/transcribe.py:48 | 연결이 끊긴 PC | 연결이 끊긴 PC |
+| pc_offline_option | core/web/views/transcribe.py:182 | 내 PC · 꺼져 있음 / 내 PC({서버 이름}) · 꺼져 있음 | 내 PC · 연결되지 않음 / 내 PC({name}) · 연결되지 않음 |
+| codex_login_step_code | core/web/templates/settings/_codex_login.html:12（표시 없는 라벨） | 2. 코드 | 2. 코드 |
+| codex_versions_title | core/assist/codex_versions.json:1（목록 화면 신규 제안） | 표시 없음 | 사용을 확인한 Codex 버전 |
+| codex_versions_help | core/assist/pc.py:49（목록 화면 신규 제안） | 표시 없음 | 아래 버전은 표시된 시험 환경에서 유달리의 Codex 실행을 확인했습니다. 모든 PC 환경의 작동이나 보안을 보장하지 않습니다. |
+| codex_versions_row | core/assist/codex_versions.json:1（목록 화면 신규 제안） | 표시 없음 | Codex {version} · 확인일 {tested} · 시험 환경: {environment} |
+| codex_version_unverified | core/assist/pc.py:49（운영자 추가 버전 분기 신규 제안） | 표시 없음 | Codex {version}은 운영자가 사용을 허용한 버전이며 검증 목록에는 없습니다. |
+| job_error_no_engine | core/notes/transcription.py:66 | 전사 수단 없음 | 전사 수단 없음 |
+| job_error_pc_offline | core/notes/transcription.py:67 | PC가 꺼져 있음 | PC 연결 없음 |
+| job_error_pc_unlinked | core/notes/transcription.py:68 | PC 연결 끊김 | PC 연결 끊김 |
+| job_error_pc_disabled | core/notes/transcription.py:69 | 멤버 PC 전사 꺼짐 | 구성원 PC 전사 꺼짐 |
+| job_error_no_access | core/notes/transcription.py:70 | 볼 수 없는 녹음 | 볼 수 없는 녹음 |
+| job_error_expired | core/notes/transcription.py:71 | 보관 기간 지남 | 보관 기간 지남 |
+| job_error_model_not_ready | core/notes/transcription.py:72 | PC에 모델 없음 | PC에 모델 없음 |
+| job_error_download_failed | core/notes/transcription.py:73 | 모델 받기 실패 | 모델 받기 실패 |
+| job_error_decode_failed | core/notes/transcription.py:74 | 녹음 읽기 실패 | 녹음 읽기 실패 |
+| job_error_audio_unavailable | core/notes/transcription.py:75 | 녹음을 받지 못함 | 녹음을 받지 못함 |
+| job_error_out_of_memory | core/notes/transcription.py:76 | PC 메모리 부족 | PC 메모리 부족 |
+| job_error_transcript_too_large | core/notes/transcription.py:77 | 전사문이 너무 큼 | 전사문이 너무 큼 |
+| job_error_pc_error | core/notes/transcription.py:78 | PC 오류 | PC 오류 |
+
+- 동적 값은 기존 변수로 치환합니다. /는 조건별 문구 또는 상태·라벨·본문의 구분이며 문자 그대로 출력하지 않습니다. {action}은 로그인·로그아웃으로 분기합니다. Codex 상태 세 문구는 기존 조건을 유지합니다.
+- 인증 주소는 PC가 보고한 허용 주소를 표시하며 별도 주소 입력을 받지 않습니다. 코드·주소·남은 시간은 해당 요청자에게만 표시합니다. [코드 복사]는 본인이 시작한 인증 주소에 입력할 때만 사용하며 로그·알림으로 공유하지 않습니다. 서버 보관 상한은 최대 15분입니다.
+- 검증 목록의 행은 실제 시험 기록의 버전·날짜·환경만 사용합니다. codex_versions.json에 없는 환경은 추정하지 않으며 시험에서 확인된 환경만 표시합니다. 운영자가 별도로 허용한 버전은 검증된 버전과 구분합니다. 목록 화면은 신규 제안이며 코드·HTML은 이 작업에서 생성하지 않았습니다.
+- 개인 AI의 끄기는 인증 정보 삭제가 아닙니다. 삭제해도 외부 서비스의 키·앱 권한과 PC의 Codex 로그인은 남을 수 있으므로 서비스별 직접 폐기 안내를 함께 표시합니다. Copilot의 사용량이 모두 구독에 포함된다고 단정하지 않습니다.
+- 이 절은 코드 적용 전 최종 문구입니다. 앞선 초안의 코드·정책 미수정 문장은 당시 작성 범위이며, 이번 정책 개정은 privacy v4·terms v3에 반영했습니다.

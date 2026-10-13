@@ -40,19 +40,17 @@ TRANSCRIBE_FAILED = "[전사 실패]"  # discord_gateway/src/texts.mjs TRANSCRIB
 
 # 사용자 문구 — 임시(최종 문구는 docs/drafts/local-stt-link-copy.md에서 Sol이 정한다)
 PC_DISABLED_BY_ORG = (
-    "이 조직은 멤버 PC로 전사하지 않도록 설정되어 있습니다."  # COPY:pc_disabled_by_org
+    "이 조직은 구성원의 PC로 전사하지 않도록 설정되어 있습니다."  # COPY:pc_disabled_by_org
 )
-PC_OFFLINE = (
-    "고른 PC가 꺼져 있습니다. PC에서 전사 서버를 켠 뒤 다시 시도해 주세요."  # COPY:pc_offline
-)
-PC_NOT_MINE = "내 PC 전사 서버만 고를 수 있습니다."  # COPY:pc_not_mine
-PC_NO_MODEL = "내 PC에 준비된 모델을 골라 주세요."  # COPY:pc_no_model
-ORG_STT_NO_PERMISSION = "조직 전사 수단은 조직 관리자만 쓸 수 있습니다. 내 PC를 연결해 전사해 주세요."  # COPY:org_stt_no_permission
+PC_OFFLINE = "선택한 내 PC에 연결할 수 없습니다. 해당 PC에서 내 PC 연결을 실행한 뒤 다시 시도해 주세요."  # COPY:pc_offline
+PC_NOT_MINE = "본인이 연결한 내 PC만 선택할 수 있습니다."  # COPY:pc_not_mine
+PC_NO_MODEL = "선택한 내 PC에 준비된 전사 모델을 선택해 주세요."  # COPY:pc_no_model
+ORG_STT_NO_PERMISSION = "조직의 전사 서버와 OpenAI 키는 관리자만 사용할 수 있습니다. 내 PC를 연결하여 전사해 주세요."  # COPY:org_stt_no_permission
 ORG_STT_ALREADY_USED = (
-    "이 녹음은 이미 조직 전사 수단으로 전사했습니다. "
+    "이 녹음은 이미 조직의 전사 서버 또는 OpenAI 키로 전사했습니다. "
     "내 PC로 전사하거나 조직 관리자에게 요청해 주세요."  # COPY:org_stt_already_used
 )
-NO_ACCESS = "이 녹음을 볼 수 있는 사람만 전사할 수 있습니다."  # COPY:no_access
+NO_ACCESS = "이 녹음에 접근할 수 있는 사람만 전사할 수 있습니다."  # COPY:no_access
 
 # 켜짐 판정(§7.1). heartbeat 5초 × 3번 = 켜짐, 2분 = 자동 작업을 넘기는 기준, 사람이 고른 PC는 하루 기다린다.
 ONLINE_FOR = timedelta(seconds=15)
@@ -61,12 +59,12 @@ PC_WAIT = timedelta(hours=24)
 PC_RELEASE = ("pc_offline", "pc_unlinked", "pc_disabled")  # PC 작업을 놓은 이유(error)
 
 STATUS_LABELS = {"downloading": "받는 중", "not_downloaded": "받지 않음"}
-# 실패·취소 작업의 오류 코드 → 상태 칸 문구(임시, COPY:job_error_*). 없는 코드는 "실패".
+# 실패·취소 작업의 오류 코드 → 상태 칸 문구(COPY:job_error_*). 없는 코드는 "실패".
 ERROR_LABELS = {
     "no_engine": "전사 수단 없음",
-    "pc_offline": "PC가 꺼져 있음",
+    "pc_offline": "PC 연결 없음",
     "pc_unlinked": "PC 연결 끊김",
-    "pc_disabled": "멤버 PC 전사 꺼짐",
+    "pc_disabled": "구성원 PC 전사 꺼짐",
     "no_access": "볼 수 없는 녹음",
     "expired": "보관 기간 지남",
     "model_not_ready": "PC에 모델 없음",
@@ -813,14 +811,16 @@ def clean_glossary(text: str) -> str:
 
     if len(text) > GLOSSARY_MAX:
         raise ServiceError(
-            {"glossary": f"용어집은 {GLOSSARY_MAX}자를 넘을 수 없습니다."}  # COPY:glossary_too_long
+            {
+                "glossary": f"전사 용어집은 {GLOSSARY_MAX}자까지 입력할 수 있습니다. 용어를 줄인 뒤 다시 시도해 주세요."
+            }  # COPY:glossary_too_long
         )
     picked, dropped = fit_budget(split_terms(text))
     if dropped:
         raise ServiceError(
             {
                 # COPY:glossary_over_budget
-                "glossary": "용어집이 전사 서버 한도를 넘습니다. 다음 용어를 빼거나 줄여 주세요: "
+                "glossary": "전사 용어집이 전사 서버의 한도를 넘었습니다. 다음 용어를 빼거나 줄여 주세요: "
                 + ", ".join(dropped)
             }
         )

@@ -244,10 +244,10 @@ def ai_row(request, source_id: int):
 
 CODEX_LOGIN_ERRORS = {
     "codex_missing": "선택한 내 PC에서 Codex를 찾지 못했습니다. 해당 PC에 Codex를 설치한 뒤 다시 시도해 주세요.",  # COPY:codex_login_err_missing
-    "codex_docker": "Docker로 설치한 udally-link에서는 Codex를 사용할 수 없습니다. uv로 설치한 udally-link에서 사용해 주세요.",  # COPY:codex_login_err_docker
-    "login_failed": "Codex 로그인을 완료하지 못했습니다. 다시 시도해 주세요.",  # COPY:codex_login_err_failed
-    "bad_login_url": "내 PC가 예상하지 않은 로그인 주소를 보내 로그인을 중단했습니다. udally-link와 Codex를 최신 버전으로 업데이트한 뒤 다시 시도해 주세요.",  # COPY:codex_login_err_url
-    "pc_error": "내 PC에서 Codex 로그인을 시작하지 못했습니다. PC의 연결 상태를 확인한 뒤 다시 시도해 주세요.",  # COPY:codex_login_err_pc
+    "codex_docker": "Docker로 설치한 udally-link에서는 Codex를 사용할 수 없습니다. 해당 PC에 udally-link를 uv로 설치해 주세요.",  # COPY:codex_login_err_docker
+    "login_failed": "Codex 로그인 또는 로그아웃을 완료하지 못했습니다. 다시 시도해 주세요.",  # COPY:codex_login_err_failed
+    "bad_login_url": "내 PC가 허용되지 않은 인증 주소를 보내 로그인을 중단했습니다. 해당 PC의 udally-link와 Codex를 업데이트한 뒤 다시 시도해 주세요.",  # COPY:codex_login_err_url
+    "pc_error": "내 PC에서 Codex 로그인 또는 로그아웃을 처리하지 못했습니다. 해당 PC의 연결 상태를 확인한 뒤 다시 시도해 주세요.",  # COPY:codex_login_err_pc
 }
 
 

@@ -82,7 +82,7 @@ def test_login_flow_owner_only(client, member, admin, caplog):
     assert row.expires_at <= timezone.now() + timedelta(minutes=15, seconds=5)
     assert "codex_login" not in _pc(client, tok)
     html = _page(client, src)
-    assert CODE in html and URL in html and "직접 [Codex 로그인]을 누른 경우에만" in html
+    assert CODE in html and URL in html and "직접 [Codex 로그인]을 눌러 시작한 경우에만" in html
     assert f'data-copy-text="{CODE}"' in html and "코드 복사" in html
     assert _report(client, tok, row.pk, attempt=att, done=True, logged_in=True).json() == {
         "state": "done"

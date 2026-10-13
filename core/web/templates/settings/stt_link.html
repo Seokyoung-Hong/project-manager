@@ -5,7 +5,7 @@
   <h1 class="t24">내 PC를 전사 서버로 연결</h1>{# COPY:link_title #}
   {% if error %}<p class="notice bad" role="alert">⚠ {{ error }}</p>{% endif %}
   {% if step == "enter" %}
-  <p class="muted t13">PC에서 실행한 연결 명령이 보여 준 코드 8자리를 입력해 주세요.</p>{# COPY:link_code_help #}
+  <p class="muted t13">내 PC에서 직접 실행한 연결 명령에 표시된 코드 8자리를 입력해 주세요.</p>{# COPY:link_code_help #}
   <form method="post" class="stack">{% csrf_token %}
     <input type="hidden" name="step" value="lookup">
     <label class="field"><span class="label">연결 코드</span>
@@ -14,7 +14,7 @@
     <button class="btn primary">코드 확인</button>
   </form>
   {% elif step == "confirm" %}
-  <p class="notice warn" role="note">⚠ 직접 PC에서 연결 명령을 실행한 경우에만 허용해 주세요. 다른 사람이 보내 준 코드를 허용하면 그 사람의 PC가 내 계정으로 내가 볼 수 있는 녹음을 전사합니다.</p>{# COPY:link_consent #}
+  <p class="notice warn" role="note">⚠ 내 PC에서 직접 연결 명령을 실행한 경우에만 허용해 주세요. 다른 사람이 보내 준 코드를 허용하면 그 사람의 PC가 내 계정으로 접근할 수 있는 녹음을 전사합니다.</p>{# COPY:link_consent #}
   <form method="post" class="stack">{% csrf_token %}
     <input type="hidden" name="code" value="{{ code.user_code }}">
     <label class="field"><span class="label">기기 이름</span>
@@ -31,9 +31,9 @@
     </div>
   </form>
   {% else %}
-  {% if result == "done" %}<p class="conn"><span class="conn-state on">연결됨</span> '{{ name }}'을(를) 연결했습니다. PC 화면으로 돌아가 주세요.</p>{# COPY:link_done #}
+  {% if result == "done" %}<p class="conn"><span class="conn-state on">연결됨</span> 내 PC ‘{{ name }}’을 연결했습니다. PC 화면으로 돌아가 주세요.</p>{# COPY:link_done #}
   {% elif result == "denied" %}<p class="conn"><span class="conn-state off">거절함</span> 연결을 거절했습니다. 이 PC는 내 계정에 연결되지 않습니다.</p>{# COPY:link_denied #}
-  {% else %}<p class="conn"><span class="conn-state warn">만료</span> 코드가 만료되었습니다. PC에서 연결 명령을 다시 실행해 주세요.</p>{# COPY:link_expired #}{% endif %}
+  {% else %}<p class="conn"><span class="conn-state warn">만료</span> 코드가 만료되었습니다. 내 PC에서 연결 명령을 다시 실행해 주세요.</p>{# COPY:link_expired #}{% endif %}
   <p><a href="{% url 'settings_stt' %}">내 PC 연결 화면으로</a></p>
   {% endif %}
 </section>

@@ -213,7 +213,7 @@ def test_link_page_never_prefills_and_locks_and_notifies(client, member, org):
     page = client.get("/link?code=" + d["user_code"]).content.decode()
     assert 'name="code" value=""' in page  # 주소의 코드로 칸을 채우지 않는다
     r = client.post("/link", {"step": "lookup", "code": d["user_code"].lower()})
-    assert "직접 PC에서" in r.content.decode() and d["user_code"] in r.content.decode()
+    assert "직접 연결 명령을 실행한" in r.content.decode() and d["user_code"] in r.content.decode()
     r = client.post("/link", {"step": "approve", "code": d["user_code"], "name": "거실 PC"})
     assert "연결했습니다" in r.content.decode()
     assert SttDeviceCode.objects.get().approved_by == member
@@ -247,7 +247,7 @@ def test_stt_token_scope_and_heartbeat_limits(client, member, bot):
     assert _beat(client, token, models=ready).json()["pull"] is None
     server.refresh_from_db()
     assert server.default_model == "small" and server.pull_model == ""
-    with pytest.raises(Exception, match="쓸 수 있는 모델"):
+    with pytest.raises(Exception, match="사용할 수 있는 전사 모델"):
         stt_link.set_pull(server, "huge")  # fits=false
     assert _api(client, "delete", "/api/integrations/stt/self", token=token).json() == {"ok": True}
     assert not SttServer.objects.exists() and _beat(client, token).status_code == 401
@@ -463,16 +463,16 @@ def test_org_limit_once_per_recording(client, enabled, admin, member, other, bot
     assert tx.org_used(rec) is False
     j = tx.request_retry(rec, engine="openai", model="", actor=member)
     tx.claim()
-    with pytest.raises(Exception, match="이미 조직 전사 수단"):
+    with pytest.raises(Exception, match="이미 조직의 전사 서버"):
         tx.request_retry(rec, engine="openai", model="", actor=other)
-    with pytest.raises(Exception, match="이미 조직 전사 수단"):
+    with pytest.raises(Exception, match="이미 조직의 전사 서버"):
         tx.request_retry(rec, engine="openai", model="", actor=member)
     assert tx.request_retry(rec, engine="openai", model="", actor=admin)  # 관리자 예외
     with pytest.raises(Exception, match="권한"):
         tx.cancel(j, other)  # 요청자·관리자만
     set_org_settings(enabled, {**enabled.settings, "meeting.transcribe_level": "admin"}, admin)
     rec2 = _drafted_with_tracks(client, enabled, member, bot)
-    with pytest.raises(Exception, match="조직 관리자만"):
+    with pytest.raises(Exception, match="관리자만 사용할 수 있습니다"):
         tx.request_retry(rec2, engine="openai", model="", actor=member)
     # 내 PC는 한도 없음, 남의 PC는 못 고른다
     server, token = _pc(client, member)
@@ -490,7 +490,7 @@ def test_member_pc_off_hides_options_and_cancels_queued(client, enabled, admin, 
     assert _beat(client, token).json()["job"] is None
     job.refresh_from_db()
     assert (job.status, job.error) == ("cancelled", "pc_disabled")
-    with pytest.raises(Exception, match="멤버 PC"):
+    with pytest.raises(Exception, match="구성원의 PC"):
         tx.request_retry(rec, engine="pc", model=TURBO, actor=member, server=server)
 
 
@@ -542,7 +542,7 @@ def test_settings_page_pull_unlink_and_panel_options(client, enabled, admin, mem
         last_seen_at=timezone.now() - timedelta(minutes=1)
     )
     body = client.get(f"/orgs/{enabled.pk}/transcribe/recordings/{rec.pk}/panel").content.decode()
-    assert "내 PC · 꺼져 있음" in body and f"pc|{server.pk}|" not in body
+    assert "내 PC · 연결되지 않음" in body and f"pc|{server.pk}|" not in body
     r = client.post(f"/settings/stt/{server.pk}/unlink")
     assert r.status_code == 302 and not SttServer.objects.exists()
     client.force_login(admin)
@@ -616,7 +616,7 @@ def test_requeued_then_cancelled_org_job_still_counts(client, enabled, member, o
     assert job.status == "queued"
     tx.cancel(job, member)
     assert tx.org_used(rec) is True
-    with pytest.raises(Exception, match="이미 조직 전사 수단"):
+    with pytest.raises(Exception, match="이미 조직의 전사 서버"):
         tx.request_retry(rec, engine="openai", model="", actor=other)
 
 
@@ -870,7 +870,7 @@ def test_menu_glossary_prefill_is_requester_scoped_and_edited_value_is_sent(
     body = client.post(
         url + "/retry", {"choice": f"pc|{server.pk}|{TURBO}", "glossary": over}
     ).content.decode()
-    assert "한도를 넘습니다" in body and "아주긴직접입력용어19번" in body
+    assert "한도를 넘었습니다" in body and "아주긴직접입력용어19번" in body
     assert not TranscriptionJob.objects.filter(kind="retry").exists()
     client.post(url + "/retry", {"choice": f"pc|{server.pk}|{TURBO}", "glossary": "학식\n비밀단어"})
     job = TranscriptionJob.objects.get(kind="retry")

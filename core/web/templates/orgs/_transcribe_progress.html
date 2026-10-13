@@ -1,8 +1,8 @@
 <div id="transcribe-progress" class="stack"{% if row %} hx-get="{% url 'transcribe_progress' org.pk rec.pk %}" hx-trigger="every 5s" hx-swap="outerHTML"{% endif %}>
   {% if row %}{% with job=row.job %}
   {% if row.stale %}<p class="notice warn" role="status">⚠ 음성 서비스가 10분 넘게 진행을 알리지 않습니다. 전사를 취소하고 다시 전사해 주세요.</p>
-  {% elif row.waiting_pc %}<p class="display tjob-big">PC를 기다리는 중</p>
-  <p class="t12 muted">고른 PC가 꺼져 있습니다. PC에서 전사 서버가 켜지면 시작하며, 하루가 지나면 취소됩니다.</p>{# COPY:job_waiting_pc #}
+  {% elif row.waiting_pc %}<p class="display tjob-big">선택한 PC의 연결을 기다리는 중입니다.</p>
+  <p class="t12 muted">해당 PC에서 내 PC 연결이 실행되면 시작하며, 하루가 지나면 취소됩니다.</p>{# COPY:job_waiting_pc #}
   {% elif job.status == "queued" %}<p class="display tjob-big">{% if row.wait %}{{ row.wait }} 뒤 시작{% else %}곧 시작{% endif %}</p>
   <p class="t12 muted">앞 작업이 끝나면 시작합니다. 전사에 {{ row.eta }}{% if row.eta != "예상 시간 계산 중" %} 걸릴 예정입니다{% endif %}.</p>
   {% elif job.status == "cancelling" %}<p class="display tjob-big">취소 중</p><p class="t12 muted">진행 중인 구간이 끝나면 멈춥니다.</p>
