@@ -19,6 +19,7 @@ from .views import (
     ops_integrations,
     ops_orgs,
     ops_users,
+    org_members,
     orgs,
     portfolio,
     projects,
@@ -149,6 +150,12 @@ urlpatterns = [
         "orgs/memberships/<int:membership_id>/nickname",
         orgs.member_nickname,
         name="member_nickname",
+    ),
+    # 설정 → 구성원 관리 → 구성원 패널 저장(IMPL-PLAN-14 §5, 뷰는 C 갈래)
+    path(
+        "orgs/memberships/<int:membership_id>/profile",
+        org_members.member_profile,
+        name="member_profile",
     ),
     path("teams/<int:team_id>", teams.team_detail, name="team_detail"),
     path("teams/<int:team_id>/edit", teams.team_edit, name="team_edit"),

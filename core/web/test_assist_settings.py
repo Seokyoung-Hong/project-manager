@@ -178,7 +178,7 @@ def test_org_assist_test_admin_only_and_uses_gate(client, org, admin, member, fa
     assert client.post(reverse("org_assist_models", args=[org.pk])).status_code == 403
     assert fake_net == []
     client.force_login(admin)
-    page = client.get(reverse("org_settings", args=[org.pk])).content.decode()
+    page = client.get(reverse("org_settings", args=[org.pk]) + "?tab=ai").content.decode()
     assert "조직 AI 연결 확인" in page and KEY not in page
     r = client.post(reverse("org_assist_models", args=[org.pk]))
     body = r.content.decode()

@@ -633,7 +633,7 @@
   // 저장 직전의 열린 섹션과 스크롤 위치를 이 탭에만 잠깐 적어 두었다가 돌아온 화면에서 되살린다.
   (function () {
     if (!document.querySelector("details.settings-section")) return;
-    var KEY = "udally.settingsView:" + location.pathname;
+    var KEY = "udally.settingsView:" + location.pathname + location.search; // 조직 설정은 탭(?tab=)마다 따로
     body.addEventListener("submit", function (e) {
       var f = e.target;
       // HTMX 폼은 화면을 다시 그리지 않으므로 기억하지 않는다(다음 방문에 엉뚱하게 되살아나지 않게)

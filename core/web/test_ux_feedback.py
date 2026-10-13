@@ -126,7 +126,8 @@ def test_notification_choices_keep_integer_mapping(client, admin, org):
     assert display("task.doing_limit", 0) == "제한 없음"
     client.force_login(admin)
     response = client.post(
-        f"/orgs/{org.pk}/settings", {"notify.weekly_weekday": "0", "notify.send_hour": "23"}
+        f"/orgs/{org.pk}/settings?tab=notify",
+        {"notify.weekly_weekday": "0", "notify.send_hour": "23"},
     )
     assert response.status_code == 302
     org.refresh_from_db()

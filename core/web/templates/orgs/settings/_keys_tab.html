@@ -1,0 +1,35 @@
+{# 설정 키 탭(태스크·프로젝트·알림·AI·회의·전사·조직 관리, IMPL-PLAN-14 §9). 이 탭 키만 부분 저장한다(서버가 tab_keys로 정함). #}
+{% include "orgs/_pending_requests.html" %}
+<div class="notice settings-scope-note">
+  <span><strong>조직 기본값과 잠금</strong><br>“프로젝트 변경 허용”이 켜진 항목만 프로젝트에서 다른 값을 저장할 수 있습니다. 끄면 조직 값으로 고정됩니다. 개인 환경설정은 알림·화면 기본값만 바꾸며 조직 규칙을 완화하지 않습니다.</span>
+</div>
+<form method="post" action="{% url 'org_settings' org.pk %}?tab={{ settings_tab }}" class="settings-form">{% csrf_token %}
+  {% if key_sections|length > 1 %}
+  <nav class="settings-jump" aria-label="{{ settings_tab_label }} 섹션">
+    {% for s in key_sections %}<a class="chip" href="#settings-{{ settings_tab }}-{{ s.code }}" data-action="open-settings-group" data-target="#settings-{{ settings_tab }}-{{ s.code }}">{{ s.label }} <span>{{ s.rows|length }}</span></a>{% endfor %}
+  </nav>
+  {% endif %}
+  <div class="settings-save-bar"><span class="settings-save-hint">이 탭의 값과 잠금만 저장합니다. 다른 탭은 그대로입니다.</span><button class="btn primary">{{ settings_tab_label }} 저장</button></div>
+  {% for s in key_sections %}
+  <details id="settings-{{ settings_tab }}-{{ s.code }}" class="card settings-section"{% if forloop.first %} open{% endif %}>
+    <summary class="settings-section-summary"><span>{{ s.label }}</span><span class="muted t12">{{ s.rows|length }}개 항목</span></summary>
+    <div class="settings-section-body">
+      <div class="settings-list settings-list-overrides" role="list">
+        {% for row in s.rows %}{% include "settings/_setting_row.html" with row=row %}{% endfor %}
+      </div>
+      {% if s.code == "org_ai" %}{% include "orgs/_assist_test.html" %}{% endif %}
+    </div>
+  </details>
+  {% endfor %}
+</form>
+{% if settings_tab == "meeting" %}
+{# 전사 섹션은 자기 폼·엔드포인트(D 갈래 orgs/settings/_stt.html, 맥락 stt_ctx) #}
+<details id="settings-meeting-stt" class="card settings-section">
+  <summary class="settings-section-summary"><span>전사</span></summary>{# COPY:org_settings.section.meeting.stt #}
+  <div class="settings-section-body">
+    {% if stt_template %}{% include stt_template %}
+    {% else %}<p class="muted t13">전사 서버·모델은 <a href="{% url 'org_transcribe' org.pk %}?view=server">전사</a> 메뉴에서 바꿉니다.</p>{% endif %}
+  </div>
+</details>
+{% elif settings_tab == "org" %}{% include "orgs/settings/_org.html" %}
+{% endif %}

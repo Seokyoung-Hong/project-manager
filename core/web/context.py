@@ -3,6 +3,7 @@ from django.db.models import Count, Q
 
 from orgs.member_info import blocked_orgs
 from orgs.services import orgs_of
+from orgs.settings import ADMIN_TABS
 from projects.services import visible_projects
 from tasks.models import Task
 from tasks.work_requests import received
@@ -33,7 +34,6 @@ NAV_BY_URL = {
     "org_notes": "org",
     "org_docs": "org",
     "org_settings": "org",
-    "org_member_info": "org",
     "org_discord": "org",
     "org_issues": "org",
     "org_github": "org",
@@ -82,8 +82,11 @@ def shell(request):
         )
     return {
         "current_org": org,
-        # 막힌 조직은 열람 관문이 빼므로 화면마다 안내를 한 줄 붙인다(입력 화면 자체는 빼고)
-        "blocked_orgs": [] if url_name == "org_member_info" else blocked_orgs(request.user),
+        # 막힌 조직은 열람 관문이 빼므로 화면마다 안내를 한 줄 붙인다(입력 화면 = 설정 → 내 정보는 빼고)
+        "blocked_orgs": []
+        if url_name in ("org_settings", "org_member_info")
+        and request.GET.get("tab", "me") not in ADMIN_TABS
+        else blocked_orgs(request.user),
         "my_orgs": my_orgs,
         "nav_projects": projects,  # 프로젝트 영역이 아니면 빈 목록이라 레일이 렌더되지 않는다
         "nav": nav,

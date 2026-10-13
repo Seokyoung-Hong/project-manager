@@ -110,7 +110,7 @@ def test_set_nickname_permissions(org, admin, member, outsider):
     assert "nickname" in e.value.errors
     set_nickname(m, "", member)  # 비우면 계정 표시 이름
     assert names.display_for(member, org) == "팀원"
-    set_definition(org, True, [], admin)
+    set_definition(org, admin, show_real_name=True, fields=[])
     with pytest.raises(ServiceError):
         set_nickname(_m(org, member), "철수", member)  # 실명으로 표시 조직은 아무도 못 바꾼다
     with pytest.raises(ServiceError):

@@ -1,98 +1,43 @@
-{% extends "base.html" %}{% block title %}조직 설정{% endblock %}
+{% extends "base.html" %}{% block title %}{{ settings_tab_label }} · 조직 설정{% endblock %}
 {% block main %}
 {% include "orgs/_tabs.html" %}
-{% include "orgs/_pending_requests.html" %}
-<div class="notice settings-scope-note">
-  <span><strong>조직 기본값과 잠금</strong><br>“프로젝트 변경 허용”이 켜진 항목만 프로젝트에서 다른 값을 저장할 수 있습니다. 끄면 조직 값으로 고정됩니다. 개인 환경설정은 알림·화면 기본값만 바꾸며 조직 규칙을 완화하지 않습니다.</span>
-</div>
-{% if is_admin %}<p class="muted t13">전사 서버·모델은 <a href="{% url 'org_transcribe' org.pk %}">전사</a> 메뉴에서 바꿉니다.</p>{% endif %}
-{% if not is_admin %}<div class="notice settings-readonly-note"><span>조직 관리자만 고칠 수 있습니다. 현재 적용값을 읽기 전용으로 표시합니다.</span></div>{% endif %}
-<form method="post" class="settings-form org-settings-form with-nav">{% csrf_token %}
-  <nav class="settings-jump" aria-label="조직 설정 섹션">
-    {% for label, group_rows in groups %}<a class="chip" href="#settings-group-{{ forloop.counter }}" data-action="open-settings-group" data-target="#settings-group-{{ forloop.counter }}">{{ label }} <span>{{ group_rows|length }}</span></a>{% endfor %}
-    {% if is_admin %}<a class="chip" href="#member-info">구성원 정보·실명으로 표시</a>{% endif %}{# COPY:member_fields.nav #}
+{# 설정 셸(IMPL-PLAN-14 §2, 시안 A): 왼쪽 세로 탭 + 본문. ≤700px는 탭 목록 화면 → 누르면 탭 화면(in-tab, ‹ 설정으로 돌아감). #}
+<div class="settings-shell{% if in_tab %} in-tab{% endif %}">
+  <nav class="settings-tabs" aria-label="조직 설정 탭">
+    {% for group, tabs in settings_nav %}{% if tabs %}
+    <div class="settings-tabs-group">{{ group }}</div>
+    {% for code, label, url, current in tabs %}
+    <a class="settings-tab" href="{{ url }}"{% if current %} aria-current="page"{% endif %}>{{ label }}{% if code == "me" and me_blocked %} <span class="badge warn">입력 필요</span>{% endif %}<span class="settings-tab-go" aria-hidden="true">›</span></a>
+    {% endfor %}
+    {% endif %}{% endfor %}
   </nav>
-  <div class="settings-main">
-  {% if is_admin %}<div class="settings-save-bar"><span class="settings-save-hint">모든 섹션의 값과 잠금을 함께 저장합니다.</span><button class="btn primary">조직 설정 저장</button></div>{% endif %}
-  {% for label, group_rows in groups %}
-  <details id="settings-group-{{ forloop.counter }}" class="card settings-section"{% if forloop.first %} open{% endif %}>
-    <summary class="settings-section-summary"><span>{{ label }}</span><span class="muted t12">{{ group_rows|length }}개 항목</span></summary>
-    <div class="settings-section-body">
-      <div class="settings-list settings-list-overrides" role="list">
-        {% for row in group_rows %}{% include "settings/_setting_row.html" with row=row %}{% endfor %}
-      </div>
-      {% if is_admin and group_rows.0.spec.group == "assist" %}{% include "orgs/_assist_test.html" %}{% endif %}
+  <div class="settings-body" id="settings-{{ settings_tab }}">
+    <div class="settings-body-head">
+      <a class="btn sm settings-back" href="{% url 'org_settings' org.pk %}">‹ 설정</a>{# COPY:org_settings.back #}
+      <h2 class="t24">{{ settings_tab_label }}</h2>
     </div>
-  </details>
-  {% endfor %}
+    {% if settings_tab == "me" %}{% include "orgs/settings/_me.html" %}
+    {% elif settings_tab == "members" %}
+      {% if members_template %}{% include members_template %}
+      {% else %}<p class="notice"><span>구성원·초대는 <a href="{% url 'org_teams' org.pk %}">팀</a> 메뉴에서 관리합니다.</span></p>{% endif %}
+    {% elif settings_tab == "integrations" %}
+      {# 연동 섹션 본문은 D 갈래(orgs/settings/_github.html·_discord.html, 맥락은 github_ctx·discord_ctx) #}
+      {% if github_enabled %}
+      <section class="card" id="settings-integrations-github" aria-labelledby="settings-integrations-github-title">
+        <h2 id="settings-integrations-github-title">GitHub</h2>
+        {% if github_template %}{% include github_template %}
+        {% else %}<p><a href="{% url 'org_github' org.pk %}">GitHub 연결 화면</a>에서 앱 설치·저장소 연결을 관리합니다.</p>{% endif %}
+      </section>
+      {% endif %}
+      {% if discord_enabled %}
+      <section class="card" id="settings-integrations-discord" aria-labelledby="settings-integrations-discord-title">
+        <h2 id="settings-integrations-discord-title">Discord</h2>
+        {% if discord_template %}{% include discord_template %}
+        {% else %}<p><a href="{% url 'org_discord' org.pk %}">Discord 연결 화면</a>에서 서버·채널을 관리합니다.</p>{% endif %}
+      </section>
+      {% endif %}
+    {% else %}{% include "orgs/settings/_keys_tab.html" %}
+    {% endif %}
   </div>
-</form>
-{% if is_admin %}
-<section class="card" id="member-info" aria-labelledby="member-info-title">
-  <h2 id="member-info-title">구성원 정보</h2>
-  <p class="muted t13">구성원이 이 조직에 내야 하는 정보입니다. 필수 항목을 입력하지 않은 구성원(관리자 포함)은 입력할 때까지 이 조직을 쓸 수 없습니다. 항목 이름을 바꿔도 입력한 값은 남고, 항목을 삭제하면 그 값은 더 이상 보이지 않습니다.</p>
-  <p class="notice warn"><span aria-hidden="true">⚠</span> 민감정보·고유식별정보(주민등록번호 등)·금융정보는 요구할 수 없습니다(<a href="{% url 'terms' %}#제6조-구성원-정보와-조직의-의무">이용약관 제6조</a>).</p>
-  {# 실명으로 표시를 켤 때만 확인한다(data-confirm-if: 이 선택자가 폼 안에서 맞을 때만, app.js). 이미 켜져 있으면 묻지 않는다. #}
-  <form method="post" action="{% url 'org_member_fields' org.pk %}" class="stack"{% if not member_def.show_real_name %} data-confirm="켜면 이 조직의 모든 구성원에게 실명이 표시됩니다. 본인과 관리자 모두 조직 표시 이름을 변경할 수 없습니다. 실명으로 표시를 켜시겠습니까?" data-confirm-ok="실명으로 표시 켜기" data-confirm-if="[name=show_real_name]:checked"{% endif %}>{# COPY:member_fields.show_real_name_confirm #}{% csrf_token %}
-    {# COPY:member_fields.show_real_name · COPY:member_fields.show_real_name_help #}
-    <label class="check"><input type="checkbox" name="show_real_name" aria-describedby="show-real-name-help"{% if member_def.show_real_name %} checked{% endif %}> 구성원 이름을 실명으로 표시</label>
-    <p class="muted t13" id="show-real-name-help">켜면 이 조직의 모든 구성원 이름이 실명으로 표시됩니다. 본인과 관리자 모두 조직 표시 이름을 변경할 수 없습니다. 끄면 저장된 조직 표시 이름이 다시 표시되며, 비어 있으면 계정의 표시 이름이 표시됩니다.</p>
-    <p class="table-scroll-hint">항목 표는 좌우로 이동해 확인해 주세요.</p>
-    <div class="table-scroll" tabindex="0" role="region" aria-label="구성원 정보 항목, 좌우로 스크롤 가능">
-    <table class="grid member-fields-table">
-      <thead><tr><th class="num">순서</th><th>항목 이름</th><th>형식</th><th>필수</th><th>도움말</th><th>선택지(한 줄에 하나)</th><th>삭제</th></tr></thead>
-      <tbody>
-      {% for f in member_def.fields %}
-      <tr>
-        <td class="num"><input type="hidden" name="f{{ forloop.counter0 }}-id" value="{{ f.id }}"><input class="input" type="number" name="f{{ forloop.counter0 }}-order" value="{{ forloop.counter }}" aria-label="{{ f.label }} 순서"></td>
-        <td><input class="input" name="f{{ forloop.counter0 }}-label" value="{{ f.label }}" maxlength="50" required aria-label="항목 이름"></td>
-        <td><select class="select" name="f{{ forloop.counter0 }}-kind" aria-label="{{ f.label }} 형식">{% for v, l in field_kinds %}<option value="{{ v }}"{% if v == f.kind %} selected{% endif %}>{{ l }}</option>{% endfor %}</select></td>
-        <td><label class="check"><input type="checkbox" name="f{{ forloop.counter0 }}-required"{% if f.required %} checked{% endif %}> 필수</label></td>
-        <td><input class="input" name="f{{ forloop.counter0 }}-help" value="{{ f.help }}" maxlength="200" aria-label="{{ f.label }} 도움말"></td>
-        <td><textarea class="textarea" name="f{{ forloop.counter0 }}-choices" rows="2" aria-label="{{ f.label }} 선택지">{% for c in f.choices %}{{ c }}
-{% endfor %}</textarea></td>
-        <td><label class="check"><input type="checkbox" name="f{{ forloop.counter0 }}-delete"> 삭제</label></td>
-      </tr>
-      {% endfor %}
-      {% with n=member_def.fields|length %}
-      <tr>
-        <td class="num"><input class="input" type="number" name="f{{ n }}-order" value="{{ n|add:1 }}" aria-label="새 항목 순서"></td>
-        <td><input class="input" name="f{{ n }}-label" maxlength="50" aria-label="새 항목 이름"></td>
-        <td><select class="select" name="f{{ n }}-kind" aria-label="새 항목 형식">{% for v, l in field_kinds %}<option value="{{ v }}">{{ l }}</option>{% endfor %}</select></td>
-        <td><label class="check"><input type="checkbox" name="f{{ n }}-required"> 필수</label></td>
-        <td><input class="input" name="f{{ n }}-help" maxlength="200" aria-label="새 항목 도움말"></td>
-        <td><textarea class="textarea" name="f{{ n }}-choices" rows="2" aria-label="새 항목 선택지"></textarea></td>
-        <td class="muted t13">새 항목</td>
-      </tr>
-      {% endwith %}
-      </tbody>
-    </table>
-    </div>
-    <p class="muted t13">새 항목은 마지막 줄에 이름을 적고 저장하면 추가됩니다. 선택지는 형식이 ‘선택지’일 때만 씁니다.</p>
-    <div><button class="btn">실명으로 표시·구성원 정보 항목 저장</button></div>{# COPY:member_fields.save #}
-  </form>
-</section>
-{% endif %}
-<section class="card">
-  <h2>설정 변경 이력</h2>
-  <ul class="history">
-  {% for h in history %}
-  <li><div>{{ h.field }}: {{ h.from }} → {{ h.to }}</div><div class="who">{{ h.time }} · {{ h.actor }} · {{ h.source }}</div></li>
-  {% empty %}<li class="muted">변경 이력 없음</li>{% endfor %}
-  </ul>
-</section>
-{% if is_admin %}
-<section class="card form-card" aria-labelledby="org-delete-title">
-  <h2 id="org-delete-title">위험 구역</h2>
-  <p class="notice warn">⚠ 조직 삭제는 되돌릴 수 없습니다.</p>
-  <ul class="t13">
-    <li>프로젝트·태스크·결정 기록·문서·회의록·첨부·팀·멤버십·초대 링크를 모두 지웁니다. 구성원 계정은 남습니다.</li>
-    <li>GitHub 앱 설치와 Discord 연결은 유달리 쪽 기록만 지웁니다. GitHub에서 앱 설치는 따로 해제해야 합니다.</li>
-  </ul>
-  <form method="post" action="{% url 'org_delete' org.pk %}" class="stack" data-confirm="조직 &lsquo;{{ org.name }}&rsquo;과 그 안의 모든 데이터를 지웁니다. GitHub 앱 설치는 GitHub에서 따로 해제해야 합니다." data-confirm-ok="조직 삭제">{% csrf_token %}
-    <label class="field">확인을 위해 조직 이름 <code>{{ org.name }}</code>을 입력해 주세요<input class="input" name="confirm_name" required autocomplete="off" spellcheck="false"></label>
-    <div><button class="btn danger">조직 삭제</button></div>
-  </form>
-</section>
-{% endif %}
+</div>
 {% endblock %}

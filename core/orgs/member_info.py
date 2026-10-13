@@ -77,7 +77,7 @@ def _clean_field(f: dict) -> dict:
 
 
 @transaction.atomic
-def set_definition(org, *args, show_real_name=None, fields=None):
+def set_definition(org, actor, *, show_real_name=None, fields=None):
     """ "실명으로 표시"와 항목 정의를 바꾼다. 둘 중 None인 쪽은 그대로 둔다(IMPL-PLAN-14 §8.4).
 
     부르는 법: set_definition(org, actor, show_real_name=…, fields=…).
@@ -89,11 +89,6 @@ def set_definition(org, *args, show_real_name=None, fields=None):
     from .models import Organization
     from .services import require_admin
 
-    # ponytail: 옛 위치 인자 호출 set_definition(org, flag, fields, actor) 한 판 호환. B 갈래가 orgs.py를 바꾸면 지운다.
-    if len(args) == 3:
-        show_real_name, fields, actor = args
-    else:
-        (actor,) = args
     require_admin(actor, org)
     if fields is not None:
         if len(fields) > MAX_FIELDS:
@@ -348,7 +343,7 @@ def notice(org) -> str:
 
 
 def url(org_id) -> str:
-    return reverse("org_member_info", args=[org_id])
+    return reverse("org_settings", args=[org_id]) + "?tab=me"
 
 
 def message(org) -> str:

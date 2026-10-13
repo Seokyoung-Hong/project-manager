@@ -10,9 +10,6 @@
   <a href="{% url 'org_notes' org.pk %}" {% if tab == "notes" %}aria-current="page"{% endif %}>회의록</a>
   <a href="{% url 'org_transcribe' org.pk %}" {% if tab == "transcribe" %}aria-current="page"{% endif %}>전사</a>
   {% if github_enabled and org.github %}<a href="{% url 'org_issues' org.pk %}" {% if tab == "issues" %}aria-current="page"{% endif %}>이슈</a>{% endif %}
-  {% if github_enabled and is_admin %}<a href="{% url 'org_github' org.pk %}" {% if tab == "github" %}aria-current="page"{% endif %}>GitHub</a>{% endif %}
-  {% if discord_enabled and is_admin %}<a href="{% url 'org_discord' org.pk %}" {% if tab == "discord" %}aria-current="page"{% endif %}>Discord</a>{% endif %}
-  {# 조직 표시 이름을 고치는 자리라 항상 보인다(IMPL-PLAN-13 §6.3). COPY:org_tabs.member_info #}
-  <a href="{% url 'org_member_info' org.pk %}" {% if tab == "member_info" %}aria-current="page"{% endif %}>구성원 정보</a>
-  {% if is_admin %}<a href="{% url 'org_settings' org.pk %}" {% if tab == "settings" %}aria-current="page"{% endif %}>설정</a>{% endif %}
+  {# 설정은 모든 구성원에게 보인다 — 내 정보(조직 표시 이름·구성원 정보)가 첫 탭이다. GitHub·Discord는 설정 → 연동(IMPL-PLAN-14 §5) #}
+  <a href="{% url 'org_settings' org.pk %}" {% if tab == "settings" or tab == "github" or tab == "discord" %}aria-current="page"{% endif %}>설정</a>
 </nav>

@@ -276,7 +276,7 @@ def test_transcribe_menu_server_view_admin_only_and_save_keeps_other_settings(
     assert "끝남 · 최근 7일" in page and "large-v3 · 로컬 서버" in page
     server = client.get(f"/orgs/{enabled.pk}/transcribe?view=server").content.decode()
     assert '<select id="setting-meeting.stt_model"' in server and 'hx-trigger="load"' in server
-    settings_page = client.get(f"/orgs/{enabled.pk}/settings").content.decode()
+    settings_page = client.get(f"/orgs/{enabled.pk}/settings?tab=meeting").content.decode()
     assert "setting-meeting.stt_url" not in settings_page and "전사</a> 메뉴" in settings_page
 
     r = client.post(

@@ -101,14 +101,15 @@ def test_member_screens_hide_real_name_and_self_nickname(client, org, admin, mem
     client.force_login(member)
     # 일반 구성원 화면(팀 목록)에는 관리자 실명이 안 나온다
     assert "김관리" not in client.get(f"/orgs/{org.pk}/teams").content.decode()
-    page = client.get(f"/orgs/{org.pk}/member-info").content.decode()
-    assert "이 조직 표시 이름" in page and "김팀원" not in page
+    # 내 정보: 본인 실명은 본인이 고치는 칸(D1), 관리자 실명은 없다
+    page = client.get(f"/orgs/{org.pk}/settings?tab=me").content.decode()
+    assert 'name="nickname"' in page and 'value="김팀원"' in page and "김관리" not in page
     m = OrgMembership.objects.get(org=org, user=member)
     r = client.post(
         f"/orgs/memberships/{m.pk}/nickname",
-        {"nickname": "백엔드 김", "next": f"/orgs/{org.pk}/member-info"},
+        {"nickname": "백엔드 김", "next": f"/orgs/{org.pk}/settings?tab=me"},
     )
-    assert r["Location"] == f"/orgs/{org.pk}/member-info"
+    assert r["Location"] == f"/orgs/{org.pk}/settings?tab=me"
     m.refresh_from_db()
     assert m.nickname == "백엔드 김"
     # 남의 표시 이름은 못 바꾼다
