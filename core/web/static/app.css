@@ -1658,4 +1658,5 @@ form:has(option[value="person"]:checked) .person-only { display: flex; }
 @media (max-width: 700px) {
   .swagger-card { padding-inline: 0; }
   .swagger-card .swagger-ui table.model td:last-child { min-width: 12em; }
+  .swagger-card .swagger-ui :is(.content-type-wrapper, .response-control-media-type) select { width: 100%; }
 }
