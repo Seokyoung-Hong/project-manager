@@ -85,11 +85,11 @@ def split_by_assignees(
             }
         )
     roles = roles or {}
-    shown = org_names(task.project.org_id)
     out = []
     for u in users:
         role = (roles.get(u.pk) or "").strip()
-        name = shown.get(u.pk, u.display_name)
+        # 제목은 GitHub 이슈 제목으로 나갈 수 있어 계정 표시 이름(실명·조직 별명이 GitHub로 가지 않게)
+        name = u.display_name
         label = f"{name} ({role})" if role else name
         try:
             title = title_pattern.format(title=task.title, name=label)

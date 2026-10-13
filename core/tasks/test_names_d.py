@@ -83,12 +83,17 @@ def test_ai_context_and_assignee_match(org, admin, member, project, fake, show):
         assert got == [member.pk, member.pk, member.pk, None]  # 끈 조직은 실명으로 찾지 않는다
 
 
-def test_split_finds_both_names_and_labels_with_org_name(org, admin, member, task):
+def test_split_finds_both_names_and_labels_with_account_name(org, admin, member, task):
     _names(org, member, show_real_name=False)
     assert looks_multi_assignee("별명팀원과 관리자", "", org) == [member, admin]
     assert looks_multi_assignee("팀원과 관리자", "", org) == [member, admin]
+    # 실명 표시 조직에서도 제목(GitHub 이슈 제목이 될 수 있음)에는 계정 표시 이름만
+    _names(org, member, show_real_name=True)
+    assert looks_multi_assignee("김팀원과 김관리", "", org) == [member, admin]
     subs = split_by_assignees(task, [member, admin], actor=admin, source="web")
-    assert [s.title.rsplit(" — ", 1)[1] for s in subs] == ["별명팀원", "관리자"]
+    titles = [s.title for s in subs]
+    assert [t.rsplit(" — ", 1)[1] for t in titles] == ["팀원", "관리자"]
+    assert not any(n in t for t in titles for n in ("김팀원", "김관리", "별명팀원"))
 
 
 def test_notice_uses_org_name(org, admin, member, task, monkeypatch):
