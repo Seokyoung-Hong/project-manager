@@ -4,9 +4,12 @@
 PC를 끊으면 AiJob.server가 NULL(SET_NULL)이 되어 어느 PC에도 배정되지 않는다(정리는 worker.sweep).
 """
 
+import functools
 import json
 import logging
+from pathlib import Path
 
+from django.conf import settings
 from django.db import transaction
 from django.http import Http404
 from django.utils import timezone
@@ -35,6 +38,21 @@ PC_ERRORS = {
     "codex_link_update",
 }
 LIVE = ("running", "cancelling")
+
+
+@functools.cache
+def _tested_codex() -> frozenset:
+    data = json.loads(Path(__file__).with_name("codex_versions.json").read_text(encoding="utf-8"))
+    return frozenset(v for v, r in data.items() if r.get("ok"))
+
+
+def codex_versions() -> list[str]:
+    """udally-link가 Codex 작업을 받아도 되는 Codex CLI 버전(정확히 일치).
+    codex_versions.json = udally-link scripts/codex-matrix(Docker)로 도구 경계를 시험해 통과한 버전,
+    ASSIST_CODEX_VERSIONS = 운영자가 .env로 덧붙이는 버전."""
+    return sorted(_tested_codex() | set(settings.ASSIST_CODEX_VERSIONS))
+
+
 _ENC = "enc:"
 
 
@@ -47,10 +65,14 @@ def on_heartbeat(server, data: dict) -> dict:
 
     data에 ai=1이고 ai_job_id가 비면 {"ai_job": {id, url, model, api_key, messages, max_tokens,
     temperature, response_format, timeout_s}}, 보고한 ai_job_id가 cancelling이면 {"ai_cancel": True}.
-    배정은 server.owner_id == job.user_id인 작업만(불변식 2). 줄 것이 없으면 {}.
+    배정은 server.owner_id == job.user_id인 작업만(불변식 2). ai=1이면 늘 codex_versions(받아도 되는 Codex 버전)를 준다.
     """
     if not data.get("ai"):
         return {}  # 옛 PC(능력 표시 없음)는 전사만
+    return {"codex_versions": codex_versions(), **_assign(server, data)}
+
+
+def _assign(server, data: dict) -> dict:
     current = data.get("ai_job_id")
     # PC가 잊은 작업(재시작 등): 하던 것과 다른 진행 중 작업은 놓아준다.
     for pk in (

@@ -226,3 +226,15 @@ def test_unlinked_pc_rows_are_never_assigned(client, org, member):
     _, tok2 = _link(client, member)
     assert "ai_job" not in _ai(client, tok2)
     assert _report(client, tok, job.pk, status="done").status_code == 401
+
+
+def test_heartbeat_sends_codex_versions(client, member, settings):
+    """udally-link는 받은 목록에 자기 Codex 버전이 정확히 있을 때만 codex=1을 보낸다."""
+    from assist import pc
+
+    _, tok = _link(client, member)
+    assert "codex_versions" not in _beat(client, tok).json()  # ai 능력 없는 옛 PC
+    base = _ai(client, tok)["codex_versions"]
+    assert base == sorted(pc._tested_codex()) and all(isinstance(v, str) for v in base)
+    settings.ASSIST_CODEX_VERSIONS = ["9.9.9"]
+    assert "9.9.9" in _ai(client, tok)["codex_versions"]
