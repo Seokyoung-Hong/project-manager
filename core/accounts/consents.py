@@ -11,7 +11,7 @@ POLICY_VERSION = "v1"
 
 # 로그인 화면 고지로 받는 이용약관·처리방침 동의의 현재 판(content/terms.md·privacy.md 머리의 버전).
 # 판을 올리면 다음 로그인 때 그 판의 동의 행이 새로 생긴다(accounts.services.agree_terms).
-DOC_VERSIONS = {"terms": "v1", "privacy": "v2"}
+DOC_VERSIONS = {"terms": "v2", "privacy": "v3"}
 
 TARGETS = [("github", "GitHub"), ("discord", "Discord"), ("ai", "AI 도구")]
 
