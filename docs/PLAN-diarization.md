@@ -61,6 +61,7 @@ OpenAI가 이미 정한 형식을 그대로 쓴다. 새 필드를 발명하지 �
 - `response_format=diarized_json`, `language=ko`, `chunking_strategy=auto`
 - (선택) `known_speaker_names[]` / `known_speaker_references[]` — OpenAI 형식 [5]. 1단계는 보내지 않는다.
 - 로컬 전용 확장: `num_speakers`, `min_speakers`, `max_speakers`(pyannote 인자 [1]). OpenAI는 모르는 필드라 대체 경로에서는 빼고 보낸다.
+- 화자 분리 전사를 시작할 때 참석자 수를 입력받아 `num_speakers`로 보낸다(사용자 결정 2026-10-13). 회의는 20명 이하로 가정한다.
 
 응답 (`diarized_json`, OpenAI 형식 [5]):
 ```json
