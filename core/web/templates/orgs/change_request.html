@@ -1,4 +1,4 @@
-{% extends "base.html" %}{% block title %}AI 변경 요청{% endblock %}
+{% extends "base.html" %}{% load names %}{% block title %}AI 변경 요청{% endblock %}
 {% block main %}
 {% include "orgs/_tabs.html" %}
 <section class="card">
@@ -11,7 +11,7 @@
     {% else %}<span class="badge">{{ req.get_status_display }}</span>{% endif %}
   </div>
   <p class="muted t13">
-    {{ req.requested_by.display_name|default:req.requested_by.username }}의 AI{% if req.token %}({{ req.token.name }}){% endif %}가
+    {{ req.requested_by|name_in:org|default:req.requested_by.username }}의 AI{% if req.token %}({{ req.token.name }}){% endif %}가
     {{ req.created_at|date:"Y-m-d H:i" }}에 올렸습니다.
     AI는 이 항목을 직접 바꿀 수 없어 허용을 요청했습니다.
     {% if req.is_open %}허용하면 아래 내용이 그대로 반영됩니다. {{ req.expires_at|date:"Y-m-d H:i" }}까지 처리하지 않으면 만료됩니다.{% endif %}
@@ -49,7 +49,7 @@
     <button class="btn danger" name="action" value="reject">거절</button>
   </form>
   {% elif req.reviewed_by %}
-  <p class="muted t13">{{ req.reviewed_by.display_name|default:req.reviewed_by.username }}님이 {{ req.reviewed_at|date:"Y-m-d H:i" }}에 {{ req.get_status_display }}했습니다.{% if req.reject_reason %} 사유: {{ req.reject_reason }}{% endif %}</p>
+  <p class="muted t13">{{ req.reviewed_by|name_in:org|default:req.reviewed_by.username }}님이 {{ req.reviewed_at|date:"Y-m-d H:i" }}에 {{ req.get_status_display }}했습니다.{% if req.reject_reason %} 사유: {{ req.reject_reason }}{% endif %}</p>
   {% endif %}
 </section>
 {% endblock %}

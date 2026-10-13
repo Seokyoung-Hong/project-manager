@@ -3,11 +3,12 @@ from django.http import Http404
 from django.shortcuts import render
 
 from accounts.models import User
+from orgs.names import sort_by_name
 from orgs.services import orgs_of
 from projects.services import visible_projects
 from tasks import services as ts
 
-from .common import project_or_404, rows_for
+from .common import current_org, project_or_404, rows_for
 
 
 @login_required
@@ -83,11 +84,13 @@ def me(request):
             "has_filter": any(f.values()),
             "active_filters": active,
             "member_id": member_id,
-            "members": User.objects.filter(
-                is_active=True, org_memberships__org__in=orgs_of(request.user)
-            )
-            .distinct()
-            .order_by("display_name"),
+            # 여러 조직에 걸친 사람 목록 — 지금 고른 조직의 이름으로 보인다(그 조직 구성원이 아니면 계정 이름).
+            "members": sort_by_name(
+                User.objects.filter(
+                    is_active=True, org_memberships__org__in=orgs_of(request.user)
+                ).distinct(),
+                current_org(request),
+            ),
             "projects": visible_projects(request.user).filter(is_archived=False).order_by("name"),
             "due_options": ts.DUE_FILTERS,
             "status_options": ts.STATUS_FILTERS,

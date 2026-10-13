@@ -14,6 +14,7 @@ from django.views.decorators.http import require_GET, require_POST
 from assist import extract, fields, services
 from assist.models import AiJob
 from common.errors import ConflictError, ServiceError
+from orgs.names import sort_by_name
 from orgs.services import is_admin
 from orgs.settings import effective
 from projects.services import visible_projects
@@ -124,7 +125,7 @@ def _candidates(request, job, results=None):
     ctx = {
         "job": job,
         "rows": rows,
-        "members": job.org.members.filter(is_active=True).order_by("display_name"),
+        "members": sort_by_name(job.org.members.filter(is_active=True), job.org),
         "projects": visible_projects(request.user, job.org)
         .filter(is_archived=False)
         .order_by("name"),

@@ -1,4 +1,4 @@
-{% extends "base.html" %}{% load rows %}{% block title %}{{ req.number }} {{ req.title }}{% endblock %}
+{% extends "base.html" %}{% load names %}{% load rows %}{% block title %}{{ req.number }} {{ req.title }}{% endblock %}
 {% block main %}
 <section class="card">
   <div class="card-head">
@@ -9,8 +9,8 @@
     <span class="badge{% if req.status == "pending" %} primary{% elif req.status == "accepted" or req.status == "done" %} ok{% elif req.status == "declined" %} danger{% endif %}">{{ req.get_status_display }}</span>
   </div>
   <p class="muted t13">
-    {{ req.get_kind_display }} · {{ req.requested_by.display_name }}님이 {{ req.created_at|date:"Y-m-d H:i" }}에 보냄 ·
-    받는 쪽 {% if req.team %}{{ req.team.name }} 팀{% else %}{{ req.to_user.display_name }}{% endif %}
+    {{ req.get_kind_display }} · {{ req.requested_by|name_in:req.org_id }}님이 {{ req.created_at|date:"Y-m-d H:i" }}에 보냄 ·
+    받는 쪽 {% if req.team %}{{ req.team.name }} 팀{% else %}{{ req.to_user|name_in:req.org_id }}{% endif %}
   </p>
   {% if req.due_date %}<p class="t13">희망 기한: {{ req.due_date|date:"Y-m-d" }} ({{ req.due_date|due_text }})</p>{% endif %}
   {% if req.body %}<div class="md-view md small"><textarea class="md-src textarea" rows="4" readonly aria-label="요청 내용">{{ req.body }}</textarea></div>{% endif %}
@@ -20,9 +20,9 @@
 <section class="card">
   <h2>이력</h2>
   <ul class="links">
-    <li>{{ req.created_at|date:"m-d H:i" }} · {{ req.requested_by.display_name }}님이 요청했습니다.</li>
+    <li>{{ req.created_at|date:"m-d H:i" }} · {{ req.requested_by|name_in:req.org_id }}님이 요청했습니다.</li>
     {% if req.responded_by %}
-    <li>{{ req.responded_at|date:"m-d H:i" }} · {{ req.responded_by.display_name }}님이 {{ req.get_status_display }}했습니다.{% if req.response_note %} 답변: {{ req.response_note }}{% endif %}</li>
+    <li>{{ req.responded_at|date:"m-d H:i" }} · {{ req.responded_by|name_in:req.org_id }}님이 {{ req.get_status_display }}했습니다.{% if req.response_note %} 답변: {{ req.response_note }}{% endif %}</li>
     {% elif req.status == "pending" %}<li class="muted">아직 답이 없습니다.</li>{% endif %}
   </ul>
 </section>
@@ -40,7 +40,7 @@
     {% if assignees %}
     <label class="field">담당자(선택, 기본은 나)
       <select name="assignee" class="select"><option value="">나</option>
-        {% for u in assignees %}<option value="{{ u.pk }}">{{ u.display_name }}</option>{% endfor %}
+        {% for u in assignees %}<option value="{{ u.pk }}">{{ u|name_in:req.org_id }}</option>{% endfor %}
       </select>
     </label>
     {% endif %}

@@ -5,6 +5,7 @@ from django.contrib.auth.decorators import login_required
 from django.urls import reverse
 
 from common.errors import ServiceError
+from orgs.names import sort_by_name
 from tasks import split as sp
 
 from .common import dialog, hx_redirect, new_idem, task_or_404
@@ -13,7 +14,7 @@ from .common import dialog, hx_redirect, new_idem, task_or_404
 @login_required
 def task_split(request, task_id):
     task = task_or_404(request.user, task_id)
-    members = list(task.project.org.members.filter(is_active=True).order_by("display_name"))
+    members = sort_by_name(task.project.org.members.filter(is_active=True), task.project.org_id)
     picked = {u.pk for u in sp.task_split_candidates(task)}
     roles = {}
     pattern = "{title} — {name}"

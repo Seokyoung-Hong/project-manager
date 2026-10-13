@@ -1,4 +1,4 @@
-{% extends "base.html" %}{% load rows %}{% block title %}{{ view.title }}{% endblock %}
+{% extends "base.html" %}{% load names %}{% load rows %}{% block title %}{{ view.title }}{% endblock %}
 {% block main %}
 <div class="card">
   <div class="card-head">
@@ -6,7 +6,7 @@
     <label class="field me-member">누구의 태스크
     <select name="member" form="me-filter" class="select auto" onchange="this.form.requestSubmit()">
       <option value="0"{% if member_id == 0 %} selected{% endif %}>조직 전체</option>
-      {% for m in members %}<option value="{{ m.pk }}"{% if m.pk == member_id %} selected{% endif %}>{% if m.pk == user.pk %}나{% else %}{{ m.display_name }}{% endif %}</option>{% endfor %}
+      {% for m in members %}<option value="{{ m.pk }}"{% if m.pk == member_id %} selected{% endif %}>{% if m.pk == user.pk %}나{% else %}{{ m|name_in:current_org }}{% endif %}</option>{% endfor %}
     </select></label>
   </div>
   {# 맡은 태스크가 하나도 없으면 필터 줄 대신 빈 상태를 그린다(b-workspace 상-2) #}

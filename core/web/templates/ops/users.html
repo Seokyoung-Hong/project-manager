@@ -13,13 +13,13 @@
   </form>
   <div class="table-scroll" tabindex="0">
   <table class="grid">
-    <thead><tr><th>아이디</th><th>표시 이름</th><th>상태</th><th>조직 수</th><th>활성 토큰</th><th>가입</th><th>마지막 로그인</th></tr></thead>
+    <thead><tr><th>아이디</th><th>표시 이름</th><th>실명</th>{# COPY:ops_real_name #}<th>상태</th><th>조직 수</th><th>활성 토큰</th><th>가입</th><th>마지막 로그인</th></tr></thead>
     <tbody>
     {% for u in page %}
-    <tr><td><a href="{% url 'ops_user' u.pk %}"><code>{{ u.username }}</code></a></td><td>{{ u.display_name }}</td>
+    <tr><td><a href="{% url 'ops_user' u.pk %}"><code>{{ u.username }}</code></a></td><td>{{ u.display_name }}</td><td>{{ u.real_name|default:"—" }}</td>
       <td>{% include "ops/_user_badges.html" %}</td>
       <td>{{ u.org_count }}</td><td>{{ u.token_count }}</td><td>{{ u.date_joined|date:"Y-m-d" }}</td><td>{{ u.last_login|date:"Y-m-d H:i"|default:"—" }}</td></tr>
-    {% empty %}<tr><td colspan="7" class="empty-cell">조건에 맞는 사용자가 없습니다.</td></tr>{% endfor %}
+    {% empty %}<tr><td colspan="8" class="empty-cell">조건에 맞는 사용자가 없습니다.</td></tr>{% endfor %}
     </tbody>
   </table>
   </div>

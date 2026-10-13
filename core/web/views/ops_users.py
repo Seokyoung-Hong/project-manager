@@ -106,7 +106,9 @@ def users(request):
     state = request.GET.get("state", "active")
     qs = _annotated().order_by("username")
     if q:
-        qs = qs.filter(Q(username__icontains=q) | Q(display_name__icontains=q))
+        qs = qs.filter(
+            Q(username__icontains=q) | Q(display_name__icontains=q) | Q(real_name__icontains=q)
+        )
     if state == "suspended":
         qs = qs.filter(is_active=False)
     elif state == "staff":

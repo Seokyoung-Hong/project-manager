@@ -1,12 +1,12 @@
-{# 첨부 파일 목록·업로드. hx면 태스크 패널(#refs 갱신), 아니면 프로젝트 문서 화면(일반 폼). #}
+{% load names %}{# 첨부 파일 목록·업로드. hx면 태스크 패널(#refs 갱신), 아니면 프로젝트 문서 화면(일반 폼). #}
 <div class="section attachments">
   <span class="label">첨부 파일</span>
   <ul class="links">
-    {% for a in attachments %}
+    {% firstof task.project.org_id project.org_id as a_org %}{% for a in attachments %}
     <li class="stack">
       <div class="row"><span class="badge{% if a.kind != 'file' %} primary{% endif %}">{{ a.get_kind_display }}</span>
         <a href="{% url 'attachment_download' a.pk a.name %}" target="_blank" rel="noopener">{{ a.name }}</a>
-        <span class="muted t13">v{{ a.version }} · {{ a.size|filesizeformat }} · {{ a.created_by.display_name }}{% if a.note %} · {{ a.note }}{% endif %}</span>
+        <span class="muted t13">v{{ a.version }} · {{ a.size|filesizeformat }} · {{ a.created_by|name_in:a_org }}{% if a.note %} · {{ a.note }}{% endif %}</span>
         {% if a.created_by_id == user.pk or is_admin %}
         {% if hx %}<button type="button" class="btn link danger" hx-post="{% url 'attachment_delete' a.pk %}" hx-target="#refs" hx-swap="innerHTML" aria-label="첨부 {{ a.name }} 삭제" data-confirm="첨부 파일 {{ a.name }}을(를) 삭제합니다. 되돌릴 수 없습니다." data-confirm-ok="첨부 삭제">첨부 파일 삭제</button>
         {% else %}<form method="post" action="{% url 'attachment_delete' a.pk %}" data-confirm="첨부 파일을 삭제합니다. 되돌릴 수 없습니다." data-confirm-ok="첨부 삭제">{% csrf_token %}<button class="btn link danger" aria-label="첨부 {{ a.name }} 삭제">첨부 파일 삭제</button></form>{% endif %}

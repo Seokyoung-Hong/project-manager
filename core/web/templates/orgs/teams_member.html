@@ -1,4 +1,4 @@
-{% extends "base.html" %}{% block title %}팀 · {{ org.name }}{% endblock %}
+{% extends "base.html" %}{% load names %}{% block title %}팀 · {{ org.name }}{% endblock %}
 {% block main %}
 {% include "orgs/_tabs.html" %}
 <section class="card">
@@ -11,7 +11,7 @@
       {% if r.visible %}
       <td><a href="{% url 'team_detail' r.team.pk %}">{{ r.team.name }}</a>{% if r.mine %} <span class="badge">내 팀</span>{% endif %}{% if r.team.is_private %} <span class="badge">비공개</span>{% endif %}
         {% if r.team.purpose %}<div class="muted t13">{{ r.team.purpose }}</div>{% endif %}</td>
-      <td>{% for u in r.leads %}{{ u.display_name }}{% if not forloop.last %}, {% endif %}{% empty %}<span class="muted">없음</span>{% endfor %}</td>
+      <td>{% for u in r.leads %}{{ u|name_in:org }}{% if not forloop.last %}, {% endif %}{% empty %}<span class="muted">없음</span>{% endfor %}</td>
       <td>{{ r.member_count }}명</td>
       {% else %}
       <td>{{ r.team.name }} <span class="badge">비공개</span></td>

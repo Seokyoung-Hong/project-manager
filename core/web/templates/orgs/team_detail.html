@@ -1,4 +1,4 @@
-{% extends "base.html" %}{% block title %}{{ team.name }}{% endblock %}
+{% extends "base.html" %}{% load names %}{% block title %}{{ team.name }}{% endblock %}
 {% block main %}
 {% include "orgs/_tabs.html" %}
 <div class="card">
@@ -48,7 +48,7 @@
     <tbody>
     {% for u in members %}
     <tr>
-      <td>{{ u.display_name }}{% if u.pk in lead_ids %} <span class="badge ok">팀장</span>{% endif %}</td>
+      <td>{{ u|name_in:org }}{% if u.pk in lead_ids %} <span class="badge ok">팀장</span>{% endif %}</td>
       {% if team.dev_tools %}<td>{% if u.github %}@{{ u.github.login }}{% else %}<span class="badge">GitHub 미연결</span>{% endif %}</td>{% endif %}
       <td class="row">{% if is_admin %}<form method="post" action="{% url 'team_lead' team.pk u.pk %}">{% csrf_token %}<input type="hidden" name="lead" value="{% if u.pk in lead_ids %}0{% else %}1{% endif %}"><button class="btn sm">{% if u.pk in lead_ids %}팀장 해제{% else %}팀장 지정{% endif %}</button></form><form method="post" action="{% url 'team_member_remove' team.pk u.pk %}">{% csrf_token %}<button class="btn sm danger">팀에서 제거</button></form>{% endif %}</td>
     </tr>
@@ -58,7 +58,7 @@
   <form method="post" action="{% url 'team_member_add' team.pk %}" class="row">{% csrf_token %}
     <select name="user" class="select auto" aria-label="팀에 추가할 멤버">
       <option value="">멤버 선택</option>
-      {% for u in candidates %}<option value="{{ u.pk }}">{{ u.display_name }}</option>{% endfor %}
+      {% for u in candidates %}<option value="{{ u.pk }}">{{ u|name_in:org }}</option>{% endfor %}
     </select>
     <button class="btn sm">팀에 멤버 추가</button>
   </form>

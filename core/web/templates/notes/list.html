@@ -1,4 +1,4 @@
-{% extends "base.html" %}{% block title %}회의록{% endblock %}
+{% extends "base.html" %}{% load names %}{% block title %}회의록{% endblock %}
 {% block main %}
 {% include "orgs/_tabs.html" %}
 <div class="notes-columns{% if editor_open %} note-editor-open{% endif %}">
@@ -42,7 +42,7 @@
       {% for n in g.items %}
       <a class="note-item{% if note.pk == n.pk %} sel{% endif %}" href="?scope={{ scope }}{% if tag %}&amp;tag={{ tag|urlencode }}{% endif %}&amp;note={{ n.pk }}"{% if note.pk == n.pk %} aria-current="page"{% endif %}>
         <b>{{ n.title }}</b>
-        <span class="muted t13">{{ n.created_by.display_name }} · v{{ n.version }} · {{ n.updated_at|date:"n/j" }}</span>
+        <span class="muted t13">{{ n.created_by|name_in:n.org_id }} · v{{ n.version }} · {{ n.updated_at|date:"n/j" }}</span>
         {% if n.tags %}<span class="row gap-1">{% for t in n.tags %}<span class="tag">{{ t }}</span>{% endfor %}</span>{% endif %}
       </a>
       {% endfor %}
@@ -69,7 +69,7 @@
     <input class="title-input" data-note-field="title" value="{{ note.title }}" aria-label="제목"{% if ai_on %} data-ai="doc.title" data-ai-target="doc:{{ note.pk }}"{% endif %}>
     <details class="note-meta-box">
       <summary class="t13"><span class="label">회의 정보</span>
-        <span class="muted">{% if note.project %}{{ note.project.name }}{% else %}조직 공통{% endif %} · {{ note.created_on|date:"n/j H:i" }} · {{ note.created_by.display_name }}{% if note.tags %} · {{ note.tags|join:", " }}{% endif %}</span></summary>
+        <span class="muted">{% if note.project %}{{ note.project.name }}{% else %}조직 공통{% endif %} · {{ note.created_on|date:"n/j H:i" }} · {{ note.created_by|name_in:note.org_id }}{% if note.tags %} · {{ note.tags|join:", " }}{% endif %}</span></summary>
     <div class="note-meta">
       <label class="note-meta-field">
         <span class="label">프로젝트</span>
@@ -80,18 +80,18 @@
       </label>
       <div class="note-meta-field note-author">
         <span class="label">작성자</span>
-        <span class="note-author-value">{{ note.created_by.display_name }}</span>
+        <span class="note-author-value">{{ note.created_by|name_in:note.org_id }}</span>
       </div>
       {% if note.source == "voice" %}
       <div class="note-meta-field note-author">
         <span class="label">진행자</span>
-        <span class="note-author-value">{{ note.recording.host.display_name }}</span>
+        <span class="note-author-value">{{ note.recording.host|name_in:note.org_id }}</span>
       </div>
       {% endif %}
       {% with attendees=note.attendees.all %}{% if attendees %}
       <div class="note-meta-field note-author">
         <span class="label">참여자</span>
-        <span class="note-author-value">{% for u in attendees %}{{ u.display_name }}{% if not forloop.last %}, {% endif %}{% endfor %}</span>
+        <span class="note-author-value">{% for u in attendees %}{{ u|name_in:note.org_id }}{% if not forloop.last %}, {% endif %}{% endfor %}</span>
       </div>
       {% endif %}{% endwith %}
       <label class="note-meta-field note-date">

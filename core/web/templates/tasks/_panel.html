@@ -1,4 +1,4 @@
-{% load split %}<div class="panel" hx-get="{% url 'task_panel' task.pk %}" hx-trigger="task-updated[event.detail.id=={{ task.pk }}] from:body" hx-target="#panel" hx-swap="innerHTML">
+{% load names %}{% load split %}<div class="panel" hx-get="{% url 'task_panel' task.pk %}" hx-trigger="task-updated[event.detail.id=={{ task.pk }}] from:body" hx-target="#panel" hx-swap="innerHTML">
   <div class="panel-bar">
     {% if full_page %}<a class="btn sm" href="{% url 'project_detail' task.project_id %}">← {{ task.project.name }}</a>{% endif %}
     <span class="panel-mobile-context" aria-hidden="true">
@@ -59,10 +59,10 @@
             <label class="meta-label" for="tp-assignee-{{ task.pk }}">담당</label>
             <div class="meta-value"><select id="tp-assignee-{{ task.pk }}" name="assignee" class="select"
                     hx-post="{% url 'task_meta' task.pk %}" hx-target="#panel" hx-swap="innerHTML" hx-trigger="change">
-              {% if not task.assignee.is_active %}<option selected disabled>{{ task.assignee.display_name }}</option>{% endif %}
-              {% for u in org_members %}<option value="{{ u.pk }}"{% if u.pk == task.assignee_id %} selected{% endif %}>{{ u.display_name }}</option>{% endfor %}
+              {% if not task.assignee.is_active %}<option selected disabled>{{ task.assignee|name_in:task.project.org_id }}</option>{% endif %}
+              {% for u in org_members %}<option value="{{ u.pk }}"{% if u.pk == task.assignee_id %} selected{% endif %}>{{ u|name_in:task.project.org_id }}</option>{% endfor %}
             </select>
-            {% if pending_assignee %}<span class="badge">{{ pending_assignee.display_name }}님 수락 대기</span>{% endif %}
+            {% if pending_assignee %}<span class="badge">{{ pending_assignee|name_in:task.project.org_id }}님 수락 대기</span>{% endif %}
             {% if task.is_open and not task.is_template and not task.group_id %}<button type="button" class="btn sm" hx-get="{% url 'task_split' task.pk %}" hx-target="#dialog" hx-swap="innerHTML">담당자별 태스크로 나누기</button>{% endif %}</div>
           </form>
           <form class="meta-item">
@@ -71,8 +71,8 @@
             <div class="meta-value"><select id="tp-reviewer-{{ task.pk }}" name="reviewer" class="select"
                     hx-post="{% url 'task_meta' task.pk %}" hx-target="#panel" hx-swap="innerHTML" hx-trigger="change">
               <option value="">지정 안 함</option>
-              {% if task.reviewer and not task.reviewer.is_active %}<option selected disabled>{{ task.reviewer.display_name }}</option>{% endif %}
-              {% for u in org_members %}<option value="{{ u.pk }}"{% if u.pk == task.reviewer_id %} selected{% endif %}>{{ u.display_name }}</option>{% endfor %}
+              {% if task.reviewer and not task.reviewer.is_active %}<option selected disabled>{{ task.reviewer|name_in:task.project.org_id }}</option>{% endif %}
+              {% for u in org_members %}<option value="{{ u.pk }}"{% if u.pk == task.reviewer_id %} selected{% endif %}>{{ u|name_in:task.project.org_id }}</option>{% endfor %}
             </select></div>
           </form>
           {# 기한은 여기 한 곳에만 보인다(배지와 아래 칸으로 두 번 나오던 것을 합쳤다). #}

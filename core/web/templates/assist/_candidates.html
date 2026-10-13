@@ -1,4 +1,4 @@
-{# 태스크 후보(IMPL-PLAN-12 §7.4). 골라서 고친 뒤 [고른 후보로 태스크 만들기]. 만든 행은 링크로, 실패한 행은 오류와 함께 다시 보인다. 문구는 임시 — COPY:ai_candidates_* #}
+{% load names %}{# 태스크 후보(IMPL-PLAN-12 §7.4). 골라서 고친 뒤 [고른 후보로 태스크 만들기]. 만든 행은 링크로, 실패한 행은 오류와 함께 다시 보인다. 문구는 임시 — COPY:ai_candidates_* #}
 <form class="stack ai-cand" id="ai-job" hx-post="{% url 'assist_job_create_tasks' job.pk %}" hx-target="#ai-job" hx-swap="outerHTML">
   {% if rows %}
   <p class="t13 muted">태스크로 만들 후보를 선택하고 내용을 확인·수정해 주세요. 담당자와 기한은 AI가 추정한 값입니다.</p>
@@ -26,7 +26,7 @@
       <td>
         <select class="select" name="assignee_{{ r.index }}" aria-label="태스크 후보 {{ forloop.counter }} 담당자">
           <option value="">나</option>
-          {% for u in members %}<option value="{{ u.pk }}"{% if u.pk == r.c.assignee_id %} selected{% endif %}>{{ u.display_name }}</option>{% endfor %}
+          {% for u in members %}<option value="{{ u.pk }}"{% if u.pk == r.c.assignee_id %} selected{% endif %}>{{ u|name_in:job.org_id }}</option>{% endfor %}
         </select>
         {% if r.c.assignee and not r.c.assignee_id %}<span class="t12 muted">“{{ r.c.assignee }}” 담당자 확인 필요</span>{% endif %}
       </td>
