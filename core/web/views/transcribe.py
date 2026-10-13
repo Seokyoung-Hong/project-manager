@@ -21,6 +21,7 @@ from notes import transcription as tx
 from notes.models import SttServer, TranscriptionJob, VoiceRecording
 from notes.services import GLOSSARY_MAX, glossary_terms, visible_notes
 from orgs import services as osv
+from orgs.names import display_for
 from orgs.settings import SPECS, STT_KEYS, display, effective, secret_value
 
 from .common import not_admin, org_or_404
@@ -43,7 +44,7 @@ def _job_row(job, eta, user=None):
     if job.engine == "pc":
         server = job.server
         runner = (
-            f"{server.owner.display_name}님의 PC({server.name})"  # COPY:job_runner_pc
+            f"{display_for(server.owner, job.recording.note.org_id)}님의 PC({server.name})"  # COPY:job_runner_pc
             if server
             else "연결이 끊긴 PC"  # COPY:job_runner_pc_gone
         )

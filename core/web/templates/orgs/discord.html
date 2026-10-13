@@ -1,4 +1,4 @@
-{% extends "base.html" %}{% block title %}{{ org.name }} · Discord{% endblock %}
+{% extends "base.html" %}{% load names %}{% block title %}{{ org.name }} · Discord{% endblock %}
 {% block main %}
 {% include "orgs/_tabs.html" %}
 <div class="card">
@@ -6,7 +6,7 @@
   {% if org.discord_guild_id %}
   <p class="conn"><span class="conn-state on">연결됨</span> 서버 id <code>{{ org.discord_guild_id }}</code></p>
   <p class="muted t13">
-    {{ org.discord_linked_at|date:"Y-m-d H:i" }} 연결{% if org.discord_linked_by %} · {{ org.discord_linked_by.display_name }}{% endif %}
+    {{ org.discord_linked_at|date:"Y-m-d H:i" }} 연결{% if org.discord_linked_by %} · {{ org.discord_linked_by|name_in:org }}{% endif %}
   </p>
   <form method="post" action="{% url 'discord_unlink' org.pk %}"
         data-confirm="이 조직의 Discord 서버 연결을 해제합니다. 알림이 멈춥니다." data-confirm-ok="Discord 연결 해제">

@@ -1,4 +1,4 @@
-{% extends "base.html" %}{% load rows %}{% block title %}요청{% endblock %}
+{% extends "base.html" %}{% load names %}{% load rows %}{% block title %}요청{% endblock %}
 {% block main %}
 <div class="page-head row">
   <h1 class="t24">요청</h1>
@@ -22,7 +22,7 @@
       <td><a href="{% url 'task_detail' lk.task_id %}">{{ lk.task.number }} {{ lk.task.title }}</a></td>
       <td>{{ lk.task.project.name }}{% if lk.task.project.visibility != "org" %} <span class="badge">담당 팀만</span>{% endif %}</td>
       <td>{{ lk.project.name }}</td>
-      <td>{{ lk.created_by.display_name }}</td>
+      <td>{{ lk.created_by|name_in:lk.project.org_id }}</td>
       <td>{{ lk.created_at|date:"m-d H:i" }}</td>
       <td class="row">
         <form method="post" action="{% url 'task_project_approve' lk.task_id lk.project_id %}">{% csrf_token %}<button class="btn sm" aria-label="{{ lk.task.number }}의 {{ lk.project.name }} 연결 승인">승인</button></form>
@@ -45,9 +45,9 @@
     <tr>
       <td><a href="{{ r.path }}">{{ r.number }} {{ r.title }}</a></td>
       <td><span class="badge{% if r.status == "pending" %} primary{% elif r.status == "accepted" or r.status == "done" %} ok{% elif r.status == "declined" %} danger{% endif %}">{{ r.get_status_display }}</span></td>
-      <td data-label="보낸 사람">{{ r.requested_by.display_name }}</td>
+      <td data-label="보낸 사람">{{ r.requested_by|name_in:r.org_id }}</td>
       <td data-label="종류">{{ r.get_kind_display }}</td>
-      <td data-label="받는 쪽">{% if r.team %}{{ r.team.name }} 팀{% else %}{{ r.to_user.display_name }}{% endif %}</td>
+      <td data-label="받는 쪽">{% if r.team %}{{ r.team.name }} 팀{% else %}{{ r.to_user|name_in:r.org_id }}{% endif %}</td>
       <td data-label="희망 기한">{% if r.due_date %}{{ r.due_date|due_text }}{% endif %}</td>
       <td data-label="시각">{{ r.created_at|date:"m-d H:i" }}</td>
     </tr>

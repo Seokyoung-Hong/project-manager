@@ -12,6 +12,7 @@ from github.client import GitHubError
 from github.models import GitHubTeamLink
 from orgs import services as osv
 from orgs.models import Team
+from orgs.names import sort_by_name
 from projects.services import set_team_private_projects, visible_projects
 
 from ..forms import TeamForm
@@ -141,7 +142,7 @@ def _member_team_detail(request, team):
         {
             "org": team.org,
             "team": team,
-            "members": team.members.order_by("display_name"),
+            "members": sort_by_name(team.members.all(), team.org_id),
             "lead_ids": set(
                 team.memberships.filter(is_lead=True).values_list("user_id", flat=True)
             ),
@@ -162,11 +163,9 @@ def team_detail(request, team_id):
         if not osv.can_view_team(request.user, team):
             raise Http404
         return _member_team_detail(request, team)
-    members = team.members.order_by("display_name")
-    candidates = (
-        team.org.members.filter(is_active=True)
-        .exclude(pk__in=members.values("pk"))
-        .order_by("display_name")
+    members = team.members.all()
+    candidates = sort_by_name(
+        team.org.members.filter(is_active=True).exclude(pk__in=members.values("pk")), team.org_id
     )
     gh_link = getattr(team, "github", None)
     # 비개발 팀에는 GitHub 섹션을 그리지 않는다(설치가 없는 것과 같게 다룬다).
@@ -185,7 +184,7 @@ def team_detail(request, team_id):
         {
             "org": team.org,
             "team": team,
-            "members": members,
+            "members": sort_by_name(members, team.org_id),
             "lead_ids": set(
                 team.memberships.filter(is_lead=True).values_list("user_id", flat=True)
             ),

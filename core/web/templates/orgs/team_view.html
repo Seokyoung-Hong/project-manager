@@ -1,4 +1,4 @@
-{% extends "base.html" %}{% block title %}{{ team.name }}{% endblock %}
+{% extends "base.html" %}{% load names %}{% block title %}{{ team.name }}{% endblock %}
 {% block main %}
 {% include "orgs/_tabs.html" %}
 <div class="card">
@@ -14,7 +14,7 @@
 <section class="card">
   <h2>멤버</h2>
   <ul class="links">
-    {% for u in members %}<li>{{ u.display_name }}{% if u.pk in lead_ids %} <span class="badge ok">팀장</span>{% endif %}</li>
+    {% for u in members %}<li>{{ u|name_in:org }}{% if u.pk in lead_ids %} <span class="badge ok">팀장</span>{% endif %}</li>
     {% empty %}<li class="empty compact">멤버가 없습니다.</li>{% endfor %}
   </ul>
 </section>

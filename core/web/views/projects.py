@@ -14,6 +14,7 @@ from common.errors import ConflictError, ServiceError
 from github import services as gh_services
 from github.client import GitHubError
 from github.sync import releases_for
+from orgs.names import sort_by_name
 from orgs.settings import GROUPS, effective, locked_keys, project_value, specs_for
 from orgs.settings import display as org_display
 from projects.models import Project
@@ -173,7 +174,7 @@ def _dialog(request, form, org, project=None):
             "form": form,
             "org": org,
             "project": project,
-            "members": org.members.filter(is_active=True).order_by("display_name"),
+            "members": sort_by_name(org.members.filter(is_active=True), org),
             "teams": org.teams.order_by("name"),
             "checked_owner_ids": _checked_ids(form, "owners"),
             "checked_team_ids": _checked_ids(form, "teams"),

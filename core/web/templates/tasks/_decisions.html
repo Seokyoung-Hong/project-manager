@@ -1,4 +1,4 @@
-{% load tz %}
+{% load names %}{% load tz %}
 <section class="section decision-records" id="decisions">
   <div class="row between gap-2">
     <h3>의사결정 기록 <span class="muted t13">{{ decision_total }}</span></h3>
@@ -26,9 +26,9 @@
 
       <div class="muted t13 mt-2">
         {% if record.kind == "user_input" %}
-          {% if record.subject_user %}입력 주체: {{ record.subject_user.display_name }}{% else %}입력 주체 미확인{% endif %}
+          {% if record.subject_user %}입력 주체: {{ record.subject_user|name_in:task.project.org_id }}{% else %}입력 주체 미확인{% endif %}
           · 근거: {{ record.get_evidence_basis_display }}
-          {% if record.confirmed_by %} · 유달리에서 확인: {{ record.confirmed_by.display_name }}{% endif %}
+          {% if record.confirmed_by %} · 유달리에서 확인: {{ record.confirmed_by|name_in:task.project.org_id }}{% endif %}
           {% if record.confirmed_at %} ({{ record.confirmed_at|localtime|date:"Y-m-d H:i" }}){% endif %}
         {% else %}사용자의 결정으로 귀속하지 않은 AI 판단{% endif %}
         {% if record.client_name %} · 세션: {{ record.client_name }}{% endif %}

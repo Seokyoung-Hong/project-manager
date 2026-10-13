@@ -1,4 +1,4 @@
-{% extends "base.html" %}{% block title %}조직{% endblock %}
+{% extends "base.html" %}{% load names %}{% block title %}조직{% endblock %}
 {% block main %}
 {% include "orgs/_tabs.html" %}
 {% if getting_started %}
@@ -37,7 +37,7 @@
     {% for p, st in project_rows %}
     <tr>
       <td><a href="{% url 'project_detail' p.pk %}">{{ p.name }}</a>{% if p.visibility == "teams" %} <span class="badge" title="담당 팀만">비공개</span>{% endif %}{% if p.is_archived %} <span class="badge">보관</span>{% endif %}<div class="muted t13">{{ p.purpose }}</div></td>
-      <td>{% for u in p.owners.all %}{{ u.display_name }}{% if not forloop.last %}, {% endif %}{% empty %}<span class="warning">미지정</span>{% endfor %}</td>
+      <td>{% for u in p.owners.all %}{{ u|name_in:org }}{% if not forloop.last %}, {% endif %}{% empty %}<span class="warning">미지정</span>{% endfor %}</td>
       <td>{% for t in p.teams.all %}<span class="badge">{{ t.name }}</span> {% endfor %}</td>
       <td><span class="badge">{{ p.status_label }}</span><div class="muted t13 ellipsis-2">{{ p.status_desc }}</div></td>
       <td class="num">{{ st.open }}</td>
@@ -57,7 +57,7 @@
     <thead><tr><th>이름</th><th class="num">미완료</th><th class="num">기한 초과</th><th class="num">검토 대기</th><th class="num">막힘</th></tr></thead>
     <tbody>
     {% for a in by_assignee %}
-    <tr><td><a href="{{ me_url }}?member={{ a.assignee_id }}">{{ a.assignee__display_name }}</a></td><td class="num">{{ a.open }}</td><td class="num">{{ a.overdue }}</td><td class="num">{{ a.review }}</td><td class="num">{{ a.blocked }}</td></tr>
+    <tr><td><a href="{{ me_url }}?member={{ a.assignee_id }}">{{ a.assignee_name|default:a.assignee__display_name }}</a></td><td class="num">{{ a.open }}</td><td class="num">{{ a.overdue }}</td><td class="num">{{ a.review }}</td><td class="num">{{ a.blocked }}</td></tr>
     {% empty %}<tr><td colspan="5" class="empty-cell">미완료 태스크가 없습니다.</td></tr>{% endfor %}
     </tbody>
   </table>

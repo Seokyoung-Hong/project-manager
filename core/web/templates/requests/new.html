@@ -1,4 +1,4 @@
-{% extends "base.html" %}{% block title %}새 요청{% endblock %}
+{% extends "base.html" %}{% load names %}{% block title %}새 요청{% endblock %}
 {% block main %}
 <div class="card form-card">
   <h1 class="t24">새 요청</h1>
@@ -23,7 +23,7 @@
         </select></label>
       <label class="row"><input type="radio" name="target" value="user"{% if values.target == "user" %} checked{% endif %}> 사람
         <select name="user" class="select auto"><option value="">사람 선택</option>
-          {% for u in people %}<option value="{{ u.pk }}"{% if values.user == u.pk|stringformat:"s" %} selected{% endif %}>{{ u.display_name }}</option>{% endfor %}
+          {% for u in people %}<option value="{{ u.pk }}"{% if values.user == u.pk|stringformat:"s" %} selected{% endif %}>{{ u|name_in:org }}</option>{% endfor %}
         </select></label>
     </fieldset>
     <label class="field">제목<input name="title" class="input" maxlength="200" value="{{ values.title }}" required{% if ai_on and ai_here %} data-ai="request.title" data-ai-target="org:{{ org.pk }}"{% endif %}></label>

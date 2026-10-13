@@ -1,4 +1,4 @@
-{# 편집기 아래 묶음: 이전 버전 · 연결 · 파일. 문서와 회의록 화면이 같이 쓴다. 필요: doc, here, revisions, backlinks, linked_tasks, attachments #}
+{% load names %}{# 편집기 아래 묶음: 이전 버전 · 연결 · 파일. 문서와 회의록 화면이 같이 쓴다. 필요: doc, here, revisions, backlinks, linked_tasks, attachments #}
 <div class="doc-extras">
   <details>
     <summary>이전 버전 <span class="muted">{{ revisions|length }}</span></summary>
@@ -10,7 +10,7 @@
         {% for r in revisions %}
         <tr>
           <td class="num">v{{ r.version }}</td>
-          <td>{% if r.saved_by %}{{ r.saved_by.display_name }}{% else %}<span class="muted">알 수 없음</span>{% endif %}{% if r.source != "web" %} <span class="badge">{{ r.get_source_display }}</span>{% endif %}</td>
+          <td>{% if r.saved_by %}{{ r.saved_by|name_in:doc.org_id }}{% else %}<span class="muted">알 수 없음</span>{% endif %}{% if r.source != "web" %} <span class="badge">{{ r.get_source_display }}</span>{% endif %}</td>
           <td class="t13">{{ r.saved_at|date:"Y-n-j H:i" }}</td>
           <td><details><summary class="t13">미리보기</summary><pre class="revision-body">{{ r.body_md }}</pre></details></td>
           <td>{% if r.version != doc.version %}
@@ -58,7 +58,7 @@
       {% for a in attachments %}
       <li class="row">
         <a href="{% url 'attachment_download' a.pk a.name %}" target="_blank" rel="noopener">{{ a.name }}</a>
-        <span class="muted t13">{{ a.size|filesizeformat }} · {{ a.created_by.display_name }}</span>
+        <span class="muted t13">{{ a.size|filesizeformat }} · {{ a.created_by|name_in:doc.org_id }}</span>
         {% if a.content_type|slice:":6" == "image/" %}<button type="button" class="btn sm" data-insert-md="![{{ a.name }}]({% url 'attachment_download' a.pk a.name %})">본문에 넣기</button>{% endif %}
         <form method="post" action="{% url 'attachment_delete' a.pk %}" data-confirm="첨부 파일을 삭제합니다. 되돌릴 수 없습니다." data-confirm-ok="첨부 삭제">{% csrf_token %}<button class="btn link danger" aria-label="첨부 {{ a.name }} 삭제">첨부 파일 삭제</button></form>
       </li>

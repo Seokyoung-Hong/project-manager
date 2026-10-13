@@ -1,4 +1,4 @@
-{% extends "base.html" %}{% block title %}{% if project %}{{ project.name }}{% else %}{{ org.name }}{% endif %} · 문서{% endblock %}
+{% extends "base.html" %}{% load names %}{% block title %}{% if project %}{{ project.name }}{% else %}{{ org.name }}{% endif %} · 문서{% endblock %}
 {% block main %}
 {% if project %}{% include "projects/_tabs.html" %}{% else %}{% include "orgs/_tabs.html" %}{% endif %}
 <div class="notes-columns docs-columns{% if editor_open %} note-editor-open{% endif %}">
@@ -72,8 +72,8 @@
     <input class="title-input" data-note-field="title" value="{{ doc.title }}" aria-label="제목"{% if ai_on %} data-ai="doc.title" data-ai-target="doc:{{ doc.pk }}"{% endif %}>
     <div class="row t13 muted doc-meta">
       <span class="badge">{% if doc.project %}프로젝트 · {{ doc.project.name }}{% elif doc.team %}팀 · {{ doc.team.name }}{% else %}조직 전체{% endif %}</span>
-      <span>만든 사람 {{ doc.created_by.display_name }}</span>
-      {% if doc.updated_by %}<span>마지막 수정 {{ doc.updated_by.display_name }}{% if doc.updated_source != "web" %} <span class="badge">{{ doc.get_updated_source_display }}</span>{% endif %}</span>{% endif %}
+      <span>만든 사람 {{ doc.created_by|name_in:doc.org_id }}</span>
+      {% if doc.updated_by %}<span>마지막 수정 {{ doc.updated_by|name_in:doc.org_id }}{% if doc.updated_source != "web" %} <span class="badge">{{ doc.get_updated_source_display }}</span>{% endif %}</span>{% endif %}
     </div>
     <div id="note-conflict" class="notice bad" hidden>⚠ 다른 사람이 먼저 수정해 저장하지 못했습니다. 작성 중인 내용을 복사한 뒤 새로고침하고, 아래 이전 버전에서 변경 내용을 확인해 주세요.</div>
 

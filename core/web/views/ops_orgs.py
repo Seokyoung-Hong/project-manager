@@ -45,10 +45,11 @@ def orgs(request):
     ):
         size[pk or tk] = size.get(pk or tk, 0) + n
     admins: dict[int, list[str]] = {}
-    for oid, name in OrgMembership.objects.filter(role="admin").values_list(
-        "org_id", "user__display_name"
+    # 운영 콘솔은 계정 표시 이름 + 실명(IMPL-PLAN-13 §4.1)
+    for oid, name, real in OrgMembership.objects.filter(role="admin").values_list(
+        "org_id", "user__display_name", "user__real_name"
     ):
-        admins.setdefault(oid, []).append(name)
+        admins.setdefault(oid, []).append(f"{name}({real})" if real and real != name else name)
     out = []
     for o in rows:
         watch = o["discord_watch_at"]

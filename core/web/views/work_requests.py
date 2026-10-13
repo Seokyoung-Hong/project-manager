@@ -9,6 +9,7 @@ from django.views.decorators.http import require_POST
 
 from common.errors import ServiceError
 from orgs.models import Team
+from orgs.names import sort_by_name
 from orgs.services import orgs_of
 from projects.services import visible_projects
 from tasks import services as ts
@@ -92,9 +93,9 @@ def request_new(request):
             "my_orgs": my_orgs,
             "kinds": KINDS,
             "teams": Team.objects.filter(org=org).order_by("name"),
-            "people": org.members.filter(is_active=True)
-            .exclude(pk=request.user.pk)
-            .order_by("display_name"),
+            "people": sort_by_name(
+                org.members.filter(is_active=True).exclude(pk=request.user.pk), org
+            ),
             "values": values,
             "errors": errors,
             # AI 작업은 현재 조직으로 만든다(assist.views) — 다른 조직 화면이면 버튼을 붙이지 않는다
@@ -125,7 +126,7 @@ def request_detail(request, req_id):
     if can_answer and req.kind == "work":
         ctx["projects"] = wr.projects_for(req, request.user)
         ctx["assignees"] = (
-            req.team.members.filter(is_active=True).order_by("display_name") if req.team_id else []
+            sort_by_name(req.team.members.filter(is_active=True), req.org_id) if req.team_id else []
         )
     return render(request, "requests/detail.html", ctx)
 

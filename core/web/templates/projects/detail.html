@@ -1,4 +1,4 @@
-{% extends "base.html" %}{% load rows %}{% block title %}{{ project.name }}{% endblock %}
+{% extends "base.html" %}{% load names %}{% load rows %}{% block title %}{{ project.name }}{% endblock %}
 {% block main %}
 {% include "projects/_tabs.html" %}
 <div class="card project-summary">
@@ -6,7 +6,7 @@
     <div class="stack project-summary-copy">
       {% if project.purpose %}<p class="muted">{{ project.purpose }}</p>{% endif %}
       <div class="row t13 project-meta">
-        <span>관리자 {% for u in owners %}{{ u.display_name }}{% if not forloop.last %}, {% endif %}{% empty %}<span class="warning">미지정</span> <button type="button" class="btn link" hx-get="{% url 'project_edit' project.pk %}" hx-target="#dialog" hx-swap="innerHTML">관리자 정하기</button>{% endfor %}</span>
+        <span>관리자 {% for u in owners %}{{ u|name_in:project.org_id }}{% if not forloop.last %}, {% endif %}{% empty %}<span class="warning">미지정</span> <button type="button" class="btn link" hx-get="{% url 'project_edit' project.pk %}" hx-target="#dialog" hx-swap="innerHTML">관리자 정하기</button>{% endfor %}</span>
         <span class="badge" title="{{ project.status_desc }}">{{ project.status_label }}</span>
         {% for l in links %}<a href="{{ l.url }}" target="_blank" rel="noopener">{{ l.get_kind_display }}: {{ l.title }}</a>{% endfor %}
         {% if project.is_archived %}<span class="badge">보관됨</span>{% endif %}

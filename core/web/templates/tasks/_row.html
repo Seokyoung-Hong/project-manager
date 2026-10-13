@@ -1,4 +1,4 @@
-{% load rows %}<li id="task-{{ task.pk }}"
+{% load names %}{% load rows %}<li id="task-{{ task.pk }}"
     class="task-row{% if in_today_page %} today-task-row{% endif %}{% if task.is_closed %} closed{% endif %}{% if selected %} selected{% endif %}{% if nested %} sub{% endif %}"{% if nested %} data-group="{{ task.group_id }}"{% endif %}
     role="button" tabindex="0" aria-label="{{ task.title }} 상세 보기"
     data-id="{{ task.pk }}" data-panel="{% url 'task_panel' task.pk %}"
@@ -9,7 +9,7 @@
     {% if not hide_project or linked or task.group_id and group_shown %}<div class="proj">{% if not hide_project %}{{ task.project.name }}{% endif %}{% if linked %} <span class="linked-mark" title="연결 프로젝트: {{ linked_names }}">↔ {{ linked|length }}</span>{% endif %}{% if task.group_id and group_shown %} <span class="sub-of" title="상위 태스크">↳ TASK-{{ task.group_id }}</span>{% endif %}</div>{% endif %}
     <div class="title">{{ task.title }}</div>
     <div class="meta">
-      {% if not hide_assignee %}<span>{{ task.assignee.display_name }}</span>{% endif %}
+      {% if not hide_assignee %}<span>{{ task.assignee|name_in:task.project.org_id }}</span>{% endif %}
       {% if task.priority != 5 %}<span class="badge{% if task.priority >= 8 %} high{% endif %}">중요도 {{ task.priority }}/10</span>{% endif %}
       {% if task.is_stopped %}<span{% if task.is_blocked %} class="danger"{% endif %}>{{ task.stop_reason|default:"사유 없음" }}</span>{% endif %}
       {% if checklist_total %}<span>체크리스트 {{ checklist_done }}/{{ checklist_total }}</span>{% endif %}

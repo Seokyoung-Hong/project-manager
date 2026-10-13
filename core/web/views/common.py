@@ -14,6 +14,7 @@ from accounts.models import User
 from common.dates import fmt_md, overdue_before, today_kst
 from common.errors import ServiceError
 from orgs.models import Organization
+from orgs.names import display_for
 from orgs.services import is_admin, is_member, orgs_of
 from projects.models import Project
 from projects.services import can_view_project
@@ -212,7 +213,7 @@ FIELD_LABELS = {
 }
 
 
-def _display(field, raw: str, viewer=None) -> str:
+def _display(field, raw: str, viewer=None, org=None) -> str:
     if raw == "":
         return "없음"
     if field == "status":
@@ -229,7 +230,7 @@ def _display(field, raw: str, viewer=None) -> str:
         return "예" if raw == "True" else "아니오"
     if field in ("assignee", "reviewer"):
         u = User.objects.filter(pk=raw).first()
-        return u.display_name if u else raw
+        return display_for(u, org) if u else raw
     if field in PROJECT_REF_FIELDS:
         # 못 보는 프로젝트는 history_rows의 history_masker가 이미 '볼 수 없는 프로젝트'로 바꿨다.
         p = Project.objects.filter(pk=raw).first() if raw.isdecimal() else None
@@ -237,29 +238,31 @@ def _display(field, raw: str, viewer=None) -> str:
     if field in ("group", "split"):  # 못 보는 번호는 history_rows가 이미 가렸다(R5)
         return raw.replace(",", ", ")
     if field == "owners":
-        names = [u.display_name for u in User.objects.filter(pk__in=raw.split(","))]
+        names = [display_for(u, org) for u in User.objects.filter(pk__in=raw.split(","))]
         return ", ".join(names) or raw
     return raw
 
 
-def history_rows(logs, viewer=None) -> list[dict]:
+def history_rows(logs, viewer=None, org=None) -> list[dict]:
     """ChangeLog → 패널 표시용. 최신이 먼저. viewer가 있으면 못 보는 연결 프로젝트 이름을 숨긴다."""
     logs = list(logs)
     mask = history_masker(logs, viewer) if viewer is not None else (lambda field, value: value)
     rows = []
     for log in logs:
-        to = _display(log.field, mask(log.field, log.new_value), viewer)
+        to = _display(log.field, mask(log.field, log.new_value), viewer, org)
         if log.note:
             to += f" ({log.note})"
         at = timezone.localtime(log.created_at)
         rows.append(
             {
                 "field": FIELD_LABELS.get(log.field, log.field),
-                "from": _display(log.field, mask(log.field, log.old_value), viewer),
+                "from": _display(log.field, mask(log.field, log.old_value), viewer, org),
                 "to": to,
                 "time": f"{at.month}월 {at.day}일 {at:%H:%M}",
                 # actor가 비면 GitHub 로그인(external_actor)이 대신 남아 있다 — 모델 주석 참고.
-                "actor": log.actor.display_name if log.actor else (log.external_actor or "GitHub"),
+                "actor": display_for(log.actor, org)
+                if log.actor
+                else (log.external_actor or "GitHub"),
                 "source": log.get_source_display(),
             }
         )

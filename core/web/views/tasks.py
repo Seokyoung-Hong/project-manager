@@ -24,6 +24,7 @@ from github.services import (
 )
 from github.writes import default_branch_name
 from notes.services import visible_notes
+from orgs.names import sort_by_name
 from projects.docs import task_doc_choices, task_docs
 from projects.services import visible_projects
 from tasks import services as ts
@@ -128,9 +129,11 @@ def _panel_ctx(request, task, **extra):
         "org_projects": visible_projects(request.user, task.project.org)
         .filter(is_archived=False)
         .order_by("name"),
-        "org_members": task.project.org.members.filter(is_active=True).order_by("display_name"),
+        "org_members": sort_by_name(
+            task.project.org.members.filter(is_active=True), task.project.org_id
+        ),
         "pending_assignee": pending_assignee(task),
-        "history": history_rows(logs, request.user),
+        "history": history_rows(logs, request.user, task.project.org_id),
         "priorities": range(10, 0, -1),
         "due_label": due_label(task),
         "due_class": due_class(task),  # 초과 유예(task.overdue_grace_days)를 본 판정이다
@@ -183,7 +186,9 @@ def task_duplicate(request, task_id):
     task = task_or_404(request.user, task_id)
     ctx = {
         "task": task,
-        "members": task.project.org.members.filter(is_active=True).order_by("display_name"),
+        "members": sort_by_name(
+            task.project.org.members.filter(is_active=True), task.project.org_id
+        ),
         "title": task.title,
         "due_date": "",
         "no_due_reason": "",
