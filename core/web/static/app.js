@@ -5,9 +5,20 @@
   // 패널은 흐름 밖(고정)에 뜬다. 연 요소를 기억해 닫을 때 초점만 돌려준다 — 스크롤은 건드리지 않는다.
   var panelOpener = null, panelOpening = false;
 
+  // 저장 상태 칸(#save-status)은 태스크 패널에만 있다. 없는 화면에서는 화면 읽기용 알림 영역에만 알린다.
+  function announce(text) {
+    var live = document.getElementById("copy-live");
+    if (!live) {
+      live = document.createElement("span");
+      live.id = "copy-live"; live.className = "sr-only"; live.setAttribute("aria-live", "polite");
+      body.appendChild(live);
+    }
+    live.textContent = ""; setTimeout(function () { live.textContent = text; }, 50);
+  }
+
   function flash(text, after) {
     var el = document.getElementById("save-status");
-    if (!el) return;
+    if (!el) return announce(text);
     clearTimeout(t1); clearTimeout(t2);
     el.textContent = text;
     if (after) t1 = setTimeout(function () { el.textContent = after; }, 400);
@@ -15,12 +26,19 @@
   }
 
   // 수동 복사 창을 열거나 취소한 것은 클립보드 복사 성공이 아니다.
-  window.copyText = function (text, successLabel) {
+  // btn을 주면 그 버튼 글자도 잠깐 성공 문구로 바꾼다(저장 상태 칸이 없는 화면에서도 눈에 보이게).
+  window.copyText = function (text, successLabel, btn) {
     return Promise.resolve().then(function () {
       if (!navigator.clipboard) throw new Error("clipboard unavailable");
       return navigator.clipboard.writeText(text);
     }).then(function () {
-      flash(successLabel || "복사됨");
+      var label = successLabel || "복사됨";
+      flash(label);
+      if (btn && !btn.dataset.copyOrig) {
+        btn.dataset.copyOrig = btn.textContent;
+        btn.textContent = label;
+        setTimeout(function () { btn.textContent = btn.dataset.copyOrig; delete btn.dataset.copyOrig; }, 2000);
+      }
       return true;
     }, function () {
       prompt("아래 내용을 선택해 직접 복사해 주세요.", text);
@@ -286,7 +304,7 @@
     if (!b) return;
     e.preventDefault(); e.stopPropagation();
     if (b.dataset.copyText !== undefined) {
-      window.copyText(b.dataset.copyText, b.dataset.copyLabel || "복사됨");
+      window.copyText(b.dataset.copyText, b.dataset.copyLabel || "복사됨", b);
       return;
     }
     var id = b.dataset.copy, url = location.origin + "/tasks/" + id;
