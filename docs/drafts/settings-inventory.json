@@ -1,0 +1,758 @@
+[
+ {
+  "key": "task.default_priority",
+  "group": "task",
+  "scope": "org",
+  "label": "기본 중요도",
+  "help": "생성 화면·API·AI가 중요도를 주지 않았을 때 쓰는 값입니다.",
+  "overridable": true,
+  "hidden": false
+ },
+ {
+  "key": "task.priority_cap",
+  "group": "task",
+  "scope": "org",
+  "label": "중요도 상한",
+  "help": "이 값을 넘는 중요도는 프로젝트 관리자만 정할 수 있습니다. 0이면 제한하지 않습니다.",
+  "overridable": true,
+  "hidden": false
+ },
+ {
+  "key": "task.require_done_when",
+  "group": "task",
+  "scope": "org",
+  "label": "완료 조건 필수",
+  "help": "켜면 완료 조건을 입력해야 태스크를 만들 수 있습니다.",
+  "overridable": true,
+  "hidden": false
+ },
+ {
+  "key": "task.due_required",
+  "group": "task",
+  "scope": "org",
+  "label": "기한 필수",
+  "help": "켜면 기한을 입력해야 하며, 기한 미정 사유로 대신할 수 없습니다.",
+  "overridable": true,
+  "hidden": false
+ },
+ {
+  "key": "task.default_due_days",
+  "group": "task",
+  "scope": "org",
+  "label": "기본 기한(영업일)",
+  "help": "생성 화면에서 오늘 이후 설정한 영업일 수만큼 지난 기한을 제안합니다. 영업일은 월~금이며 공휴일은 따로 제외하지 않습니다. 자동으로 채우지는 않습니다. 0이면 제안하지 않습니다.",
+  "overridable": true,
+  "hidden": false
+ },
+ {
+  "key": "task.doing_limit",
+  "group": "task",
+  "scope": "org",
+  "label": "동시 진행 한도",
+  "help": "한 사람이 동시에 진행 중으로 둘 수 있는 태스크 수입니다. 0이면 제한하지 않습니다.",
+  "overridable": false,
+  "hidden": false
+ },
+ {
+  "key": "task.doing_limit_mode",
+  "group": "task",
+  "scope": "org",
+  "label": "한도 초과 처리",
+  "help": "경고면 숫자만 보여 주고, 차단이면 진행 중으로 바꾸지 못하게 막습니다.",
+  "overridable": false,
+  "hidden": false
+ },
+ {
+  "key": "task.review_required",
+  "group": "task",
+  "scope": "org",
+  "label": "검토 대기 필수",
+  "help": "켜면 검토 대기를 거쳐야 완료할 수 있습니다.",
+  "overridable": true,
+  "hidden": false
+ },
+ {
+  "key": "task.self_review",
+  "group": "task",
+  "scope": "org",
+  "label": "본인 검토 허용",
+  "help": "끄면 담당자 본인이 검토 대기에서 완료로 바꿀 수 없습니다.",
+  "overridable": true,
+  "hidden": false
+ },
+ {
+  "key": "task.reopen_reason_required",
+  "group": "task",
+  "scope": "org",
+  "label": "재개 사유 필수",
+  "help": "켜면 완료·취소한 태스크를 되돌릴 때 사유를 입력해야 합니다.",
+  "overridable": true,
+  "hidden": false
+ },
+ {
+  "key": "task.cancel_reason_required",
+  "group": "task",
+  "scope": "org",
+  "label": "취소 사유 필수",
+  "help": "",
+  "overridable": true,
+  "hidden": false
+ },
+ {
+  "key": "task.assignee_change_reason",
+  "group": "task",
+  "scope": "org",
+  "label": "담당자 변경 사유 필수",
+  "help": "켜면 담당자 변경 사유를 입력해야 하며, 사유는 이력에 남습니다.",
+  "overridable": true,
+  "hidden": false
+ },
+ {
+  "key": "task.due_change_reason",
+  "group": "task",
+  "scope": "org",
+  "label": "기한 변경 사유 필수",
+  "help": "켜면 기한 단축·삭제에도 사유를 입력해야 합니다. 기한 연장은 이 설정과 관계없이 사유를 받습니다.",
+  "overridable": true,
+  "hidden": false
+ },
+ {
+  "key": "task.overdue_grace_days",
+  "group": "task",
+  "scope": "org",
+  "label": "초과 유예(일)",
+  "help": "기한이 지나도 N일까지는 초과로 강조하지 않고 초과 알림도 보내지 않습니다.",
+  "overridable": true,
+  "hidden": false
+ },
+ {
+  "key": "task.reject_reason_required",
+  "group": "task",
+  "scope": "org",
+  "label": "반려 사유 필수",
+  "help": "켜면 검토 대기에서 시작 전·진행 중으로 되돌릴 때 사유를 입력해야 합니다.",
+  "overridable": true,
+  "hidden": false
+ },
+ {
+  "key": "project.create_by",
+  "group": "project",
+  "scope": "org",
+  "label": "프로젝트 생성",
+  "help": "",
+  "overridable": false,
+  "hidden": false
+ },
+ {
+  "key": "project.edit_by",
+  "group": "project",
+  "scope": "org",
+  "label": "이름·목적·담당 팀 수정",
+  "help": "",
+  "overridable": false,
+  "hidden": false
+ },
+ {
+  "key": "project.status_by",
+  "group": "project",
+  "scope": "org",
+  "label": "프로젝트 상태 변경",
+  "help": "",
+  "overridable": false,
+  "hidden": false
+ },
+ {
+  "key": "project.archive_by",
+  "group": "project",
+  "scope": "org",
+  "label": "보관·복원",
+  "help": "",
+  "overridable": false,
+  "hidden": false
+ },
+ {
+  "key": "project.settings_by",
+  "group": "project",
+  "scope": "org",
+  "label": "프로젝트 설정 편집",
+  "help": "저장소 규칙과 프로젝트 업무 규칙 문단을 포함합니다.",
+  "overridable": false,
+  "hidden": false
+ },
+ {
+  "key": "project.roadmap_by",
+  "group": "project",
+  "scope": "org",
+  "label": "마일스톤·의존성",
+  "help": "",
+  "overridable": false,
+  "hidden": false
+ },
+ {
+  "key": "project.owner_required",
+  "group": "project",
+  "scope": "org",
+  "label": "프로젝트 관리자 1명 이상",
+  "help": "켜면 관리자가 없는 프로젝트를 만들거나 마지막 관리자를 뺄 수 없습니다. 이미 관리자가 없는 프로젝트는 그대로 둡니다.",
+  "overridable": false,
+  "hidden": false
+ },
+ {
+  "key": "project.default_view",
+  "group": "project",
+  "scope": "org",
+  "label": "프로젝트 첫 화면",
+  "help": "",
+  "overridable": true,
+  "hidden": false
+ },
+ {
+  "key": "project.dev_tools",
+  "group": "project",
+  "scope": "org",
+  "label": "개발 도구 사용",
+  "help": "끄면 GitHub·API 문서 탭과 태스크의 GitHub 블록을 숨깁니다. 저장소가 연결된 프로젝트는 끌 수 없습니다.",
+  "overridable": true,
+  "hidden": false
+ },
+ {
+  "key": "org.invite_days",
+  "group": "org",
+  "scope": "org",
+  "label": "초대 링크 만료(일)",
+  "help": "",
+  "overridable": false,
+  "hidden": false
+ },
+ {
+  "key": "org.invite_max_uses",
+  "group": "org",
+  "scope": "org",
+  "label": "초대 링크 사용 횟수",
+  "help": "0이면 무제한입니다.",
+  "overridable": false,
+  "hidden": false
+ },
+ {
+  "key": "org.tags_by",
+  "group": "org",
+  "scope": "org",
+  "label": "보유 기술 태그 편집",
+  "help": "",
+  "overridable": false,
+  "hidden": false
+ },
+ {
+  "key": "org.team_join_self",
+  "group": "org",
+  "scope": "org",
+  "label": "팀 자율 참여",
+  "help": "켜면 멤버가 스스로 팀에 들어가고 나갈 수 있습니다.",
+  "overridable": false,
+  "hidden": false
+ },
+ {
+  "key": "org.attachment_quota_mb",
+  "group": "org",
+  "scope": "org",
+  "label": "첨부 파일 용량(MB)",
+  "help": "조직 전체 첨부 파일의 합계 상한입니다. 0이면 올리기를 막습니다.",
+  "overridable": false,
+  "hidden": false
+ },
+ {
+  "key": "ai.enabled",
+  "group": "ai",
+  "scope": "org",
+  "label": "AI 쓰기 허용",
+  "help": "끄면 이 조직에 대한 AI의 모든 쓰기를 막습니다. 읽기는 남습니다.",
+  "overridable": false,
+  "hidden": false
+ },
+ {
+  "key": "ai.create_task",
+  "group": "ai",
+  "scope": "org",
+  "label": "태스크 만들기",
+  "help": "",
+  "overridable": false,
+  "hidden": false
+ },
+ {
+  "key": "ai.edit_text",
+  "group": "ai",
+  "scope": "org",
+  "label": "본문 고치기",
+  "help": "제목·설명·완료 조건·다음 행동·메모·체크리스트입니다.",
+  "overridable": false,
+  "hidden": false
+ },
+ {
+  "key": "ai.record_work",
+  "group": "ai",
+  "scope": "org",
+  "label": "AI 작업 기록",
+  "help": "태스크에 사용자 입력과 AI의 주요 판단을 의사 요지로 기록합니다. 대화 원문은 사용자가 명시적으로 요청하지 않는 한 전송하지 않습니다.",
+  "overridable": false,
+  "hidden": false
+ },
+ {
+  "key": "ai.change_assignee",
+  "group": "ai",
+  "scope": "org",
+  "label": "담당자 바꾸기",
+  "help": "",
+  "overridable": false,
+  "hidden": false
+ },
+ {
+  "key": "ai.change_due",
+  "group": "ai",
+  "scope": "org",
+  "label": "기한 바꾸기",
+  "help": "",
+  "overridable": false,
+  "hidden": false
+ },
+ {
+  "key": "ai.change_priority",
+  "group": "ai",
+  "scope": "org",
+  "label": "중요도 바꾸기",
+  "help": "",
+  "overridable": false,
+  "hidden": false
+ },
+ {
+  "key": "ai.priority_cap",
+  "group": "ai",
+  "scope": "org",
+  "label": "AI 중요도 상한",
+  "help": "AI는 이 값을 넘는 중요도를 정할 수 없습니다. 0이면 제한하지 않습니다.",
+  "overridable": false,
+  "hidden": false
+ },
+ {
+  "key": "ai.transition_open",
+  "group": "ai",
+  "scope": "org",
+  "label": "미완료 상태 바꾸기",
+  "help": "",
+  "overridable": false,
+  "hidden": false
+ },
+ {
+  "key": "ai.close_task",
+  "group": "ai",
+  "scope": "org",
+  "label": "완료·취소 처리",
+  "help": "",
+  "overridable": false,
+  "hidden": false
+ },
+ {
+  "key": "ai.reopen_task",
+  "group": "ai",
+  "scope": "org",
+  "label": "완료·취소 되돌리기",
+  "help": "",
+  "overridable": false,
+  "hidden": false
+ },
+ {
+  "key": "ai.delete",
+  "group": "ai",
+  "scope": "org",
+  "label": "팀·프로젝트·태스크 삭제",
+  "help": "삭제는 되돌릴 수 없어 기본값이 막기입니다. 사람이 화면에서 지우는 길은 그대로 있습니다.",
+  "overridable": false,
+  "hidden": false
+ },
+ {
+  "key": "ai.manage_repo",
+  "group": "ai",
+  "scope": "org",
+  "label": "저장소 연결·해제",
+  "help": "AI가 프로젝트에 GitHub 저장소를 잇거나 끊는 것입니다.",
+  "overridable": false,
+  "hidden": false
+ },
+ {
+  "key": "ai.manage_teams",
+  "group": "ai",
+  "scope": "org",
+  "label": "팀 만들고 사람 넣기",
+  "help": "",
+  "overridable": false,
+  "hidden": false
+ },
+ {
+  "key": "ai.create_request",
+  "group": "ai",
+  "scope": "org",
+  "label": "요청 보내기·취소",
+  "help": "",
+  "overridable": false,
+  "hidden": false
+ },
+ {
+  "key": "ai.answer_request",
+  "group": "ai",
+  "scope": "org",
+  "label": "요청 수락·거절·완료",
+  "help": "수락은 사람의 약속이고 태스크·담당이 바뀌므로 기본값이 막기입니다.",
+  "overridable": false,
+  "hidden": false
+ },
+ {
+  "key": "notify.deadline_kinds",
+  "group": "notify",
+  "scope": "org",
+  "label": "보내는 기한 알림",
+  "help": "",
+  "overridable": false,
+  "hidden": false
+ },
+ {
+  "key": "notify.send_hour",
+  "group": "notify",
+  "scope": "org",
+  "label": "기한 알림 시각",
+  "help": "0~23은 알림을 보낼 시각입니다. -1이면 서버에 설정된 기본 시각을 따릅니다.",
+  "overridable": false,
+  "hidden": false
+ },
+ {
+  "key": "notify.overdue_repeat",
+  "group": "notify",
+  "scope": "org",
+  "label": "초과 알림 반복",
+  "help": "",
+  "overridable": false,
+  "hidden": false
+ },
+ {
+  "key": "notify.quiet_weekend",
+  "group": "notify",
+  "scope": "org",
+  "label": "주말에는 보내지 않기",
+  "help": "켜면 토·일에는 기한 DM을 보내지 않습니다.",
+  "overridable": false,
+  "hidden": false
+ },
+ {
+  "key": "notify.weekly_enabled",
+  "group": "notify",
+  "scope": "org",
+  "label": "주간 보고",
+  "help": "",
+  "overridable": false,
+  "hidden": false
+ },
+ {
+  "key": "notify.weekly_weekday",
+  "group": "notify",
+  "scope": "org",
+  "label": "주간 보고 요일",
+  "help": "0=월요일, 1=화요일, 2=수요일, 3=목요일, 4=금요일, 5=토요일, 6=일요일입니다. -1이면 서버 기본 요일을 따릅니다.",
+  "overridable": false,
+  "hidden": false
+ },
+ {
+  "key": "notify.weekly_hour",
+  "group": "notify",
+  "scope": "org",
+  "label": "주간 보고 시각",
+  "help": "0~23은 보고를 보낼 시각입니다. -1이면 서버 기본 시각을 따릅니다.",
+  "overridable": false,
+  "hidden": false
+ },
+ {
+  "key": "notify.blocked_escalate_days",
+  "group": "notify",
+  "scope": "org",
+  "label": "막힘 관리자 알림(일)",
+  "help": "막힘이 N일을 넘으면 프로젝트 관리자에게 DM을 보냅니다. 0이면 보내지 않습니다.",
+  "overridable": true,
+  "hidden": false
+ },
+ {
+  "key": "notify.review_nudge_days",
+  "group": "notify",
+  "scope": "org",
+  "label": "검토 독촉(일)",
+  "help": "검토 대기가 N일을 넘으면 프로젝트 관리자에게 DM을 보냅니다. 0이면 보내지 않습니다.",
+  "overridable": true,
+  "hidden": false
+ },
+ {
+  "key": "notify.project_channel_events",
+  "group": "notify",
+  "scope": "org",
+  "label": "프로젝트 채널 게시",
+  "help": "채널이 연결된 프로젝트만 해당합니다. 멘션은 넣지 않습니다.",
+  "overridable": true,
+  "hidden": false
+ },
+ {
+  "key": "notify.team_channel_weekly",
+  "group": "notify",
+  "scope": "org",
+  "label": "팀 채널 주간 보고",
+  "help": "켜면 조직 채널 외에 팀 채널에도 그 팀 담당 프로젝트만 추려 보냅니다.",
+  "overridable": false,
+  "hidden": true
+ },
+ {
+  "key": "notify.github_channel_events",
+  "group": "notify",
+  "scope": "org",
+  "label": "GitHub 사건 채널 게시",
+  "help": "채널이 연결된 프로젝트만 해당합니다. 멘션은 넣지 않습니다.",
+  "overridable": true,
+  "hidden": false
+ },
+ {
+  "key": "notify.github_dm",
+  "group": "notify",
+  "scope": "org",
+  "label": "GitHub 개인 DM",
+  "help": "리뷰 요청은 검토자에게, 변경 요청·CI 실패·재개는 담당자에게 DM을 보냅니다. 개인 설정 '개인 DM 받기'를 끈 사람에게는 가지 않습니다.",
+  "overridable": true,
+  "hidden": false
+ },
+ {
+  "key": "meeting.recording_enabled",
+  "group": "meeting",
+  "scope": "org",
+  "label": "회의 녹음",
+  "help": "켜면 Discord에서 /회의시작으로 회의를 녹음해 전사문으로 회의록 초안을 만들 수 있습니다.",
+  "overridable": true,
+  "hidden": false
+ },
+ {
+  "key": "meeting.audio_keep_days",
+  "group": "meeting",
+  "scope": "org",
+  "label": "오디오 보관(일)",
+  "help": "녹음 오디오를 보관하는 기간입니다. 0이면 전사가 끝나는 즉시 지웁니다. 백업에는 넣지 않습니다.",
+  "overridable": false,
+  "hidden": false
+ },
+ {
+  "key": "meeting.max_minutes",
+  "group": "meeting",
+  "scope": "org",
+  "label": "최대 녹음 길이(분)",
+  "help": "이 길이를 넘으면 녹음을 자동으로 마칩니다.",
+  "overridable": true,
+  "hidden": false
+ },
+ {
+  "key": "meeting.leave_grace_s",
+  "group": "meeting",
+  "scope": "org",
+  "label": "진행자 퇴장 유예(초)",
+  "help": "회의 진행자가 음성 채널을 떠난 뒤 이 시간 안에 돌아오지 않으면 녹음을 마칩니다. 순간 끊김에 대비한 값입니다.",
+  "overridable": false,
+  "hidden": false
+ },
+ {
+  "key": "meeting.default_visibility",
+  "group": "meeting",
+  "scope": "org",
+  "label": "확정 시 기본 공개 범위",
+  "help": "회의록을 확정할 때 처음 선택되어 있는 공개 범위입니다.",
+  "overridable": false,
+  "hidden": false
+ },
+ {
+  "key": "meeting.glossary",
+  "group": "meeting",
+  "scope": "org",
+  "label": "전사 용어집",
+  "help": "전사 서버에 미리 알려 줄 이름과 용어입니다. 쉼표나 줄바꿈으로 구분해 주세요. 조직과 프로젝트의 용어는 합쳐서 사용하며 프로젝트 용어가 먼저 들어갑니다. 참여자·구성원 이름 다음에, 자동으로 찾은 용어보다 먼저 들어갑니다. 한도를 넘는 용어는 제외됩니다.",
+  "overridable": true,
+  "hidden": false
+ },
+ {
+  "key": "meeting.stt_url",
+  "group": "meeting",
+  "scope": "org",
+  "label": "로컬 전사 서버 주소",
+  "help": "OpenAI 호환 전사 서버 주소입니다(예: http://172.30.1.50:8000). 주소가 없으면 조직의 OpenAI 키로 전사하는 방식이며, 키도 없으면 녹음만 하는 방식입니다. http를 사용할 수 있는 주소는 사설 대역뿐입니다.",
+  "overridable": false,
+  "hidden": false
+ },
+ {
+  "key": "meeting.stt_model",
+  "group": "meeting",
+  "scope": "org",
+  "label": "로컬 전사 모델",
+  "help": "로컬 서버에 보낼 모델 이름입니다. 비우면 whisper-1로 보냅니다.",
+  "overridable": false,
+  "hidden": false
+ },
+ {
+  "key": "meeting.stt_timeout_s",
+  "group": "meeting",
+  "scope": "org",
+  "label": "전사 응답 대기(초)",
+  "help": "구간 하나의 응답을 기다리는 최대 시간입니다.",
+  "overridable": false,
+  "hidden": false
+ },
+ {
+  "key": "meeting.stt_api_key",
+  "group": "meeting",
+  "scope": "org",
+  "label": "로컬 전사 서버 키",
+  "help": "로컬 서버의 Bearer 키입니다. 암호화해 저장하며 화면에는 설정 여부만 보입니다.",
+  "overridable": false,
+  "hidden": false
+ },
+ {
+  "key": "meeting.openai_api_key",
+  "group": "meeting",
+  "scope": "org",
+  "label": "OpenAI 키",
+  "help": "로컬 전사 서버가 없거나 연결되지 않을 때 OpenAI Whisper로 전사하는 데 사용하는 키입니다. 서버 주소와 키가 모두 없으면 녹음만 하는 방식입니다. 녹음 파일은 회의록 화면에서 내려받아 직접 전사해 주세요. 키는 암호화해 저장하는 값이며, 화면에 표시되는 정보는 설정 여부뿐입",
+  "overridable": false,
+  "hidden": false
+ },
+ {
+  "key": "meeting.member_pc",
+  "group": "meeting",
+  "scope": "org",
+  "label": "멤버 PC로 전사",
+  "help": "켜면 구성원이 자기 PC에 연결한 전사 서버로 이 조직 녹음을 전사할 수 있습니다. 끄면 대기 중인 PC 전사는 취소됩니다.",
+  "overridable": false,
+  "hidden": false
+ },
+ {
+  "key": "meeting.transcribe_level",
+  "group": "meeting",
+  "scope": "org",
+  "label": "조직 전사 수단을 쓸 수 있는 사람",
+  "help": "조직 전사 서버와 조직 OpenAI 키로 전사를 시작할 수 있는 사람입니다. 멤버는 녹음마다 한 번만 쓸 수 있습니다.",
+  "overridable": false,
+  "hidden": false
+ },
+ {
+  "key": "assist.enabled",
+  "group": "assist",
+  "scope": "org",
+  "label": "AI 자동완성 사용",
+  "help": "끄면 이 조직의 내용으로 조직 AI와 개인 AI를 모두 사용할 수 없으며, AI 자동완성과 태스크 후보 뽑기 버튼이 표시되지 않습니다.",
+  "overridable": false,
+  "hidden": false
+ },
+ {
+  "key": "assist.org_url",
+  "group": "assist",
+  "scope": "org",
+  "label": "조직 AI 주소",
+  "help": "OpenAI 호환 AI 서버 주소입니다. 예: https://api.example.com/v1. 사설망 주소는 서비스 운영자의 허용 호스트 등록이 필요합니다.",
+  "overridable": false,
+  "hidden": false
+ },
+ {
+  "key": "assist.org_model",
+  "group": "assist",
+  "scope": "org",
+  "label": "조직 AI 모델",
+  "help": "조직 AI 서버에서 사용할 모델 이름입니다.",
+  "overridable": false,
+  "hidden": false
+ },
+ {
+  "key": "assist.org_api_key",
+  "group": "assist",
+  "scope": "org",
+  "label": "조직 AI 키",
+  "help": "키는 암호화하여 저장하며 화면에는 설정 여부만 표시됩니다.",
+  "overridable": false,
+  "hidden": false
+ },
+ {
+  "key": "assist.org_level",
+  "group": "assist",
+  "scope": "org",
+  "label": "조직 AI 사용 권한",
+  "help": "",
+  "overridable": false,
+  "hidden": false
+ },
+ {
+  "key": "assist.org_daily_limit",
+  "group": "assist",
+  "scope": "org",
+  "label": "조직 AI 하루 한도(구성원 1명)",
+  "help": "구성원 1명이 하루에 조직 AI로 실행할 수 있는 작업 수입니다. 기본값은 30이며, 관리자는 한도에서 제외됩니다. 0이면 제한하지 않습니다.",
+  "overridable": false,
+  "hidden": false
+ },
+ {
+  "key": "user.notify_dm",
+  "group": "user",
+  "scope": "user",
+  "label": "개인 DM 받기",
+  "help": "끄면 기한·막힘·검토 대기 관리자 알림·GitHub DM을 받지 않습니다. 채널 주간 보고는 그대로입니다.",
+  "overridable": false,
+  "hidden": false
+ },
+ {
+  "key": "user.notify_kinds",
+  "group": "user",
+  "scope": "user",
+  "label": "받을 기한 알림",
+  "help": "조직이 끈 종류는 켤 수 없습니다.",
+  "overridable": false,
+  "hidden": false
+ },
+ {
+  "key": "user.notify_hour",
+  "group": "user",
+  "scope": "user",
+  "label": "내 기한 알림 시각",
+  "help": "0~23은 내 기한 알림 시각입니다. -1이면 조직 설정을 따릅니다.",
+  "overridable": false,
+  "hidden": false
+ },
+ {
+  "key": "user.start_page",
+  "group": "user",
+  "scope": "user",
+  "label": "로그인 후 첫 화면",
+  "help": "",
+  "overridable": false,
+  "hidden": false
+ },
+ {
+  "key": "user.me_group",
+  "group": "user",
+  "scope": "user",
+  "label": "내 태스크 기본 묶음",
+  "help": "",
+  "overridable": false,
+  "hidden": false
+ },
+ {
+  "key": "user.me_sort",
+  "group": "user",
+  "scope": "user",
+  "label": "내 태스크 기본 정렬",
+  "help": "",
+  "overridable": false,
+  "hidden": false
+ },
+ {
+  "key": "user.board_default",
+  "group": "user",
+  "scope": "user",
+  "label": "프로젝트를 항상 보드로",
+  "help": "프로젝트 설정보다 우선합니다.",
+  "overridable": false,
+  "hidden": false
+ }
+]
