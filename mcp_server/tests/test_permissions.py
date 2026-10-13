@@ -106,6 +106,13 @@ def test_needs_table_covers_every_tool():
         "revert_doc",
         "move_doc",
         "import_docs",
+        "list_repo_issues",
+        "get_doc_backlinks",
+        "list_notes",
+        "get_note",
+        "import_issue",
+        "create_task_issue",
+        "update_note",
         "search",
         "fetch",
     }

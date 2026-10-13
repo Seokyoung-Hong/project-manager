@@ -7,6 +7,13 @@ from mcp_server.auth import current_token
 from mcp_server.core_client import CoreError
 
 TOOL_NAMES = {
+    "list_repo_issues",
+    "get_doc_backlinks",
+    "list_notes",
+    "get_note",
+    "import_issue",
+    "create_task_issue",
+    "update_note",
     "get_guide",
     "list_orgs",
     "list_org_repos",
@@ -322,7 +329,7 @@ async def test_tool_names_registered(fake_core):
     finally:
         current_token.reset(tok)
     assert {t.name for t in tools} == TOOL_NAMES
-    assert len(TOOL_NAMES) == 80
+    assert len(TOOL_NAMES) == 87
 
 
 def test_governance_tool(fake_core, with_token):
@@ -495,3 +502,28 @@ def test_update_task_git_project(fake_core, with_token):
     assert last_body(fake_core) == {"version": 1, "git_project_id": 5}
     fn("update_task")(1, version=2, clear_git_project=True)
     assert last_body(fake_core) == {"version": 2, "git_project_id": None}
+
+
+def test_note_issue_backlink_tools_send_expected_requests(fake_core, with_token):
+    """가짜 core에는 이 끝점들이 없다 — 보낸 경로·본문만 본다."""
+    cases = [
+        (lambda: fn("list_notes")(1, status="draft"), "GET", "/api/orgs/1/notes?status=draft"),
+        (lambda: fn("get_note")(4, include_transcript=True), "GET", "/api/notes/4?transcript=true"),
+        (lambda: fn("get_doc_backlinks")(5), "GET", "/api/project-docs/5/backlinks"),
+        (
+            lambda: fn("list_repo_issues")(2, imported=False),
+            "GET",
+            "/api/projects/2/issues?imported=false",
+        ),
+        (lambda: fn("import_issue")(2, 17), "POST", "/api/projects/2/issues/17/import"),
+        (lambda: fn("create_task_issue")(3), "POST", "/api/tasks/3/github/issue"),
+    ]
+    for call, method, path in cases:
+        with pytest.raises(CoreError):
+            call()
+        assert fake_core.calls[-1][:2] == (method, path)
+
+    with pytest.raises(CoreError):
+        fn("update_note")(note_id=4, version=2, body_md="고친 본문", task_ids=[9])
+    assert fake_core.calls[-1][:2] == ("PATCH", "/api/notes/4")
+    assert last_body(fake_core) == {"version": 2, "body_md": "고친 본문", "task_ids": [9]}

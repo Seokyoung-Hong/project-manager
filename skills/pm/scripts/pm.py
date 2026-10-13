@@ -27,7 +27,7 @@ import webbrowser
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 from urllib.error import HTTPError, URLError
-from urllib.parse import parse_qs, urlencode, urlparse
+from urllib.parse import parse_qs, unquote, urlencode, urlparse
 from urllib.request import Request, urlopen
 
 METHODS = {"GET", "POST", "PATCH", "PUT", "DELETE"}
@@ -141,6 +141,9 @@ def call(method, path, query=None, body=None, key=None):
             # 구성원 정보가 빈 조직은 결과에서 빠졌다: 입력 안내를 함께 보여 준다
             for b in json.loads(r.headers.get("X-Blocked-Orgs") or "[]"):
                 print(f"{b['message']} 입력: {b['url']}", file=sys.stderr)
+            disposition = r.headers.get("Content-Disposition") or ""
+            if "filename" in disposition:  # 첨부(inline 포함)·내보내기
+                return _save(raw, disposition)
             return json.loads(raw) if raw else None
     except HTTPError as e:
         text = e.read().decode('utf-8', errors='replace')
@@ -155,6 +158,17 @@ def call(method, path, query=None, body=None, key=None):
         raise SystemExit(f"HTTP {e.code}: {text}")
     except URLError as e:
         raise SystemExit(f"연결 실패: {e.reason}")
+
+
+def _save(raw, disposition):
+    """파일 응답(첨부 받기·문서 내보내기)은 현재 폴더에 저장하고 경로만 돌려준다. 있는 파일은 덮어쓰지 않는다."""
+    m = re.search(r"filename\*=UTF-8''([^;]+)", disposition, re.I) or re.search(r'filename="?([^";]+)', disposition)
+    name = Path(unquote(m.group(1)) if m else "download.bin").name
+    out = Path(name)
+    if out.exists():
+        raise SystemExit(f"{out} 파일이 이미 있습니다. 옮기거나 지운 뒤 다시 받아 주세요.")
+    out.write_bytes(raw)
+    return {"saved": str(out.resolve()), "bytes": len(raw)}
 
 
 def summarize(doc, needle=""):

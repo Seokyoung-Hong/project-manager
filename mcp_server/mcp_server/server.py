@@ -924,6 +924,32 @@ def connect_repo(project_id: int, url: str) -> dict:
 
 
 @mcp.tool()
+def list_repo_issues(project_id: int, imported: bool | None = None, query: str = "") -> list[dict]:
+    """프로젝트 저장소의 열린 이슈(동기화된 사본, 최근 100개). imported=false면 아직 태스크가 없는 것만,
+    true면 태스크가 있는 것만. query는 제목·본문 검색. 결과: [{number, title, labels, assignee_login, url, task}]"""
+    return _core().get(
+        f"/api/projects/{project_id}/issues",
+        imported=None if imported is None else str(imported).lower(),
+        q=query or None,
+    )
+
+
+@mcp.tool()
+def import_issue(project_id: int, number: int) -> dict:
+    """저장소 이슈를 내 태스크로 가져온다. 이미 가져온 이슈면 그 태스크를 돌려준다(중복으로 만들지 않는다).
+    가져오기 전에 사용자에게 어느 이슈를 가져올지 확인받는다."""
+    return _core().post(f"/api/projects/{project_id}/issues/{number}/import")
+
+
+@mcp.tool()
+def create_task_issue(task_id: int) -> dict:
+    """태스크로 GitHub 이슈를 만들고 잇는다. 이슈는 사용자의 GitHub 권한으로 만들어진다.
+    만들기 전에 사용자에게 확인받는다. 조직이 AI의 태스크 만들기(ai.create_task)를 막았으면 실패한다.
+    결과: {number, title, url}. 실패해도 태스크는 그대로 남는다."""
+    return _core().post(f"/api/tasks/{task_id}/github/issue")
+
+
+@mcp.tool()
 def list_docs(
     project_id: int | None = None,
     org_id: int | None = None,
@@ -1053,6 +1079,46 @@ def import_docs(
         if v is not None:
             body[k] = v
     return _core().post(f"/api/orgs/{org_id}/docs/import", body)
+
+
+@mcp.tool()
+def get_doc_backlinks(doc_id: int) -> dict:
+    """이 문서를 가리키는 문서·태스크(볼 수 있는 것만). 결과: {docs: [{id, title, kind}], tasks: [{id, title}]}
+    문서를 크게 고치거나 옮기기 전에 영향받는 곳을 확인할 때 쓴다."""
+    return _core().get(f"/api/project-docs/{doc_id}/backlinks")
+
+
+@mcp.tool()
+def list_notes(org_id: int, status: str | None = None, project_id: int | None = None) -> dict:
+    """조직의 회의록 목록(본문 제외, 최근 200개). status는 draft(초안)·final(확정).
+    초안은 볼 수 있는 사람(진행자·조직 관리자)에게만 나온다. 결과: {items: [회의록]} — 본문은 get_note로 읽는다."""
+    return _core().get(f"/api/orgs/{org_id}/notes", status=status, project=project_id)
+
+
+@mcp.tool()
+def get_note(note_id: int, include_transcript: bool = False) -> dict:
+    """회의록 하나의 본문(마크다운)까지. include_transcript=true면 녹음 전사문·통계·참여자도 함께 준다.
+    전사문은 녹음 원문이고 회의록은 정리한 글이다 — 둘을 섞어 말하지 않는다."""
+    return _core().get(f"/api/notes/{note_id}", transcript=include_transcript or None)
+
+
+@mcp.tool()
+def update_note(
+    note_id: int,
+    version: int,
+    title: str | None = None,
+    body_md: str | None = None,
+    tags: list[str] | None = None,
+    task_ids: list[int] | None = None,
+) -> dict:
+    """회의록을 고친다. get_note로 읽은 version을 반드시 함께 보낸다. body_md는 통째로 바뀐다.
+    task_ids는 이 회의록에 태스크 연결을 더하기만 한다(빼지 않는다). 초안은 진행자·조직 관리자만 고친다.
+    초안 확정은 AI가 할 수 없다 — 사람에게 웹 회의록 화면에서 확정해 달라고 안내한다."""
+    body: dict = {"version": version}
+    for k, v in (("title", title), ("body_md", body_md), ("tags", tags), ("task_ids", task_ids)):
+        if v is not None:
+            body[k] = v
+    return _core().patch(f"/api/notes/{note_id}", body)
 
 
 @mcp.tool()

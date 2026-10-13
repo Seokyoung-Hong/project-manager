@@ -92,8 +92,9 @@ MCP_ALLOWED_HOSTS=udally.sio2.kr
 - 조직·프로젝트: `list_orgs` `get_org` `list_projects` `get_project` `create_project` `update_project`
 - 태스크: `list_tasks` `get_task` `get_task_github` `get_task_history` `create_task` `update_task`
   `transition_task` `extend_task` `append_note` `delete_task`
-- GitHub 저장소: `list_org_repos` `get_project_repo` `connect_repo`; 조회는 저장소 접근 권한을 확인한다.
-- 문서: `list_docs` `get_doc` `create_doc` `update_doc`
+- GitHub 저장소: `list_org_repos` `get_project_repo` `connect_repo` `list_repo_issues` `import_issue` `create_task_issue`; 조회는 저장소 접근 권한을 확인한다.
+- 문서: `list_docs` `get_doc` `create_doc` `update_doc` `list_doc_revisions` `revert_doc` `move_doc` `import_docs` `get_doc_backlinks`
+- 회의록: `list_notes` `get_note` `update_note` (확정은 사람이 웹에서)
 - 조직·팀: `list_members` `list_teams` `create_team` `add_team_member` `remove_team_member` `delete_team`
   `set_project_teams` `create_invite` `revoke_invite`
 - 설정·개인화: `get_governance` `update_governance` `get_settings` `update_org_settings`

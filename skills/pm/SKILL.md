@@ -27,7 +27,7 @@ argument-hint: "[하려는 일]"
   허용 화면에서 읽기/쓰기를 사람이 고른다 — 쓰기 명령에는 쓰기를 골라야 한다. 환경 변수 `UDALLY_TOKEN`이 있으면 그것이 우선이다.
   **토큰 파일을 열어 보거나 토큰을 대화·명령 인자·파일에 적지 않는다.**
 - 다른 서버를 쓰면 `UDALLY_URL`로 주소를 바꾼다.
-- 출력은 UTF-8 JSON이다. 파일로 저장해 파이썬으로 다시 읽을 때는 `open(..., encoding="utf-8")`로 연다
+- 출력은 UTF-8 JSON이다. 파일을 돌려주는 호출(첨부 받기·문서 내보내기)은 현재 폴더에 저장하고 `{"saved", "bytes"}`만 낸다(같은 이름 파일이 있으면 멈춘다). 파일로 저장해 파이썬으로 다시 읽을 때는 `open(..., encoding="utf-8")`로 연다
   (Windows 기본 인코딩 cp949로 열면 한글에서 `UnicodeDecodeError`가 난다).
 
 ```
@@ -78,7 +78,7 @@ PM apidoc 12 put openapi.json                         # 프로젝트 API 문서 
 |---|---|
 | 내 정보·조직 | `GET /api/me` · `GET /api/orgs/{org}` |
 | 조직 현황·멤버·팀 | `GET /api/orgs/{org}/status` · `/members` · `/teams` |
-| 조직의 GitHub 저장소 | `GET /api/orgs/{org}/repos` (프로젝트에 연결할 후보) |
+| 조직의 GitHub 저장소 | `GET /api/orgs/{org}/repos` (프로젝트에 연결할 후보) · 앱 권한 점검 `GET /api/orgs/{org}/github/capabilities` (조직 관리자) |
 | 프로젝트 | `GET /api/projects?org=` (`include_archived=true`로 보관 포함) · `GET /api/projects/{id}` · `GET /api/projects/{id}/repo` |
 | 태스크 목록 | `GET /api/orgs/{org}/tasks` (`project` 기본 포함, `assignee` `status`=쉼표 목록 `due_from` `due_to` `q`=제목 검색) |
 | 태스크 상세 | `GET /api/tasks/{id}` (`TASK-N`의 id는 N) · 이력 `/history` · GitHub `/github` |
@@ -88,7 +88,9 @@ PM apidoc 12 put openapi.json                         # 프로젝트 API 문서 
 | 오늘 할 일 | `GET /api/today` |
 | 요청 | `GET /api/requests` (`box`=received·sent·all, 기본 received · `status`=쉼표 목록 · `org`) · `GET /api/requests/{id}` (`can_answer` `can_cancel` `can_complete`) |
 | 주간 보고 데이터 | `GET /api/reports/weekly?org=` (`week_start` 선택) |
-| 프로젝트 문서 | `GET /api/project-docs?project=` (`org` `q`) · `GET /api/project-docs/{id}` |
+| 문서 | `GET /api/orgs/{org}/docs` (`kind`=doc·meeting·all `project` `team` `q`) · `GET /api/project-docs?project=` (`org` `team` `parent`(0은 맨 위만) `template=true` `q`) · `GET /api/project-docs/{id}` · 이전 판 `…/{id}/revisions` (`body=true`면 본문까지) · 이 문서를 가리키는 문서·태스크 `…/{id}/backlinks` |
+| 문서 내보내기 | `GET /api/project-docs/{id}/export.md` · `GET /api/orgs/{org}/docs/export.zip` (`root`=그 문서와 하위만, `kind`) — 파일로 저장된다 |
+| 회의록 | `GET /api/orgs/{org}/notes` (본문 제외 목록, `status`=draft·final `project`) · `GET /api/notes/{id}` (본문, `transcript=true`면 전사문·참여자도) — 초안은 볼 수 있는 사람만 |
 | 프로젝트 API 문서 | `PM apidoc {id}`(목록) · `PM apidoc {id} <경로 일부>`(스키마) |
 | 설정 | `GET /api/orgs/{org}/settings` · `GET /api/projects/{id}/settings` · `GET /api/me/settings` |
 | 거버넌스 | `GET /api/orgs/{org}/governance` |
@@ -118,7 +120,11 @@ PM apidoc 12 put openapi.json                         # 프로젝트 API 문서 
 | 오늘 할 일에 넣기·빼기 | `POST /api/today` `{"task_id"}` · `DELETE /api/today/{task_id}` · 뺀 것 모두 되돌리기 `DELETE /api/today/excluded` |
 | 오늘 할 일 순서 | `PATCH /api/today/order` `{"task_ids": [...]}` (보이는 순서 전체) |
 | 오늘 할 일 자동 채움 | `PATCH /api/today/settings` `{"auto_pull_days"}` (기한이 이 일수 안에 든 태스크를 자동으로 담는다. 0·1·3·5·7·14, 0은 끄기) |
-| 프로젝트 문서 쓰기 | `POST /api/project-docs` `{"project_id", "title", "body_md"}` · `PATCH /api/project-docs/{id}` `{"version", "title"?, "body_md"?}` |
+| 문서 쓰기 | `POST /api/project-docs` `{"title", "body_md"}` + 범위 `project_id`·`team_id`·`org_id`(조직 전체) 중 하나, `parent_id`(하위 문서, 범위는 상위를 따름)·`template_id` · `PATCH /api/project-docs/{id}` `{"version", "title"?, "body_md"?}` — 고치기·되돌리기는 조직 설정 `ai.edit_text`를 따른다 |
+| 문서 가져오기 | `POST /api/orgs/{org}/docs/import` `{"files": [{"name": "a.md", "content"}], "project_id"?, "team_id"?, "parent_id"?}` — Notion 내보내기 md도 그대로, 같은 것은 건너뛴다 |
+| ✋ 문서 되돌리기 | `POST /api/project-docs/{id}/revert` `{"version", "revision_id"}` (`revision_id`는 `…/revisions`에서) — 되돌린 것도 판으로 남는다 |
+| ✋ 문서 옮기기 | `POST /api/project-docs/{id}/move` `{"parent_id"?, "position"?, "project_id"?, "team_id"?}` (보낸 키만, `parent_id: null`은 맨 위로) — 하위 문서의 공개 범위도 같이 바뀌어 열람자가 달라질 수 있다 |
+| 회의록 고치기 | `PATCH /api/notes/{id}` `{"version", "title"?, "body_md"?, "tags"?, "task_ids"?}` — `task_ids`는 연결을 더하기만 한다. version이 다르면 409와 최신 회의록. 초안 확정(`POST /api/notes/{id}/finalize`)은 AI에게 막혀 있으니 사람이 웹에서 한다 |
 | ✋ 프로젝트 API 문서 올리기 | `PM apidoc {id} put <파일\|URL>` — 통째로 바뀐다 |
 | ✋ 프로젝트 만들기·고치기 | `POST /api/projects` `{"org_id", "name", "purpose", "owner_ids", "team_ids", "status", "dev_tools", "visibility"}` (`dev_tools` 비우면 조직 기본값 · `visibility` `org`|`teams`, teams는 조직 관리자만) · `PATCH /api/projects/{id}` (`version` 필수) |
 | ✋ 프로젝트 지우기 | `DELETE /api/projects/{id}` — 조직 관리자만. 웹에서 먼저 보관한 프로젝트만 되고(보관은 API에 없다), 결정 기록이 있으면 안 된다 |
@@ -152,6 +158,8 @@ PM apidoc 12 put openapi.json                         # 프로젝트 API 문서 
 
 - **결정 기록 확인·제외**(`…/decisions/{rid}/confirm` · `/reject`): 서버가 웹 세션에서만 받는다(토큰이면 403).
   사람에게 태스크 화면에서 확인해 달라고 안내한다.
+- **문서 지우기**(`DELETE /api/project-docs/{id}`), **회의록 확정**(`POST /api/notes/{id}/finalize`), **연결 승인·거절**(`POST /api/tasks/{id}/projects/{project_id}/approve`·`/reject`): AI 요청(이 스킬)은 403이다. 사람이 웹에서 한다.
+- **API가 없는 기능**(웹·Discord에서만): 회의록 녹음·새로 만들기, 칸 안 AI 자동완성·태스크 후보 뽑기, 계정 실명·조직 표시 이름 바꾸기(웹 프로필, Discord `/표시이름`), 프로젝트 보관, 조직 GitHub 앱 설치·저장소 연결 끊기. 해당 화면을 안내한다.
 - `/api/integrations/*`: Discord 봇·GitHub 웹훅·외부 서비스용이다. 사람 토큰으로는 부르지 않는다.
 
 - 상태 값: `todo` `doing` `paused` `blocked` `review` `done` `cancelled`. `blocked`는 `reason` 필수,

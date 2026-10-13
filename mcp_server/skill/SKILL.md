@@ -33,6 +33,11 @@ description: 유달리(조직 업무 관리)를 MCP로 다룬다. 태스크를 �
 | 주간 보고 | `get_weekly_report_data` — 여기 없는 진척은 만들어 쓰지 않는다 |
 | 다른 프로젝트에도 연결 | `link_task_project` — 해제·승인 요청 취소는 `unlink_task_project`. 아래 규칙 "열람 확대" |
 | 연결 태스크의 GitHub 연동 | 연결 프로젝트가 있으면 자동 연동이 꺼진다. 사용자에게 어느 프로젝트(저장소)를 따를지 물은 뒤 `update_task(git_project_id=)` |
+| 이슈를 태스크로 | `list_repo_issues(imported=false)` → 사용자 확인 → `import_issue` (이미 가져온 이슈면 그 태스크를 돌려준다) |
+| 태스크로 이슈 만들기 | 저장소가 연결된 프로젝트(`get_project_repo`의 `connected`)에서만, 확인받은 뒤 `create_task_issue` |
+| 회의록 읽기 | `list_notes(org_id)` → `get_note` (`include_transcript=true`면 전사문까지). 전사문은 녹음 원문, 회의록은 정리한 글이다 |
+| 회의록 고치기 | `get_note`로 version → `update_note`. 초안 확정은 AI가 못 한다 — 사람이 웹 회의록 화면에서 한다 |
+| 문서를 가리키는 곳 | `get_doc_backlinks` — 문서를 크게 고치거나 옮기기 전에 본다. 문서 지우기는 사람이 웹에서 한다 |
 
 ## 이슈 기반 AI 개발과 의사결정 기록
 

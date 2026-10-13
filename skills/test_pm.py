@@ -69,6 +69,8 @@ class Fake(BaseHTTPRequestHandler):
         data = json.dumps(out).encode()
         self.send_response({"/api/conflict": 409, "/api/realname": 403}.get(self.path, 200))
         self.send_header("Content-Length", str(len(data)))
+        if self.path.endswith("export.md"):
+            self.send_header("Content-Disposition", "attachment; filename*=UTF-8''%EC%84%A4%EA%B3%84.md")
         self.end_headers()
         self.wfile.write(data)
 
@@ -107,6 +109,17 @@ assert r.returncode != 0 and "HTTP 409" in r.stderr
 # 계정 실명이 비면 core 문구(입력 화면 주소)를 그대로 보인다(IMPL-PLAN-13 §4.4)
 r = run("GET", "/api/realname")
 assert r.returncode != 0 and r.stderr.strip() == "실명을 먼저 입력해 주세요: http://x/settings/profile", r.stderr
+
+# 파일 응답(문서 내보내기·첨부 받기)은 JSON으로 읽지 않고 현재 폴더에 저장한다. 있는 파일은 덮어쓰지 않는다.
+with tempfile.TemporaryDirectory() as tmp:
+    def run_in(*args):
+        env = {**os.environ, "UDALLY_TOKEN": "tok", "UDALLY_URL": f"http://127.0.0.1:{server.server_port}"}
+        return subprocess.run([sys.executable, str(PM), *args], capture_output=True, text=True,
+                              encoding="utf-8", env=env, cwd=tmp)
+    r = run_in("GET", "/api/project-docs/1/export.md")
+    assert r.returncode == 0, r.stderr
+    assert json.loads(r.stdout)["saved"].endswith("설계.md") and (Path(tmp) / "설계.md").exists()
+    assert run_in("GET", "/api/project-docs/1/export.md").returncode != 0
 
 assert run("GET", "/elsewhere").returncode != 0  # /api/ 밖으로는 토큰을 보내지 않는다
 
