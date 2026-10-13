@@ -50,10 +50,18 @@ def create_job(user, org, *, field: str, target: str, user_input: str = "", opti
         raise ServiceError({"assist": "org_disabled"})
     kind = fields.kind_of(field)
     if kind is None:
-        raise ServiceError({"assist": "이 칸은 AI로 쓸 수 없습니다."})  # COPY:assist_bad_field
+        raise ServiceError(
+            {
+                "assist": "이 칸은 AI 자동완성을 지원하지 않습니다. AI로 쓰기 버튼이 있는 칸에서 요청해 주세요."
+            }
+        )  # COPY:assist_bad_field
     ttype, obj = context.resolve_target(user, target)
     if ttype not in fields.targets_of(field):
-        raise ServiceError({"assist": "이 칸은 AI로 쓸 수 없습니다."})  # COPY:assist_bad_field
+        raise ServiceError(
+            {
+                "assist": "이 칸은 AI 자동완성을 지원하지 않습니다. AI로 쓰기 버튼이 있는 칸에서 요청해 주세요."
+            }
+        )  # COPY:assist_bad_field
     oid = context.org_id_of(ttype, obj)
     if oid is not None and oid != org.pk:
         raise Http404
@@ -62,7 +70,9 @@ def create_job(user, org, *, field: str, target: str, user_input: str = "", opti
         obj.kind == "meeting" and context.transcript_of(obj).strip()
     ):
         raise ServiceError(
-            {"assist": "전사문이 없어 회의록을 쓸 수 없습니다."}
+            {
+                "assist": "전사문이 없어 회의록을 작성할 수 없습니다. 전사를 완료한 뒤 다시 요청해 주세요."
+            }
         )  # COPY:assist_no_transcript
     if field == "extract.meeting" and obj.kind != "meeting":
         raise Http404
@@ -72,17 +82,23 @@ def create_job(user, org, *, field: str, target: str, user_input: str = "", opti
         tid = options.get("template_id")
         tpl = get_visible_doc(user, tid) if isinstance(tid, int) else None
         if tpl is None or not tpl.is_template or tpl.org_id != org.pk:
-            raise ServiceError({"assist": "템플릿을 골라 주세요."})  # COPY:assist_pick_template
+            raise ServiceError(
+                {
+                    "assist": "사용 가능한 템플릿이 선택되지 않았습니다. 이 조직에서 접근할 수 있는 템플릿을 선택해 주세요."
+                }
+            )  # COPY:assist_pick_template
         options = {"template_id": tid}
     now = timezone.now()
     mine = AiJob.objects.filter(user=user)
     if mine.filter(status__in=AiJob.ACTIVE).count() >= MAX_ACTIVE:
         raise RateLimited(
-            {"assist": "진행 중인 AI 작업이 끝난 뒤 다시 요청해 주세요."}
+            {
+                "assist": "동시에 처리할 수 있는 AI 작업 수를 넘었습니다. 진행 중인 작업이 끝난 뒤 다시 요청해 주세요."
+            }
         )  # COPY:assist_busy
     if mine.filter(created_at__gte=now - timedelta(hours=1)).count() >= MAX_PER_HOUR:
         raise RateLimited(
-            {"assist": "AI 요청이 너무 많습니다. 잠시 뒤 다시 요청해 주세요."}
+            {"assist": "최근 1시간의 AI 요청 한도를 넘었습니다. 잠시 후 다시 요청해 주세요."}
         )  # COPY:assist_rate
     attempts = plan(user, org)
     if not attempts:
@@ -159,10 +175,16 @@ def apply_job(user, job_id: int, *, version: int | None = None, mode: str = "rep
     from .models import AiJob
 
     if mode not in ("replace", "append"):
-        raise ServiceError({"mode": "적용 방식을 골라 주세요."})  # COPY:assist_apply_mode
+        raise ServiceError(
+            {
+                "mode": "적용 방식이 선택되지 않았습니다. 내용을 바꾸거나 뒤에 추가하는 방식을 선택해 주세요."
+            }
+        )  # COPY:assist_apply_mode
     job = get_job(user, job_id)
     if job.kind not in ("doc", "meeting") or job.status != "done":
-        raise ServiceError({"assist": "적용할 결과가 없습니다."})  # COPY:assist_nothing_to_apply
+        raise ServiceError(
+            {"assist": "적용할 AI 결과가 없습니다. AI로 쓰기를 다시 요청해 주세요."}
+        )  # COPY:assist_nothing_to_apply
     doc = get_visible_doc(user, job.target_id)
     if doc is None:
         raise Http404

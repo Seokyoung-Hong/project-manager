@@ -97,7 +97,7 @@ def test_unlinked_pc_row_shows_repick(client, member, fake_net):
     _add(client, base_url="http://192.168.0.9:8000/v1", server=pc.pk)
     pc.delete()  # 연결 끊기 → SET_NULL
     page = client.get(reverse("settings_ai")).content.decode()
-    assert "연결된 PC가 없습니다" in page and "PC 다시 고르기" in page
+    assert "연결된 내 PC가 없습니다" in page and "PC 다시 고르기" in page
 
 
 def test_cannot_touch_others_source(client, member, admin, fake_net):
@@ -149,7 +149,7 @@ def test_test_and_models_use_gate_and_record_error(client, member, fake_net):
     src.base_url = "https://down.example.com/v1"
     src.save()
     r = client.post(reverse("settings_ai_test", args=[src.pk]))
-    assert "접속할 수 없습니다" in r.content.decode()
+    assert "연결하지 못했습니다" in r.content.decode()
     src.refresh_from_db()
     assert src.last_error == "connect_failed"
 
@@ -167,7 +167,7 @@ def test_org_assist_test_admin_only_and_uses_gate(client, org, admin, member, fa
     assert fake_net == []
     client.force_login(admin)
     page = client.get(reverse("org_settings", args=[org.pk])).content.decode()
-    assert "조직 AI 연결 시험" in page and KEY not in page
+    assert "조직 AI 연결 확인" in page and KEY not in page
     r = client.post(reverse("org_assist_models", args=[org.pk]))
     body = r.content.decode()
     assert "model-a" in body and 'list="assist-org-models"' in body and KEY not in body

@@ -8,19 +8,19 @@
 </select></label>{# COPY:assist_src_backend #}
 <p id="ai-backend-help-{{ prefix }}" class="muted t12">Codex는 고른 내 PC에 설치·로그인된 Codex CLI로 씁니다. 주소·키는 필요 없고, 구독 정보는 PC 밖으로 나가지 않습니다.</p>{# COPY:assist_src_codex_help #}
 <label class="field">AI 서버 주소(OpenAI 호환일 때)<input class="input" name="base_url" value="{% if not codex %}{{ v.base_url|default:'' }}{% endif %}" maxlength="300" inputmode="url" spellcheck="false" aria-describedby="ai-url-help-{{ prefix }}"></label>
-<p id="ai-url-help-{{ prefix }}" class="muted t12">…/v1까지 입력해 주세요. 예: https://api.example.com/v1, http://localhost:11434/v1</p>{# COPY:assist_src_url_help #}
+<p id="ai-url-help-{{ prefix }}" class="muted t12">/v1까지 입력해 주세요. 예: https://api.example.com/v1, http://localhost:11434/v1</p>{# COPY:assist_src_url_help #}
 <label class="field">모델<input class="input" name="model" value="{{ v.model|default:'' }}" maxlength="200" list="ai-models-{{ prefix }}" spellcheck="false" aria-describedby="ai-model-help-{{ prefix }}"></label>{# COPY:assist_src_model #}
 <p id="ai-model-help-{{ prefix }}" class="muted t12">Codex는 비우면 Codex 기본 모델을 씁니다.</p>{# COPY:assist_src_model_codex_help #}
 {% endwith %}
 <datalist id="ai-models-{{ prefix }}"></datalist>
-<label class="field">키<input class="input" type="password" name="api_key" value="" autocomplete="new-password" placeholder="{% if key_set %}설정됨{% else %}미설정{% endif %} · 바꿀 때만 입력"></label>{# COPY:assist_src_key #}
-{% if key_set %}<label class="check"><input type="checkbox" name="clear_key"> 저장한 키 지우기</label>{% endif %}{# COPY:assist_src_key_clear #}
+<label class="field">키<input class="input" type="password" name="api_key" value="" autocomplete="new-password" placeholder="{% if key_set %}설정됨{% else %}미설정{% endif %} · 변경할 때만 입력"></label>{# COPY:assist_src_key #}
+{% if key_set %}<label class="check"><input type="checkbox" name="clear_key"> 저장한 키 삭제</label>{% endif %}{# COPY:assist_src_key_clear #}
 {% if servers %}
-<label class="field">거쳐 갈 내 PC<select class="select" name="server" aria-describedby="ai-pc-help-{{ prefix }}">
-  <option value="">PC 고르기</option>
+<label class="field">연결할 내 PC<select class="select" name="server" aria-describedby="ai-pc-help-{{ prefix }}">
+  <option value="">내 PC 선택</option>
   {% for pc in servers %}<option value="{{ pc.pk }}"{% if v.server_id == pc.pk or v.server == pc.pk|stringformat:"s" %} selected{% endif %}>{{ pc.name }}</option>{% endfor %}
 </select></label>
-<p id="ai-pc-help-{{ prefix }}" class="muted t12">주소가 PC 안(localhost)이나 사설망이면 이 PC가 대신 부릅니다. 공개 주소면 고르지 않아도 됩니다.</p>{# COPY:assist_src_pc_help #}
+<p id="ai-pc-help-{{ prefix }}" class="muted t12">PC 내부(localhost) 또는 사설망 주소는 선택한 내 PC를 거쳐 요청합니다. 공개 HTTPS 주소에는 PC 선택이 필요하지 않습니다.</p>{# COPY:assist_src_pc_help #}
 {% else %}
-<p class="muted t12">PC 안이나 사설망의 AI를 쓰려면 먼저 <a href="{% url 'settings_stt' %}">내 PC를 연결</a>해 주세요.</p>{# COPY:assist_src_pc_none #}
+<p class="muted t12">PC 내부 또는 사설망의 AI를 사용하려면 먼저 [<a href="{% url 'settings_stt' %}">내 PC 연결</a>]에서 PC를 연결해 주세요.</p>{# COPY:assist_src_pc_none #}
 {% endif %}

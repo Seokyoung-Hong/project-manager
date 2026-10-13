@@ -61,7 +61,7 @@
       {% if ai_on %}{# AI 자동완성 회의록·태스크 후보(IMPL-PLAN-12 §7.3·§7.4). 문구 임시 — COPY:ai_minutes·ai_extract #}
       <span class="grow"></span>
       <button type="button" class="btn sm" data-ai-mode="meeting.minutes" data-ai-target="doc:{{ note.pk }}"{% if not recording.transcript_md %} disabled aria-describedby="ai-minutes-why"{% endif %}>AI로 회의록 쓰기</button>
-      {% if not recording.transcript_md %}<span id="ai-minutes-why" class="t12 muted">전사문이 있어야 쓸 수 있습니다.</span>{% endif %}
+      {% if not recording.transcript_md %}<span id="ai-minutes-why" class="t12 muted">전사문이 있어야 회의록을 작성할 수 있습니다.</span>{% endif %}
       <button type="button" class="btn sm" data-ai-mode="extract.meeting" data-ai-target="doc:{{ note.pk }}">태스크 후보 뽑기</button>
       {% endif %}
       <span id="note-status" class="note-save-status" data-state="saved" aria-live="polite">저장됨 · v{{ note.version }} · {{ note.updated_at|date:"n/j H:i" }}</span>

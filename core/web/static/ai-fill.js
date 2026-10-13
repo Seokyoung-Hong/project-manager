@@ -13,7 +13,7 @@ const dlg = document.getElementById("ai-dlg");
 const body = dlg?.querySelector("#ai-dlg-body");
 const title = dlg?.querySelector("#ai-dlg-title");
 const SENSITIVE = /key|token|secret|code|confirm/i;
-const LABEL = "AI 자동완성"; // COPY:ai_autocomplete
+const LABEL = "AI로 쓰기"; // COPY:ai_write (칸 안 아이콘 버튼의 aria-label·title)
 const LABEL_CANCEL = "AI 자동완성 취소"; // COPY:ai_autocomplete_cancel
 // 반짝이(장식 아님: 이 버튼이 AI 자동완성이라는 표시). 색은 currentColor
 const SPARK = '<svg class="ai-ico" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" focusable="false"><path fill="currentColor" d="M6.5 1.5 7.7 5a2 2 0 0 0 1.3 1.3l3.5 1.2-3.5 1.2A2 2 0 0 0 7.7 10l-1.2 3.5L5.3 10A2 2 0 0 0 4 8.7L.5 7.5 4 6.3A2 2 0 0 0 5.3 5zM13 .5l.5 1.5L15 2.5l-1.5.5L13 4.5 12.5 3 11 2.5l1.5-.5zM13 10.5l.4 1.1 1.1.4-1.1.4-.4 1.1-.4-1.1-1.1-.4 1.1-.4z"/></svg>';
@@ -194,7 +194,7 @@ function inlineClick(e) {
 function open(req, heading) {
   cur = req;
   title.textContent = heading;
-  body.innerHTML = '<p role="status">AI에게 요청을 보내는 중입니다.</p>'; // COPY:ai_sending
+  body.innerHTML = '<p role="status">AI에 요청을 보내는 중입니다.</p>'; // COPY:ai_sending
   if (!dlg.open) dlg.showModal();
   send();
 }
@@ -223,7 +223,7 @@ function put(el, value) {
 async function apply(url, mode) {
   const root = document.querySelector(".md-editor");
   if (root?._flush && !(await root._flush())) {
-    body.insertAdjacentHTML("afterbegin", '<p class="error" role="alert"><span aria-hidden="true">⚠</span> 본문을 아직 저장하지 못해 적용하지 않았습니다. 저장 상태를 확인한 뒤 다시 눌러 주세요.</p>'); // COPY:ai_apply_unsaved
+    body.insertAdjacentHTML("afterbegin", '<p class="error" role="alert"><span aria-hidden="true">⚠</span> 본문을 저장하지 못해 AI 결과를 적용하지 않았습니다. 저장 상태를 확인한 뒤 다시 적용해 주세요.</p>'); // COPY:ai_apply_unsaved
     return;
   }
   htmx.ajax("POST", url, { source: dlg, target: body, swap: "innerHTML", values: { version: root?.dataset.version || "", mode: mode || "replace" } });

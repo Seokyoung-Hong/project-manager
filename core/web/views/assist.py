@@ -22,11 +22,11 @@ from tasks.services import visible_tasks
 from .assist_settings import ERROR_TEXT
 from .common import current_org
 
-GENERIC = "AI가 글을 쓰지 못했습니다(오류 코드 {code}). 잠시 후 다시 요청해 주세요."  # COPY:ai_err_generic
-BAD_FIELD = "이 칸은 AI로 쓸 수 없습니다."  # COPY:ai_err_field
-BAD_TARGET = "대상을 먼저 골라 주세요."  # COPY:ai_err_target
-RATE = "AI 요청이 너무 많습니다. 진행 중인 작업이 끝난 뒤 다시 요청해 주세요."  # COPY:ai_err_rate
-CONFLICT = "다른 사람이 먼저 본문을 고쳐 적용하지 못했습니다. 새로고침한 뒤 다시 요청해 주세요."  # COPY:ai_err_conflict
+GENERIC = "AI 요청을 완료하지 못했습니다(오류 코드 {code}). 잠시 후 다시 요청해 주세요."  # COPY:ai_err_generic
+BAD_FIELD = "이 칸은 AI 자동완성을 지원하지 않습니다. AI로 쓰기 버튼이 있는 칸에서 요청해 주세요."  # COPY:ai_err_field
+BAD_TARGET = "요청할 대상이 선택되지 않았습니다. 대상 태스크·문서·프로젝트를 선택해 주세요."  # COPY:ai_err_target
+RATE = "동시에 처리할 수 있는 AI 요청 수를 넘었습니다. 진행 중인 작업이 끝난 뒤 다시 요청해 주세요."  # COPY:ai_err_rate
+CONFLICT = "요청 후 본문이 변경되어 적용하지 못했습니다. 새로고침하여 본문을 확인한 뒤 다시 요청해 주세요."  # COPY:ai_err_conflict
 
 
 def _message(code: str) -> str:
@@ -74,7 +74,7 @@ def _source_line(job) -> str:
     if job.route == "org":
         return "조직 AI"  # COPY:ai_by_org
     if job.route == "pc":
-        return f"내 PC 거쳐 보내기 · {name}"  # COPY:ai_by_pc
+        return f"개인 AI · {name} · 내 PC 거쳐 보내기"  # COPY:ai_by_pc
     if job.route == "direct":
         return f"개인 AI · {name}"  # COPY:ai_by_personal
     return ""
@@ -238,7 +238,9 @@ def job_create_tasks(request, job_id: int):
             }
         )
     if not rows:
-        return _error(request, "만들 후보를 하나 이상 골라 주세요.", 400)  # COPY:ai_pick_none
+        return _error(
+            request, "선택한 태스크 후보가 없습니다. 만들 후보를 하나 이상 선택해 주세요.", 400
+        )  # COPY:ai_pick_none
     try:
         results = extract.create_from_candidates(job, rows, request.user)
     except ServiceError as e:

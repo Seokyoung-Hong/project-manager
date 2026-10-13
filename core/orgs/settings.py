@@ -922,7 +922,7 @@ SPECS: dict[str, Spec] = {
             False,
             "assist",
             "AI 자동완성 사용",  # COPY:assist_enabled_label
-            "끄면 이 조직 내용으로는 조직 AI·개인 AI 모두 자동완성과 태스크 후보 뽑기를 쓸 수 없습니다.",  # COPY:assist_enabled_help
+            "끄면 이 조직의 내용으로 조직 AI와 개인 AI를 모두 사용할 수 없으며, AI 자동완성과 태스크 후보 뽑기 버튼이 표시되지 않습니다.",  # COPY:assist_enabled_help
         ),
         Spec(
             "assist.org_url",
@@ -932,7 +932,7 @@ SPECS: dict[str, Spec] = {
             False,
             "assist",
             "조직 AI 주소",  # COPY:assist_org_url_label
-            "OpenAI 호환 서버 주소입니다(예: https://api.example.com/v1).",  # COPY:assist_org_url_help
+            "OpenAI 호환 AI 서버 주소입니다. 예: https://api.example.com/v1. 사설망 주소는 서비스 운영자의 허용 호스트 등록이 필요합니다.",  # COPY:assist_org_url_help
             hi=300,
             validate=_check_assist_org_url,
         ),
@@ -944,7 +944,7 @@ SPECS: dict[str, Spec] = {
             False,
             "assist",
             "조직 AI 모델",  # COPY:assist_org_model_label
-            "조직 AI 서버에 보낼 모델 이름입니다.",  # COPY:assist_org_model_help
+            "조직 AI 서버에서 사용할 모델 이름입니다.",  # COPY:assist_org_model_help
             hi=200,
         ),
         Spec(
@@ -955,7 +955,7 @@ SPECS: dict[str, Spec] = {
             False,
             "assist",
             "조직 AI 키",  # COPY:assist_org_api_key_label
-            "암호화해 저장하며 화면에는 설정 여부만 보입니다.",  # COPY:assist_org_api_key_help
+            "키는 암호화하여 저장하며 화면에는 설정 여부만 표시됩니다.",  # COPY:assist_org_api_key_help
         ),
         Spec(
             "assist.org_level",
@@ -964,9 +964,12 @@ SPECS: dict[str, Spec] = {
             "org",
             False,
             "assist",
-            "조직 AI를 쓸 수 있는 사람",  # COPY:assist_org_level_label
+            "조직 AI 사용 권한",  # COPY:assist_org_level_label
             "",
-            choices=(("member", "멤버 누구나"), ("admin", "조직 관리자만")),
+            choices=(
+                ("member", "구성원 누구나"),
+                ("admin", "관리자만"),
+            ),  # COPY:assist_org_level_choices
         ),
         Spec(
             "assist.org_daily_limit",
@@ -975,8 +978,8 @@ SPECS: dict[str, Spec] = {
             "org",
             False,
             "assist",
-            "조직 AI 하루 한도(멤버 한 사람)",  # COPY:assist_org_daily_limit_label
-            "멤버 한 사람이 하루에 조직 AI로 실행할 수 있는 작업 수입니다. 관리자는 세지 않습니다. 0이면 제한하지 않습니다.",  # COPY:assist_org_daily_limit_help
+            "조직 AI 하루 한도(구성원 1명)",  # COPY:assist_org_daily_limit_label
+            "구성원 1명이 하루에 조직 AI로 실행할 수 있는 작업 수입니다. 기본값은 30이며, 관리자는 한도에서 제외됩니다. 0이면 제한하지 않습니다.",  # COPY:assist_org_daily_limit_help
             lo=0,
             hi=1000,
         ),

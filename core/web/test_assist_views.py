@@ -115,7 +115,7 @@ def test_rate_limited_is_429(logged, task, monkeypatch):
     r = logged.post(
         reverse("assist_job_create"), {"field": "task.title", "target": f"task:{task.pk}"}
     )
-    assert r.status_code == 429 and "AI 요청이 너무 많습니다" in r.content.decode()
+    assert r.status_code == 429 and "AI 요청 수를 넘었습니다" in r.content.decode()
 
 
 def test_service_error_code_message(logged, task, monkeypatch):
@@ -126,7 +126,7 @@ def test_service_error_code_message(logged, task, monkeypatch):
     r = logged.post(
         reverse("assist_job_create"), {"field": "task.title", "target": f"task:{task.pk}"}
     )
-    assert r.status_code == 400 and "쓸 수 있는 AI가 없거나" in r.content.decode()
+    assert r.status_code == 400 and "사용 가능한 AI가 없거나" in r.content.decode()
 
 
 def test_other_users_job_is_404(logged, org, admin, monkeypatch, stub_get):
@@ -145,7 +145,7 @@ def test_org_count_line_and_source(logged, org, member, monkeypatch, stub_get):
     monkeypatch.setattr(services, "today_org_count", lambda user, o: 3)
     job = _job(member, org, field="task.description", status="done", result="본문", route="org")
     body = logged.get(f"/assist/jobs/{job.pk}").content.decode()
-    assert "오늘 조직 AI 3/30" in body and "쓴 AI: 조직 AI" in body
+    assert "오늘 조직 AI 3/30" in body and "사용한 AI: 조직 AI" in body
     assert 'data-ai-use="replace"' in body and 'data-ai-use="append"' in body
 
 
@@ -198,7 +198,9 @@ def test_create_tasks_passes_rows(logged, org, member, project, task, monkeypatc
     )
     shown = logged.get(f"/assist/jobs/{job.pk}").content.decode()
     assert (
-        "고른 후보로 태스크 만들기" in shown and task.number in shown and "이름 확인 필요" in shown
+        "고른 후보로 태스크 만들기" in shown
+        and task.number in shown
+        and "담당자 확인 필요" in shown
     )
     got = {}
 

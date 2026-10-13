@@ -32,28 +32,28 @@ _ENC = "enc:"
 
 # 오류 코드(assist.models.ERROR_CODES) → 화면 문구. 응답 본문 일부는 내지 않는다(§11.4).
 ERROR_TEXT = {
-    "connect_failed": "AI 서버에 접속할 수 없습니다. 주소를 확인해 주세요.",  # COPY:assist_err_connect_failed
-    "timeout": "AI 서버가 제때 응답하지 않았습니다. 잠시 뒤 다시 시도해 주세요.",  # COPY:assist_err_timeout
-    "http_4xx": "AI 서버가 요청을 거절했습니다. 주소를 확인해 주세요.",  # COPY:assist_err_http_4xx
-    "http_5xx": "AI 서버에 오류가 났습니다. 잠시 뒤 다시 시도해 주세요.",  # COPY:assist_err_http_5xx
-    "auth_failed": "키가 맞지 않습니다. 키를 확인해 주세요.",  # COPY:assist_err_auth_failed
-    "model_not_found": "모델을 찾을 수 없습니다. 모델 이름을 확인해 주세요.",  # COPY:assist_err_model_not_found
-    "bad_output": "AI 응답을 읽지 못했습니다. 다시 시도하고, 계속되면 OpenAI 호환 주소·모델인지 확인해 주세요.",  # COPY:assist_err_bad_output
-    "too_large": "AI 서버의 응답이 너무 큽니다.",  # COPY:assist_err_too_large
-    "blocked_address": "이 주소로는 보낼 수 없습니다. 공개 https 주소이거나 운영자가 허용한 주소여야 합니다.",  # COPY:assist_err_blocked_address
-    "pc_offline": "거쳐 갈 PC가 꺼져 있습니다.",  # COPY:assist_err_pc_offline
-    "pc_unlinked": "연결된 PC가 없습니다.",  # COPY:assist_err_pc_unlinked
-    "pc_error": "PC에서 AI 서버를 부르지 못했습니다.",  # COPY:assist_err_pc_error
+    "connect_failed": "AI 서버에 연결하지 못했습니다. 서버 주소와 연결 상태를 확인해 주세요.",  # COPY:assist_err_connect_failed
+    "timeout": "AI 서버가 제한 시간 안에 응답하지 않았습니다. 잠시 후 다시 시도해 주세요.",  # COPY:assist_err_timeout
+    "http_4xx": "AI 서버가 요청을 거부했습니다. 서버 주소·모델·키와 서버의 이용 조건을 확인해 주세요.",  # COPY:assist_err_http_4xx
+    "http_5xx": "AI 서버에 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.",  # COPY:assist_err_http_5xx
+    "auth_failed": "AI 서버에서 키를 인증하지 못했습니다. 키의 유효 기간과 사용 권한을 확인해 주세요.",  # COPY:assist_err_auth_failed
+    "model_not_found": "AI 서버에서 지정한 모델을 찾지 못했습니다. 모델 이름을 확인해 주세요.",  # COPY:assist_err_model_not_found
+    "bad_output": "AI 응답이 필요한 형식과 맞지 않습니다. 다시 시도하고, 계속되면 서버와 모델의 OpenAI 호환 여부를 확인해 주세요.",  # COPY:assist_err_bad_output
+    "too_large": "AI 응답이 허용 크기를 넘었습니다. 요청 범위를 줄이거나 다른 모델로 다시 시도해 주세요.",  # COPY:assist_err_too_large
+    "blocked_address": "보안 제한으로 AI 서버에 연결하지 못했습니다. 개인 AI는 주소와 내 PC 연결을 확인하고, 조직 AI는 관리자에게 공개 HTTPS 주소 또는 허용 호스트 설정 확인을 요청해 주세요.",  # COPY:assist_err_blocked_address
+    "pc_offline": "요청을 보낼 내 PC에 연결할 수 없습니다. PC에서 내 PC 연결을 실행한 뒤 다시 시도해 주세요.",  # COPY:assist_err_pc_offline
+    "pc_unlinked": "개인 AI에 연결된 내 PC가 없습니다. 설정 > AI에서 [PC 다시 고르기]를 눌러 연결할 PC를 선택해 주세요.",  # COPY:assist_err_pc_unlinked
+    "pc_error": "내 PC에서 AI 서버에 요청하지 못했습니다. PC의 연결 상태와 AI 서버 주소·모델·키를 확인해 주세요.",  # COPY:assist_err_pc_error
     "codex_missing": "PC에 Codex CLI가 없습니다. Codex를 설치한 뒤 다시 시도해 주세요.",  # COPY:assist_err_codex_missing
     "codex_auth": "PC의 Codex가 로그인되어 있지 않습니다. PC에서 codex login을 실행해 주세요.",  # COPY:assist_err_codex_auth
     "rate": "오늘 쓸 수 있는 조직 AI 횟수를 다 썼습니다. 내일 다시 쓰거나 개인 AI를 등록해 주세요.",  # COPY:assist_err_rate
     # 작업(자동완성) 쪽 코드. no_source는 "쓸 AI가 없음"과 "대상을 더 볼 수 없음" 둘 다다(assist.worker).
-    "no_source": "쓸 수 있는 AI가 없거나 대상을 더 볼 수 없습니다. 설정의 AI 탭에서 개인 AI를 등록하거나 조직 관리자에게 조직 AI 등록을 요청해 주세요.",  # COPY:assist_err_no_source
-    "no_worker": "AI 작업을 처리할 곳이 없어 멈췄습니다. 잠시 뒤 다시 요청해 주세요.",  # COPY:assist_err_no_worker
-    "org_disabled": "이 조직은 AI 자동완성을 쓰지 않도록 설정되어 있습니다.",  # COPY:assist_err_org_disabled
-    "cancelled": "작업을 취소했습니다.",  # COPY:assist_cancelled
+    "no_source": "사용 가능한 AI가 없거나 대상에 접근할 수 없습니다. 대상 접근 권한과 설정 > AI의 사용 여부·사용 순서를 확인하고, 조직 AI는 관리자에게 등록·권한·하루 한도 확인을 요청해 주세요.",  # COPY:assist_err_no_source
+    "no_worker": "AI 작업을 처리할 수 없어 요청이 중단되었습니다. 잠시 후 다시 요청하고, 계속되면 서비스 운영자에게 문의해 주세요.",  # COPY:assist_err_no_worker
+    "org_disabled": "이 조직의 AI 자동완성이 꺼져 있습니다. 사용이 필요하면 조직 관리자에게 문의해 주세요.",  # COPY:assist_err_org_disabled
+    "cancelled": "AI 작업을 취소했습니다.",  # COPY:assist_cancelled
 }
-ERROR_FALLBACK = "AI 서버를 부르지 못했습니다."  # COPY:assist_err_unknown
+ERROR_FALLBACK = "AI 서버에 요청하지 못했습니다. 연결 상태와 AI 설정을 확인한 뒤 다시 시도해 주세요."  # COPY:assist_err_unknown
 
 
 def error_text(code: str) -> str:
@@ -103,13 +103,17 @@ def _save_personal(user, src: AiSource, post) -> None:
     url = CODEX_URL if codex else post.get("base_url", "").strip().rstrip("/")
     model = post.get("model", "").strip()
     if not name or len(name) > 50:
-        errors["name"] = "이름을 50자 이내로 입력해 주세요."  # COPY:assist_src_name_invalid
+        errors["name"] = (
+            "이름이 없거나 50자를 넘었습니다. 이름을 50자 이내로 입력해 주세요."  # COPY:assist_src_name_invalid
+        )
     if not url or len(url) > 300:
         errors["base_url"] = (
-            "AI 서버 주소를 300자 이내로 입력해 주세요."  # COPY:assist_src_url_required
+            "AI 서버 주소가 없거나 300자를 넘었습니다. 주소를 300자 이내로 입력해 주세요."  # COPY:assist_src_url_required
         )
     if len(model) > 200:
-        errors["model"] = "모델 이름은 200자 이내여야 합니다."  # COPY:assist_src_model_long
+        errors["model"] = (
+            "모델 이름이 200자를 넘었습니다. 모델 이름을 200자 이내로 입력해 주세요."  # COPY:assist_src_model_long
+        )
     if errors:
         raise ServiceError(errors)
     try:
@@ -132,7 +136,7 @@ def _save_personal(user, src: AiSource, post) -> None:
         if server is None:
             raise ServiceError(
                 {
-                    "server": "PC 안이나 사설망 주소는 내 PC를 거쳐 보냅니다. 거쳐 갈 내 PC를 골라 주세요."  # COPY:assist_src_pc_required
+                    "server": "PC 내부 또는 사설망 주소는 내 PC를 거쳐 요청해야 합니다. 연결할 내 PC를 선택해 주세요."  # COPY:assist_src_pc_required
                 }
             )
     key = "" if codex else post.get("api_key", "").strip()
@@ -172,7 +176,7 @@ def ai_add(request):
     if AiSource.objects.filter(user=user, kind="personal").count() >= AiSource.MAX_PERSONAL:
         messages.error(
             request,
-            f"개인 AI는 {AiSource.MAX_PERSONAL}개까지 등록할 수 있습니다.",  # COPY:assist_src_limit
+            f"개인 AI 등록 한도인 {AiSource.MAX_PERSONAL}개에 도달했습니다. 새로 등록하려면 사용하지 않는 개인 AI를 삭제해 주세요.",  # COPY:assist_src_limit
         )
         return redirect("settings_ai")
     last = AiSource.objects.filter(user=user).aggregate(m=Max("position"))["m"]
@@ -181,7 +185,7 @@ def ai_add(request):
         _save_personal(user, src, request.POST)
     except ServiceError as e:
         return _page(request, status=400, add_errors=e.errors, add_values=request.POST)
-    messages.success(request, f"개인 AI '{src.name}'을 등록했습니다.")  # COPY:assist_src_added
+    messages.success(request, f"개인 AI ‘{src.name}’을 등록했습니다.")  # COPY:assist_src_added
     return redirect("settings_ai")
 
 
@@ -202,7 +206,7 @@ def ai_row(request, source_id: int):
         _save_personal(request.user, src, request.POST)
     except ServiceError as e:
         return _page(request, status=400, edit_id=src.pk, edit_errors=e.errors)
-    messages.success(request, f"'{src.name}' 설정을 저장했습니다.")  # COPY:assist_src_saved
+    messages.success(request, f"개인 AI ‘{src.name}’ 설정을 저장했습니다.")  # COPY:assist_src_saved
     return redirect("settings_ai")
 
 
@@ -233,7 +237,7 @@ def ai_delete(request, source_id: int):
     if src.kind != "personal":  # 조직 AI 자리는 지우지 않고 끈다
         return HttpResponseForbidden()
     src.delete()
-    messages.success(request, f"개인 AI '{src.name}'을 삭제했습니다.")  # COPY:assist_src_deleted
+    messages.success(request, f"개인 AI ‘{src.name}’을 삭제했습니다.")  # COPY:assist_src_deleted
     return redirect("settings_ai")
 
 
@@ -285,7 +289,9 @@ def _org_models(request, org_id: int, *, fill: bool):
     model = request.POST.get("assist.org_model", effective("assist.org_model", org=org) or "")
     ctx = {"org": org, "fill": fill, "model": model}
     if not url:
-        ctx["error"] = "조직 AI 주소를 입력해 주세요."  # COPY:assist_org_url_required
+        ctx["error"] = (
+            "조직 AI 주소가 없습니다. 조직 AI 서버 주소를 입력해 주세요."  # COPY:assist_org_url_required
+        )
     elif problem := net.check_org_url(url):
         ctx["error"] = problem
     else:
@@ -328,7 +334,7 @@ def normalize_host(raw: str) -> str:
     if not _HOSTNAME.match(host):
         raise ServiceError(
             {
-                "host": "호스트 이름이나 IP 주소만 입력해 주세요. 주소 앞의 http://, 포트, 경로, *는 넣지 않습니다."  # COPY:ops_assist_host_invalid
+                "host": "허용 호스트 형식이 올바르지 않습니다. 호스트 이름 또는 IP 주소만 입력하고, http://·https://·포트·경로·*는 제외해 주세요."  # COPY:ops_assist_host_invalid
             }
         )
     return host
@@ -343,7 +349,7 @@ def ops_assist(request):
             reason = ops_services._reason(request.POST.get("reason"))
             if AllowedHost.objects.filter(host=host).exists():
                 raise ServiceError(
-                    {"host": "이미 목록에 있는 호스트입니다."}
+                    {"host": "이미 등록된 허용 호스트입니다. 목록에서 해당 호스트를 확인해 주세요."}
                 )  # COPY:ops_assist_host_dup
             row = AllowedHost.objects.create(host=host, added_by=request.user)
             ops_services.audit(request, "assist.host_add", target=row, reason=reason)
@@ -372,8 +378,8 @@ def ops_assist_delete(request, host_id: int):
             "ops/_confirm.html",
             {
                 "action_url": reverse("ops_assist_delete", args=[row.pk]),
-                "title": f"허용 호스트 삭제 — {row.host}",  # COPY:ops_assist_delete_title
-                "summary": "이 주소를 쓰는 조직 AI는 다음 요청부터 막힙니다.",  # COPY:ops_assist_delete_summary
+                "title": f"허용 호스트 삭제 · {row.host}",  # COPY:ops_assist_delete_title
+                "summary": "이 호스트를 사용하는 조직 AI는 다음 요청부터 차단됩니다.",  # COPY:ops_assist_delete_summary
                 "danger": True,
                 "button": "허용 호스트 삭제",
             },

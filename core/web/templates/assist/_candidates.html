@@ -1,38 +1,38 @@
 {# 태스크 후보(IMPL-PLAN-12 §7.4). 골라서 고친 뒤 [고른 후보로 태스크 만들기]. 만든 행은 링크로, 실패한 행은 오류와 함께 다시 보인다. 문구는 임시 — COPY:ai_candidates_* #}
 <form class="stack" id="ai-job" hx-post="{% url 'assist_job_create_tasks' job.pk %}" hx-target="#ai-job" hx-swap="outerHTML">
   {% if rows %}
-  <p class="t13 muted">만들 후보를 고르고 고친 뒤 아래 버튼을 눌러 주세요. 담당자·기한은 AI가 추정한 값입니다.</p>
-  <p class="table-scroll-hint" id="ai-cand-hint">표를 좌우로 밀어 전체 항목을 확인해 주세요.</p>
-  <div class="table-scroll" tabindex="0" role="region" aria-label="태스크 후보 표, 좌우로 스크롤 가능" aria-describedby="ai-cand-hint">
+  <p class="t13 muted">태스크로 만들 후보를 선택하고 내용을 확인·수정해 주세요. 담당자와 기한은 AI가 추정한 값입니다.</p>
+  <p class="table-scroll-hint" id="ai-cand-hint">표를 좌우로 이동하여 전체 항목을 확인해 주세요.</p>
+  <div class="table-scroll" tabindex="0" role="region" aria-label="태스크 후보 표 · 좌우로 이동 가능" aria-describedby="ai-cand-hint">
   <table class="grid">
-    <thead><tr><th scope="col">고르기</th><th scope="col">제목·설명</th><th scope="col">담당자</th><th scope="col">기한</th><th scope="col">프로젝트</th></tr></thead>
+    <thead><tr><th scope="col">선택</th><th scope="col">제목·설명</th><th scope="col">담당자</th><th scope="col">기한</th><th scope="col">프로젝트</th></tr></thead>
     <tbody>
     {% for r in rows %}
     <tr>
       {% if r.created %}
-      <td><span class="badge ok">만듦</span></td>
+      <td><span class="badge ok">생성됨</span></td>
       <td colspan="4"><a href="{% url 'task_detail' r.created.pk %}">{{ r.created.number }}</a> {{ r.created.title }}</td>
       {% else %}
-      <td><input type="checkbox" name="pick" value="{{ r.index }}" checked aria-label="후보 {{ forloop.counter }} 고르기"></td>
+      <td><input type="checkbox" name="pick" value="{{ r.index }}" checked aria-label="태스크 후보 {{ forloop.counter }} 선택"></td>
       <td>
-        <input class="input" name="title_{{ r.index }}" value="{{ r.c.title }}" maxlength="200" aria-label="후보 {{ forloop.counter }} 제목">
+        <input class="input" name="title_{{ r.index }}" value="{{ r.c.title }}" maxlength="200" aria-label="태스크 후보 {{ forloop.counter }} 제목">
         <details><summary class="t13 muted">설명</summary>
-          <textarea class="textarea" name="description_{{ r.index }}" rows="3" aria-label="후보 {{ forloop.counter }} 설명">{{ r.c.description }}</textarea>
+          <textarea class="textarea" name="description_{{ r.index }}" rows="3" aria-label="태스크 후보 {{ forloop.counter }} 설명">{{ r.c.description }}</textarea>
         </details>
         {% if r.c.evidence %}<p class="t12 muted">근거: {{ r.c.evidence }}</p>{% endif %}
-        {% for t in r.similar %}<p class="t12">비슷한 태스크: {{ t.number }} {{ t.title }} <a href="{% url 'task_detail' t.pk %}" target="_blank" rel="noopener">그 태스크 열기</a></p>{% endfor %}
+        {% for t in r.similar %}<p class="t12">비슷한 태스크: {{ t.number }} {{ t.title }} <a href="{% url 'task_detail' t.pk %}" target="_blank" rel="noopener">태스크 열기</a></p>{% endfor %}
         {% if r.error %}<p class="error t13" role="alert"><span aria-hidden="true">⚠</span> {{ r.error }}</p>{% endif %}
       </td>
       <td>
-        <select class="select" name="assignee_{{ r.index }}" aria-label="후보 {{ forloop.counter }} 담당자">
+        <select class="select" name="assignee_{{ r.index }}" aria-label="태스크 후보 {{ forloop.counter }} 담당자">
           <option value="">나</option>
           {% for u in members %}<option value="{{ u.pk }}"{% if u.pk == r.c.assignee_id %} selected{% endif %}>{{ u.display_name }}</option>{% endfor %}
         </select>
-        {% if r.c.assignee and not r.c.assignee_id %}<span class="t12 muted">“{{ r.c.assignee }}” 이름 확인 필요</span>{% endif %}
+        {% if r.c.assignee and not r.c.assignee_id %}<span class="t12 muted">“{{ r.c.assignee }}” 담당자 확인 필요</span>{% endif %}
       </td>
-      <td><input class="input" type="date" name="due_{{ r.index }}" value="{{ r.c.due|default:'' }}" aria-label="후보 {{ forloop.counter }} 기한"></td>
+      <td><input class="input" type="date" name="due_{{ r.index }}" value="{{ r.c.due|default:'' }}" aria-label="태스크 후보 {{ forloop.counter }} 기한"></td>
       <td>
-        <select class="select" name="project_{{ r.index }}" aria-label="후보 {{ forloop.counter }} 프로젝트">
+        <select class="select" name="project_{{ r.index }}" aria-label="태스크 후보 {{ forloop.counter }} 프로젝트">
           {% for p in projects %}<option value="{{ p.pk }}"{% if p.pk == r.c.project_id %} selected{% endif %}>{{ p.name }}</option>{% endfor %}
         </select>
       </td>
@@ -47,7 +47,7 @@
     <button type="button" class="btn" data-ai-retry>후보 다시 뽑기</button>
   </div>
   {% else %}
-  <p class="muted">AI가 태스크 후보를 찾지 못했습니다. 내용이 짧으면 후보가 없을 수 있습니다.</p>
+  <p class="muted">AI가 태스크 후보를 찾지 못했습니다. 원문 내용을 확인한 뒤 [후보 다시 뽑기]를 눌러 주세요.</p>
   <div class="row"><button type="button" class="btn" data-ai-retry>후보 다시 뽑기</button></div>
   {% endif %}
 </form>

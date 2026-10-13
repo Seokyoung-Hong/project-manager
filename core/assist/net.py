@@ -147,7 +147,7 @@ def classify(url: str) -> str:
     if parts is None:
         raise ServiceError(
             {
-                "base_url": "http:// 또는 https://로 시작하고 사용자 정보·쿼리가 없는 주소여야 합니다."
+                "base_url": "AI 서버 주소 형식이 올바르지 않습니다. http:// 또는 https://로 시작하고 사용자 정보·쿼리를 포함하지 않는 주소를 입력해 주세요."
             }
         )  # COPY:assist_url_invalid
     host = parts.hostname.lower()
@@ -163,13 +163,17 @@ def classify(url: str) -> str:
         ips = [lit] if lit is not None else _resolve(host, parts.port or 443)
     except NetError:
         raise ServiceError(
-            {"base_url": "주소를 찾을 수 없습니다. 주소를 확인해 주세요."}
+            {
+                "base_url": "AI 서버 주소를 찾을 수 없습니다. 호스트 이름과 네트워크 연결을 확인해 주세요."
+            }
         ) from None  # COPY:assist_url_unresolved
     if any(_ip_kind(ip) != "public" for ip in ips):
         return "pc"
     if parts.scheme != "https":
         raise ServiceError(
-            {"base_url": "공개 주소는 https://만 쓸 수 있습니다."}
+            {
+                "base_url": "공개 AI 서버 주소에는 HTTPS가 필요합니다. https://로 시작하는 주소를 입력해 주세요."
+            }
         )  # COPY:assist_url_https
     return "direct"
 
@@ -188,11 +192,11 @@ def check_org_url(url: str) -> str:
             p = urlsplit(url)
             _ = p.port
         except ValueError:
-            return "주소 형식이 올바르지 않습니다."  # COPY:assist_url_invalid
+            return "AI 서버 주소 형식이 올바르지 않습니다. http:// 또는 https://로 시작하고 사용자 정보·쿼리를 포함하지 않는 주소를 입력해 주세요."  # COPY:assist_url_invalid
         if p.scheme not in ("http", "https") or not p.hostname:
-            return "http:// 또는 https://로 시작하는 주소여야 합니다."  # COPY:assist_url_scheme
-        return "사용자 정보·쿼리가 없는 주소여야 합니다."  # COPY:assist_url_extra
-    blocked = "쓸 수 없는 주소입니다. 운영자에게 허용 호스트 등록을 요청해 주세요."  # COPY:assist_url_blocked
+            return "AI 서버 주소에 통신 방식 또는 호스트가 없습니다. http:// 또는 https://로 시작하는 전체 주소를 입력해 주세요."  # COPY:assist_url_scheme
+        return "AI 서버 주소에 사용자 정보 또는 쿼리가 포함되어 있습니다. 해당 정보를 제외한 주소를 입력해 주세요."  # COPY:assist_url_extra
+    blocked = "보안 제한으로 사용할 수 없는 주소입니다. 공개 HTTPS 주소를 사용하거나, 사설망 주소이면 서비스 운영자에게 허용 호스트 등록 가능 여부를 문의해 주세요."  # COPY:assist_url_blocked
     host = parts.hostname.lower()
     lit = _literal(host)
     kind = _ip_kind(lit) if lit is not None else "public"
@@ -200,7 +204,11 @@ def check_org_url(url: str) -> str:
         return blocked
     local = kind == "private" or host in _LOCAL_NAMES or host.endswith(_LOCAL_SUFFIXES)
     if (local or parts.scheme == "http") and not _host_allowed(host):  # 공개 https는 DB도 안 본다
-        return blocked if local else "https:// 주소여야 합니다."  # COPY:assist_url_https
+        return (
+            blocked
+            if local
+            else "공개 AI 서버 주소에는 HTTPS가 필요합니다. https://로 시작하는 주소를 입력해 주세요."
+        )  # COPY:assist_url_https
     return ""
 
 

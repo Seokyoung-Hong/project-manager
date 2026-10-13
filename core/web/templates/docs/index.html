@@ -55,14 +55,14 @@
       <details class="menu">
         <summary class="btn sm">AI로 쓰기</summary>
         <div class="menu-list">
-          <button type="button" data-ai-mode="doc.fill" data-ai-target="doc:{{ doc.pk }}" data-ai-title="AI로 본문 채우기">AI로 본문 채우기</button>
+          <button type="button" data-ai-mode="doc.fill" data-ai-target="doc:{{ doc.pk }}" data-ai-title="AI로 본문 쓰기">AI로 본문 쓰기</button>
           <button type="button" data-ai-mode="doc.continue" data-ai-target="doc:{{ doc.pk }}" data-ai-title="AI로 이어 쓰기">AI로 이어 쓰기</button>
           {% if templates %}
-          <select id="ai-tpl-{{ doc.pk }}" class="select" aria-label="AI가 따를 템플릿">
-            <option value="">템플릿 고르기</option>
+          <select id="ai-tpl-{{ doc.pk }}" class="select" aria-label="사용할 템플릿">
+            <option value="">템플릿 선택</option>
             {% for t in templates %}<option value="{{ t.pk }}">{{ t.title }}</option>{% endfor %}
           </select>
-          <button type="button" data-ai-mode="doc.template" data-ai-target="doc:{{ doc.pk }}" data-ai-select="#ai-tpl-{{ doc.pk }}" data-ai-title="AI로 템플릿 틀에 맞춰 다시 쓰기">AI로 템플릿 틀에 맞춰 다시 쓰기</button>
+          <button type="button" data-ai-mode="doc.template" data-ai-target="doc:{{ doc.pk }}" data-ai-select="#ai-tpl-{{ doc.pk }}" data-ai-title="AI로 템플릿에 맞춰 쓰기">AI로 템플릿에 맞춰 쓰기</button>
           {% endif %}
         </div>
       </details>

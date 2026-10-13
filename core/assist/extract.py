@@ -15,9 +15,11 @@ from django.http import Http404
 from common.errors import ServiceError
 
 MAX_CANDIDATES = 20
-NAME_CHECK = "이름 확인 필요"  # COPY:extract_assignee_check
-NO_DUE_MEETING = "회의록 태스크 후보로 만들었습니다"  # COPY:extract_no_due_meeting
-NO_DUE_ISSUE = "GitHub 이슈 태스크 후보로 만들었습니다"  # COPY:extract_no_due_issue
+NAME_CHECK = "담당자 확인 필요"  # COPY:extract_assignee_check
+NO_DUE_MEETING = (
+    "회의록의 태스크 후보에서 생성되어 기한이 정해지지 않았습니다."  # COPY:extract_no_due_meeting
+)
+NO_DUE_ISSUE = "GitHub 이슈의 태스크 후보에서 생성되어 기한이 정해지지 않았습니다."  # COPY:extract_no_due_issue
 
 
 def _s(v, limit):
@@ -136,7 +138,9 @@ def _make(job, i, row, actor, *, project, group, no_due):
 
     title = (row.get("title") or "").strip()
     if not title:
-        raise ServiceError({"title": "제목을 입력해 주세요."})  # COPY:extract_title_required
+        raise ServiceError(
+            {"title": "후보 제목이 없습니다. 태스크 제목을 입력해 주세요."}
+        )  # COPY:extract_title_required
     assignee = None
     if row.get("assignee_id"):
         assignee = User.objects.filter(pk=row["assignee_id"], is_active=True).first()
@@ -146,7 +150,9 @@ def _make(job, i, row, actor, *, project, group, no_due):
             due = date.fromisoformat(due)
         except ValueError:
             raise ServiceError(
-                {"due": "기한 형식이 올바르지 않습니다."}
+                {
+                    "due": "기한 형식이 올바르지 않습니다. 날짜 입력 칸에서 유효한 날짜를 선택해 주세요."
+                }
             ) from None  # COPY:extract_due_invalid
     return create_task(
         project=project,
@@ -165,7 +171,7 @@ def _make(job, i, row, actor, *, project, group, no_due):
 def _err(e) -> str:
     if isinstance(e, ServiceError):
         return " ".join(str(v) for v in e.errors.values())
-    return "만들 수 없습니다."  # COPY:extract_row_failed
+    return "이 후보로 태스크를 만들지 못했습니다. 입력 내용과 프로젝트 권한을 확인한 뒤 다시 시도해 주세요."  # COPY:extract_row_failed
 
 
 def create_from_candidates(job, rows: list[dict], actor) -> list:
@@ -182,7 +188,11 @@ def create_from_candidates(job, rows: list[dict], actor) -> list:
     if job.user_id != actor.pk:
         raise Http404
     if job.kind != "extract" or job.status != "done":
-        raise ServiceError({"assist": "태스크 후보가 아직 없습니다."})  # COPY:extract_not_ready
+        raise ServiceError(
+            {
+                "assist": "태스크 후보가 아직 준비되지 않았습니다. 후보 뽑기가 끝난 뒤 다시 시도해 주세요."
+            }
+        )  # COPY:extract_not_ready
     try:
         count = len(json.loads(job.result or "{}").get("tasks") or [])
     except ValueError:
@@ -197,7 +207,13 @@ def create_from_candidates(job, rows: list[dict], actor) -> list:
         for row in rows:
             i = row.get("index")
             if not isinstance(i, int) or not 0 <= i < count:
-                out.append((i, None, "후보를 찾을 수 없습니다."))  # COPY:extract_row_missing
+                out.append(
+                    (
+                        i,
+                        None,
+                        "해당 태스크 후보를 찾을 수 없습니다. 후보를 다시 뽑은 뒤 선택해 주세요.",
+                    )
+                )  # COPY:extract_row_missing
                 continue
             try:
                 with transaction.atomic():
@@ -229,11 +245,15 @@ def create_from_candidates(job, rows: list[dict], actor) -> list:
     for row in rows:
         i = row.get("index")
         if not isinstance(i, int) or not 0 <= i < count:
-            out.append((i, None, "후보를 찾을 수 없습니다."))  # COPY:extract_row_missing
+            out.append(
+                (i, None, "해당 태스크 후보를 찾을 수 없습니다. 후보를 다시 뽑은 뒤 선택해 주세요.")
+            )  # COPY:extract_row_missing
             continue
         project = allowed.get(row.get("project_id")) or base
         if project is None:
-            out.append((i, None, "프로젝트를 골라 주세요."))  # COPY:extract_project_required
+            out.append(
+                (i, None, "프로젝트가 선택되지 않았습니다. 태스크를 만들 프로젝트를 선택해 주세요.")
+            )  # COPY:extract_project_required
             continue
         try:
             task = _make(job, i, row, actor, project=project, group=None, no_due=NO_DUE_MEETING)

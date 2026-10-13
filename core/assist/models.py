@@ -29,7 +29,11 @@ CODEX_URL = (
     "codex:"  # 개인 AI "Codex(내 구독, 내 PC)" — 주소 대신 이 값, route=pc(마이그레이션 없이 표현)
 )
 
-ROUTES = [("direct", "서버가 직접"), ("pc", "내 PC 거쳐 보내기"), ("org", "조직 AI")]
+ROUTES = [
+    ("direct", "유달리 서버에서 요청"),  # COPY:assist_route_direct
+    ("pc", "내 PC 거쳐 보내기"),  # COPY:assist_route_pc
+    ("org", "조직 AI"),
+]
 
 
 class AiSource(models.Model):
