@@ -4,6 +4,7 @@
 from django.db import transaction
 
 from common.errors import ServiceError
+from orgs.names import org_names
 
 from .services import ONE_LEVEL, _log, _require_task, duplicate_task
 
@@ -24,11 +25,14 @@ def looks_multi_assignee(title, description, org) -> list:
     # '같이·함께·공동' 키워드는 쓰지 않는다(이름 없이는 근거가 없다). 필요하면 이름 1명 + 키워드로.
     """
     text = f"{title or ''}\n{description or ''}"
-    hits = sorted(
-        (text.find(u.display_name), u.pk, u)
-        for u in org.members.filter(is_active=True)
-        if len(u.display_name) >= 2 and u.display_name in text
-    )
+    hits, shown = [], org_names(org)
+    for u in org.members.filter(is_active=True):
+        # 조직 표시 이름과 계정 표시 이름 둘 다 찾는다(본문에는 어느 쪽이든 쓰인다)
+        names = {shown.get(u.pk, u.display_name), u.display_name}
+        at = [text.find(n) for n in names if len(n) >= 2 and n in text]
+        if at:
+            hits.append((min(at), u.pk, u))
+    hits.sort(key=lambda h: h[:2])
     users = [u for _, _, u in hits]
     return users if len(users) >= MIN_PEOPLE else []
 
@@ -81,10 +85,12 @@ def split_by_assignees(
             }
         )
     roles = roles or {}
+    shown = org_names(task.project.org_id)
     out = []
     for u in users:
         role = (roles.get(u.pk) or "").strip()
-        label = f"{u.display_name} ({role})" if role else u.display_name
+        name = shown.get(u.pk, u.display_name)
+        label = f"{name} ({role})" if role else name
         try:
             title = title_pattern.format(title=task.title, name=label)
         except (KeyError, IndexError, ValueError) as e:

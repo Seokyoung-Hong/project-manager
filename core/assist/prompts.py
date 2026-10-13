@@ -93,7 +93,7 @@ def _blocks(items, budget: int) -> tuple[str, int]:
 
 def _extract_extras(user, base_project, org):
     """후보 뽑기 맥락: 열린 태스크 제목 50개, 프로젝트 구성원 표시 이름, 볼 수 있는 프로젝트 이름."""
-    from orgs.models import OrgMembership
+    from orgs.names import org_names
     from projects.services import visible_projects
     from tasks.models import Task
     from tasks.services import visible_tasks
@@ -111,10 +111,8 @@ def _extract_extras(user, base_project, org):
         )
         if titles:
             out.append(("이미 있는 열린 태스크", "\n".join(f"- {t}" for t in titles)))
-    people = [
-        m.user.display_name or m.user.username
-        for m in OrgMembership.objects.filter(org=org).select_related("user")[:200]
-    ]
+    # 그 조직에서 보이는 이름. 계정 실명은 "실명으로 표시" 조직에서만 AI로 간다
+    people = list(org_names(org).values())[:200]
     if people:
         out.append(("구성원 표시 이름", ", ".join(people)))
     return out
