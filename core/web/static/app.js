@@ -628,4 +628,24 @@
       }, 0);
     });
   })();
+
+  // 설정 화면: 저장하면 서버가 같은 화면으로 다시 보내(redirect) 첫 섹션만 열린 채 맨 위로 돌아간다.
+  // 저장 직전의 열린 섹션과 스크롤 위치를 이 탭에만 잠깐 적어 두었다가 돌아온 화면에서 되살린다.
+  (function () {
+    if (!document.querySelector("details.settings-section")) return;
+    var KEY = "udally.settingsView:" + location.pathname;
+    body.addEventListener("submit", function (e) {
+      var f = e.target;
+      // HTMX 폼은 화면을 다시 그리지 않으므로 기억하지 않는다(다음 방문에 엉뚱하게 되살아나지 않게)
+      if (e.defaultPrevented || !f.closest("main") || f.matches("[hx-post],[hx-get],[hx-put],[data-hx-post]")) return;
+      var open = [];
+      document.querySelectorAll("details.settings-section[id]").forEach(function (d) { if (d.open) open.push(d.id); });
+      try { sessionStorage.setItem(KEY, JSON.stringify({ open: open, y: window.scrollY })); } catch (err) { /* 저장소를 못 쓰면 기본 화면 */ }
+    });
+    var saved = null;
+    try { saved = JSON.parse(sessionStorage.getItem(KEY) || "null"); sessionStorage.removeItem(KEY); } catch (err) { saved = null; }
+    if (!saved || location.hash) return; // 주소에 섹션(#)을 지정해 온 경우는 그쪽을 따른다
+    document.querySelectorAll("details.settings-section[id]").forEach(function (d) { d.open = saved.open.indexOf(d.id) >= 0; });
+    requestAnimationFrame(function () { window.scrollTo(0, saved.y || 0); });
+  })();
 })();
