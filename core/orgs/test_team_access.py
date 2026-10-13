@@ -27,7 +27,9 @@ HX = {"HX-Request": "true"}
 @pytest.fixture
 def other(org):
     """팀에 속하지 않은 일반 멤버."""
-    u = User.objects.create_user("other1", password="pw12345678", display_name="다른멤버")
+    u = User.objects.create_user(
+        "other1", password="pw12345678", display_name="다른멤버", real_name="실명"
+    )
     OrgMembership.objects.create(org=org, user=u, role="member")
     return u
 
@@ -146,7 +148,9 @@ def test_discord_team_list_hides_channel(client, org, admin, other, secret):
     other.discord_user_id = "222"
     other.save()
     User.objects.filter(pk=other.pk).update(discord_linked_at=timezone.now())
-    bot = User.objects.create_user("bot", password="pw12345678", display_name="봇")
+    bot = User.objects.create_user(
+        "bot", password="pw12345678", display_name="봇", real_name="실명"
+    )
     _, raw = ApiToken.issue(bot, "봇", "bot")
     rows = client.post(
         "/api/integrations/discord/teams",

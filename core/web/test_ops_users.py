@@ -16,13 +16,20 @@ REASON = "본인 확인 후 처리"
 
 @pytest.fixture
 def staff(db):
-    return User.objects.create_user("staff1", password=PW, display_name="운영자", is_staff=True)
+    return User.objects.create_user(
+        "staff1", password=PW, display_name="운영자", is_staff=True, real_name="실명"
+    )
 
 
 @pytest.fixture
 def root(db):
     return User.objects.create_user(
-        "root1", password=PW, display_name="최고", is_staff=True, is_superuser=True
+        "root1",
+        password=PW,
+        display_name="최고",
+        is_staff=True,
+        is_superuser=True,
+        real_name="실명",
     )
 
 
@@ -79,7 +86,7 @@ def test_suspend_blocks_login_api_and_session_then_reactivate(client, member, st
 
 def test_staff_target_needs_superuser_and_grant_is_superuser_only(client, staff, root, member):
     client.force_login(staff)
-    other = User.objects.create_user("staff2", password=PW, is_staff=True)
+    other = User.objects.create_user("staff2", password=PW, is_staff=True, real_name="실명")
     _act(client, other, "suspend", reason=REASON, confirm="staff2")
     assert User.objects.get(pk=other.pk).is_active
     assert client.get(f"/ops/users/{member.pk}/grant-staff").status_code == 404

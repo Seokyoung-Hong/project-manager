@@ -22,7 +22,7 @@ URLS = ("/ops", "/ops/orgs", "/ops/integrations", "/ops/system")
 @pytest.fixture
 def staff(db):
     return User.objects.create_user(
-        "staff1", password="pw12345678", display_name="운영자", is_staff=True
+        "staff1", password="pw12345678", display_name="운영자", is_staff=True, real_name="실명"
     )
 
 

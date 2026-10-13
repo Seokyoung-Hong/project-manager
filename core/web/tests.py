@@ -304,6 +304,9 @@ def test_signup_lands_on_org_list_with_create_button(client):
     )
     assert r.status_code == 302
     assert r.headers["Location"] == "/orgs"
+    User.objects.filter(username="newbie").update(
+        real_name="새사람"
+    )  # 실명 관문 통과(가입 폼 실명은 갈래 E)
     body = client.get("/orgs").content.decode()
     assert "조직 만들기" in body
     assert "초대 링크" in body

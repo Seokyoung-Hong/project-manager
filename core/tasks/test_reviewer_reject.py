@@ -14,7 +14,7 @@ HX = {"HX-Request": "true"}
 
 
 def _user(org, name):
-    u = User.objects.create_user(name, password="pw12345678", display_name=name)
+    u = User.objects.create_user(name, password="pw12345678", display_name=name, real_name="실명")
     OrgMembership.objects.create(org=org, user=u, role="member")
     return u
 

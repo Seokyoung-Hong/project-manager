@@ -20,7 +20,9 @@ HEADER = [
 
 @pytest.fixture
 def staff(db):
-    return User.objects.create_user("staff1", password="pw12345678", is_staff=True)
+    return User.objects.create_user(
+        "staff1", password="pw12345678", is_staff=True, real_name="실명"
+    )
 
 
 def _log(actor="staff1", action="user.suspend", label="member1", **kw):

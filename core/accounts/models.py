@@ -12,6 +12,9 @@ class User(AbstractUser):
     AUTO_PULL_CHOICES = [(0, "끄기"), (1, "1일"), (3, "3일"), (5, "5일"), (7, "7일"), (14, "14일")]
 
     display_name = models.CharField("표시 이름", max_length=50, blank=True)
+    # 계정 실명(IMPL-PLAN-13). 가입 필수지만 기존 사용자는 비어 있다 — 비면 실명 관문(common/middleware.py,
+    # api/auth.py)이 입력 화면으로 보낸다. 검증은 accounts.services.clean_real_name.
+    real_name = models.CharField("실명", max_length=50, blank=True)
     # Discord snowflake. 사용자가 직접 입력하지 않는다 — 봇이 게이트웨이에서 읽은 author.id와
     # 웹에서 발급한 1회용 코드를 맞바꿔야 채워진다(GUIDE-00 §3). 봇이 이 값으로 사람을
     # 찾으므로 검증 없이 채워지면 곧 로그인 자격증명이 된다.

@@ -113,7 +113,9 @@ def test_hidden_group_and_subtasks(client, org, admin, member):
         org=org, name="비공개", actor=admin, owners=[admin], teams=[team], visibility="teams"
     )
     public = create_project(org=org, name="공개", actor=admin)
-    viewer = User.objects.create_user("vw", password="pw12345678", display_name="바깥")
+    viewer = User.objects.create_user(
+        "vw", password="pw12345678", display_name="바깥", real_name="실명"
+    )
     OrgMembership.objects.create(org=org, user=viewer, role="member")
     top = _t(secret, member, "비밀 상위")
     sub = _t(secret, member, "하위 일", group=top)
@@ -164,8 +166,12 @@ def test_project_list_query_count_flat(logged, project, member):
 
 
 def test_split_dialog_and_toast(logged, project, member, org):
-    a = User.objects.create_user("p1", password="pw12345678", display_name="김철수")
-    b = User.objects.create_user("p2", password="pw12345678", display_name="이영희")
+    a = User.objects.create_user(
+        "p1", password="pw12345678", display_name="김철수", real_name="실명"
+    )
+    b = User.objects.create_user(
+        "p2", password="pw12345678", display_name="이영희", real_name="실명"
+    )
     for u in (a, b):
         OrgMembership.objects.create(org=org, user=u, role="member")
     t = _t(project, member, "로그인 개선")

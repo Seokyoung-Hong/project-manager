@@ -23,7 +23,7 @@ def hidden(gh, org, admin, project, task):
     task = ts.update_task(
         task, {"git_project": q}, actor=admin, source="web", expected_version=task.version
     )
-    u = User.objects.create_user("u1", password="pw12345678", display_name="유")
+    u = User.objects.create_user("u1", password="pw12345678", display_name="유", real_name="실명")
     OrgMembership.objects.create(org=org, user=u, role="member")
     # U는 GitHub에서 두 저장소를 모두 볼 수 있어도 PM에서 Q를 못 본다.
     GitHubIdentity.objects.create(

@@ -4,6 +4,7 @@ from ninja import NinjaAPI
 from ninja.errors import HttpError
 from ninja.throttling import AuthRateThrottle
 
+from accounts.services import RealNameRequired
 from common.errors import ConflictError, Forbidden, ServiceError
 from orgs.member_info import MemberInfoRequired
 from portfolio.api import router as portfolio_router
@@ -94,6 +95,17 @@ def _member_info_required(request, exc):
             "message": msg,
             "url": exc.url,
         },
+        status=403,
+    )
+
+
+@api.exception_handler(RealNameRequired)
+def _real_name_required(request, exc):
+    # profile_required와 같은 모양. 기계는 error, 사람은 message·url을 읽는다.
+    msg = str(exc)
+    return api.create_response(
+        request,
+        {"detail": msg, "error": "real_name_required", "message": msg, "url": exc.url},
         status=403,
     )
 

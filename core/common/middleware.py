@@ -1,4 +1,5 @@
 import json
+from urllib.parse import quote
 
 
 def origin_agent_cluster(get_response):
@@ -17,6 +18,29 @@ def origin_agent_cluster(get_response):
     return middleware
 
 
+def names_scope(get_response):
+    """요청 하나 동안 조직별 이름표를 캐시한다(orgs/names.py). 요청이 끝나면 버린다."""
+
+    def middleware(request):
+        from orgs.names import _cache
+
+        token = _cache.set({})
+        try:
+            return get_response(request)
+        finally:
+            _cache.reset(token)
+
+    return middleware
+
+
+# request.user를 읽지 않는 첫 경로 조각. /rt/(SSE)는 스트림 내내 DB 연결을 붙잡고, /api/는 api.auth가 막는다.
+_NO_USER_PREFIXES = {"rt", "api", "static"}
+# 계정 실명이 비어도 열 수 있는 화면: 입력 화면(프로필), 로그인·로그아웃·가입, 문서, 동의, 탈퇴, 기계용 경로.
+_REAL_NAME_OPEN = {
+    "profile", "logout", "login", "signup", "privacy", "terms", "consent", "consents", "account",
+    "password_reset_confirm", "healthz", "github_login", "github_login_confirm", "github_callback",
+    "oauth_metadata", "oauth_register", "oauth_token", "skills_install", "skills_bundle", "link_script",
+}  # fmt: skip
 # 조직 화면으로 보는 첫 경로 조각. 계정 설정·운영 콘솔·로그인·도움말 등은 조직과 상관없어 막지 않는다.
 _ORG_PREFIXES = {"today", "me", "requests", "org", "orgs", "projects", "tasks", "teams", "docs", "notes", "milestones", "search"}  # fmt: skip
 # 막혀도 열 수 있는 화면: 입력 화면, 조직 목록·만들기(전환), 항목 정의를 고치는 조직 설정.
@@ -56,19 +80,32 @@ class MemberInfoGate:
 
     def process_view(self, request, view_func, view_args, view_kwargs):
         match = request.resolver_match
+        first = request.path.strip("/").split("/")[0]
         # 경로부터 본다: request.user는 DB를 읽는다. /rt/(SSE)에서 읽으면 스트림 내내 연결 하나를 붙잡는다.
-        if (
-            match is None
-            or match.url_name in _OPEN_VIEWS
-            or request.path.strip("/").split("/")[0] not in _ORG_PREFIXES
-            or not request.user.is_authenticated
-        ):
+        if match is None or first in _NO_USER_PREFIXES or not request.user.is_authenticated:
+            return None
+        from web.views.common import hx_redirect
+
+        # 계정 실명이 비었으면(기존 사용자·GitHub 가입·초대 인계) 어느 화면이든 먼저 입력하게 한다.
+        if not request.user.real_name and match.url_name not in _REAL_NAME_OPEN:
+            return hx_redirect(request, real_name_url(request))
+        if match.url_name in _OPEN_VIEWS or first not in _ORG_PREFIXES:
             return None
         from orgs.member_info import blocked_org, request_org_id, url
-        from web.views.common import current_org, hx_redirect
+        from web.views.common import current_org
 
         org_id = request_org_id(view_kwargs, {**request.GET.dict(), **request.POST.dict()})
         if org_id is None and match.url_name not in _CROSS_ORG_VIEWS:
             org_id = getattr(current_org(request), "pk", None)
         org = blocked_org(request.user, org_id)
         return hx_redirect(request, url(org.pk)) if org else None
+
+
+def real_name_url(request) -> str:
+    """실명 입력 화면(프로필) 주소. 화면 이동(GET, HTMX 아님)이면 저장 뒤 돌아올 next를 붙인다."""
+    from django.urls import reverse
+
+    url = reverse("profile")
+    if request.method == "GET" and not request.headers.get("HX-Request"):
+        url += "?next=" + quote(request.get_full_path(), safe="/")
+    return url

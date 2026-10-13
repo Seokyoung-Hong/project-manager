@@ -1,8 +1,9 @@
 """조직별 구성원 정보. 조직 관리자가 항목을 정하고, 구성원이 조직마다 따로 입력한다.
 
-정의(Organization.member_fields): {"real_name": "off|optional|required",
+정의(Organization.member_fields): {"show_real_name": bool,
   "fields": [{"id", "label", "kind": "text|long|choice", "required", "help", "choices"}]} — 목록 순서가 화면 순서.
-값(OrgMembership): real_name, info = {항목 id: 값}. id 기준이라 라벨을 바꿔도 값이 남고, 지운 항목의 값은
+show_real_name은 "실명으로 표시"(조직 표시 이름 = 계정 실명, orgs/names.py). 실명 자체는 계정에 있다(User.real_name).
+값(OrgMembership): info = {항목 id: 값}. id 기준이라 라벨을 바꿔도 값이 남고, 지운 항목의 값은
 화면에 나오지 않는다(다음 저장 때 지워진다).
 
 필수 항목이 빈 구성원은 그 조직을 못 쓴다. 웹은 common.middleware.MemberInfoGate, API는 api.auth가
@@ -20,7 +21,6 @@ from common.errors import ServiceError
 
 from .models import OrgMembership
 
-REAL_NAME = (("off", "받지 않음"), ("optional", "선택"), ("required", "필수"))
 KINDS = (("text", "짧은 글"), ("long", "긴 글"), ("choice", "선택지"))
 MAX_LEN = {"text": 200, "long": 2000, "choice": 50}
 MAX_FIELDS = 30
@@ -37,8 +37,14 @@ class MemberInfoRequired(Exception):
 
 
 def definition(org) -> dict:
-    d = org.member_fields or {}
-    return {"real_name": d.get("real_name", "off"), "fields": d.get("fields", [])}
+    """{"show_real_name": bool, "fields": [...]}. org는 조직 또는 member_fields dict.
+
+    키 호환은 여기 한 곳: orgs 0014 이전 모양(real_name: off|optional|required)이면 required를 켬으로 읽는다.
+    그래서 마이그레이션 전후·되돌리기 중에도 화면과 names.org_names가 깨지지 않는다.
+    """
+    d = (org if isinstance(org, dict) else org.member_fields) or {}
+    show = d["show_real_name"] if "show_real_name" in d else d.get("real_name") == "required"
+    return {"show_real_name": bool(show), "fields": d.get("fields", [])}
 
 
 def _clean_field(f: dict) -> dict:
@@ -69,15 +75,14 @@ def _clean_field(f: dict) -> dict:
     }
 
 
-def set_definition(org, real_name: str, fields: list[dict], actor):
-    """항목 정의를 통째로 바꾼다. 바뀌면 조직 이력(ChangeLog)에 전후 요약을 남긴다."""
+def set_definition(org, show_real_name: bool, fields: list[dict], actor):
+    """항목 정의와 "실명으로 표시"를 통째로 바꾼다. 바뀌면 조직 이력(ChangeLog)에 전후 요약을 남긴다."""
     from tasks.models import ChangeLog
 
+    from . import names
     from .services import require_admin
 
     require_admin(actor, org)
-    if real_name not in dict(REAL_NAME):
-        raise ServiceError({"member_fields": "실명 입력 방식을 다시 골라 주세요."})
     if len(fields) > MAX_FIELDS:
         raise ServiceError({"member_fields": f"항목은 {MAX_FIELDS}개까지 만들 수 있습니다."})
     cleaned = [_clean_field(f) for f in fields]
@@ -89,7 +94,7 @@ def set_definition(org, real_name: str, fields: list[dict], actor):
             }
         )
     old = definition(org)
-    new = {"real_name": real_name, "fields": cleaned}
+    new = {"show_real_name": bool(show_real_name), "fields": cleaned}
     if old == new:
         return org
     ChangeLog.objects.create(
@@ -103,22 +108,24 @@ def set_definition(org, real_name: str, fields: list[dict], actor):
     )
     org.member_fields = new
     org.save(update_fields=["member_fields"])
+    names.forget(org.pk)
     return org
 
 
 def summary(d: dict) -> str:
-    parts = [f"실명 {dict(REAL_NAME)[d['real_name']]}"]
+    # COPY:member_fields.summary_show_real_name
+    parts = ["실명으로 표시 " + ("켬" if d["show_real_name"] else "끔")]
     parts += [f["label"] + (" (필수)" if f["required"] else "") for f in d["fields"]]
     return ", ".join(parts)[:500]
 
 
 def missing(membership) -> bool:
     """필수 항목이 하나라도 비었는가."""
-    d = definition(membership.org)
-    if d["real_name"] == "required" and not membership.real_name.strip():
-        return True
     info = membership.info or {}
-    return any(f["required"] and not str(info.get(f["id"], "")).strip() for f in d["fields"])
+    return any(
+        f["required"] and not str(info.get(f["id"], "")).strip()
+        for f in definition(membership.org)["fields"]
+    )
 
 
 def rows(membership) -> list[dict]:
@@ -127,17 +134,10 @@ def rows(membership) -> list[dict]:
     return [{**f, "value": info.get(f["id"], "")} for f in definition(membership.org)["fields"]]
 
 
-def save(membership, real_name: str, values: dict):
-    """구성원이 자기 정보를 저장한다. values는 {항목 id: 값}."""
+def save(membership, values: dict):
+    """구성원이 자기 정보를 저장한다. values는 {항목 id: 값}. 실명은 계정에 있다(설정 → 프로필)."""
     d = definition(membership.org)
     errors = {}
-    real_name = (real_name or "").strip()
-    if d["real_name"] == "off":
-        real_name = membership.real_name  # 받지 않는 동안 예전 값은 건드리지 않는다
-    elif len(real_name) > 50:
-        errors["real_name"] = "실명은 50자까지 입력할 수 있습니다."
-    elif d["real_name"] == "required" and not real_name:
-        errors["real_name"] = "실명을 입력해 주세요."
     info = {}
     for f in d["fields"]:
         v = str(values.get(f["id"]) or "").strip()
@@ -151,9 +151,8 @@ def save(membership, real_name: str, values: dict):
             info[f["id"]] = v
     if errors:
         raise ServiceError(errors)
-    membership.real_name = real_name
     membership.info = info
-    membership.save(update_fields=["real_name", "info"])
+    membership.save(update_fields=["info"])
     return membership
 
 

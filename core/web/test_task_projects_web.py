@@ -25,6 +25,7 @@ def w(org, admin, member):
         display_name="바깥",
         discord_user_id="7",
         discord_linked_at=timezone.now(),
+        real_name="실명",
     )
     OrgMembership.objects.create(org=org, user=other, role="member")
     team = create_team(org=org, name="비밀팀", actor=admin)

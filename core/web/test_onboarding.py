@@ -15,7 +15,9 @@ pytestmark = pytest.mark.django_db
 
 @pytest.fixture
 def lonely(db):
-    return User.objects.create_user("lonely", password="pw12345678", display_name="혼자")
+    return User.objects.create_user(
+        "lonely", password="pw12345678", display_name="혼자", real_name="실명"
+    )
 
 
 # ---------- A1: 조직이 없으면 조직 목록으로 ----------

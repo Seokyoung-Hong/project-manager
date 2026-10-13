@@ -26,6 +26,7 @@ def _user(org, name, role="member"):
         display_name=name,
         discord_user_id=f"9{User.objects.count()}",
         discord_linked_at=timezone.now(),
+        real_name="실명",
     )
     OrgMembership.objects.create(org=org, user=u, role=role)
     return u

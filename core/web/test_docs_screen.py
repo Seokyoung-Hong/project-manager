@@ -31,7 +31,9 @@ def logged(client, member):
 
 @pytest.fixture
 def other(org):
-    u = User.objects.create_user("other9", password="pw12345678", display_name="다른 멤버")
+    u = User.objects.create_user(
+        "other9", password="pw12345678", display_name="다른 멤버", real_name="실명"
+    )
     OrgMembership.objects.create(org=org, user=u, role="member")
     return u
 

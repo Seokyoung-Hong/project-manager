@@ -41,7 +41,7 @@ PW = "pw12345678"
 @pytest.fixture
 def other(org):
     """담당 팀이 아닌 일반 멤버."""
-    u = User.objects.create_user("other1", password=PW, display_name="다른멤버")
+    u = User.objects.create_user("other1", password=PW, display_name="다른멤버", real_name="실명")
     OrgMembership.objects.create(org=org, user=u, role="member")
     return u
 

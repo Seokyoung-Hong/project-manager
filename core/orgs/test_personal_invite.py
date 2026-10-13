@@ -109,7 +109,8 @@ def test_claim_keeps_account_and_logs_in(client, org, admin, project, pending):
     task.refresh_from_db()
     assert task.assignee_id == user.pk
     assert int(client.session["_auth_user_id"]) == user.pk
-    assert client.get("/today").status_code == 200  # 세션이 살아 있다
+    # 세션이 살아 있다. 실명은 아직 비어 다른 화면은 실명 관문이 프로필로 보낸다(orgs/test_names.py)
+    assert client.get("/settings/profile").status_code == 200
     invite.refresh_from_db()
     assert invite.use_count == 1
     assert ChangeLog.objects.filter(target_id=org.pk, field="invite_claimed").exists()

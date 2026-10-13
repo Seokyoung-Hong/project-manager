@@ -6,6 +6,7 @@
 """
 
 import secrets
+import unicodedata
 from datetime import timedelta
 
 from django.conf import settings
@@ -22,6 +23,38 @@ from .identity import resolve
 from .models import ApiToken, Consent, IdempotencyKey, LoginLock, OAuthCode, TermsAgreement, User
 
 CODE_TTL = timedelta(minutes=10)
+
+# 이름에 글자 말고 허용하는 기호. 숫자·@<>/:#\·이모지·제어 문자는 막는다(아이디·주소·멘션 흉내 방지).
+_NAME_PUNCT = set(" .-'·")
+
+
+def clean_real_name(value, *, field: str = "real_name", required: bool = True) -> str:
+    """실명·조직 표시 이름 검증(IMPL-PLAN-13 §5.2). 공백 정리 후 1~50자, 글자 하나 이상.
+
+    진짜 실명인지는 확인하지 않는다(본인인증 없음). 실패하면 ServiceError({field: 문구}).
+    required=False면 빈 값을 ""로 돌려준다(조직 표시 이름: 비우면 계정 표시 이름).
+    """
+    v = " ".join(str(value or "").split())
+    if not v:
+        if required:
+            raise ServiceError({field: "실명을 입력해 주세요."})  # COPY:real_name.required
+        return v
+    if len(v) > 50:
+        raise ServiceError({field: "50자까지 입력할 수 있습니다."})  # COPY:real_name.too_long
+    ok = all(c in _NAME_PUNCT or unicodedata.category(c)[0] in "LM" for c in v)
+    if not ok or not any(unicodedata.category(c)[0] == "L" for c in v):
+        # COPY:real_name.invalid_chars
+        raise ServiceError({field: "글자로만 입력해 주세요. 숫자와 기호는 쓸 수 없습니다."})
+    return v
+
+
+class RealNameRequired(Exception):
+    """계정 실명이 비어 있다. API가 403 real_name_required로 돌려준다(api/api.py). 웹은 MemberInfoGate."""
+
+    def __init__(self):
+        self.url = settings.SITE_URL + reverse("profile")
+        # COPY:real_name.gate_api
+        super().__init__(f"실명을 먼저 입력해 주세요: {self.url}")
 
 
 def issue_link_code(user) -> str:
@@ -289,6 +322,7 @@ def withdraw(user, confirm: str) -> None:
         username = f"{username}-{secrets.token_hex(4)}"
     user.username = username
     user.display_name = DELETED_NAME
+    user.real_name = ""
     user.email = user.first_name = user.last_name = ""
     user.set_unusable_password()
     user.is_active = user.is_staff = user.is_superuser = False

@@ -47,7 +47,7 @@ class Organization(models.Model):
     # 이 줄은 반드시 settings.AUTH_USER_MODEL을 쓰는 필드들 뒤에 온다 —
     # 클래스 본문에서 이름이 가려져 django.conf.settings를 더 못 읽기 때문이다.
     settings = models.JSONField("설정", default=dict, blank=True)
-    # 구성원 정보 항목(관리자가 정한다, orgs/member_info.py). 필수 항목이 빈 구성원은 이 조직을 못 쓴다.
+    # 구성원 정보 항목과 "실명으로 표시" 옵션(관리자가 정한다, orgs/member_info.py). 필수 항목이 빈 구성원은 이 조직을 못 쓴다.
     member_fields = models.JSONField("구성원 정보 항목", default=dict, blank=True)
 
     class Meta:
@@ -59,8 +59,7 @@ class Organization(models.Model):
     @property
     def member_info_on(self) -> bool:
         """구성원 정보를 받는 조직인가(탭·구성원 표의 열을 보일지)."""
-        d = self.member_fields or {}
-        return d.get("real_name", "off") != "off" or bool(d.get("fields"))
+        return bool((self.member_fields or {}).get("fields"))
 
 
 class OrgMembership(models.Model):
@@ -74,8 +73,12 @@ class OrgMembership(models.Model):
     # 스킬 태그(부하 현황에서 담당자 찾기에 쓴다). ArrayField는 Postgres 전용이라
     # SQLite 테스트가 깨진다.
     tags = models.JSONField(default=list, blank=True)
-    # 구성원 정보(조직마다 따로). info는 항목 id → 값이라 라벨이 바뀌어도 값이 남는다.
+    # 조직 표시 이름. 비면 계정 표시 이름. 읽을 때는 orgs.names.display_for만 쓴다(실명으로 표시 조직은 무시).
+    nickname = models.CharField("조직 표시 이름", max_length=50, blank=True)
+    # 옛 조직별 실명. 계정 실명(User.real_name)으로 옮겼고(orgs 0014) 되돌리기용으로만 남긴다 — 읽지 않는다.
+    # ponytail: 다음 판 orgs 0015에서 열과 member_fields._legacy_real_name을 지운다.
     real_name = models.CharField("실명", max_length=50, blank=True)
+    # 구성원 정보(조직마다 따로). info는 항목 id → 값이라 라벨이 바뀌어도 값이 남는다.
     info = models.JSONField(default=dict, blank=True)
     joined_at = models.DateTimeField(auto_now_add=True)
 

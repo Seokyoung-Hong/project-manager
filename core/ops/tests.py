@@ -24,13 +24,20 @@ def _req(user):
 
 @pytest.fixture
 def staff(db):
-    return User.objects.create_user("staff1", password=PW, display_name="운영자", is_staff=True)
+    return User.objects.create_user(
+        "staff1", password=PW, display_name="운영자", is_staff=True, real_name="실명"
+    )
 
 
 @pytest.fixture
 def root(db):
     return User.objects.create_user(
-        "root1", password=PW, display_name="최고", is_staff=True, is_superuser=True
+        "root1",
+        password=PW,
+        display_name="최고",
+        is_staff=True,
+        is_superuser=True,
+        real_name="실명",
     )
 
 
@@ -122,7 +129,7 @@ def test_suspend_rules(staff, root, member):
         services.suspend_user(_req(staff), member, "스팸 신고 확인", "member")
     with pytest.raises(ServiceError):  # 자기 자신
         services.suspend_user(_req(staff), staff, "스팸 신고 확인", "staff1")
-    other = User.objects.create_user("staff2", password=PW, is_staff=True)
+    other = User.objects.create_user("staff2", password=PW, is_staff=True, real_name="실명")
     with pytest.raises(ServiceError):  # 운영자 대상은 최고 운영자만
         services.suspend_user(_req(staff), other, "스팸 신고 확인", "staff2")
     assert not OpsAuditLog.objects.exists()
@@ -148,7 +155,9 @@ def test_staff_grant_and_revoke_rules(staff, root, member):
     assert User.objects.get(pk=member.pk).is_staff
     with pytest.raises(ServiceError):  # 자기 회수
         services.revoke_staff(_req(root), root, "권한 정리 작업", "root1")
-    other_root = User.objects.create_user("root2", password=PW, is_staff=True, is_superuser=True)
+    other_root = User.objects.create_user(
+        "root2", password=PW, is_staff=True, is_superuser=True, real_name="실명"
+    )
     with pytest.raises(ServiceError):  # 최고 운영자 회수
         services.revoke_staff(_req(root), other_root, "권한 정리 작업", "root2")
     services.revoke_staff(_req(root), staff, "권한 정리 작업", "staff1")

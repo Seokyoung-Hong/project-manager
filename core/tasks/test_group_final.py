@@ -32,7 +32,9 @@ def _go(task, status, actor):
 @pytest.fixture
 def world(org, admin, member):
     """비공개 프로젝트(팀원만) · 공개 프로젝트 · 공개만 보는 바깥 사람."""
-    viewer = User.objects.create_user("vw", password="pw12345678", display_name="바깥")
+    viewer = User.objects.create_user(
+        "vw", password="pw12345678", display_name="바깥", real_name="실명"
+    )
     OrgMembership.objects.create(org=org, user=viewer, role="member")
     team = create_team(org=org, name="비밀", actor=admin)
     add_team_member(team, member, admin)

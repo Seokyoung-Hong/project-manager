@@ -151,7 +151,9 @@ def test_status_detail_is_allowlisted_on_store_and_screen(client, admin):
         ok=True,
         detail={"stamp": "1", "error": "PRIVATE_TASK_BODY", "nested": {"token": "SECRET_TOKEN"}},
     )
-    staff = User.objects.create_user("staff9", password="pw12345678", is_staff=True)
+    staff = User.objects.create_user(
+        "staff9", password="pw12345678", is_staff=True, real_name="실명"
+    )
     client.force_login(staff)
     body = client.get("/ops/system").content.decode()
     assert "job: weekly" in body and "sent: 3" in body

@@ -616,7 +616,6 @@ def org_settings(request, org_id):
             "tab": "settings",
             "pending_requests": _pending(org, "settings") if is_admin else [],
             "member_def": member_info.definition(org),
-            "real_name_modes": member_info.REAL_NAME,
             "field_kinds": member_info.KINDS,
         },
     )
@@ -661,7 +660,10 @@ def org_member_fields(request, org_id):
         return denied
     try:
         member_info.set_definition(
-            org, request.POST.get("real_name", "off"), _fields_from_post(request.POST), request.user
+            org,
+            request.POST.get("show_real_name") == "on",
+            _fields_from_post(request.POST),
+            request.user,
         )
         messages.success(request, "구성원 정보 항목을 저장했습니다.")
     except ServiceError as e:
@@ -678,12 +680,11 @@ def org_member_info(request, org_id):
     if request.method == "POST":
         values = {k[2:]: v for k, v in request.POST.items() if k.startswith("v-")}
         try:
-            member_info.save(m, request.POST.get("real_name", ""), values)
+            member_info.save(m, values)
             messages.success(request, "구성원 정보를 저장했습니다.")
             return redirect("org_detail", org_id=org.pk)
         except ServiceError as e:
             errors = e.errors
-            m.real_name = request.POST.get("real_name", "")
             m.info = values
     rows = [{**r, "error": errors.get(r["id"], "")} for r in member_info.rows(m)]
     return render(
@@ -692,7 +693,6 @@ def org_member_info(request, org_id):
         {
             "org": org,
             "m": m,
-            "real_name_mode": member_info.definition(org)["real_name"],
             "rows": rows,
             "errors": errors,
             "blocked": member_info.missing(m),

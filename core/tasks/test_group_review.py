@@ -148,7 +148,9 @@ def test_r4_pg_create_vs_close(pg_flushable, org, project, member):
 @pytest.fixture
 def hidden_group(org, admin, member):
     """비공개 프로젝트의 상위·하위. 하위만 공개 프로젝트에 연결 → 바깥 사람은 하위만 본다."""
-    viewer = User.objects.create_user("vw", password="pw12345678", display_name="바깥")
+    viewer = User.objects.create_user(
+        "vw", password="pw12345678", display_name="바깥", real_name="실명"
+    )
     OrgMembership.objects.create(org=org, user=viewer, role="member")
     team = create_team(org=org, name="비밀", actor=admin)
     add_team_member(team, member, admin)

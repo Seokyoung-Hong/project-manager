@@ -28,7 +28,9 @@ def _media(settings, tmp_path):
 @pytest.fixture
 def viewer(org):
     """비공개 프로젝트를 못 보는 일반 멤버."""
-    u = User.objects.create_user("viewer1", password="pw12345678", display_name="열람자")
+    u = User.objects.create_user(
+        "viewer1", password="pw12345678", display_name="열람자", real_name="실명"
+    )
     OrgMembership.objects.create(org=org, user=u, role="member")
     return u
 

@@ -43,6 +43,7 @@ def other(org):
         display_name="다른멤버",
         discord_user_id="222",
         discord_linked_at=timezone.now(),
+        real_name="실명",
     )
     OrgMembership.objects.create(org=org, user=u, role="member")
     return u
@@ -51,7 +52,9 @@ def other(org):
 @pytest.fixture
 def owner(org):
     """프로젝트 관리자지만 담당 팀은 아닌 멤버."""
-    u = User.objects.create_user("owner1", password="pw12345678", display_name="플젝관리자")
+    u = User.objects.create_user(
+        "owner1", password="pw12345678", display_name="플젝관리자", real_name="실명"
+    )
     OrgMembership.objects.create(org=org, user=u, role="member")
     return u
 
@@ -447,6 +450,7 @@ def test_reviewer_who_lost_access_not_sent_to_bot(client, org, admin, team, secr
         display_name="검토자",
         discord_user_id="333",
         discord_linked_at=timezone.now(),
+        real_name="실명",
     )
     OrgMembership.objects.create(org=org, user=rv, role="member")
     add_team_member(team, rv, admin)

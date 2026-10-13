@@ -39,6 +39,7 @@ def other(org):
         display_name="다른팀원",
         discord_user_id="333",
         discord_linked_at=timezone.now(),
+        real_name="실명",
     )
     OrgMembership.objects.create(org=org, user=u, role="member")
     return u
@@ -46,7 +47,9 @@ def other(org):
 
 @pytest.fixture
 def bot(client, db):
-    u = User.objects.create_user("discord-bot", password="pw12345678", display_name="봇")
+    u = User.objects.create_user(
+        "discord-bot", password="pw12345678", display_name="봇", real_name="실명"
+    )
     _, raw = ApiToken.issue(u, "봇", "bot")
 
     def call(method, url, data=None):
@@ -310,7 +313,11 @@ def test_old_host_leaving_does_not_end_meeting(enabled, member, other, bot):
 def test_participants_map_to_pm_accounts(client, enabled, member, linked_admin, bot):
     """연결한 조직 멤버는 PM 이름·참석자, 미연결·외부인은 'Discord 닉네임 (계정 없음)'."""
     User.objects.create_user(
-        "stranger", password="pw12345678", discord_user_id="999", discord_linked_at=timezone.now()
+        "stranger",
+        password="pw12345678",
+        discord_user_id="999",
+        discord_linked_at=timezone.now(),
+        real_name="실명",
     )
     rec = _rec(enabled, member)
     parts = [
@@ -405,8 +412,12 @@ def test_glossary_order_members_manual_and_doc_bodies(enabled, admin, member):
     p = create_project(org=enabled, name="학식개편", actor=admin, owners=[admin])
     team = create_team(org=enabled, name="백엔드", actor=admin)
     p.teams.add(team)
-    mate = User.objects.create_user("mate", password="pw12345678", display_name="구성원갑")
-    outsider = User.objects.create_user("out", password="pw12345678", display_name="밖사람")
+    mate = User.objects.create_user(
+        "mate", password="pw12345678", display_name="구성원갑", real_name="실명"
+    )
+    outsider = User.objects.create_user(
+        "out", password="pw12345678", display_name="밖사람", real_name="실명"
+    )
     for u in (mate, outsider):
         OrgMembership.objects.create(org=enabled, user=u, role="member")
     add_team_member(team, mate, admin)
@@ -446,7 +457,9 @@ def test_glossary_names_beyond_budget_are_reported_not_silently_cut(enabled, adm
     from notes.services import glossary_terms
 
     for i in range(210):
-        u = User.objects.create_user(f"u{i}", password="pw12345678", display_name=f"사람{i:03d}")
+        u = User.objects.create_user(
+            f"u{i}", password="pw12345678", display_name=f"사람{i:03d}", real_name="실명"
+        )
         OrgMembership.objects.create(org=enabled, user=u, role="member")
     terms, dropped = glossary_terms(_rec(enabled, member))
     assert "사람209" in dropped  # 200명째 뒤도 빠짐 목록에 남는다
@@ -940,7 +953,9 @@ def test_audio_download_visibility(client, enabled, admin, member, other, media,
 
     finalize_note(rec.note, actor=member, source="web", project=project)
     assert client.get(url).status_code == 200
-    outsider = User.objects.create_user("out2", password="pw12345678", display_name="외부")
+    outsider = User.objects.create_user(
+        "out2", password="pw12345678", display_name="외부", real_name="실명"
+    )
     client.force_login(outsider)
     assert client.get(url).status_code == 404
 

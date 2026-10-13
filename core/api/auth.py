@@ -2,21 +2,26 @@ from ninja.errors import HttpError
 from ninja.security import HttpBearer, SessionAuth
 
 from accounts.models import ApiToken
-from accounts.services import consent_active, paused_message
+from accounts.services import RealNameRequired, consent_active, paused_message
 from orgs.member_info import MemberInfoRequired, api_params, blocked_org, request_org_id
 
 WRITE_EXEMPT_PREFIX = "/api/integrations/"
 STT_PREFIX = "/api/integrations/stt/"
+# 계정 실명이 비어도 부를 수 있는 경로. 스킬·MCP가 안내를 띄우려면 내 정보는 읽어야 한다.
+REAL_NAME_OPEN = {"/api/me"}
 
 
 def member_info_gate(request, user):
-    """요청이 가리키는 조직의 필수 구성원 정보가 비었으면 403 profile_required(api/api.py).
+    """계정 실명이 비었으면 403 real_name_required, 요청이 가리키는 조직의 필수 구성원 정보가 비었으면
+    403 profile_required(api/api.py).
 
     모든 API 인증이 지나는 자리라 엔드포인트마다 붙이지 않는다. 봇·웹훅 경로(/api/integrations/)는
-    사람의 조직 사용이 아니라 빼고, 조직을 정할 수 없는 요청(/api/me 등)은 막지 않는다.
+    사람의 조직 사용이 아니라 빼고, 조직을 정할 수 없는 요청(/api/me 등)은 구성원 정보로 막지 않는다.
     """
     if user is None or request.path.startswith(WRITE_EXEMPT_PREFIX):
         return user
+    if not user.real_name and request.path not in REAL_NAME_OPEN:
+        raise RealNameRequired()
     match = request.resolver_match
     org = blocked_org(user, request_org_id(match.kwargs if match else {}, api_params(request)))
     if org is not None:

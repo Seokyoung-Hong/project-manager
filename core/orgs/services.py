@@ -4,7 +4,7 @@ from django.db import transaction
 from django.db.models import Exists, OuterRef, Q
 from django.utils import timezone
 
-from common.errors import ServiceError
+from common.errors import Forbidden, ServiceError
 
 from .models import Invite, Organization, OrgMembership, Team, TeamMembership
 from .settings import LOCKED, SPECS, clean, display, effective, merge_secrets
@@ -348,6 +348,44 @@ def set_tags(membership, tags, actor):
             cleaned.append(t)
     membership.tags = cleaned[:10]
     membership.save(update_fields=["tags"])
+
+
+def set_nickname(membership, value, actor, source: str = "web") -> OrgMembership:
+    """조직 표시 이름을 바꾼다(IMPL-PLAN-13 §6.4). 본인 또는 조직 관리자만. 빈 값 = 계정 표시 이름 사용.
+
+    "실명으로 표시" 조직이면 아무도 못 바꾼다. 같은 조직 안 중복은 허용한다. source는 web·dc.
+    """
+    from accounts.services import clean_real_name
+    from tasks.models import ChangeLog
+
+    from . import names
+    from .member_info import definition
+
+    org, user = membership.org, membership.user
+    if actor != user and not is_admin(actor, org):
+        # COPY:nickname.forbidden
+        raise Forbidden({"nickname": "본인 또는 조직 관리자만 조직 표시 이름을 바꿀 수 있습니다."})
+    if definition(org)["show_real_name"]:
+        # COPY:nickname.real_name_org
+        raise ServiceError(
+            {"nickname": "이 조직은 실명으로 표시하므로 조직 표시 이름을 바꿀 수 없습니다."}
+        )
+    new = clean_real_name(value, field="nickname", required=False)
+    if new == membership.nickname:
+        return membership
+    ChangeLog.objects.create(
+        target_type="org",
+        target_id=org.pk,
+        field="nickname",
+        old_value=f"{membership.nickname or user.display_name}({user.pk})",
+        new_value=f"{new or user.display_name}({user.pk})",
+        actor=actor,
+        source=source,
+    )
+    membership.nickname = new
+    membership.save(update_fields=["nickname"])
+    names.forget(org.pk)
+    return membership
 
 
 @transaction.atomic

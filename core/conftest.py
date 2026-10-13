@@ -38,7 +38,9 @@ def _clear_throttle_cache():
 
 @pytest.fixture
 def admin(db):
-    return User.objects.create_user("admin1", password="pw12345678", display_name="관리자")
+    return User.objects.create_user(
+        "admin1", password="pw12345678", display_name="관리자", real_name="김관리"
+    )
 
 
 @pytest.fixture
@@ -53,6 +55,7 @@ def member(db):
         "member1",
         password="pw12345678",
         display_name="팀원",
+        real_name="김팀원",
         discord_user_id="111",
         discord_linked_at=timezone.now(),
     )
@@ -60,7 +63,9 @@ def member(db):
 
 @pytest.fixture
 def outsider(db):
-    return User.objects.create_user("outsider", password="pw12345678", display_name="외부인")
+    return User.objects.create_user(
+        "outsider", password="pw12345678", display_name="외부인", real_name="박외부"
+    )
 
 
 @pytest.fixture

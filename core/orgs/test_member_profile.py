@@ -26,34 +26,34 @@ def _fid(org, label):
 
 def test_definition_and_input(org, admin, member):
     with pytest.raises(ServiceError):
-        set_definition(org, "required", [PHONE], member)  # 관리자만
+        set_definition(org, True, [PHONE], member)  # 관리자만
     with pytest.raises(ServiceError):
-        set_definition(org, "required", [{"label": "역할", "kind": "choice"}], admin)  # 선택지 없음
+        set_definition(org, True, [{"label": "역할", "kind": "choice"}], admin)  # 선택지 없음
     set_definition(
         org,
-        "required",
+        True,
         [PHONE, {"label": "역할", "kind": "choice", "choices": ["가", "나"]}],
         admin,
     )
     log = ChangeLog.objects.get(target_type="org", target_id=org.pk, field="member_fields")
-    assert "실명 필수" in log.new_value and "연락처 (필수)" in log.new_value
+    assert "실명으로 표시 켬" in log.new_value and "연락처 (필수)" in log.new_value
     pid, rid = _fid(org, "연락처"), _fid(org, "역할")
     m = _m(org, member)
     assert missing(m)
     with pytest.raises(ServiceError) as e:
-        save(m, "", {pid: "010", rid: "다"})
-    assert set(e.value.errors) == {"real_name", rid}
-    save(m, "김팀원", {pid: "010", rid: "가"})
+        save(m, {pid: "", rid: "다"})
+    assert set(e.value.errors) == {pid, rid}
+    save(m, {pid: "010", rid: "가"})
     assert not missing(_m(org, member))
     # 라벨을 바꿔도 값은 id로 남고, 지운 항목 값은 화면에 안 나온다
     org.refresh_from_db()
     fields = org.member_fields["fields"]
-    set_definition(org, "required", [{**fields[0], "label": "전화"}], admin)
+    set_definition(org, True, [{**fields[0], "label": "전화"}], admin)
     assert [(r["label"], r["value"]) for r in rows(_m(org, member))] == [("전화", "010")]
 
 
 def test_web_block_and_exceptions(client, org, admin, member):
-    set_definition(org, "optional", [PHONE], admin)
+    set_definition(org, False, [PHONE], admin)
     client.force_login(member)
     url = f"/orgs/{org.pk}/member-info"
     r = client.get("/projects")  # 세션의 현재 조직으로 정하는 화면
@@ -76,7 +76,7 @@ def test_admin_is_target_but_can_open_settings(client, org, admin):
     r = client.post(
         f"/orgs/{org.pk}/member-fields",
         {
-            "real_name": "required",
+            "show_real_name": "on",
             "f0-label": "연락처",
             "f0-kind": "text",
             "f0-required": "on",
@@ -90,9 +90,8 @@ def test_admin_is_target_but_can_open_settings(client, org, admin):
 
 def test_api_403_and_other_org(client, api, org, admin, member, project, task):
     assert api.get(f"/api/tasks/{task.pk}").status_code == 200
-    set_definition(
-        org, "required", [], admin
-    )  # 필수를 새로 넣으면 기존 구성원도 다음 요청부터 막힌다
+    # 필수를 새로 넣으면 기존 구성원도 다음 요청부터 막힌다
+    set_definition(org, False, [PHONE], admin)
     for r in (
         api.get(f"/api/tasks/{task.pk}"),
         api.get(f"/api/orgs/{org.pk}/members"),
@@ -106,12 +105,12 @@ def test_api_403_and_other_org(client, api, org, admin, member, project, task):
     assert api.get("/api/me").status_code == 200  # 조직을 정할 수 없는 요청은 그대로
     other = create_org("다른 조직", "", member)
     assert api.get(f"/api/orgs/{other.pk}").status_code == 200
-    save(_m(org, member), "김팀원", {})
+    save(_m(org, member), {_fid(org, "연락처"): "010"})
     assert api.get(f"/api/tasks/{task.pk}").status_code == 200
 
 
 def test_optional_only_does_not_block(client, api, org, admin, member, task):
-    set_definition(org, "optional", [NOTE], admin)
+    set_definition(org, False, [NOTE], admin)
     client.force_login(member)
     assert client.get("/today").status_code == 200
     assert api.get(f"/api/tasks/{task.pk}").status_code == 200
@@ -136,7 +135,7 @@ def test_cross_org_views_hide_blocked_org(client, api, org, admin, member, proje
     )
     task.assignee = member
     task.save()
-    set_definition(org, "required", [], admin)
+    set_definition(org, False, [PHONE], admin)
 
     assert list(usable_orgs(member)) == [other]
     assert set(visible_projects(member)) == {op}
@@ -162,7 +161,7 @@ def test_cross_org_views_hide_blocked_org(client, api, org, admin, member, proje
     keys = {f"O:{org.pk}", f"O:{other.pk}", f"T:{task.pk}", f"P:{project.pk}", f"T:{ot.pk}"}
     assert allowed(member.pk, keys) == {f"O:{other.pk}", f"T:{ot.pk}"}
 
-    save(_m(org, member), "김팀원", {})
+    save(_m(org, member), {_fid(org, "연락처"): "010"})
     assert api.get("/api/tasks").json()["blocked_orgs"] == []
 
 
@@ -172,7 +171,7 @@ def test_web_paths_use_target_org(client, org, admin, member):
     from projects.services import create_project
 
     other = create_org("다른 조직", "", admin)
-    set_definition(org, "required", [], admin)
+    set_definition(org, False, [PHONE], admin)
     client.force_login(admin)
     client.get(f"/orgs/{other.pk}")  # 세션 조직 = 막히지 않은 다른 조직
     url = f"/orgs/{org.pk}/member-info"
@@ -197,7 +196,7 @@ def test_discord_lists_and_notices(client, api, org, admin, member, project, tas
     bot = User.objects.create_user("discord-bot", password="pw12345678", display_name="봇")
     _, raw = ApiToken.issue(bot, "봇", "bot")
     bh = {"Authorization": f"Bearer {raw}"}
-    set_definition(org, "required", [], admin)
+    set_definition(org, False, [PHONE], admin)
 
     r = client.post(
         f"/api/integrations/discord/tasks/{task.pk}/done",
@@ -215,11 +214,11 @@ def test_discord_lists_and_notices(client, api, org, admin, member, project, tas
 
     assert not visible_teams(member).exists()
 
-    save(_m(org, admin), "김관리", {})  # 관리자는 입력을 마쳤다
+    save(_m(org, admin), {_fid(org, "연락처"): "010"})  # 관리자는 입력을 마쳤다
     members = client.get(f"/api/integrations/discord/orgs/{org.pk}/members", headers=bh).json()
     assert [m["id"] for m in members] == [admin.pk]
     notify(org, "알림", user=member)
     assert not Notice.objects.filter(user=member).exists()
 
-    save(_m(org, member), "김팀원", {})
+    save(_m(org, member), {_fid(org, "연락처"): "010"})
     assert "X-Blocked-Orgs" not in api.get("/api/projects")

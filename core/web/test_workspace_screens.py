@@ -70,7 +70,7 @@ def test_auto_pull_setting_lives_in_preferences(logged, member):
 
 
 def test_today_empty_without_org_points_to_org_creation(client, db):
-    User.objects.create_user("lonely", password="pw12345678", display_name="혼자")
+    User.objects.create_user("lonely", password="pw12345678", display_name="혼자", real_name="실명")
     client.login(username="lonely", password="pw12345678")
     body = client.get("/today").content.decode()
     assert "아직 속한 조직이 없습니다." in body and 'href="/orgs/new"' in body

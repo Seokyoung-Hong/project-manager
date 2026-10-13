@@ -33,7 +33,9 @@ def _env(settings, tmp_path):
 
 @pytest.fixture
 def bot(client):
-    u = User.objects.create_user("discord-bot", password="pw12345678", display_name="봇")
+    u = User.objects.create_user(
+        "discord-bot", password="pw12345678", display_name="봇", real_name="실명"
+    )
     raw = ApiToken.issue(u, "봇", "bot")[1]
 
     def call(method, url, data=None):
@@ -51,7 +53,9 @@ def bot(client):
 def other_member(org):
     from orgs.models import OrgMembership
 
-    u = User.objects.create_user("other2", password="pw12345678", display_name="다른팀원")
+    u = User.objects.create_user(
+        "other2", password="pw12345678", display_name="다른팀원", real_name="실명"
+    )
     OrgMembership.objects.create(org=org, user=u, role="member")
     return u
 
