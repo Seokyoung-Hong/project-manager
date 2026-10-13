@@ -1583,6 +1583,15 @@ def _import_locked(issue, actor, source):
         description=(issue.body or "")[:2000],
         no_due_reason="GitHub 이슈로 가져옴",
     )
+    return link_issue_task(issue, task)
+
+
+def link_issue_task(issue, task):
+    """이슈를 태스크에 건다(RepoIssue.task + TaskGitLink). 가져오기와 AI 태스크 후보(첫 후보)가 같이 쓴다.
+
+    TaskGitLink는 태스크당 하나라 이슈 하나를 여러 태스크에 걸지 않는다. 호출자가 이슈 행을 잠근다.
+    """
+    conn = issue.connection
     issue.task = task
     issue.save(update_fields=["task"])
     link, _ = TaskGitLink.objects.get_or_create(task=task, defaults={"connection": conn})

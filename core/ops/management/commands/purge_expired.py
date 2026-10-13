@@ -6,6 +6,7 @@ from django.db.models import Q
 from django.utils import timezone
 
 from accounts.models import ApiToken, Consent, LoginLock, OAuthCode
+from assist.services import purge_old_jobs
 from web import data_version
 
 
@@ -58,6 +59,7 @@ class Command(BaseCommand):
             ("인가 코드", purge_oauth_codes),
             ("전사 서버 기기 코드", _purge_stt_codes),
             ("로그인 잠금 기록", purge_login_locks),
+            ("AI 작업", purge_old_jobs),  # 7일
             ("탈퇴자 동의 기록", purge_withdrawn_consents),
             (
                 "데이터 버전 기록",
