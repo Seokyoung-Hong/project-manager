@@ -2,6 +2,7 @@ import uuid
 
 from django.conf import settings
 from django.db import models
+from django.db.models.functions import Coalesce
 
 from projects.models import Doc
 
@@ -22,7 +23,8 @@ class MeetingNote(Doc):
 
     class Meta:
         proxy = True
-        ordering = ["-created_on", "-id"]
+        # 회의 일시가 빈 회의록(가져온 것 등)은 만든 시각으로 센다. 그냥 내림차순이면 Postgres가 NULL을 맨 앞에 둔다.
+        ordering = [Coalesce("created_on", "created_at").desc(), "-id"]
 
     def save(self, *args, **kwargs):
         self.kind = "meeting"

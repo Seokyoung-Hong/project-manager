@@ -56,7 +56,7 @@ def org_notes(request, org_id):
     note = next((n for n in notes if str(n.pk) == raw), None) or (notes[0] if notes else None)
     editor_open = bool(note and raw == str(note.pk))
 
-    # 프로젝트별 묶음. 팀 공통이 맨 뒤.
+    # 프로젝트별 묶음. 조직 공통이 맨 위, 나머지는 최근 회의가 있는 프로젝트부터.
     groups, seen = [], {}
     for n in notes:
         key = n.project_id or 0
@@ -67,7 +67,7 @@ def org_notes(request, org_id):
             }
             groups.append(seen[key])
         seen[key]["items"].append(n)
-    groups.sort(key=lambda g: g["title"] == "조직 공통(프로젝트 미지정)")
+    groups.sort(key=lambda g: g["title"] != "조직 공통(프로젝트 미지정)")
     for g in groups:
         g["hint"] = f"{len(g['items'])}건"
 

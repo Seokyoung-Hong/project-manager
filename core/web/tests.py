@@ -1,6 +1,6 @@
 import json
 import re
-from datetime import timedelta
+from datetime import UTC, timedelta
 from pathlib import Path
 
 import pytest
@@ -1066,6 +1066,26 @@ def test_note_create_and_list_scopes(logged, org, project, member):
     assert "프로젝트 회의록" in body and "팀 공통 회의록" not in body
 
     assert team_note.pk and project_note.pk
+
+
+def test_note_list_org_common_first_and_newest_first(logged, org, project, member):
+    """조직 공통 묶음이 맨 위. 회의 일시가 빈 회의록은 만든 시각으로 세어 최신순에 섞인다(NULL이 맨 앞에 오지 않는다)."""
+    from datetime import datetime
+
+    from notes.models import MeetingNote
+    from notes.services import create_note
+
+    def at(day):
+        return datetime(2026, 10, day, tzinfo=UTC)
+
+    create_note(org=org, actor=member, title="프로젝트 최신", project=project, created_on=at(12))
+    old = create_note(org=org, actor=member, title="일시 없음", created_on=at(1))
+    MeetingNote.objects.filter(pk=old.pk).update(created_on=None, created_at=at(3))
+    create_note(org=org, actor=member, title="조직 최신", created_on=at(10))
+
+    groups = logged.get(f"/orgs/{org.pk}/notes?scope=all").context["groups"]
+    assert [g["title"] for g in groups] == ["조직 공통(프로젝트 미지정)", project.name]
+    assert [n.title for n in groups[0]["items"]] == ["조직 최신", "일시 없음"]
 
 
 def test_note_click_shows_selected_body(logged, org, member):
