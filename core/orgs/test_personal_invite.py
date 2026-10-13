@@ -67,18 +67,13 @@ def test_non_admin_rejected(org, member, pending):
         create_personal_invite(pending, member)
 
 
-def test_teams_screen_shows_pending_and_creates_link(client, org, admin, pending):
+def test_pending_add_and_personal_link(client, org, admin, pending):
+    # 화면 확인은 설정 → 구성원 관리(web/test_org_members.py)
     client.force_login(admin)
-    page = client.get(f"/orgs/{org.pk}/teams").content.decode()
-    assert "가입 전" in page and "초대 링크 만들기" in page
     client.post(f"/orgs/{org.pk}/members/pending", {"display_name": "박예비"})
     assert OrgMembership.objects.filter(org=org, user__display_name="박예비").exists()
     client.post(f"/orgs/memberships/{pending.pk}/invite")
-    invite = Invite.objects.get(for_user=pending.user)
-    page = client.get(f"/orgs/{org.pk}/teams").content.decode()
-    assert invite.path in page
-    # 사람별 링크는 조직 초대 링크 표에 섞이지 않는다
-    assert "초대 링크가 없습니다." in page
+    assert Invite.objects.filter(for_user=pending.user).exists()
 
 
 def test_reissue_revokes_previous(org, admin, pending):

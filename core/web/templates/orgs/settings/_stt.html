@@ -1,0 +1,15 @@
+<section id="stt" aria-label="전사 서버">
+<form method="post" action="{% url 'org_transcribe_server' org.pk %}" class="card">{% csrf_token %}
+  <div class="card-head"><h2>전사 서버</h2><button class="btn primary">전사 서버 설정 저장</button></div>
+  <p class="muted t13">회의가 끝나면 연결된 진행자의 PC로 전사합니다. 사용할 수 없으면 조직에 등록한 전사 서버와 모델을 사용하며, 전사 서버가 없으면 조직의 OpenAI 키로 전사합니다.</p>{# COPY:server_view_intro #}
+  <p class="conn t13"><span class="conn-state {% if pc_online %}on{% else %}off{% endif %}">구성원 PC</span> 연결된 PC {{ pc_online }}대</p>{# COPY:pc_online_count #}
+  <div class="settings-list" role="list">
+    {% for row in policy_rows %}{% include "settings/_setting_row.html" with row=row %}{% endfor %}
+  </div>
+  <details class="fold"><summary>고급 설정 · 조직 전사 서버 주소 직접 입력</summary>{# COPY:server_advanced #}
+  <div class="settings-list" role="list">
+    {% for row in rows %}{% include "settings/_setting_row.html" with row=row %}{% endfor %}
+  </div>
+  </details>
+</form>
+</section>

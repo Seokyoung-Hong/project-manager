@@ -1183,6 +1183,89 @@ details.card.settings-section { padding: 0; gap: 0; }
 .settings-section-body { padding: 0 var(--sp-5) var(--sp-4); }
 .settings-list { display: flex; flex-direction: column; border-top: 1px solid var(--c-line); }
 .settings-section-body > .settings-list { border-top: 0; }
+/* 조직 설정 셸(IMPL-PLAN-14 §2, 시안 A): 왼쪽 세로 탭(나 / 조직 관리) + 본문. ≤700px는 탭 목록 화면 → 탭 화면 */
+.settings-shell { display: grid; grid-template-columns: 240px minmax(0, 1fr); gap: var(--sp-6); align-items: start; }
+.settings-shell > .settings-tabs {
+  position: sticky; top: calc(var(--header-h) + var(--sp-4)); display: flex; flex-direction: column; gap: 2px;
+  padding: var(--sp-2); border-radius: var(--r-lg); background: var(--c-soft);
+}
+.settings-tabs-group { padding: var(--sp-3) var(--sp-3) var(--sp-1); color: var(--c-muted); font-size: var(--fs-xs); font-weight: 700; }
+.settings-tabs-group:first-child { padding-top: var(--sp-1); }
+.settings-tab {
+  display: flex; align-items: center; gap: var(--sp-2); min-height: 40px; padding: 0 var(--sp-3);
+  border-radius: var(--r-md); color: var(--c-ink); text-decoration: none;
+}
+.settings-tab:hover { background: var(--c-surface); }
+.settings-tab[aria-current="page"] { background: var(--c-surface); font-weight: 700; box-shadow: var(--sh-1); }
+.settings-tab .badge { margin-left: auto; }
+.settings-tab-go { display: none; margin-left: auto; color: var(--c-muted); }
+.settings-body { display: flex; flex-direction: column; gap: var(--sp-4); min-width: 0; }
+.settings-body-head { display: flex; flex-direction: column; align-items: flex-start; gap: var(--sp-2); }
+.settings-back { display: none; }
+/* 내 정보 */
+.me-preview { display: flex; align-items: center; gap: var(--sp-3); padding: var(--sp-4) var(--sp-5); border-radius: var(--r-lg); background: var(--c-sage); }
+.me-preview .initial {
+  flex: none; display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px;
+  border-radius: 50%; background: var(--c-surface); font-size: var(--fs-lg); font-weight: 700;
+}
+.me-preview strong { font-size: var(--fs-lg); }
+.me-names { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr)); gap: var(--sp-4) var(--sp-6); align-items: start; }
+.me-form .input, .me-form .select, .me-form .textarea { max-width: 420px; }
+.name-off { padding: var(--sp-3) var(--sp-4); border-radius: var(--r-md); background: var(--c-soft); font-size: var(--fs-sm); }
+.me-save { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-3); padding-top: var(--sp-4); border-top: 1px solid var(--c-line); }
+.me-links { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
+/* 설정 → 구성원 관리(IMPL-PLAN-14 §8, C 갈래 조각): 목록 + 오른쪽 구성원 패널, 항목 정의 카드 + 미리보기 */
+.member-split { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--sp-4); align-items: start; }
+.member-split.has-panel { grid-template-columns: minmax(0, 1fr) minmax(320px, 400px); }
+.member-row[aria-current="true"] td { background: var(--c-soft); }
+.member-row-link { font-weight: 600; color: var(--c-ink); }
+.member-panel {
+  position: sticky; top: calc(var(--header-h) + var(--sp-4)); display: flex; flex-direction: column; min-width: 0;
+  border: 1px solid var(--c-line); border-radius: var(--r-lg); background: var(--c-surface); box-shadow: var(--sh-2);
+}
+.member-panel-bar { padding: var(--sp-2) var(--sp-3); border-bottom: 1px solid var(--c-line); }
+.member-panel-body { padding: var(--sp-4) var(--sp-5) var(--sp-5); }
+.member-panel-body h2 { font-family: var(--f-display); font-weight: 400; font-size: var(--fs-2xl); line-height: 1.35; }
+.member-panel-body h3 { font-size: var(--fs-task); line-height: 22px; }
+.member-panel-body dl { display: grid; grid-template-columns: 110px minmax(0, 1fr); gap: var(--sp-1) var(--sp-3); margin: 0; }
+.member-panel-body dd { margin: 0; }
+.names-opts, .field-kinds { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr)); gap: var(--sp-2); }
+.field-kinds { margin: 0; padding: 0; border: 0; }
+.names-opts .radio-card > span, .field-kinds .radio-card > span { display: flex; flex-direction: column; gap: 2px; }
+.fields-split { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(280px, 1fr); gap: var(--sp-6); align-items: start; }
+.field-card { padding: var(--sp-4); border: 1px solid var(--c-line); border-radius: var(--r-lg); background: var(--c-surface); }
+.field-card .input, .field-card .textarea { max-width: 420px; }
+.field-order .input { width: 84px; }
+/* 선택지 칸은 형식이 '선택지'일 때만(JS 없음) */
+.field-card:not(:has(input[type="radio"][value="choice"]:checked)) .field-choices { display: none; }
+.field-add > summary { cursor: pointer; font-weight: 600; list-style: none; }
+.field-add > summary::-webkit-details-marker { display: none; }
+.field-add[open] > summary { margin-bottom: var(--sp-3); }
+.field-preview { position: sticky; top: calc(var(--header-h) + var(--sp-4)); display: flex; flex-direction: column; gap: var(--sp-3); }
+@media (max-width: 1100px) { .settings-shell { grid-template-columns: 200px minmax(0, 1fr); gap: var(--sp-4); } }
+@media (max-width: 700px) {
+  .settings-shell { display: block; }
+  .settings-shell > .settings-tabs { position: static; padding: 0; background: none; gap: 6px; }
+  .settings-tab { min-height: 52px; border: 1px solid var(--c-line); background: var(--c-surface); }
+  .settings-tab[aria-current="page"] { font-weight: 600; box-shadow: none; }
+  .settings-tab-go { display: inline; }
+  .settings-tab .badge + .settings-tab-go { margin-left: 0; }
+  .settings-shell.in-tab > .settings-tabs, .settings-shell:not(.in-tab) > .settings-body { display: none; }
+  .settings-back { display: inline-flex; }
+  /* 구성원 패널은 목록 대신 전체 폭, 구성원 표는 사람 카드 */
+  .member-split.has-panel { display: block; }
+  .member-split.has-panel > #settings-members-list { display: none; }
+  .member-panel { position: static; box-shadow: none; }
+  .member-table thead { display: none; }
+  .member-table, .member-table tbody, .member-table tr, .member-table td { display: block; }
+  .member-table tr { padding: var(--sp-3) 0; border-bottom: 1px solid var(--c-line); }
+  .member-table td { padding: 2px 0; border: 0; }
+  .member-row-link { display: inline-flex; align-items: center; min-height: 44px; }
+}
+@media (max-width: 1100px) {
+  .member-split.has-panel, .fields-split { grid-template-columns: minmax(0, 1fr); }
+  .member-panel, .field-preview { position: static; }
+}
 .setting-row {
   display: grid; grid-template-columns: minmax(260px, 1.4fr) minmax(220px, 1fr); gap: var(--sp-4) var(--sp-6);
   align-items: center; min-height: 64px; padding: 10px var(--sp-2); border-bottom: 1px solid var(--c-line);

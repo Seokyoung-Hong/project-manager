@@ -558,12 +558,7 @@ def test_webhook_routes_are_gone(as_admin, org):
         assert as_admin.post(path, {"name": "x", "url": "https://x"}).status_code == 404
 
 
-def test_members_page_shows_workload_and_discord_link(as_admin, org, task, member):
-    body = as_admin.get(f"/orgs/{org.pk}/teams").content.decode()
-    assert "멤버" in body
-    assert member.display_name in body
-    assert "연결" in body  # member 픽스처는 연결이 끝난 상태다
-    assert "관리자 1명" in body
+# 구성원 목록(Discord 연결 열)은 설정 → 구성원 관리로 옮겼다 — web/test_org_members.py
 
 
 def test_token_form_cannot_mint_a_bot_scope_token(logged, member):
@@ -654,7 +649,9 @@ def test_rail_close_handle_hides_list_completely(logged, project):
 
 def test_org_tabs_hidden_for_member(logged, org):
     body = logged.get(f"/orgs/{org.pk}").content.decode()
-    assert f"/orgs/{org.pk}/settings" not in body
+    # 설정(내 정보)은 모든 구성원에게, GitHub·Discord·구성원 정보 탭은 없다(IMPL-PLAN-14 §5)
+    assert f'href="/orgs/{org.pk}/settings"' in body
+    assert f"/orgs/{org.pk}/github" not in body and f"/orgs/{org.pk}/member-info" not in body
     assert f"/orgs/{org.pk}/teams" in body  # 팀 탭은 팀원에게도 읽기 전용으로 보인다
 
 
@@ -1518,11 +1515,11 @@ def test_org_settings_admin_edits_member_reads_only(client, org, admin, member):
     # as_admin·logged는 둘 다 같은 client fixture를 로그인시키므로 한 테스트에서 같이
     # 쓰면 나중 로그인이 앞선 로그인을 덮어쓴다 — 여기서는 force_login으로 직접 오간다.
     client.force_login(admin)
-    r = client.get(f"/orgs/{org.pk}/settings")
+    r = client.get(f"/orgs/{org.pk}/settings?tab=work")
     assert r.status_code == 200 and "기본 중요도" in r.content.decode()
 
     r = client.post(
-        f"/orgs/{org.pk}/settings",
+        f"/orgs/{org.pk}/settings?tab=work",
         {"task.require_done_when": "on", "unlock__task.require_done_when": "on"},
     )
     assert r.status_code == 302
@@ -1530,12 +1527,12 @@ def test_org_settings_admin_edits_member_reads_only(client, org, admin, member):
     assert org.settings.get("task.require_done_when") is True
     assert "task.require_done_when" not in (org.settings.get("_locked") or [])
 
-    # 멤버는 링크도 못 보고, URL로 와도 읽기만 한다 — POST해도 안 바뀐다.
+    # 멤버는 관리자 탭을 못 본다(내 정보로 돌림) — POST는 403, 값은 안 바뀐다.
     client.force_login(member)
-    assert f"/orgs/{org.pk}/settings" not in client.get(f"/orgs/{org.pk}").content.decode()
-    r = client.get(f"/orgs/{org.pk}/settings")
-    assert r.status_code == 200 and "조직 관리자만 고칠 수 있습니다" in r.content.decode()
-    client.post(f"/orgs/{org.pk}/settings", {"task.require_done_when": "off"})
+    r = client.get(f"/orgs/{org.pk}/settings?tab=work")
+    assert r.status_code == 302 and r.url == f"/orgs/{org.pk}/settings?tab=me"
+    r = client.post(f"/orgs/{org.pk}/settings?tab=work", {"task.require_done_when": "off"})
+    assert r.status_code == 403
     org.refresh_from_db()
     assert org.settings.get("task.require_done_when") is True
 
@@ -1547,7 +1544,7 @@ def test_org_settings_outsider_404(client, outsider, org):
 
 def test_org_lock_blocks_project_override(as_admin, org, project):
     # unlock__를 보내지 않으면 그 회차의 모든 덮어쓸 수 있는 항목이 잠긴다.
-    r = as_admin.post(f"/orgs/{org.pk}/settings", {"task.require_done_when": "on"})
+    r = as_admin.post(f"/orgs/{org.pk}/settings?tab=work", {"task.require_done_when": "on"})
     assert r.status_code == 302
     org.refresh_from_db()
     assert "task.require_done_when" in org.settings.get("_locked", [])
@@ -1607,12 +1604,10 @@ def test_settings_controls_have_programmatic_labels(client, member, admin, org, 
     assert 'aria-describedby="setting-help-user.notify_hour"' in personal
 
     client.force_login(admin)
-    organization = client.get(f"/orgs/{org.pk}/settings").content.decode()
+    organization = client.get(f"/orgs/{org.pk}/settings?tab=work").content.decode()
     assert 'aria-label="기본 중요도 · 프로젝트 변경 허용"' in organization
     assert 'class="settings-save-bar"' in organization
-    assert (
-        organization.count('class="card settings-section"') == 7
-    )  # 회의 녹음(IMPL-PLAN-9)·AI 자동완성(IMPL-PLAN-12) 포함
+    assert organization.count('class="card settings-section"') == 6  # 태스크·프로젝트 탭 섹션
 
     project_page = client.get(f"/projects/{project.pk}/settings").content.decode()
     assert "{# 태스크 규칙" not in project_page
@@ -1624,7 +1619,7 @@ def test_governance_shows_enforced_settings(as_admin, org):
     body = as_admin.get(f"/orgs/{org.pk}/governance").content.decode()
     assert "현재 적용 중인 설정" not in body
 
-    as_admin.post(f"/orgs/{org.pk}/settings", {"task.require_done_when": "on"})
+    as_admin.post(f"/orgs/{org.pk}/settings?tab=work", {"task.require_done_when": "on"})
     body = as_admin.get(f"/orgs/{org.pk}/governance").content.decode()
     assert "현재 적용 중인 설정" in body
     assert "완료 조건 필수" in body

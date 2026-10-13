@@ -1,0 +1,63 @@
+{# 구성원 패널(IMPL-PLAN-14 §8.2, 시안 A 오른쪽 서랍 · ≤700px 전체 화면). 맥락 panel = members_ctx의 _panel. 서버 렌더라 닫기는 링크다. #}
+{% with m=panel.m %}
+<aside class="member-panel" aria-label="구성원 패널">
+  <div class="member-panel-bar"><a class="btn sm" href="?tab=members#settings-members-list">‹ 구성원 목록</a></div>{# COPY:members.panel.back #}
+  <div class="member-panel-body stack">
+    <div>
+      <h2>{{ panel.name }}</h2>
+      <div class="t13 muted">{% if panel.pending %}<span class="badge">가입 전</span> 아직 계정이 없습니다{% else %}계정 표시 이름 {{ m.user.display_name }} · @{{ m.user.username }}{% endif %}</div>
+    </div>
+    {% if panel.missing and not panel.pending %}<p class="notice warn"><span aria-hidden="true">⚠</span><span>필수 항목 {{ panel.missing }}개가 비어 있어 이 구성원은 조직을 쓸 수 없습니다.</span></p>{% endif %}{# COPY:members.panel.blocked #}
+
+    <section class="stack" aria-labelledby="mp-account">
+      <h3 id="mp-account">계정 공통 <span class="muted t12">열람만</span></h3>{# COPY:members.panel.account #}
+      <dl class="t13">
+        <dt class="muted">실명</dt><dd>{% if m.user.real_name %}{{ m.user.real_name }}{% else %}<span class="muted">실명 미입력</span>{% endif %}</dd>
+        {% if not panel.pending %}<dt class="muted">계정 표시 이름</dt><dd>{{ m.user.display_name }}</dd><dt class="muted">아이디</dt><dd>@{{ m.user.username }}</dd>{% endif %}
+      </dl>
+      <p class="t12 muted">실명과 계정 표시 이름은 본인만 바꿀 수 있는 계정 정보입니다.</p>{# COPY:members.panel.account_note #}
+    </section>
+
+    <section class="stack" aria-labelledby="mp-org">
+      <h3 id="mp-org">이 조직에 제공한 정보</h3>{# COPY:members.panel.org_info #}
+      {# 관리자는 필수 항목을 비운 채 저장할 수 있다(admin_save) — 브라우저 required 검사를 끈다. #}
+      <form method="post" action="{% url 'member_profile' m.pk %}" class="stack" novalidate>{% csrf_token %}
+        {% if show_real_name %}<p class="t13 muted">이 조직은 실명으로 표시하므로 조직 표시 이름 칸이 없습니다.</p>{# COPY:members.panel.real_name_org #}
+        {% else %}<label class="field">조직 표시 이름<input class="input" name="nickname" value="{{ m.nickname }}" maxlength="50" placeholder="{{ m.user.display_name }}"></label>{% endif %}
+        {% include "orgs/_member_info_fields.html" with rows=panel.info_rows disabled=False %}
+        <p class="t12 muted">관리자는 필수 항목을 비워 둔 채로도 저장할 수 있습니다. 고친 기록은 조직 관리 → 정책 변경 이력에 남습니다.</p>{# COPY:members.panel.admin_note #}
+        <div><button class="btn primary">구성원 정보 저장</button></div>{# COPY:members.panel.save #}
+      </form>
+    </section>
+
+    <section class="stack" aria-labelledby="mp-role">
+      <h3 id="mp-role">조직 안 역할</h3>
+      <form method="post" action="{% url 'member_role' m.pk %}" class="row">{% csrf_token %}
+        <label class="field">역할<select name="role" class="select auto">
+          <option value="admin"{% if m.role == "admin" %} selected{% endif %}>관리자</option>
+          <option value="member"{% if m.role == "member" %} selected{% endif %}>구성원</option>
+        </select></label>
+        <button class="btn sm">역할 바꾸기</button>
+      </form>
+      <form method="post" action="{% url 'member_tags' m.pk %}" class="row">{% csrf_token %}
+        <label class="field">스킬 태그<input class="input" name="tags" value="{{ m.tags|join:', ' }}" placeholder="백엔드, Django"></label>
+        <button class="btn sm">기술 태그 저장</button>
+      </form>
+      <p class="t13"><span class="muted">소속 팀</span> {% for t in panel.teams %}<span class="badge">{{ t.name }}</span> {% empty %}없음 {% endfor %}<a href="{% url 'org_teams' org.pk %}" class="t12">팀 메뉴에서 바꾸기</a></p>
+    </section>
+
+    <section class="stack" aria-labelledby="mp-invite">
+      <h3 id="mp-invite">초대·제거</h3>
+      {% if panel.pending %}<div class="row gap-2">
+        {% if panel.invite %}<button type="button" class="btn sm" data-copy-text="{{ site_url }}{{ panel.invite.path }}" data-copy-label="초대 링크 복사됨" title="{{ panel.invite.expires_at|date:'Y-m-d H:i' }}까지">초대 링크 복사</button>{% if not panel.invite.is_usable %}<span class="badge">만료</span>{% endif %}{% endif %}
+        <form method="post" action="{% url 'member_invite' m.pk %}"{% if panel.invite %} data-confirm="초대 링크를 새로 만듭니다. 이전 초대 링크는 더 이상 쓸 수 없습니다." data-confirm-ok="초대 링크 만들기"{% endif %}>{% csrf_token %}<button class="btn sm">초대 링크 만들기</button></form>
+      </div>{% endif %}
+      <div class="row">
+        <a href="{% url 'org_capacity' org.pk %}" class="t13">사람별 할 일 양에서 보기</a>
+        {% if panel.can_remove %}<form method="post" action="{% url 'member_remove' m.pk %}" data-confirm="조직에서 제거합니다. 담당 중인 태스크는 담당자 그대로 조직에 남습니다. 조직과 사용자 모두 GitHub에 연결되어 있으면 GitHub 조직에서도 제거를 요청합니다. 처리 결과를 확인해 주세요." data-confirm-ok="조직에서 제거">{% csrf_token %}<button class="btn sm danger">조직에서 제거</button></form>
+        {% else %}<button class="btn sm" disabled title="마지막 관리자는 제거할 수 없습니다">조직에서 제거</button>{% endif %}
+      </div>
+    </section>
+  </div>
+</aside>
+{% endwith %}

@@ -180,10 +180,11 @@ def test_github_connect_keeps_next_through_consent(gh, client, admin):  # noqa: 
 # ---------- B7: 앱이 없으면 GitHub 초대 체크박스를 숨긴다 ----------
 
 
+@pytest.mark.urls("web.test_org_members")  # 설정 → 구성원 관리 탭 본문(B의 셸이 붙기 전 시험 화면)
 def test_invite_form_hides_github_option_without_install(gh, client, admin):  # noqa: F811
     org = create_org("새 조직", "", admin)
     client.force_login(admin)
-    body = client.get(f"/orgs/{org.pk}/teams").content.decode()
+    body = client.get(f"/t/orgs/{org.pk}/members").content.decode()
     assert "GitHub 조직에도 초대" not in body
     assert "가입한 뒤 바로 이 조직에 참여합니다" in body
     assert not Invite.objects.exists()

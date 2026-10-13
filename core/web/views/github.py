@@ -37,6 +37,7 @@ from .common import (
     not_admin,
     org_or_404,
     project_or_404,
+    settings_tab_url,
     task_or_404,
     version_of,
 )
@@ -102,33 +103,27 @@ def _cap_rows(org) -> list[dict] | None:
 
 
 def github_ctx(request, org) -> dict:
-    """설정 → 연동 탭 GitHub 섹션의 맥락(IMPL-PLAN-14 §10.1 계약). A0 껍데기 — D 갈래가 채운다."""
-    return {}
+    """설정 → 연동 탭 GitHub 섹션의 맥락(IMPL-PLAN-14 §10.1). 호출자가 관리자·기능 켜짐을 이미 확인했다."""
+    install = getattr(org, "github", None)
+    caps = _cap_rows(org) if install else None
+    return {
+        "org": org,
+        "install": install,
+        "caps": caps,
+        "caps_off": bool(caps) and any(not c["ok"] for c in caps),
+        "identity": getattr(request.user, "github", None),
+        "projects": org.projects.filter(is_archived=False).select_related("repo").order_by("name"),
+    }
 
 
 @login_required
 def org_github(request, org_id):
+    """옛 주소. 설정 → 연동 탭으로 보낸다."""
     _gh_enabled_or_404()
     org = org_or_404(request.user, org_id)
     if denied := not_admin(request, org, "GitHub 연동"):
         return denied
-    projects = org.projects.filter(is_archived=False).select_related("repo").order_by("name")
-    install = getattr(org, "github", None)
-    caps = _cap_rows(org) if install else None
-    return render(
-        request,
-        "orgs/github.html",
-        {
-            "org": org,
-            "install": install,
-            "caps": caps,
-            "caps_off": bool(caps) and any(not c["ok"] for c in caps),
-            "identity": getattr(request.user, "github", None),
-            "projects": projects,
-            "is_admin": True,
-            "tab": "github",
-        },
-    )
+    return redirect(settings_tab_url(org, "integrations", "github"))
 
 
 @login_required
@@ -140,7 +135,7 @@ def github_install(request, org_id):
     if getattr(request.user, "github", None) is None:
         # 돌아왔을 때 GET /user/installations로 설치 소유를 확인하므로 계정 연결이 먼저다.
         messages.error(request, "먼저 GitHub 계정을 연결해 주세요.")
-        return redirect("org_github", org_id=org.pk)
+        return redirect(settings_tab_url(org, "integrations", "github"))
     request.session["gh_install_org"] = org.pk
     state = secrets.token_urlsafe(16)
     request.session["gh_state"] = state
@@ -164,7 +159,7 @@ def github_installed(request):
             request,
             "GitHub 앱 설치를 확인하지 못했습니다. 조직 설정의 GitHub 화면에서 설치를 다시 시작해 주세요.",
         )
-        return redirect("org_github", org_id=org.pk)
+        return redirect(settings_tab_url(org, "integrations", "github"))
     try:
         gh_services.save_installation(org, int(iid), actor=request.user)
         messages.success(request, "GitHub 앱을 설치했습니다.")
@@ -175,7 +170,7 @@ def github_installed(request):
             msg
             or "GitHub 앱 설치를 확인하지 못했습니다. 조직 설정의 GitHub 화면에서 설치를 다시 시작해 주세요.",
         )
-    return redirect("org_github", org_id=org.pk)
+    return redirect(settings_tab_url(org, "integrations", "github"))
 
 
 # ---------- 사용자: 계정 연결 ----------

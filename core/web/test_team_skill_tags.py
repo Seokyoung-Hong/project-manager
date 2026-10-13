@@ -11,12 +11,8 @@ def test_member_skill_inputs_keep_an_editable_width():
     assert ".member-skills-input { width: 220px; min-width: 200px; max-width: 220px;" in css
 
 
-def test_member_skill_inputs_have_member_specific_labels():
-    template = (WEB_DIR / "templates" / "orgs" / "teams.html").read_text(encoding="utf-8")
-
-    assert 'class="table-scroll member-table-scroll" tabindex="0" role="region"' in template
-    assert 'aria-label="조직 멤버 관리, 좌우로 스크롤 가능"' in template
-    assert 'class="grid member-table"' in template
-    assert 'for="member-tags-{{ r.m.pk }}"' in template
-    assert "{{ name }} 스킬 태그" in template
-    assert 'id="member-tags-{{ r.m.pk }}"' in template
+def test_member_skill_input_is_labeled_in_panel():
+    # 구성원 표의 태그 칸은 설정 → 구성원 관리의 구성원 패널(한 사람)로 옮겼다(IMPL-PLAN-14 §8.2)
+    path = WEB_DIR / "templates" / "orgs" / "settings" / "_member_panel.html"
+    template = path.read_text(encoding="utf-8")
+    assert '<label class="field">스킬 태그<input class="input" name="tags"' in template

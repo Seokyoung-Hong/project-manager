@@ -113,7 +113,7 @@ def test_enforced_hides_server_urls(org, admin):
 def test_set_definition_partial_and_legacy_call(org, admin, member):
     with pytest.raises(ServiceError):
         set_definition(org, member, fields=[PHONE])
-    set_definition(org, False, [PHONE], admin)  # 옛 위치 인자 호출(한 판 호환)
+    set_definition(org, admin, show_real_name=False, fields=[PHONE])
     set_definition(org, admin, show_real_name=True)
     org.refresh_from_db()
     assert org.member_fields["show_real_name"] is True

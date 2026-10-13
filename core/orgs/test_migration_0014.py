@@ -86,7 +86,7 @@ def test_definition_save_keeps_legacy_for_rollback(pg_flushable):
         _apps(AFTER)
         org = LiveOrg.objects.get(pk=opt.pk)
         assert LiveM.objects.filter(org=org, role="admin").exists()
-        set_definition(org, True, [], LiveUser.objects.get(pk=boss.pk))
+        set_definition(org, LiveUser.objects.get(pk=boss.pk), show_real_name=True, fields=[])
         assert org.member_fields["_legacy_real_name"] == "optional"
 
         old = _apps(BEFORE)

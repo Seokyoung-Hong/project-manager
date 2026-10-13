@@ -1,6 +1,4 @@
-{% extends "base.html" %}{% load names %}{% block title %}{{ org.name }} · Discord{% endblock %}
-{% block main %}
-{% include "orgs/_tabs.html" %}
+{% load names %}<section id="discord" aria-label="Discord">
 <div class="card">
   <h2>Discord 서버</h2>
   {% if org.discord_guild_id %}
@@ -91,4 +89,4 @@
     <code>/알림채널</code>을 실행해 주세요. 선택한 채널로 조직 알림을 보냅니다.
   </p>
 </div>
-{% endblock %}
+</section>

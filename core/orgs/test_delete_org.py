@@ -215,7 +215,8 @@ def test_wrong_name_deletes_nothing(client, org, admin):
     """(3) 이름이 다르면 아무것도 지우지 않는다."""
     _project_task_record(org, admin)
     r = _post_delete(client, admin, org, "산돌")
-    assert r.status_code == 302 and r.url == reverse("org_settings", args=[org.pk])
+    assert r.status_code == 302
+    assert r.url == reverse("org_settings", args=[org.pk]) + "?tab=org#settings-org-danger"
     assert Organization.objects.filter(pk=org.pk).exists()
     assert Task.objects.count() == 1 and TaskDecisionRecord.objects.count() == 1
     assert OrgMembership.objects.filter(org=org).count() == 2
@@ -223,7 +224,8 @@ def test_wrong_name_deletes_nothing(client, org, admin):
 
 def test_settings_shows_danger_zone_only_to_admin(client, org, admin, member):
     client.force_login(admin)
-    body = client.get(reverse("org_settings", args=[org.pk])).content.decode()
+    body = client.get(reverse("org_settings", args=[org.pk]) + "?tab=org").content.decode()
     assert "조직 삭제" in body and "GitHub에서 앱 설치는 따로 해제해야 합니다" in body
     client.force_login(member)
-    assert "confirm_name" not in client.get(reverse("org_settings", args=[org.pk])).content.decode()
+    r = client.get(reverse("org_settings", args=[org.pk]) + "?tab=org", follow=True)
+    assert "confirm_name" not in r.content.decode()

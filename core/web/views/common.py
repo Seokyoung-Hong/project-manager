@@ -425,3 +425,8 @@ def week_days(day: date) -> list[date | None]:
         cells.append(d)
         d += timedelta(days=1)
     return cells
+
+
+def settings_tab_url(org, tab: str, anchor: str = "") -> str:
+    """조직 설정의 탭 주소(IMPL-PLAN-14). 옛 GitHub·Discord·전사 서버 화면이 여기로 온다."""
+    return reverse("org_settings", args=[org.pk]) + f"?tab={tab}" + (f"#{anchor}" if anchor else "")

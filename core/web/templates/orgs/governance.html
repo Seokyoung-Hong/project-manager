@@ -11,7 +11,7 @@
     {% for r in enforced_rows %}<tr><td>{{ r.label }}</td><td>{{ r.value }}</td><td>{{ r.where }}</td></tr>{% endfor %}
     </tbody>
   </table>
-  {% if is_admin %}<p class="muted t13"><a href="{% url 'org_settings' org.pk %}">설정에서 바꾸기</a></p>{% endif %}
+  {% if is_admin %}<p class="muted t13"><a href="{% url 'org_settings' org.pk %}?tab=work">설정에서 바꾸기</a></p>{% endif %}
 </section>
 {% endif %}
 <section class="card">

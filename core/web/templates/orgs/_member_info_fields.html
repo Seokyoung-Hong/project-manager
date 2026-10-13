@@ -1,4 +1,4 @@
-{# 구성원 정보 입력칸 반복(IMPL-PLAN-14 §10.1). rows = member_info.rows()에 r.error를 붙인 것, disabled = 미리보기. orgs/member_info.html 루프 복사(원본 삭제는 B) #}
+{# 구성원 정보 입력칸 반복(IMPL-PLAN-14 §10.1). rows = member_info.rows()에 r.error를 붙인 것, disabled = 미리보기. #}
 {% for r in rows %}
 <label class="field">{{ r.label }}{% if r.required %} (필수){% endif %}
   {% if r.kind == "long" %}<textarea class="textarea" name="v-{{ r.id }}" rows="4" maxlength="2000"{% if r.required %} required{% endif %}{% if disabled %} disabled{% endif %}>{{ r.value }}</textarea>

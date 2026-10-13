@@ -230,7 +230,7 @@ def test_installed_without_session_state_is_404(client, org, admin, discord_toke
     assert r.status_code == 404
 
 
-def test_discord_tab_hidden_without_client_id(client, org, admin, settings):
+def test_discord_old_url_404_without_client_id(client, org, admin, settings):
     settings.DISCORD_CLIENT_ID = ""
     client.force_login(admin)
     assert client.get(f"/orgs/{org.pk}/discord").status_code == 404

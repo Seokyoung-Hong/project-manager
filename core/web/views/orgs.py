@@ -9,7 +9,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
 from django.db.models import Count, Prefetch
-from django.http import HttpResponseForbidden
+from django.http import Http404, HttpResponseForbidden
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
@@ -26,7 +26,9 @@ from orgs.governance import governance_text
 from orgs.models import ChangeRequest, Invite, OrgMembership, TeamMembership
 from orgs.names import display_for
 from orgs.settings import (
-    GROUPS,
+    ADMIN_TABS,
+    COPY_DRAFT,
+    ORG_TABS,
     SPECS,
     STT_KEYS,
     display,
@@ -34,7 +36,7 @@ from orgs.settings import (
     enforced,
     locked_keys,
     secret_value,
-    specs_for,
+    tab_keys,
     validate_stt_url,
 )
 from projects.services import project_stats_bulk, visible_projects
@@ -102,7 +104,7 @@ def _getting_started(org) -> list[dict] | None:
             "label": "팀원 초대",
             "value": "초대 링크로 가입한 팀원은 이 조직에 바로 참여할 수 있습니다.",
             "done": org.memberships.count() > 1 or org.invites.exists(),
-            "url": reverse("org_teams", args=[org.pk]),
+            "url": _settings_url(org.pk, "members", anchor="settings-members-invites"),
         },
     ]
     if settings.GITHUB_ENABLED:
@@ -111,7 +113,7 @@ def _getting_started(org) -> list[dict] | None:
                 "label": "저장소 연결",
                 "value": "저장소를 연결하면 연결된 PR의 생성·병합에 따라 태스크 상태가 바뀝니다.",
                 "done": hasattr(org, "github"),
-                "url": reverse("org_github", args=[org.pk]),
+                "url": _settings_url(org.pk, "integrations", anchor="github"),
             }
         )
     if settings.DISCORD_CLIENT_ID:
@@ -120,7 +122,7 @@ def _getting_started(org) -> list[dict] | None:
                 "label": "Discord 알림",
                 "value": "Discord 서버를 연결하면 팀 채널에서 조직 알림과 주간 보고를 받을 수 있습니다.",
                 "done": bool(org.discord_guild_id),
-                "url": reverse("org_discord", args=[org.pk]),
+                "url": _settings_url(org.pk, "integrations", anchor="discord"),
             }
         )
     return None if all(s["done"] for s in steps) else steps
@@ -270,7 +272,7 @@ def member_tags(request, membership_id):
         osv.set_tags(membership, tags, request.user)
     except ServiceError as e:
         messages.error(request, " ".join(e.errors.values()))
-    return _member_redirect(request, membership.org_id)
+    return _member_redirect(request, membership.org_id, membership.pk)
 
 
 @login_required
@@ -287,14 +289,16 @@ def member_nickname(request, membership_id):
     except ServiceError as e:
         messages.error(request, " ".join(e.errors.values()))
     nxt = _safe_next(request, request.POST.get("next", ""))
-    return redirect(nxt) if nxt else _member_redirect(request, membership.org_id)
+    return redirect(nxt) if nxt else _member_redirect(request, membership.org_id, membership.pk)
 
 
-def _member_redirect(request, org_id):
-    # 팀 화면은 관리자 전용이다. 권한 없이 POST한 사람을 여기로 보내면 "관리자만 할 수
-    # 있습니다" 메시지가 404 페이지에 묻힌다. 그 사람은 조직 현황으로 보낸다.
+def _member_redirect(request, org_id, member=None):
+    """구성원 액션 뒤 설정 → 구성원 관리(구성원 단위면 그 패널)로. 관리자가 아니면 조직 현황으로 —
+    관리자 탭은 비관리자를 내 정보로 돌리므로 "관리자만 할 수 있습니다" 메시지가 엉뚱한 곳에 묻힌다."""
     is_admin = OrgMembership.objects.filter(org_id=org_id, user=request.user, role="admin").exists()
-    return redirect("org_teams" if is_admin else "org_detail", org_id=org_id)
+    if not is_admin:
+        return redirect("org_detail", org_id=org_id)
+    return redirect(_settings_url(org_id, "members", member=member))
 
 
 @login_required
@@ -355,7 +359,8 @@ def member_add_pending(request, org_id):
         )
     except ServiceError as e:
         messages.error(request, " ".join(e.errors.values()))
-    return _member_redirect(request, org.pk)
+        return _member_redirect(request, org.pk)
+    return _member_redirect(request, org.pk, m.pk)
 
 
 @login_required
@@ -373,7 +378,7 @@ def member_invite(request, membership_id):
         )
     except ServiceError as e:
         messages.error(request, " ".join(e.errors.values()))
-    return _member_redirect(request, membership.org_id)
+    return _member_redirect(request, membership.org_id, membership.pk)
 
 
 @login_required
@@ -397,7 +402,7 @@ def member_role(request, membership_id):
         osv.change_role(membership, request.POST.get("role", ""), request.user)
     except ServiceError as e:
         messages.error(request, " ".join(e.errors.values()))
-    return _member_redirect(request, membership.org_id)
+    return _member_redirect(request, membership.org_id, membership.pk)
 
 
 @login_required
@@ -413,7 +418,7 @@ def member_remove(request, membership_id):
         osv.remove_member(membership, request.user)
     except ServiceError as e:
         messages.error(request, " ".join(e.errors.values()))
-        return _member_redirect(request, org_id)
+        return _member_redirect(request, org_id, membership.pk)
     if (
         settings.GITHUB_ENABLED
         and getattr(org, "github", None) is not None
@@ -544,6 +549,7 @@ def _org_settings_history(org):
         "_locked": "프로젝트가 바꿀 수 있는 항목",
         "member_fields": "구성원 정보",
         "nickname": "조직 표시 이름",  # COPY:org_history.nickname
+        "member_info": "구성원 정보 수정",  # COPY:org_history.member_info (관리자 대리 수정)
     }
     logs = (
         ChangeLog.objects.filter(target_type="org", target_id=org.pk)
@@ -580,7 +586,7 @@ def org_delete(request, org_id):
         messages.error(
             request, "조직 이름이 일치하지 않아 삭제하지 않았습니다. 이름을 정확히 입력해 주세요."
         )
-        return redirect("org_settings", org_id=org.pk)
+        return redirect(_settings_url(org.pk, "org", anchor="settings-org-danger"))
     name = org.name
     osv.delete_org(org, request.user)
     if request.session.get("org_id") == org_id:
@@ -589,63 +595,194 @@ def org_delete(request, org_id):
     return redirect("org")
 
 
+def _settings_url(org_id, tab="me", *, member=None, anchor="") -> str:
+    """설정 셸 주소(IMPL-PLAN-14 §5). orgs/<id>/settings?tab=<코드>[&member=<m>][#앵커]."""
+    url = reverse("org_settings", args=[org_id]) + "?tab=" + tab
+    if member:
+        url += f"&member={member}"
+    return url + (f"#{anchor}" if anchor else "")
+
+
+def _integrations_on() -> bool:
+    return settings.GITHUB_ENABLED or bool(settings.DISCORD_CLIENT_ID)
+
+
+def _settings_nav(org, tab, is_admin):
+    """셸 왼쪽 탭(≤700px는 설정 목록 화면). [(묶음 라벨, [(코드, 라벨, 주소, 현재)])]."""
+    shown = []
+    for code, label_key, _ in ORG_TABS:
+        if code in ADMIN_TABS and not is_admin:
+            continue
+        if code == "integrations" and not _integrations_on():
+            continue
+        shown.append(
+            (code, COPY_DRAFT.get(label_key, label_key), _settings_url(org.pk, code), code == tab)
+        )
+    return [
+        ("나", [t for t in shown if t[0] not in ADMIN_TABS]),  # COPY:org_settings.group.me
+        ("조직 관리", [t for t in shown if t[0] in ADMIN_TABS]),  # COPY:org_settings.group.admin
+    ]
+
+
+def _tab_sections(tab):
+    return next(sections for code, _, sections in ORG_TABS if code == tab)
+
+
+def _save_keys(tab, section=None) -> tuple[str, ...]:
+    """이 탭(섹션) 폼이 저장하는 키. 전사(stt) 섹션은 자기 폼·엔드포인트가 있어 뺀다(§9.2)."""
+    return tuple(k for k in tab_keys(tab, section) if k not in STT_KEYS)
+
+
+def _key_sections(org, tab):
+    """설정 키 탭의 섹션별 행. 키 없는 섹션·전사 섹션은 템플릿이 따로 그린다."""
+    locked = locked_keys(org)
+    out = []
+    for sec, label_key, _ in _tab_sections(tab):
+        keys = _save_keys(tab, sec)
+        if not keys:
+            continue
+        rows = []
+        for key in keys:
+            value = effective(key, org=org)
+            rows.append(
+                {
+                    "spec": SPECS[key],
+                    "value": value,
+                    "display": display(key, value),
+                    "unlocked": key not in locked,
+                    "can_edit": True,
+                    "show_override": True,
+                }
+            )
+        out.append({"code": sec, "label": COPY_DRAFT.get(label_key, label_key), "rows": rows})
+    return out
+
+
+def _me_ctx(request, org, membership, errors=None, posted=None):
+    """내 정보 탭(§7). posted = 오류로 다시 그릴 때 입력값 보존."""
+    errors = errors or {}
+    posted = posted or {}
+    values = posted.get("values")
+    rows = [
+        {
+            **r,
+            "value": values.get(r["id"], "") if values is not None else r["value"],
+            "error": errors.get(r["id"], ""),
+        }
+        for r in member_info.rows(membership)
+    ]
+    return {
+        "me": membership,
+        "me_rows": rows,
+        "me_errors": errors,
+        "me_real_name": posted.get("real_name", request.user.real_name),
+        "me_nickname": posted.get("nickname", membership.nickname),
+        "me_shown": display_for(request.user, org),
+        "show_real_name": member_info.definition(org)["show_real_name"],
+    }
+
+
+def _render_settings(request, org, tab, is_admin, membership, **me):
+    ctx = {
+        "org": org,
+        "is_admin": is_admin,
+        "tab": "settings",  # 조직 메뉴(_tabs.html) 강조
+        "settings_tab": tab,
+        "settings_tab_label": COPY_DRAFT.get(f"org_settings.tab.{tab}", tab),
+        "settings_nav": _settings_nav(org, tab, is_admin),
+        # 주소에 탭이 있으면 모바일은 탭 화면, 없으면 설정 목록 화면(시안 A)
+        "in_tab": "tab" in request.GET or request.method == "POST",
+        "me_blocked": member_info.missing(membership),
+    }
+    if tab == "me":
+        ctx.update(_me_ctx(request, org, membership, **me))
+    elif tab == "members":
+        from .org_members import members_ctx
+
+        ctx.update(members_ctx(request, org, request.GET.get("member")))
+    elif tab == "integrations":
+        from .discord import discord_ctx
+        from .github import github_ctx
+
+        if settings.GITHUB_ENABLED:
+            ctx.update(github_ctx(request, org))
+        if settings.DISCORD_CLIENT_ID:
+            ctx.update(discord_ctx(request, org))
+    else:
+        ctx["key_sections"] = _key_sections(org, tab)
+        ctx["pending_requests"] = _pending(org, "settings")
+        if tab == "meeting":
+            from .transcribe import stt_ctx
+
+            ctx.update(stt_ctx(request, org))
+        elif tab == "org":
+            ctx["history"] = _org_settings_history(org)
+    return render(request, "orgs/settings.html", ctx)
+
+
 @login_required
 def org_settings(request, org_id):
-    """조직 설정. 관리자가 고치고 멤버는 읽기만 한다 — "왜 진행 중으로 못 바꾸지"의 답이 여기 있다."""
+    """조직 설정 셸(IMPL-PLAN-14 §2·§5·§6). 모든 구성원이 들어오고, 관리자 탭은 매 요청 서버가 검사한다.
+
+    GET ?tab=<코드>: 그 탭만 그린다. 모르는 탭 → 내 정보. 비관리자가 관리자 탭 → 내 정보로 돌린다.
+    POST ?tab=<코드>[&section=<섹션>]: 그 탭(섹션) 키만 부분 저장. 비관리자 → 403.
+    """
     org = org_or_404(request.user, org_id)
     is_admin = can_admin(request.user, org)
-    # 전사 서버·모델은 전사 메뉴(views/transcribe.py)가 저장한다. 여기서는 그 값을 그대로 둔다.
-    specs = [s for s in specs_for("org") if s.key not in STT_KEYS]
-    if request.method == "POST" and is_admin:
-        try:
-            keep = {k: v for k, v in (org.settings or {}).items() if k in STT_KEYS}
-            osv.set_org_settings(
-                org, {**keep, **_settings_from_post(request.POST, specs)}, request.user
-            )
-            unlocked = {
-                spec.key
-                for spec in specs
-                if spec.overridable and request.POST.get(f"unlock__{spec.key}") == "on"
-            }
-            osv.set_locks(
-                org,
-                [spec.key for spec in specs if spec.overridable and spec.key not in unlocked],
-                request.user,
-            )
-            messages.success(request, "조직 설정을 저장했습니다.")
-        except ServiceError as e:
-            messages.error(request, " ".join(e.errors.values()))
-        return redirect("org_settings", org_id=org.pk)
-    locked = locked_keys(org)
-    groups = []
-    for code, label in GROUPS:
-        rows = [
-            {
-                "spec": s,
-                "value": effective(s.key, org=org),
-                "display": display(s.key, effective(s.key, org=org)),
-                "unlocked": s.key not in locked,
-                "can_edit": is_admin,
-                "show_override": is_admin,
-            }
-            for s in specs
-            if s.group == code
-        ]
-        if rows:
-            groups.append((label, rows))
-    return render(
-        request,
-        "orgs/settings.html",
-        {
-            "org": org,
-            "is_admin": is_admin,
-            "groups": groups,
-            "history": _org_settings_history(org),
-            "tab": "settings",
-            "pending_requests": _pending(org, "settings") if is_admin else [],
-            "member_def": member_info.definition(org),
-            "field_kinds": member_info.KINDS,
-        },
+    membership = (
+        OrgMembership.objects.select_related("org").filter(org=org, user=request.user).first()
+    )
+    tab = request.GET.get("tab") or "me"
+    if tab not in {code for code, _, _ in ORG_TABS}:
+        tab = "me"
+    if tab in ADMIN_TABS and not is_admin:
+        if request.method == "POST":
+            raise PermissionDenied
+        # COPY:org_settings.forbidden
+        messages.info(request, "조직 관리자만 볼 수 있는 탭입니다. 내 정보로 이동했습니다.")
+        return redirect(_settings_url(org.pk))
+    if tab == "integrations" and not _integrations_on():
+        return redirect(_settings_url(org.pk))
+    # 연동 탭은 필수 구성원 정보 관문을 적용한다(§6). 다른 관리자 탭은 항목 정의를 고칠 수 있게 열어 둔다.
+    if tab == "integrations" and membership is not None and member_info.missing(membership):
+        # COPY:org_settings.integrations_blocked
+        messages.error(request, "내 정보의 필수 항목을 먼저 입력해 주세요.")
+        return redirect(_settings_url(org.pk))
+    if request.method == "POST":
+        return _save_tab(request, org, tab)
+    if membership is None:  # 구성원 아닌 운영자(org_or_404 통과) — 내 정보가 없다
+        raise Http404
+    return _render_settings(request, org, tab, is_admin, membership)
+
+
+def _save_tab(request, org, tab):
+    """설정 키 탭의 부분 저장(§9). 저장 키는 서버가 tab_keys로 정한다 — 폼이 보낸 키 목록은 믿지 않는다."""
+    section = request.GET.get("section") or None
+    keys = _save_keys(tab, section)
+    if not keys:
+        raise Http404
+    specs = [SPECS[k] for k in keys]
+    try:
+        # 반환값(잠금 뒤 다시 읽은 새 객체)을 set_locks에 넘긴다 — 옛 org를 넘기면 방금 쓴 값을 덮는다(§9.1)
+        org = osv.set_org_settings(
+            org, _settings_from_post(request.POST, specs), request.user, only=keys
+        )
+        osv.set_locks(
+            org,
+            [
+                s.key
+                for s in specs
+                if s.overridable and request.POST.get(f"unlock__{s.key}") != "on"
+            ],
+            request.user,
+            only=keys,
+        )
+        label = COPY_DRAFT.get(f"org_settings.tab.{tab}", tab)
+        messages.success(request, f"{label} 설정을 저장했습니다.")  # COPY:org_settings.saved_tab
+    except ServiceError as e:
+        messages.error(request, " ".join(e.errors.values()))
+    return redirect(
+        _settings_url(org.pk, tab, anchor=f"settings-{tab}-{section}" if section else "")
     )
 
 
@@ -682,51 +819,58 @@ def _fields_from_post(post) -> list[dict]:
 @login_required
 @require_POST
 def org_member_fields(request, org_id):
-    """구성원 정보 항목 정의(조직 관리자)."""
+    """이름 표시 방식(part=names)·요청할 정보 항목(part=fields). part 없음 = 옛 한 폼(둘 다)."""
     org = org_or_404(request.user, org_id)
     if denied := not_admin(request, org, "조직 설정"):
         return denied
+    part = request.POST.get("part", "")
+    kwargs = {}
+    if part in ("", "names"):
+        kwargs["show_real_name"] = request.POST.get("show_real_name") == "on"
+    if part in ("", "fields"):
+        kwargs["fields"] = _fields_from_post(request.POST)
     try:
-        member_info.set_definition(
-            org,
-            request.POST.get("show_real_name") == "on",
-            _fields_from_post(request.POST),
-            request.user,
-        )
+        member_info.set_definition(org, request.user, **kwargs)
         messages.success(request, "구성원 정보 항목을 저장했습니다.")
     except ServiceError as e:
         messages.error(request, " ".join(e.errors.values()))
-    return redirect(reverse("org_settings", args=[org.pk]) + "#member-info")
+    return redirect(_settings_url(org.pk, "members", anchor=f"settings-members-{part or 'names'}"))
 
 
 @login_required
 def org_member_info(request, org_id):
-    """구성원이 이 조직에 내는 자기 정보. 필수 항목이 비면 이 조직의 다른 화면은 여기로 온다."""
+    """내 정보 저장 엔드포인트(§5·§7). GET은 설정 → 내 정보로 보낸다(옛 주소).
+
+    실명·조직 표시 이름·구성원 정보를 한 번에 원자 저장한다. 안 보낸 칸은 그대로(옛 v-* 폼 호환).
+    대상은 항상 request.user 본인의 멤버십이다 — 본문의 대상 식별자는 받지 않는다.
+    """
     org = org_or_404(request.user, org_id)
-    m = OrgMembership.objects.select_related("org").get(org=org, user=request.user)
-    errors = {}
-    if request.method == "POST":
-        values = {k[2:]: v for k, v in request.POST.items() if k.startswith("v-")}
-        try:
-            member_info.save(m, values)
-            messages.success(request, "구성원 정보를 저장했습니다.")
-            return redirect("org_detail", org_id=org.pk)
-        except ServiceError as e:
-            errors = e.errors
-            m.info = values
-    rows = [{**r, "error": errors.get(r["id"], "")} for r in member_info.rows(m)]
-    return render(
-        request,
-        "orgs/member_info.html",
-        {
-            "org": org,
-            "m": m,
-            "rows": rows,
-            "errors": errors,
-            "blocked": member_info.missing(m),
-            "show_real_name": member_info.definition(org)["show_real_name"],
-        },
+    if request.method != "POST":
+        return redirect(_settings_url(org.pk))
+    m = get_object_or_404(
+        OrgMembership.objects.select_related("org", "user"), org=org, user=request.user
     )
+    was_blocked = member_info.missing(m)
+    post = request.POST
+    values = {k[2:]: v for k, v in post.items() if k.startswith("v-")}
+    real_name = post.get("real_name") if "real_name" in post else None
+    nickname = post.get("nickname") if "nickname" in post else None
+    try:
+        member_info.save_me(m, real_name=real_name, nickname=nickname, values=values or None)
+    except ServiceError as e:
+        posted = {"values": values}
+        if real_name is not None:
+            posted["real_name"] = real_name
+        if nickname is not None:
+            posted["nickname"] = nickname
+        return _render_settings(
+            request, org, "me", can_admin(request.user, org), m, errors=e.errors, posted=posted
+        )
+    if was_blocked and not member_info.missing(m):
+        messages.success(request, f"이제 {org.name}을(를) 쓸 수 있습니다.")  # COPY:me.unblocked
+        return redirect("org_detail", org_id=org.pk)
+    messages.success(request, "내 정보를 저장했습니다.")  # COPY:me.saved
+    return redirect(_settings_url(org.pk))
 
 
 class _NoRedirect(urllib.request.HTTPRedirectHandler):

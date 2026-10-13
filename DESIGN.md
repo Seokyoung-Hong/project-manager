@@ -199,6 +199,7 @@ animation·transition을 끈다(파일 맨 끝 규칙).
 |---|---|---|
 | 섹션이 여럿인 설정(조직·프로젝트 설정) | 왼쪽 섹션 목차 220px(고정 위치, 스크롤에 따라 현재 섹션 표시) + 오른쪽 넓은 본문. 저장 막대는 본문 위에 붙는다 | `form.settings-form.with-nav` 또는 카드 안 `.settings-split` → `.settings-jump` + `.settings-main` |
 | 설정 행 | "라벨·도움말 \| 입력 \| (조직) 프로젝트 변경 허용" 3단 그리드 `minmax(260px, 1.4fr) minmax(200px, 1fr) minmax(170px, 220px)`. 셀렉트·글 입력은 최대 420px, 숫자는 84px, 도움말은 70ch | `.setting-row`, `.setting-row-with-override` |
+| 탭이 여럿인 조직 설정(IMPL-PLAN-14, 시안 A) | 왼쪽 세로 탭 240px("나"/"조직 관리" 묶음, 현재 탭 표면색+그림자) + 본문. 탭 안은 `.settings-jump` 칩 줄 + `details.settings-section`(id `settings-<탭>-<섹션>`). ≤700px는 탭 목록 화면 → 누르면 탭 화면(`?tab=`가 있을 때 `.in-tab`, [‹ 설정]으로 복귀). 구성원 관리는 목록 + 오른쪽 `.member-panel`(≤1100px 아래, ≤700px 목록 대신 전체 폭), 항목 정의는 `.field-card` + `.field-preview` | `.settings-shell` > `nav.settings-tabs` `.settings-tab` + `.settings-body`, `.member-split` `.member-panel` `.fields-split` `.field-card` |
 | 짧은 그룹 여럿(개인 환경설정) | 그룹을 나란히: `repeat(auto-fit, minmax(520px, 1fr))` | `.settings-groups` |
 | 카드 몇 장(프로필·연결) | 카드를 2~3열: `repeat(auto-fit, minmax(440px, 1fr))` | `.card-grid` |
 | 하나의 일을 하는 독립 폼(새 요청·조직 만들기) | 읽기 폭 카드 760px를 **가운데**에 | `.card.form-card` |
