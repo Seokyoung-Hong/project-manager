@@ -77,7 +77,28 @@ def _sources(user):
     rows = list(AiSource.objects.filter(user=user).select_related("server"))
     for r in rows:
         r.error_label = error_text(r.last_error)
+        r.unusable = _unusable(r)
     return rows
+
+
+def _unusable(r) -> bool:
+    """켜 두었지만 지금 실제로 쓸 수 없는 개인 AI(행 상태를 "사용 불가"로). 이유 문구는 행 아래에 따로 보인다."""
+    from assist import copilot
+
+    if r.kind != "personal":
+        return False
+    if r.is_copilot:
+        return not copilot.enabled()
+    if r.route == "pc" and (r.server is None or not tx.online(r.server)):
+        return True
+    if r.is_codex:
+        dev = codex_login.device(r.server)
+        return (
+            not settings.ASSIST_CODEX_ENABLED
+            or bool(dev.get("docker"))
+            or dev.get("login") is False
+        )
+    return False
 
 
 def _page(request, status=200, **extra):
@@ -91,6 +112,7 @@ def _page(request, status=200, **extra):
         **extra,
     }
     ctx["personal_count"] = sum(s.kind == "personal" for s in ctx["sources"])
+    ctx["has_copilot"] = any(s.is_copilot for s in ctx["sources"])  # 이미 연결했으면 [연결] 숨김
     return render(request, "settings/ai.html", ctx, status=status)
 
 
@@ -200,6 +222,7 @@ def ai_row(request, source_id: int):
     src = _mine(request, source_id)
     if request.method != "POST":
         src.error_label = error_text(src.last_error)
+        src.unusable = _unusable(src)
         return render(
             request,
             "settings/_ai_source.html",

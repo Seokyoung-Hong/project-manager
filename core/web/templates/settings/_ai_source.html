@@ -4,9 +4,9 @@
   <div class="conn">
     <span class="badge" aria-label="{{ n }}번째">{{ n }}</span>
     <b>{% if s.kind == "org" %}조직 AI{% else %}{{ s.name }}{% endif %}</b>
-    {% if s.enabled %}<span class="conn-state on">켜짐</span>{% else %}<span class="conn-state off">꺼짐</span>{% endif %}{# COPY:assist_src_state #}
-    {% if s.kind == "personal" %}<span class="badge">{% if s.is_codex %}Codex(내 구독){% elif s.is_copilot %}GitHub Copilot(내 구독){% else %}{{ s.get_route_display }}{% endif %}</span>
-    <span class="muted t13">{% if s.is_codex %}{{ s.model|default:"Codex 기본 모델" }}{% elif s.is_copilot %}{{ s.model }}{% else %}{{ s.model|default:"모델 미입력" }} · 키 {% if s.api_key %}설정됨{% else %}미설정{% endif %}{% endif %}</span>{% endif %}
+    {% if not s.enabled %}<span class="conn-state off">꺼짐</span>{% elif s.unusable %}<span class="conn-state warn">사용 불가</span>{% else %}<span class="conn-state on">켜짐</span>{% endif %}{# COPY:assist_src_state · 사용 불가 = COPY:assist_src_state_unusable (임시) #}
+    {% if s.kind == "personal" %}<span class="badge">{{ s.get_route_display }}</span>{# 배지는 늘 경로, 공급자는 옆 글로 #}
+    <span class="muted t13">{% if s.is_codex %}Codex(내 구독) · {{ s.model|default:"Codex 기본 모델" }}{% elif s.is_copilot %}GitHub Copilot(내 구독) · {{ s.model }}{% else %}{{ s.model|default:"모델 미입력" }} · 키 {% if s.api_key %}설정됨{% else %}미설정{% endif %}{% endif %}</span>{% endif %}
   </div>
   {% if s.kind == "org" %}<p class="muted t13">작업 중인 조직의 관리자가 등록한 AI입니다. 기본 사용 권한은 구성원 누구나이며, 구성원 1명당 하루 30회까지 사용할 수 있습니다. 관리자는 하루 한도에서 제외됩니다. 관리자는 사용 권한을 관리자만으로 제한하거나 하루 한도를 변경할 수 있습니다.</p>{# COPY:assist_src_org_help #}
   {% elif s.route == "pc" and not s.server and not servers %}<p class="notice warn"><span>⚠ 개인 AI에 연결된 내 PC가 없습니다. [<a href="{% url 'settings_stt' %}">내 PC 연결</a>]에서 PC를 연결한 뒤 [PC 다시 고르기]에서 선택해 주세요.</span></p>{# COPY:assist_src_pc_unlinked_none #}

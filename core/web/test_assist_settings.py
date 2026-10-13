@@ -205,3 +205,16 @@ def test_ops_assist_staff_only_and_audited(client, admin, member):
     client.post(reverse("ops_assist_delete", args=[row.pk]), {"reason": "더 이상 쓰지 않음"})
     assert not AllowedHost.objects.exists()
     assert OpsAuditLog.objects.filter(action="assist.host_remove").exists()
+
+
+def test_row_state_unusable_when_enabled_but_pc_offline(client, member, fake_net):
+    """켜 두었어도 실제로 못 쓰면(PC 꺼짐) 초록 "켜짐" 대신 "사용 불가"."""
+    pc = SttServer.objects.create(
+        owner=member, name="내 PC", machine_id="m1"
+    )  # heartbeat 없음 = 꺼짐
+    AiSource.objects.create(
+        user=member, name="로컬", base_url="http://localhost:11434/v1", route="pc", server=pc
+    )
+    client.force_login(member)
+    page = client.get(reverse("settings_ai")).content.decode()
+    assert 'conn-state warn">사용 불가' in page

@@ -1,6 +1,6 @@
 {# AI 사용 순서의 GitHub Copilot 행 아래쪽(모델 고르기). s: AiSource(is_copilot). 키 칸은 없다. #}
 {% if copilot_on %}
-<form method="post" action="{% url 'settings_ai_copilot_model' s.pk %}" class="row">{% csrf_token %}
+<form method="post" action="{% url 'settings_ai_copilot_model' s.pk %}" class="row align-end">{% csrf_token %}
   <label class="field">모델<select class="select" name="model">{% for m in copilot_models %}<option value="{{ m }}"{% if m == s.model %} selected{% endif %}>{{ m }}</option>{% endfor %}</select></label>{# COPY:assist_copilot_model #}
   <div><button class="btn sm">모델 적용</button></div>{# COPY:assist_copilot_model_apply #}
 </form>

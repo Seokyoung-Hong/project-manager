@@ -54,12 +54,15 @@ def test_login_flow_owner_only(client, member, admin, caplog):
     assert CodexLogin.objects.get(server=server).pk == row.pk
     assert _report(client, other_tok, row.pk, url=URL, code=CODE).status_code == 404  # 남의 요청
 
-    assert _report(client, tok, row.pk, url=URL, code=CODE, expires_in=900).json() == {
+    assert _report(client, tok, row.pk, url=URL, code=CODE, expires_in=7200).json() == {
         "state": "code"
     }
+    row.refresh_from_db()  # PC가 길게 보내도 처리방침대로 최대 15분
+    assert row.expires_at <= timezone.now() + timedelta(minutes=15, seconds=5)
     assert "codex_login" not in _beat(client, tok, ai=1).json()
     html = _page(client, src)
     assert CODE in html and URL in html and "직접 [Codex 로그인]을 누른 경우에만" in html
+    assert f'data-copy-text="{CODE}"' in html and "코드 복사" in html
     assert _report(client, tok, row.pk, done=True, logged_in=True).json() == {"state": "done"}
     server.refresh_from_db()
     assert server.device["codex"]["login"] is True

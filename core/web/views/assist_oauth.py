@@ -10,7 +10,7 @@ from assist import oauth
 from assist.models import AiSource
 
 ERRORS = {
-    "state": "연결 확인 정보가 만료되었거나 일치하지 않습니다. 설정 > AI에서 연결을 다시 시작해 주세요.",  # COPY:assist_oauth_err_state
+    "state": "연결 확인 정보가 만료되었거나 일치하지 않습니다. 연결을 다시 시작해 주세요.",  # COPY:assist_oauth_err_state (임시)
     "denied": "연결이 취소되었거나 승인되지 않았습니다. 연결하려면 다시 시작해 승인해 주세요.",  # COPY:assist_oauth_err_denied
     "exchange": "AI 서비스에서 연결 정보를 받지 못했습니다. 잠시 후 연결을 다시 시작해 주세요.",  # COPY:assist_oauth_err_exchange
     "limit": f"개인 AI 등록 한도인 {AiSource.MAX_PERSONAL}개에 도달했습니다. 사용하지 않는 개인 AI를 삭제한 뒤 다시 연결해 주세요.",  # COPY:assist_oauth_err_limit

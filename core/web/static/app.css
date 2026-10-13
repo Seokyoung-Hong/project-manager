@@ -1609,6 +1609,20 @@ form:has(option[value="person"]:checked) .person-only { display: flex; }
 /* 태스크 후보: 넓은 대화상자 + 열 최소 폭(담당자·프로젝트·제목이 읽히게). 좁은 화면은 표 가로 스크롤 */
 #ai-dlg:has(.ai-cand) { max-width: 1160px; }
 #ai-dlg form.ai-cand { max-width: none; }
+/* 설정 AI: Copilot 모델 칸과 [모델 적용] 아래선 맞춤 */
+.row.align-end { align-items: end; }
+/* 개인 AI 입력 칸 펼침 표시(▸/▾) */
+.ai-add-fold > summary { cursor: pointer; font-weight: 600; }
+.ai-add-fold > summary::-webkit-details-marker { display: none; }
+.ai-add-fold > summary::before { content: ""; flex: none; width: 16px; height: 16px; background: var(--c-muted); clip-path: polygon(35% 25%, 72% 50%, 35% 75%); transition: transform var(--dur-fast) var(--ease); }
+.ai-add-fold[open] > summary::before { transform: rotate(90deg); }
+/* Codex 기기 코드 로그인: 단계 목록, 코드 크게 + [코드 복사](복사 실패 시 app.js가 직접 복사 창을 띄우고 코드는 선택 가능) */
+.codex-steps { margin: 0; padding: 0; list-style: none; display: grid; gap: var(--sp-3); }
+.codex-steps li { display: grid; gap: var(--sp-1); min-width: 0; overflow-wrap: anywhere; }
+.codex-step-label { font-size: var(--fs-sm); font-weight: 600; color: var(--c-muted); }
+.codex-code { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2) var(--sp-3); }
+.codex-code code { font-size: var(--fs-2xl); letter-spacing: .08em; padding: var(--sp-1) var(--sp-3); user-select: all; }
+@media (max-width: 700px) { .codex-code .btn { min-height: 44px; } }
 #ai-dlg:has(.ai-cand) #ai-dlg-body + .row { display: none; } /* 후보 폼이 [닫기]를 작업 줄에 함께 둔다 */
 .ai-cand table.grid { min-width: 900px; table-layout: fixed; }
 .ai-cand th:nth-child(1) { width: 64px; }

@@ -7,11 +7,13 @@
   {% if not online %}<p class="muted t12">{{ server.name }}이(가) 연결되어 있지 않습니다. PC를 켜고 udally-link를 실행해 주세요.</p>{% endif %}{# COPY:codex_login_offline #}
 {% elif row.state == "code" %}
   <p class="notice warn" role="note">⚠ 이 화면에서 직접 [Codex 로그인]을 누른 경우에만 코드를 입력해 주세요. 다른 사람이 보내 준 코드를 입력하면 그 사람의 PC가 내 Codex 구독을 사용하게 됩니다.</p>{# COPY:codex_login_phishing #}
-  <dl class="panel-meta">
-    <dt>1. 인증 주소</dt><dd><a href="{{ row.url }}" target="_blank" rel="noopener noreferrer">{{ row.url }}</a></dd>{# COPY:codex_login_step_url #}
-    <dt>2. 코드</dt><dd><code class="mono t20">{{ row.code }}</code></dd>{# COPY:codex_login_step_code #}
-    <dt>남은 시간</dt><dd>약 {{ minutes }}분</dd>
-  </dl>
+  <ol class="codex-steps">
+    <li><span class="codex-step-label">1. 인증 주소</span> <a href="{{ row.url }}" target="_blank" rel="noopener noreferrer">{{ row.url }}</a></li>{# COPY:codex_login_step_url #}
+    <li><span class="codex-step-label">2. 코드</span>
+      <span class="codex-code"><code class="mono" id="codex-code-{{ s.pk }}">{{ row.code }}</code>
+      <button type="button" class="btn sm" data-copy-text="{{ row.code }}" data-copy-label="코드 복사됨" aria-describedby="codex-code-{{ s.pk }}">코드 복사</button></span></li>{# COPY:codex_login_copy (임시) · 복사됨 = COPY:codex_login_copied (임시) #}
+  </ol>
+  <p class="t13 muted">남은 시간: 약 {{ minutes }}분</p>{# COPY:codex_login_left (임시) #}
   <p class="muted t12">인증 주소에서 ChatGPT 계정으로 로그인한 뒤 코드를 입력해 주세요. 완료되면 이 화면이 자동으로 바뀝니다.</p>{# COPY:codex_login_code_help #}
 {% else %}
   <p class="conn">{% if dev.login %}<span class="conn-state on">로그인됨</span> <span class="t13">{{ server.name }}의 Codex에 로그인되어 있습니다.</span>{% elif dev.login is False %}<span class="conn-state off">로그아웃됨</span> <span class="t13">{{ server.name }}의 Codex에 로그인되어 있지 않습니다.</span>{% else %}<span class="conn-state off">확인 전</span> <span class="t13">{{ server.name }}의 Codex 로그인 상태를 아직 확인하지 못했습니다.</span>{% endif %}</p>{# COPY:codex_login_state #}

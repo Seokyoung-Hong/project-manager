@@ -22,7 +22,7 @@ from .models import CodexLogin
 LOGIN_HOSTS = {"auth.openai.com"}  # 기기 코드 입력 주소로 받아 주는 곳
 CODE = re.compile(r"[A-Z0-9]{4,8}-[A-Z0-9]{4,8}")
 PICKUP = timedelta(minutes=2)  # PC가 이 안에 명령을 받아 코드를 보고하지 않으면 만료
-DEFAULT_TTL, MAX_TTL = 15 * 60, 30 * 60
+DEFAULT_TTL, MAX_TTL = 15 * 60, 15 * 60  # 처리방침: 기기 코드는 최대 15분
 ERRORS = {"codex_missing", "codex_docker", "login_failed", "bad_login_url", "pc_error"}
 OPEN = ("requested", "code")
 
