@@ -405,6 +405,11 @@ aside#panel > .panel { box-shadow: var(--sh-pop); }
   transition: border-color var(--dur-fast) var(--ease), box-shadow var(--dur-fast) var(--ease);
 }
 .input::placeholder, textarea::placeholder { color: var(--c-faint); }
+/* 파일 선택 버튼과 파일명은 텍스트 입력처럼 높이만 지정해도 중앙에 놓이지 않는다. */
+.input[type=file] { padding-block: var(--sp-2); line-height: 24px; }
+.input[type=file]::file-selector-button {
+  height: 100%; margin-right: var(--sp-2); padding: 0 var(--sp-2); font: inherit; line-height: normal;
+}
 .input.lg { height: 52px; font-size: var(--fs-lg); border-radius: var(--r-lg); }
 .select.auto, .input.auto { width: auto; }
 .textarea, textarea { height: auto; padding: 10px 14px; resize: vertical; line-height: 1.6; }
@@ -957,6 +962,10 @@ details > summary { cursor: pointer; font-weight: 600; }
 .notes-columns > .list { flex: 1 1 280px; max-width: 360px; min-width: 0; }
 .notes-columns > .note-editor-card { flex: 9999 1 480px; min-width: 0; }
 .notes-columns > #files { flex: 1 1 100%; }
+.note-audio-upload { display: flex; flex-direction: column; gap: 6px; }
+.note-audio-upload > .label { font-size: var(--fs-sm); color: var(--c-muted); font-weight: 600; }
+.note-audio-upload .input { flex: 1 1 260px; min-width: 0; max-width: 420px; }
+.note-audio-upload #note-audio-help { flex: 1 1 240px; min-width: 0; }
 .note-editor-toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: var(--sp-3); min-height: 28px; }
 .note-back { display: none; }
 .note-save-status {
