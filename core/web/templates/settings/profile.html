@@ -2,11 +2,21 @@
 {% block main %}
 {% with settings_tab="profile" %}{% include "settings/_tabs.html" %}{% endwith %}
 <div class="card-grid">
-<div class="card">
+<div class="card" id="real-name">
   <h2>프로필</h2>
+  {% if not user.real_name %}{# COPY:real_name.gate_notice #}
+  <div class="notice warn" role="alert"><span aria-hidden="true">⚠</span><span>실명을 입력해야 유달리를 이용할 수 있습니다. 저장하면 보던 화면으로 돌아갑니다.</span></div>
+  {% endif %}
   <form method="post" class="stack">{% csrf_token %}
-    {% for f in form %}<label class="field">{{ f.label }}{{ f }}</label>{% for e in f.errors %}<div class="error">{{ e }}</div>{% endfor %}{% endfor %}
-    <button class="btn primary">표시 이름 저장</button>
+    {% include "_fields.html" %}
+    {% if real_name_candidates %}{# COPY:real_name.candidates #}
+    {# 고르기 버튼은 같은 이름(real_name)으로 값을 보낸다 — 입력칸보다 뒤에 있어 버튼 값이 쓰인다(QueryDict는 마지막 값). #}
+    <div class="stack gap-2">
+      <p class="t13 muted">조직마다 다른 실명이 입력되어 있었습니다. 맞는 이름을 고르거나 위 칸에 직접 입력해 주세요.</p>
+      <div class="row gap-2">{% for c in real_name_candidates %}<button class="btn sm" name="real_name" value="{{ c }}">{{ c }}(으)로 저장</button>{% endfor %}</div>
+    </div>
+    {% endif %}
+    <div><button class="btn primary">프로필 저장</button></div>
   </form>
 </div>
 <div class="card">

@@ -145,6 +145,11 @@ urlpatterns = [
     path("orgs/memberships/<int:membership_id>/role", orgs.member_role, name="member_role"),
     path("orgs/memberships/<int:membership_id>/remove", orgs.member_remove, name="member_remove"),
     path("orgs/memberships/<int:membership_id>/tags", orgs.member_tags, name="member_tags"),
+    path(
+        "orgs/memberships/<int:membership_id>/nickname",
+        orgs.member_nickname,
+        name="member_nickname",
+    ),
     path("teams/<int:team_id>", teams.team_detail, name="team_detail"),
     path("teams/<int:team_id>/edit", teams.team_edit, name="team_edit"),
     path("teams/<int:team_id>/delete", teams.team_delete, name="team_delete"),

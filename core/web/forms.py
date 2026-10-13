@@ -2,9 +2,13 @@ from datetime import timedelta
 
 from django import forms
 from django.contrib.auth.forms import UserCreationForm
+from django.db.models import Case, When
 
 from accounts.models import User
+from accounts.services import clean_real_name as _clean_real_name
+from common.errors import ServiceError
 from orgs.models import Team
+from orgs.names import sort_by_name
 from projects.models import Project
 from tasks.models import Link
 
@@ -25,6 +29,31 @@ def suggested_due_date(*, org, project=None):
         if day.weekday() < 5:
             remaining -= 1
     return day.isoformat()
+
+
+REAL_NAME_REQUIRED = (
+    "실명을 입력해 주세요."  # COPY:real_name.required (accounts.services와 같은 문구)
+)
+
+
+def _real_name(value) -> str:
+    """accounts.services.clean_real_name을 폼 오류로 바꾼다(검증 규칙은 거기 한 곳)."""
+    try:
+        return _clean_real_name(value)
+    except ServiceError as e:
+        raise forms.ValidationError(e.errors["real_name"]) from None
+
+
+def members_by_name(org):
+    """조직 구성원(활성)을 그 조직 표시 이름순으로. 템플릿이 queryset을 그대로 돌아서 순서를 DB 식으로 넣는다.
+
+    # ponytail: 구성원 수만큼 When이 붙는다(수백 명 가정). 더 크면 표시 이름을 열로 계산해 정렬한다.
+    """
+    qs = org.members.filter(is_active=True)
+    order = [u.pk for u in sort_by_name(qs, org)]
+    return qs.order_by(
+        Case(*[When(pk=pk, then=i) for i, pk in enumerate(order)], default=len(order))
+    )
 
 
 class LoginForm(forms.Form):
@@ -54,12 +83,22 @@ class SignupForm(UserCreationForm):
 
     class Meta:
         model = User
-        fields = ("username", "display_name")
-        labels = {"username": "아이디", "display_name": "표시 이름"}
+        fields = ("username", "real_name", "display_name")
+        labels = {"username": "아이디", "real_name": "실명", "display_name": "표시 이름"}
         help_texts = {
             "username": "영문·숫자와 @ . + - _ 만, 150자 이하",
+            # COPY:signup.real_name_help
+            "real_name": "본인의 실제 이름을 입력해 주세요. 소속 조직의 관리자가 볼 수 있고, 실명으로 표시하는 조직에서는 구성원에게 이 이름이 보입니다.",
             "display_name": "팀원에게 표시되며 알림에 쓰이는 이름입니다.",
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["real_name"].required = True  # 모델은 blank=True(기존 계정), 가입은 필수
+        self.fields["real_name"].error_messages["required"] = REAL_NAME_REQUIRED
+
+    def clean_real_name(self):
+        return _real_name(self.cleaned_data.get("real_name"))
 
 
 class OrgForm(forms.Form):
@@ -110,7 +149,7 @@ class ProjectForm(forms.Form):
 
     def __init__(self, *args, org, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields["owners"].queryset = org.members.filter(is_active=True).order_by("display_name")
+        self.fields["owners"].queryset = members_by_name(org)
         self.fields["teams"].queryset = org.teams.all()
 
 
@@ -131,9 +170,7 @@ class TaskInlineForm(forms.Form):
         from orgs.settings import effective
 
         super().__init__(*args, **kwargs)
-        self.fields["assignee"].queryset = org.members.filter(is_active=True).order_by(
-            "display_name"
-        )
+        self.fields["assignee"].queryset = members_by_name(org)
         self.suggested_due_date = suggested_due_date(org=org, project=project)
         self.require_done_when = effective("task.require_done_when", org=org, project=project)
 
@@ -190,7 +227,18 @@ class LinkForm(forms.Form):
 class ProfileForm(forms.Form):
     """Discord 사용자 ID 입력칸은 없다 — 연결은 코드 교환으로만 이뤄진다(GUIDE-00 §3)."""
 
+    real_name = forms.CharField(
+        label="실명",
+        max_length=50,
+        error_messages={"required": REAL_NAME_REQUIRED},
+        # COPY:profile.real_name_help
+        help_text="소속 조직의 관리자가 볼 수 있고, 실명으로 표시하는 조직에서는 구성원에게 이 이름이 보입니다.",
+    )
     display_name = forms.CharField(label="표시 이름", max_length=50)
+    next = forms.CharField(widget=forms.HiddenInput, required=False)
+
+    def clean_real_name(self):
+        return _real_name(self.cleaned_data.get("real_name"))
 
 
 class TokenForm(forms.Form):

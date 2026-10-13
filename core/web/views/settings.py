@@ -28,26 +28,42 @@ from accounts.services import (
     withdraw_consent,
 )
 from common.errors import ServiceError
+from orgs.names import forget_all
 from orgs.settings import effective, specs_for
 from tasks.services import today_set_auto_pull
 
 from ..forms import ProfileForm, TokenForm
+from .auth import _safe_next
 
 
 @login_required
 def profile(request):
+    """프로필: 실명·표시 이름. 실명 관문(common.middleware)이 profile?next=<원래 경로>로 보낸다 — 저장하면 거기로 돌아간다."""
     u = request.user
-    form = ProfileForm(request.POST or None, initial={"display_name": u.display_name})
+    nxt = request.POST.get("next") or request.GET.get("next", "")
+    form = ProfileForm(
+        request.POST or None,
+        initial={"real_name": u.real_name, "display_name": u.display_name, "next": nxt},
+    )
     if request.method == "POST" and form.is_valid():
-        u.display_name = form.cleaned_data["display_name"]
-        u.save(update_fields=["display_name"])
+        d = form.cleaned_data
+        name_changed = (u.real_name, u.display_name) != (d["real_name"], d["display_name"])
+        u.real_name, u.display_name = d["real_name"], d["display_name"]
+        u.settings.pop("real_name_candidates", None)  # orgs 0014가 남긴 충돌 후보: 고르면 끝
+        u.save(update_fields=["real_name", "display_name", "settings"])
+        if name_changed:
+            forget_all()  # 실명으로 표시하는 조직들의 이름이 같이 바뀐다
         messages.success(request, "프로필을 저장했습니다.")
-        return redirect("profile")
+        return redirect(_safe_next(request, d["next"]) or "profile")
     return render(
         request,
         "settings/profile.html",
-        # 연결 코드는 발급 직후 한 번만 보여준다(토큰 화면의 new_token과 같은 방식).
-        {"form": form, "link_code": request.session.pop("discord_link_code", None)},
+        {
+            "form": form,
+            # 연결 코드는 발급 직후 한 번만 보여준다(토큰 화면의 new_token과 같은 방식).
+            "link_code": request.session.pop("discord_link_code", None),
+            "real_name_candidates": u.settings.get("real_name_candidates", []),
+        },
     )
 
 

@@ -125,6 +125,7 @@ def test_signup_next_must_stay_on_site(client):
         "/signup?next=https://evil.example/",
         {
             "username": "new1",
+            "real_name": "김새사람",
             "display_name": "새 사람",
             "password1": "pw12345678",
             "password2": "pw12345678",

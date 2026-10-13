@@ -24,6 +24,7 @@ from orgs import requests as creq
 from orgs import services as osv
 from orgs.governance import governance_text
 from orgs.models import ChangeRequest, Invite, OrgMembership, TeamMembership
+from orgs.names import display_for
 from orgs.settings import (
     GROUPS,
     SPECS,
@@ -41,6 +42,7 @@ from reports.services import org_status
 from tasks.models import Task, TaskProject
 
 from ..forms import InviteForm, OrgForm
+from .auth import _safe_next
 from .common import apply_service_error, can_admin, current_org, not_admin, org_or_404
 from .github_retries import attempt
 
@@ -203,10 +205,11 @@ def org_teams(request, org_id):
     if not can_admin(request.user, org):
         return _member_teams(request, org)
     load = {r["assignee_id"]: r for r in org_status(org, viewer=request.user)["by_assignee"]}
-    memberships = list(
-        org.memberships.select_related("user", "user__github")
-        .prefetch_related("user__teams")  # 표의 소속 팀 배지
-        .order_by("user__display_name")
+    memberships = sorted(
+        org.memberships.select_related("user", "user__github").prefetch_related(
+            "user__teams"  # 표의 소속 팀 배지
+        ),
+        key=lambda m: display_for(m.user, org),
     )
     personal = {
         i.for_user_id: i
@@ -249,6 +252,8 @@ def org_teams(request, org_id):
             "form": InviteForm(),
             "site_url": settings.SITE_URL,
             "team_rows": teams,
+            # 실명으로 표시 조직은 조직 표시 이름을 아무도 못 바꾼다(orgs.services.set_nickname)
+            "show_real_name": member_info.definition(org)["show_real_name"],
             "is_admin": True,
             "tab": "teams",
         },
@@ -266,6 +271,23 @@ def member_tags(request, membership_id):
     except ServiceError as e:
         messages.error(request, " ".join(e.errors.values()))
     return _member_redirect(request, membership.org_id)
+
+
+@login_required
+@require_POST
+def member_nickname(request, membership_id):
+    """조직 표시 이름 바꾸기 — 본인(구성원 정보 화면) 또는 관리자(구성원 목록). 권한·실명 표시 조직은 서비스가 거른다."""
+    membership = get_object_or_404(
+        OrgMembership.objects.select_related("org", "user"), pk=membership_id
+    )
+    org_or_404(request.user, membership.org_id)
+    try:
+        osv.set_nickname(membership, request.POST.get("nickname", ""), request.user)
+        messages.success(request, "조직 표시 이름을 저장했습니다.")  # COPY:nickname.saved
+    except ServiceError as e:
+        messages.error(request, " ".join(e.errors.values()))
+    nxt = _safe_next(request, request.POST.get("next", ""))
+    return redirect(nxt) if nxt else _member_redirect(request, membership.org_id)
 
 
 def _member_redirect(request, org_id):
@@ -329,7 +351,7 @@ def member_add_pending(request, org_id):
         m = osv.add_pending_member(org, request.user, request.POST.get("display_name", ""))
         messages.success(
             request,
-            f"가입 전 구성원 {m.user.display_name}님을 추가했습니다. [초대 링크 만들기]로 본인에게 넘겨 주세요.",
+            f"가입 전 구성원 {display_for(m.user, org)}님을 추가했습니다. [초대 링크 만들기]로 본인에게 넘겨 주세요.",
         )
     except ServiceError as e:
         messages.error(request, " ".join(e.errors.values()))
@@ -347,7 +369,7 @@ def member_invite(request, membership_id):
         invite = osv.create_personal_invite(membership, request.user)
         messages.success(
             request,
-            f"{membership.user.display_name}님의 초대 링크: {settings.SITE_URL}{invite.path}",
+            f"{display_for(membership.user, membership.org_id)}님의 초대 링크: {settings.SITE_URL}{invite.path}",
         )
     except ServiceError as e:
         messages.error(request, " ".join(e.errors.values()))
@@ -518,7 +540,11 @@ def _settings_from_post(post, specs):
 def _org_settings_history(org):
     from tasks.models import ChangeLog
 
-    extra_labels = {"_locked": "프로젝트가 바꿀 수 있는 항목", "member_fields": "구성원 정보"}
+    extra_labels = {
+        "_locked": "프로젝트가 바꿀 수 있는 항목",
+        "member_fields": "구성원 정보",
+        "nickname": "조직 표시 이름",  # COPY:org_history.nickname
+    }
     logs = (
         ChangeLog.objects.filter(target_type="org", target_id=org.pk)
         .select_related("actor")
@@ -534,7 +560,9 @@ def _org_settings_history(org):
                 "from": log.old_value,
                 "to": log.new_value,
                 "time": f"{at.month}월 {at.day}일 {at:%H:%M}",
-                "actor": log.actor.display_name if log.actor else (log.external_actor or "GitHub"),
+                "actor": display_for(log.actor, org)
+                if log.actor
+                else (log.external_actor or "GitHub"),
                 "source": log.get_source_display(),
             }
         )
@@ -696,6 +724,7 @@ def org_member_info(request, org_id):
             "rows": rows,
             "errors": errors,
             "blocked": member_info.missing(m),
+            "show_real_name": member_info.definition(org)["show_real_name"],
         },
     )
 

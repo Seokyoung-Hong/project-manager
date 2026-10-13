@@ -12,6 +12,7 @@
   {% if github_enabled and org.github %}<a href="{% url 'org_issues' org.pk %}" {% if tab == "issues" %}aria-current="page"{% endif %}>이슈</a>{% endif %}
   {% if github_enabled and is_admin %}<a href="{% url 'org_github' org.pk %}" {% if tab == "github" %}aria-current="page"{% endif %}>GitHub</a>{% endif %}
   {% if discord_enabled and is_admin %}<a href="{% url 'org_discord' org.pk %}" {% if tab == "discord" %}aria-current="page"{% endif %}>Discord</a>{% endif %}
-  {% if org.member_info_on %}<a href="{% url 'org_member_info' org.pk %}">구성원 정보</a>{% endif %}
+  {# 조직 표시 이름을 고치는 자리라 항상 보인다(IMPL-PLAN-13 §6.3). COPY:org_tabs.member_info #}
+  <a href="{% url 'org_member_info' org.pk %}" {% if tab == "member_info" %}aria-current="page"{% endif %}>구성원 정보</a>
   {% if is_admin %}<a href="{% url 'org_settings' org.pk %}" {% if tab == "settings" %}aria-current="page"{% endif %}>설정</a>{% endif %}
 </nav>
