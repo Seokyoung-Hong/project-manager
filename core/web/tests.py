@@ -558,12 +558,7 @@ def test_webhook_routes_are_gone(as_admin, org):
         assert as_admin.post(path, {"name": "x", "url": "https://x"}).status_code == 404
 
 
-def test_members_page_shows_workload_and_discord_link(as_admin, org, task, member):
-    body = as_admin.get(f"/orgs/{org.pk}/teams").content.decode()
-    assert "멤버" in body
-    assert member.display_name in body
-    assert "연결" in body  # member 픽스처는 연결이 끝난 상태다
-    assert "관리자 1명" in body
+# 구성원 목록(Discord 연결 열)은 설정 → 구성원 관리로 옮겼다 — web/test_org_members.py
 
 
 def test_token_form_cannot_mint_a_bot_scope_token(logged, member):

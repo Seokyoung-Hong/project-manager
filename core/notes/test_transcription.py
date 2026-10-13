@@ -16,6 +16,7 @@ from notes import transcription as tx
 from notes.models import TranscriptionJob, VoiceTrack
 from notes.services import DRAFT_BODY, start_recording, update_recording
 from orgs.services import set_org_settings
+from web.test_integrations_move import frag
 
 pytestmark = pytest.mark.django_db
 SEGS = [
@@ -267,14 +268,18 @@ def test_transcribe_menu_server_view_admin_only_and_save_keeps_other_settings(
     page = client.get(f"/orgs/{enabled.pk}/transcribe").content.decode()
     assert "large-v3 · 로컬 서버" in page and "?view=server" not in page
     server = client.get(f"/orgs/{enabled.pk}/transcribe?view=server").content.decode()
-    assert "setting-meeting.stt_model" not in server
+    assert "setting-meeting.stt_model" not in server  # 비관리자는 작업 목록
     assert client.post(f"/orgs/{enabled.pk}/transcribe/server", {}).status_code == 302
     enabled.refresh_from_db()
     assert enabled.settings["meeting.stt_url"] == "http://172.30.1.50:8000"
     client.force_login(admin)
     page = client.get(f"/orgs/{enabled.pk}/transcribe").content.decode()
     assert "끝남 · 최근 7일" in page and "large-v3 · 로컬 서버" in page
-    server = client.get(f"/orgs/{enabled.pk}/transcribe?view=server").content.decode()
+    old = client.get(f"/orgs/{enabled.pk}/transcribe?view=server")
+    assert (
+        old.status_code == 302 and old["Location"] == f"/orgs/{enabled.pk}/settings?tab=meeting#stt"
+    )
+    server = frag("stt", admin, enabled)
     assert '<select id="setting-meeting.stt_model"' in server and 'hx-trigger="load"' in server
     settings_page = client.get(f"/orgs/{enabled.pk}/settings?tab=meeting").content.decode()
     assert "setting-meeting.stt_url" not in settings_page and "전사</a> 메뉴" in settings_page

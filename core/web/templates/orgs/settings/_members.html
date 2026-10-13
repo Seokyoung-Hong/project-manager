@@ -1,0 +1,115 @@
+{% load names %}{# 설정 → 구성원 관리 탭 본문(IMPL-PLAN-14 §8, 시안 A). 맥락 = web.views.org_members.members_ctx + org. B의 설정 셸이 include한다. #}
+<nav class="settings-jump" aria-label="구성원 관리 섹션">{# COPY:org_settings.section.members.* #}
+  <a class="chip" href="#settings-members-list">구성원 목록</a><a class="chip" href="#settings-members-pending">가입 전 구성원</a><a class="chip" href="#settings-members-invites">초대 링크·정책</a><a class="chip" href="#settings-members-names">이름 표시 방식</a><a class="chip" href="#settings-members-fields">요청할 정보 항목</a><a class="chip" href="#settings-members-teams_tags">팀·기술 태그 정책</a>
+</nav>
+
+<div class="member-split{% if panel %} has-panel{% endif %}">
+<details class="card settings-section" id="settings-members-list" open>
+  <summary class="settings-section-summary"><span>구성원 목록</span><span class="muted t12">{{ member_rows|length }}명 · 이름을 누르면 구성원 패널이 열립니다</span></summary>{# COPY:members.list.hint #}
+  <div class="settings-section-body">
+  <div class="table-scroll" tabindex="0" role="region" aria-label="구성원 목록">
+  <table class="grid member-table">
+    <thead><tr><th>이름</th><th>역할</th><th>소속 팀</th><th>Discord</th></tr></thead>
+    <tbody>
+    {% for r in member_rows %}
+    <tr class="member-row"{% if panel and panel.m.pk == r.m.pk %} aria-current="true"{% endif %}>
+      <td><a class="member-row-link" href="?tab=members&amp;member={{ r.m.pk }}">{{ r.name }}</a>{% if r.pending %} <span class="badge">가입 전</span>{% endif %}{% if r.missing %} <span class="badge warn">입력 필요</span>{% endif %}
+        {# 관리자는 계정 실명을 열람한다(IMPL-PLAN-13 §6.2). 실명으로 표시 조직은 이름 칸이 곧 실명이다. #}
+        <div class="muted t12">{% if r.pending %}가입 전{% else %}{% if r.m.user.real_name %}{% if not show_real_name %}실명 {{ r.m.user.real_name }} · {% endif %}{% else %}<span class="badge warn">실명 미입력</span> {% endif %}@{{ r.m.user.username }}{% endif %}</div>{# COPY:members.real_name_missing #}
+      </td>
+      <td>{% if r.m.role == "admin" %}<span class="badge primary">관리자</span>{% else %}구성원{% endif %}</td>
+      <td>{% for t in r.teams %}<span class="badge">{{ t.name }}</span> {% empty %}<span class="muted">—</span>{% endfor %}</td>
+      <td class="t13">{% if r.m.user.discord_user_id %}<span class="badge ok">연결됨</span>{% else %}<span class="muted">연결 안 됨</span>{% endif %}</td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  <p class="muted t13">Discord가 &lsquo;연결 안 됨&rsquo;인 구성원은 기한 알림 DM을 받지 못합니다. 본인이 프로필 → [Discord 연결]에서 연결합니다.</p>{# COPY:members.list.discord_note #}
+  </div>
+</details>
+{% if panel %}{% include "orgs/settings/_member_panel.html" %}{% endif %}
+</div>
+
+<details class="card settings-section" id="settings-members-pending" open>
+  <summary class="settings-section-summary"><span>가입 전 구성원</span></summary>
+  <div class="settings-section-body stack">
+  <p class="muted t13">아직 계정이 없는 사람을 먼저 담당자로 넣어 둡니다. 구성원 패널의 [초대 링크 만들기]로 받은 1회용 링크(7일)를 본인에게 보내 주세요. 그 링크로 가입하면 맡은 태스크와 팀을 그대로 이어받습니다.</p>{# COPY:members.pending.help #}
+  <form method="post" action="{% url 'member_add_pending' org.pk %}" class="row">{% csrf_token %}
+    <label class="field">표시 이름<input class="input" name="display_name" maxlength="50" required></label>
+    <button class="btn">가입 전 구성원 추가</button>
+  </form>
+  </div>
+</details>
+
+<details class="card settings-section" id="settings-members-invites" open>
+  <summary class="settings-section-summary"><span>초대 링크·정책</span></summary>
+  <div class="settings-section-body stack">
+  <p class="muted t13">초대 링크는 조직 전체용입니다. 제거한 사람이 링크를 가지고 있으면 다시 참여할 수 있으니, 필요하면 링크를 폐기하고 새로 만들어 주세요.</p>
+  <div class="table-scroll" tabindex="0" role="region" aria-label="초대 링크">
+  <table class="grid">
+    <thead><tr><th>링크</th><th>만료</th><th class="num">사용</th><th></th></tr></thead>
+    <tbody>
+    {% for i in invites %}
+    <tr>
+      <td class="row gap-2">
+        <code class="ellipsis" title="{{ site_url }}{{ i.path }}">{{ site_url }}{{ i.path }}</code>
+        <button type="button" class="btn sm" data-copy-text="{{ site_url }}{{ i.path }}" data-copy-label="초대 링크 복사됨">초대 링크 복사</button>
+        {% if not i.is_usable %}<span class="badge">만료</span>{% endif %}
+      </td>
+      <td>{{ i.expires_at|date:"Y-m-d H:i" }}</td>
+      <td class="num">{{ i.use_count }}</td>
+      <td><form method="post" action="{% url 'invite_revoke' i.pk %}" data-confirm="초대 링크를 폐기합니다. 이 링크로는 더 이상 참여할 수 없습니다." data-confirm-ok="초대 링크 폐기">{% csrf_token %}<button class="btn sm danger">초대 링크 폐기</button></form></td>
+    </tr>
+    {% empty %}<tr><td colspan="4" class="empty-cell">초대 링크가 없습니다.</td></tr>{% endfor %}
+    </tbody>
+  </table>
+  </div>
+  <form method="post" action="{% url 'invite_create' org.pk %}" class="row">{% csrf_token %}
+    <label class="field">{{ invite_form.days.label }}{{ invite_form.days }}</label>
+    {% if github_enabled and org.github and org.github.account_type != "User" %}
+    <label class="check"><input type="checkbox" name="gh_invite" id="id_gh_invite" onchange="document.getElementById('gh_login_field').hidden = !this.checked"> GitHub 조직에도 초대</label>
+    <label class="field" id="gh_login_field" hidden>{{ invite_form.gh_login.label }}{{ invite_form.gh_login }}</label>
+    {% endif %}
+    <button class="btn primary">초대 링크 만들기</button>
+  </form>
+  <p class="muted t13">링크를 받은 사람은 가입한 뒤 바로 이 조직에 참여합니다. 링크는 정한 기간(기본 7일) 동안 쓸 수 있습니다.</p>
+  <form method="post" action="{% url 'org_settings' org.pk %}?tab=members&amp;section=invites" class="settings-form">{% csrf_token %}
+    <div class="settings-list" role="list">{% for row in invite_rows %}{% include "settings/_setting_row.html" with row=row %}{% endfor %}</div>
+    <div><button class="btn">초대 정책 저장</button></div>{# COPY:members.invites.save #}
+  </form>
+  </div>
+</details>
+
+<details class="card settings-section" id="settings-members-names" open>
+  <summary class="settings-section-summary"><span>이름 표시 방식</span></summary>
+  <div class="settings-section-body stack">
+  <p class="muted t13">목록·담당자 칸·회의록 참석자처럼 이 조직 안에서 사람 이름이 나오는 모든 곳에 적용됩니다.</p>{# COPY:members.names.help #}
+  {# 실명으로 켤 때만 확인한다(data-confirm-if, app.js). 이미 켜져 있으면 묻지 않는다. #}
+  <form method="post" action="{% url 'org_member_fields' org.pk %}" class="stack"{% if not show_real_name %} data-confirm="켜면 이 조직의 모든 구성원에게 실명이 표시됩니다. 본인과 관리자 모두 조직 표시 이름을 변경할 수 없습니다. 실명으로 표시하시겠습니까?" data-confirm-ok="실명으로 표시" data-confirm-if="[name=show_real_name][value=on]:checked"{% endif %}>{# COPY:members.names.confirm #}{% csrf_token %}
+    <input type="hidden" name="part" value="names">
+    <div class="names-opts">
+      <label class="radio-card"><input type="radio" name="show_real_name" value="off"{% if not show_real_name %} checked{% endif %}><span><b>구성원이 정한 조직 표시 이름</b><span class="t13 muted">구성원이 내 정보에서 정한 이름을 씁니다. 비어 있으면 계정 표시 이름을 씁니다.</span></span></label>{# COPY:members.names.nickname #}
+      <label class="radio-card"><input type="radio" name="show_real_name" value="on"{% if show_real_name %} checked{% endif %}><span><b>실명</b><span class="t13 muted">모든 구성원을 계정 실명으로 표시합니다. 조직 표시 이름 칸이 사라지고, 저장된 값은 지우지 않습니다.</span></span></label>{# COPY:members.names.real #}
+    </div>
+    <p class="t13">목록·담당자 칸에 이렇게 보입니다: <b>{{ names_preview.nickname }}</b> / 실명으로 표시하면 <b>{{ names_preview.real }}</b> <span class="muted t12">(관리자 본인 기준)</span></p>{# COPY:members.names.preview #}
+    <div><button class="btn">이름 표시 방식 저장</button></div>{# COPY:members.names.save #}
+  </form>
+  </div>
+</details>
+
+<details class="card settings-section" id="settings-members-fields" open>
+  <summary class="settings-section-summary"><span>요청할 정보 항목</span><span class="muted t12">항목 {{ max_fields }}개 · 이름 50자 · 선택지 50자×30개까지</span></summary>{# COPY:members.fields.limits #}
+  <div class="settings-section-body stack">{% include "orgs/settings/_member_fields_editor.html" %}</div>
+</details>
+
+<details class="card settings-section" id="settings-members-teams_tags" open>
+  <summary class="settings-section-summary"><span>팀·기술 태그 정책</span></summary>
+  <div class="settings-section-body stack">
+  <form method="post" action="{% url 'org_settings' org.pk %}?tab=members&amp;section=teams_tags" class="settings-form">{% csrf_token %}
+    <div class="settings-list" role="list">{% for row in teams_tags_rows %}{% include "settings/_setting_row.html" with row=row %}{% endfor %}</div>
+    <div><button class="btn">팀·기술 태그 정책 저장</button></div>{# COPY:members.teams_tags.save #}
+  </form>
+  <p class="muted t13">팀을 만들고 구성원을 넣는 일은 <a href="{% url 'org_teams' org.pk %}">팀</a> 메뉴에서 합니다.</p>{# COPY:members.teams_tags.teams_link #}
+  </div>
+</details>

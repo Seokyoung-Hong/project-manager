@@ -18,6 +18,7 @@ from github.models import (
 from projects.services import create_milestone
 from tasks.models import ChangeLog
 from tasks.services import create_task
+from web.test_integrations_move import frag
 
 pytestmark = pytest.mark.django_db
 
@@ -113,13 +114,13 @@ def test_panel_shows_draft_ci_reviews_and_continuation(as_admin, conn, project, 
     assert f"{new.number}</a>로 이어졌습니다" in old_body
 
 
-def test_org_github_shows_capability_table(as_admin, conn, org, monkeypatch):
-    body = as_admin.get(f"/orgs/{org.pk}/github").content.decode()
+def test_org_github_shows_capability_table(as_admin, conn, org, admin, monkeypatch):
+    body = frag("github", admin, org)
     assert "앱 권한 · 이벤트 점검" in body
     assert "CI 배지 · Checks" in body and "Commit statuses 읽기 권한" in body  # statuses 권한 없음
     assert "꺼진 기능이 있습니다" in body
     monkeypatch.setattr("github.services.app_capabilities", lambda o: None)
-    assert "확인 불가" in as_admin.get(f"/orgs/{org.pk}/github").content.decode()
+    assert "확인 불가" in frag("github", admin, org)
 
 
 def test_disconnect_removes_github_hook_first(as_admin, conn, project, calls, monkeypatch):

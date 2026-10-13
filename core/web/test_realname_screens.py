@@ -77,21 +77,13 @@ def test_admin_member_list_shows_real_name_and_edits_nickname(client, org, admin
     OrgMembership.objects.create(org=org, user=outsider, role="member")
     User.objects.filter(pk=outsider.pk).update(real_name="")
     client.force_login(admin)
-    body = client.get(f"/orgs/{org.pk}/teams").content.decode()
-    assert "김팀원" in body and "실명 미입력" in body  # 옛 off 조직에서도 관리자는 실명을 본다
+    # 화면(실명 열람·실명 표시 조직의 칸 없음)은 설정 → 구성원 관리로 옮겼다 — web/test_org_members.py
     m = OrgMembership.objects.get(org=org, user=member)
     client.post(f"/orgs/memberships/{m.pk}/nickname", {"nickname": "백엔드 팀원"})
     m.refresh_from_db()
-    assert m.nickname == "백엔드 팀원"
-    assert "백엔드 팀원" in client.get(f"/orgs/{org.pk}/teams").content.decode()
-    # 실명으로 표시 조직: 행마다 폼 대신 표 위 공통 안내 한 줄(조직 설정 링크), 실명 보조 행 생략, 저장은 거절
+    assert m.nickname == "백엔드 팀원" and display_for(member, org) == "백엔드 팀원"
+    # 실명으로 표시 조직: 저장은 거절
     client.post(f"/orgs/{org.pk}/member-fields", {"show_real_name": "on"})
-    body = client.get(f"/orgs/{org.pk}/teams").content.decode()
-    assert f"/orgs/{org.pk}/settings#member-info" in body
-    assert (
-        f"/orgs/memberships/{m.pk}/nickname" not in body
-        and '<span class="muted">실명</span>' not in body
-    )
     client.post(f"/orgs/memberships/{m.pk}/nickname", {"nickname": "다른 이름"})
     m.refresh_from_db()
     assert m.nickname == "백엔드 팀원"
