@@ -71,7 +71,7 @@ def on_heartbeat(server, data: dict) -> dict:
         return {}  # 옛 PC(능력 표시 없음)는 전사만
     return {
         "codex_versions": codex_versions(),
-        **codex_login.on_heartbeat(server),
+        **codex_login.on_heartbeat(server, data),
         **_assign(server, data),
     }
 
@@ -88,7 +88,10 @@ def _assign(server, data: dict) -> dict:
     if current:
         live = AiJob.objects.filter(pk=current, server=server, status="running").exists()
         return {} if live else {"ai_cancel": True}  # 취소 중이거나 더는 이 PC 작업이 아님
-    job = claim(server, codex=data.get("codex"))
+    codex = data.get("codex")
+    if codex and not codex_login.policy_ok(data):
+        codex = None  # 허용 목록·검증 버전 정책을 모르는 옛 link — Codex 작업을 주지 않는다(업데이트 안내)
+    job = claim(server, codex=codex)
     return {"ai_job": job} if job else {}
 
 

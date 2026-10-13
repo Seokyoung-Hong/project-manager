@@ -374,6 +374,9 @@ def sweep() -> None:
     from .services import expire_if_stale
 
     now = timezone.now()
+    from .codex_login import sweep as codex_login_sweep
+
+    codex_login_sweep(now)  # 만료 기기 코드를 DB에서 비운다
     for job in AiJob.objects.filter(status="queued").exclude(route="pc"):
         expire_if_stale(job)
     running = (

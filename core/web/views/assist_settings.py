@@ -12,7 +12,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db import IntegrityError
 from django.db.models import Max
-from django.http import HttpResponseForbidden
+from django.http import HttpResponse, HttpResponseForbidden
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
@@ -276,6 +276,8 @@ def _codex_ctx(src, error=""):
 def ai_codex(request, source_id: int):
     """Codex 행의 로그인 상태 조각. POST action=login|logout은 그 PC에 명령을 건다(PC 주인만)."""
     src = _mine(request, source_id)
+    if not codex_login.enabled():
+        return HttpResponse("")  # 스위치가 꺼지면 상태·버튼을 그리지 않고 명령도 받지 않는다
     if not src.is_codex or src.server is None or src.server.owner_id != request.user.pk:
         return HttpResponseForbidden()
     error = ""

@@ -649,6 +649,7 @@ class SttCodexLoginIn(Schema):
     """PC가 Codex 로그인 진행을 보고한다: 인증 주소·사용자 코드(한 번), 끝(done·로그인 여부) 또는 오류 코드.
     토큰·계정 정보는 받지 않는다."""
 
+    attempt: str = Field("", max_length=32)  # heartbeat codex_login.attempt 그대로
     url: str = Field("", max_length=200)
     code: str = Field("", max_length=20)
     expires_in: int = Field(0, ge=0, le=86400)
@@ -667,6 +668,8 @@ class SttHeartbeatIn(Schema):
     ai: int = 0
     # Codex CLI가 있으면 1, 없으면 0(udally-link 새 버전). 칸이 없으면(None) Codex를 모르는 옛 버전.
     codex: int | None = None
+    # Codex 정책 판(assist.codex_login.POLICY). 모자라면 Codex 작업·로그인 명령을 주지 않는다.
+    codex_policy: int | None = None
     ai_job_id: int | None = None
 
 

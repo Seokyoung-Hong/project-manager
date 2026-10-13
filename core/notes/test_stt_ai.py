@@ -67,7 +67,7 @@ def test_codex_source_sends_backend_without_url_or_key(client, org, member, sett
     server, tok = _link(client, member)
     job = _job(member, org, server)
     AiSource.objects.filter(pk=job.source_id).update(base_url=CODEX_URL, model="")
-    got = _ai(client, tok, codex=1)["ai_job"]
+    got = _ai(client, tok, codex=1, codex_policy=2)["ai_job"]
     assert got["backend"] == "codex" and got["url"] == "" and got["api_key"] == ""
     assert got["model"] == "" and got["timeout_s"] >= 180 and got["messages"] == MSGS
     r = _report(client, tok, job.pk, status="failed", error="codex_auth")
@@ -93,9 +93,20 @@ def test_codex_job_skips_pc_without_codex_capability(client, org, member, settin
     _report(client, tok, plain.pk, status="done", content='{"options":["가"]}')
     again = _job(member, org, server)
     AiSource.objects.filter(pk=again.source_id).update(base_url=CODEX_URL)
-    assert "ai_job" not in _ai(client, tok, codex=0)  # 새 link인데 Codex CLI가 없음
+    assert "ai_job" not in _ai(client, tok, codex=0, codex_policy=2)  # 새 link인데 Codex CLI가 없음
     again.refresh_from_db()
     assert again.tried[0]["error"] == "codex_missing"
+
+
+def test_codex_job_needs_policy_capable_link(client, org, member, settings):
+    """codex=1이어도 codex_policy(허용 목록·검증 버전 정책)를 모르는 옛 link에는 주지 않는다."""
+    settings.ASSIST_CODEX_ENABLED = True
+    server, tok = _link(client, member)
+    job = _job(member, org, server)
+    AiSource.objects.filter(pk=job.source_id).update(base_url=CODEX_URL)
+    assert "ai_job" not in _ai(client, tok, codex=1)
+    job.refresh_from_db()
+    assert job.tried[0]["error"] == "codex_link_update"
 
 
 def test_codex_off_skips_existing_codex_source(client, org, member):

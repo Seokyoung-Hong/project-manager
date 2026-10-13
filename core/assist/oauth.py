@@ -60,6 +60,9 @@ def callback_url(provider: str) -> str:
     return f"{settings.SITE_URL}/settings/ai/oauth/{provider}/callback"
 
 
+STATE_TTL = 600  # 초. 오래 열린 세션에 남은 옛 시도는 콜백에서 거절한다
+
+
 def _skey(provider: str) -> str:
     return f"ai_oauth_{provider}"
 
@@ -71,6 +74,7 @@ def start(request, provider: str) -> str:
         "state": state,
         "verifier": verifier,
         "uid": request.user.pk,
+        "at": time.time(),
     }
     pkce = {"code_challenge": pkce_challenge(verifier), "code_challenge_method": "S256"}
     if provider == "openrouter":
@@ -147,6 +151,8 @@ def finish(request, provider: str):
     if (
         not isinstance(saved, dict)
         or saved.get("uid") != request.user.pk
+        or not isinstance(saved.get("at"), (int, float))
+        or time.time() - saved["at"] > STATE_TTL
         or not secrets.compare_digest(got.encode(), str(saved.get("state", "")).encode())
     ):
         raise OAuthError("state")

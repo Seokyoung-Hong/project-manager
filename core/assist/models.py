@@ -187,6 +187,9 @@ class CodexLogin(models.Model):
         "notes.SttServer", on_delete=models.CASCADE, related_name="codex_login"
     )
     action = models.CharField(max_length=10, default="login")  # login | logout
+    attempt = models.CharField(
+        max_length=32, blank=True
+    )  # 시도마다 새 무작위 값(heartbeat·보고에 같이)
     state = models.CharField(max_length=10, choices=STATES, default="requested")
     url = models.CharField(max_length=200, blank=True)
     code = models.CharField(max_length=20, blank=True)

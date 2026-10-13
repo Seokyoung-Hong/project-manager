@@ -188,3 +188,17 @@ def test_hf_refresh_failure_is_auth_failed(member, monkeypatch, db):
     with pytest.raises(net.NetError) as e:
         oauth.source_key(src)
     assert e.value.code == "auth_failed"
+
+
+def test_stale_state_rejected_after_ttl(client, member, fake, monkeypatch):
+    """오래 열린 세션에 남은 시도(STATE_TTL 넘김)는 state가 맞아도 거절한다."""
+    import time as _time
+
+    from assist import oauth
+
+    client.force_login(member)
+    q = _start(client, "openrouter")
+    now = _time.time()
+    monkeypatch.setattr(oauth.time, "time", lambda: now + oauth.STATE_TTL + 1)
+    _callback(client, "openrouter", q["state"][0])
+    assert not fake and not AiSource.objects.filter(kind="personal").exists()
