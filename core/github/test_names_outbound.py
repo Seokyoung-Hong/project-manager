@@ -37,3 +37,25 @@ def test_no_real_name_or_nickname_goes_to_github(installed, admin, member, team,
     sent = json.dumps(calls, ensure_ascii=False)
     for secret in ("김팀원", "김관리", "별명팀원"):
         assert secret not in sent
+
+
+def test_request_task_issue_has_no_real_name_or_nickname(installed, admin, member, task, calls):  # noqa: F811
+    """요청 수락으로 생긴 태스크의 설명(요청 출처 꼬리)이 이슈 본문으로 나가도 실명·별명이 없다."""
+    from tasks import work_requests as wr
+
+    OrgMembership.objects.filter(org=installed, user=member).update(nickname="별명팀원")
+    RepoConnection.objects.create(project=task.project, url="u", full_name="o/r", created_by=admin)
+    for show in (True, False):  # 실명으로 표시 조직, 별명만 있는 조직
+        installed.member_fields = {"show_real_name": show, "fields": []}
+        installed.save()
+        req = wr.create_request(
+            org=installed, kind="work", title=f"요청{show}", body="내용", actor=member,
+            source="web", to_user=admin,
+        )  # fmt: skip
+        req = wr.accept(req, admin, source="web", project=task.project)
+        assert "(" + req.number + " · 팀원님의 요청)" in req.task.description
+        writes.create_issue(req.task, actor=admin)
+    sent = json.dumps(calls, ensure_ascii=False)
+    assert "팀원님의 요청" in sent
+    for secret in ("김팀원", "별명팀원"):
+        assert secret not in sent

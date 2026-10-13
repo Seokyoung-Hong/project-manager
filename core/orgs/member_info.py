@@ -106,6 +106,8 @@ def set_definition(org, show_real_name: bool, fields: list[dict], actor):
         actor=actor,
         source="web",
     )
+    if "_legacy_real_name" in (org.member_fields or {}):  # orgs 0014 되돌리기가 옛 모드를 복원한다
+        new["_legacy_real_name"] = org.member_fields["_legacy_real_name"]
     org.member_fields = new
     org.save(update_fields=["member_fields"])
     names.forget(org.pk)

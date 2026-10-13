@@ -56,7 +56,8 @@ def display_for(user, org=None) -> str:
 
 def sort_by_name(users, org) -> list:
     """이름순 목록. order_by("display_name")은 조직 표시 이름과 순서가 어긋나서 대신 쓴다."""
-    return sorted(users, key=lambda u: display_for(u, org))
+    shown = org_names(org)  # 한 번만 — 요청 밖(캐시 없음)에서 사람마다 다시 읽지 않게
+    return sorted(users, key=lambda u: shown.get(u.pk, u.display_name))
 
 
 def forget(org_id):

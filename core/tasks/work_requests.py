@@ -353,7 +353,8 @@ def _task_from_request(req, actor, source, project, assignee, due_date):
             {"project": "다른 조직의 프로젝트입니다. 현재 조직의 프로젝트를 선택해 주세요."}
         )
     due_date = due_date or req.due_date  # 수락자가 비우면 요청자의 희망 기한
-    footer = f"({req.number} · {display_for(req.requested_by, req.org_id)}님의 요청)"
+    # 설명은 저장돼 GitHub 이슈 본문으로도 나간다 — 실명·조직 표시 이름이 아니라 계정 표시 이름(IMPL-PLAN-13 §4.1)
+    footer = f"({req.number} · {req.requested_by.display_name}님의 요청)"
     return ts.create_task(
         project=project,
         title=req.title,

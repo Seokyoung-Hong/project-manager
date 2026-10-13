@@ -395,6 +395,8 @@ def remove_member(membership, actor):
     TeamMembership은 조직이 아니라 팀을 가리키므로 cascade가 닿지 않는다. 여기서 지우지
     않으면 조직에 없는 사람이 팀 화면에 남는다.
     """
+    from . import names
+
     require_admin(actor, membership.org)
     _lock_org(membership.org)
     if membership.role == "admin" and _admin_count(membership.org) <= 1:
@@ -405,6 +407,7 @@ def remove_member(membership, actor):
         )
     TeamMembership.objects.filter(team__org=membership.org, user=membership.user).delete()
     membership.delete()
+    names.forget(membership.org_id)
 
 
 def _admin_count(org) -> int:

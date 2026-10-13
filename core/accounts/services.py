@@ -279,6 +279,7 @@ def withdraw(user, confirm: str) -> None:
     from django.contrib.sessions.models import Session
 
     from orgs.models import DiscordMemberPermission, Organization, OrgMembership, TeamMembership
+    from orgs.names import forget_all
     from portfolio.models import PortfolioDraft
     from tasks.models import Notice, TodayItem
 
@@ -313,6 +314,7 @@ def withdraw(user, confirm: str) -> None:
     DiscordMemberPermission.objects.filter(user=user).delete()
     TeamMembership.objects.filter(user=user).delete()
     OrgMembership.objects.filter(user=user).delete()
+    forget_all()
     user.owned_projects.clear()
     LoginLock.objects.filter(kind="user", key=old_username.lower()[:150]).delete()
 

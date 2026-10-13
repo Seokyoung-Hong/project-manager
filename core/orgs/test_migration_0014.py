@@ -65,3 +65,42 @@ def test_real_name_moves_to_account_and_back(pg_flushable):
     finally:
         ex = MigrationExecutor(connection)
         ex.migrate(ex.loader.graph.leaf_nodes())
+
+
+@pytest.mark.django_db(transaction=True)
+def test_definition_save_keeps_legacy_for_rollback(pg_flushable):
+    """앞으로 → 새 코드로 설정 저장 → 뒤로 → 앞으로: 옛 optional이 살아남는다(Sol 검토 P2)."""
+    from accounts.models import User as LiveUser
+    from orgs.member_info import set_definition
+    from orgs.models import Organization as LiveOrg
+    from orgs.models import OrgMembership as LiveM
+
+    try:
+        old = _apps(BEFORE)
+        User = old.get_model("accounts", "User")
+        Org = old.get_model("orgs", "Organization")
+        boss = User.objects.create(username="boss", display_name="boss")
+        opt = Org.objects.create(name="선택", created_by=boss, member_fields={"real_name": "optional"})  # fmt: skip
+        old.get_model("orgs", "OrgMembership").objects.create(org=opt, user=boss, role="admin")
+
+        _apps(AFTER)
+        org = LiveOrg.objects.get(pk=opt.pk)
+        assert LiveM.objects.filter(org=org, role="admin").exists()
+        set_definition(org, True, [], LiveUser.objects.get(pk=boss.pk))
+        assert org.member_fields["_legacy_real_name"] == "optional"
+
+        old = _apps(BEFORE)
+        assert old.get_model("orgs", "Organization").objects.get(pk=opt.pk).member_fields == {
+            "real_name": "optional",
+            "fields": [],
+        }
+        new = _apps(AFTER)
+        assert new.get_model("orgs", "Organization").objects.get(pk=opt.pk).member_fields == {
+            "show_real_name": False,
+            "_legacy_real_name": "optional",
+            "fields": [],
+        }
+    finally:
+        MigrationExecutor(connection).migrate(
+            MigrationExecutor(connection).loader.graph.leaf_nodes()
+        )

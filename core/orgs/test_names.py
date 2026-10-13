@@ -203,3 +203,35 @@ def test_claimed_and_github_accounts_hit_gate(client, org, admin):
         assert user.real_name == ""  # GitHub name으로 미리 채우지 않는다
         client.force_login(user)
         assert client.get(f"/orgs/{org.pk}")["Location"].startswith("/settings/profile")
+
+
+def test_sort_outside_request_reads_names_once(
+    org, admin, member, outsider, django_assert_num_queries
+):
+    """요청 밖(캐시 없음)에서도 정렬은 이름표를 한 번만 읽는다(Sol 검토 권고)."""
+    token = names._cache.set(None)
+    try:
+        with django_assert_num_queries(1):
+            names.sort_by_name([admin, member, outsider], org)
+    finally:
+        names._cache.reset(token)
+
+
+def test_removed_or_withdrawn_member_name_forgotten(org, admin, member):
+    """구성원 삭제·탈퇴 뒤 같은 요청에서 옛 실명이 남지 않는다."""
+    from .services import remove_member
+
+    org.member_fields = {"show_real_name": True, "fields": []}
+    org.save()
+    token = names._cache.set({})
+    try:
+        assert names.display_for(member, org) == "김팀원"
+        remove_member(_m(org, member), admin)
+        assert names.display_for(member, org) == "팀원"
+        OrgMembership.objects.create(org=org, user=member, role="member")
+        names.forget(org.pk)
+        assert names.display_for(member, org) == "김팀원"
+        withdraw(member, "pw12345678")
+        assert names.display_for(member, org) != "김팀원"
+    finally:
+        names._cache.reset(token)
