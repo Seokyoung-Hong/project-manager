@@ -707,14 +707,16 @@ def org_settings(request, org_id):
         if request.method == "POST":
             raise PermissionDenied
         # COPY:org_settings.forbidden
-        messages.info(request, "조직 관리자만 볼 수 있는 탭입니다. 내 정보로 이동했습니다.")
+        messages.info(request, "조직 관리자만 볼 수 있는 설정입니다. 내 정보로 이동했습니다.")
         return redirect(_settings_url(org.pk))
     if tab == "integrations" and not _integrations_on():
         return redirect(_settings_url(org.pk))
     # 연동 탭은 필수 구성원 정보 관문을 적용한다(§6). 다른 관리자 탭은 항목 정의를 고칠 수 있게 열어 둔다.
     if tab == "integrations" and membership is not None and member_info.missing(membership):
         # COPY:org_settings.integrations_blocked
-        messages.error(request, "내 정보의 필수 항목을 먼저 입력해 주세요.")
+        messages.error(
+            request, "연동 설정을 사용하려면 내 정보의 필수 구성원 정보를 먼저 입력해 주세요."
+        )
         return redirect(_settings_url(org.pk))
     if request.method == "POST":
         return _save_tab(request, org, tab)
@@ -837,7 +839,10 @@ def org_member_info(request, org_id):
             request, org, "me", can_admin(request.user, org), m, errors=e.errors, posted=posted
         )
     if was_blocked and not member_info.missing(m):
-        messages.success(request, f"이제 {org.name}을(를) 쓸 수 있습니다.")  # COPY:me.unblocked
+        messages.success(
+            request,
+            f"필수 구성원 정보가 모두 입력되었습니다. 이제 {org.name} 조직을 사용할 수 있습니다.",
+        )  # COPY:me.unblocked
         return redirect("org_detail", org_id=org.pk)
     messages.success(request, "내 정보를 저장했습니다.")  # COPY:me.saved
     return redirect(_settings_url(org.pk))

@@ -1,30 +1,30 @@
 {# 설정 → 내 정보(IMPL-PLAN-14 §7). 실명·조직 표시 이름·구성원 정보를 한 폼으로 원자 저장한다(POST org_member_info). #}
-{% if me_blocked %}<p class="notice warn" role="alert"><span aria-hidden="true">⚠</span> <span>필수 항목을 입력해야 {{ org.name }} 조직을 쓸 수 있습니다. 다른 조직은 그대로 쓸 수 있습니다.</span></p>{% endif %}
-<p class="me-preview" id="settings-me-preview"><span class="initial" aria-hidden="true">{{ me_shown|slice:":1" }}</span> <span>이 조직에서는 <strong>{{ me_shown }}</strong>(으)로 보입니다.</span></p>{# COPY:me.preview #}
+{% if me_blocked %}<p class="notice warn" role="alert"><span aria-hidden="true">⚠</span> <span>이 조직을 사용하려면 필수 구성원 정보를 입력해 주세요. 다른 조직은 계속 사용할 수 있습니다.</span>{# COPY:me.blocked #}</p>{% endif %}
+<p class="me-preview" id="settings-me-preview"><span class="initial" aria-hidden="true">{{ me_shown|slice:":1" }}</span> <span>이 조직에서 표시되는 이름: <strong>{{ me_shown }}</strong></span></p>{# COPY:me.preview #}
 <form method="post" action="{% url 'org_member_info' org.pk %}" class="card stack me-form">{% csrf_token %}
   <h2 id="settings-me-name">이름</h2>
   <div class="me-names">
     <label class="field">실명 (계정 공통)
       <input class="input" name="real_name" value="{{ me_real_name }}" maxlength="50" required autocomplete="name">
-      <span class="helptext">모든 조직에 반영됩니다. 조직 관리자는 열람만 할 수 있습니다.</span>{# COPY:me.real_name_help #}
+      <span class="helptext">실명은 모든 조직에서 공통으로 사용하는 계정 정보입니다. 변경하면 실명으로 표시하는 모든 조직에 반영됩니다. 조직 관리자는 실명을 열람할 수 있으며, 수정은 본인만 할 수 있습니다.</span>{# COPY:me.real_name_help #}
       {% if me_errors.real_name %}<span class="error">{{ me_errors.real_name }}</span>{% endif %}
     </label>
     {% if show_real_name %}
     {# 실명으로 표시 조직은 조직 표시 이름 칸을 그리지 않는다(값은 보존, 서버도 거절). COPY:nickname.readonly_reason #}
-    <p class="name-off">이 조직은 구성원 이름을 실명으로 표시합니다. 조직 표시 이름은 쓰지 않습니다.</p>
+    <p class="name-off">이 조직은 구성원 이름을 실명으로 표시합니다. 조직 표시 이름은 사용하지 않으며, 본인과 관리자 모두 변경할 수 없습니다.</p>
     {% else %}
     <label class="field">조직 표시 이름
       <input class="input" name="nickname" value="{{ me_nickname }}" maxlength="50" placeholder="{{ user.display_name }}">
-      <span class="helptext">이 조직에서만 사용하는 이름입니다. 비워 두면 계정의 표시 이름({{ user.display_name }})이 표시됩니다.</span>{# COPY:nickname.help #}
+      <span class="helptext">이 조직에서 표시되는 이름입니다. 조직 관리자도 변경할 수 있습니다. 비워 두면 계정 표시 이름({{ user.display_name }})이 표시됩니다.</span>{# COPY:nickname.help #}
       {% if me_errors.nickname %}<span class="error">{{ me_errors.nickname }}</span>{% endif %}
     </label>
     {% endif %}
   </div>
   <h2 id="settings-me-info">구성원 정보</h2>
-  <p class="muted t13">이 조직에만 제출하는 정보입니다. {{ org.name }} 조직이 정한 목적에 따라 처리되며 조직 관리자가 열람하고 고칠 수 있습니다.</p>
+  <p class="muted t13">이 조직에서 요청하는 정보입니다. {{ org.name }} 조직이 정한 목적에 따라 처리되며, 조직 관리자가 값을 열람하고 수정할 수 있습니다. 다른 조직과는 공유되지 않습니다.</p>{# COPY:me.info_help #}
   {% if me_rows %}{% include "orgs/_member_info_fields.html" with rows=me_rows %}
-  {% else %}<p>이 조직은 구성원 정보를 받지 않습니다.</p>{% endif %}
-  <div class="me-save"><button class="btn primary">내 정보 저장</button><span class="muted t13">이름과 구성원 정보를 함께 저장합니다.</span></div>
+  {% else %}<p>이 조직에서 요청하는 구성원 정보 항목이 없습니다.</p>{% endif %}{# COPY:me.no_fields #}
+  <div class="me-save"><button class="btn primary">내 정보 저장</button><span class="muted t13">이름과 구성원 정보를 함께 저장합니다.</span></div>{# COPY:me.save #}
 </form>
 {# COPY:me.links #}
 <nav class="me-links" id="settings-me-links" aria-label="다른 설정">

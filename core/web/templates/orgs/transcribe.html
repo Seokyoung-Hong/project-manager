@@ -1,7 +1,7 @@
 {% extends "base.html" %}{% block title %}{{ org.name }} · 전사{% endblock %}
 {% block main %}
 {% include "orgs/_tabs.html" %}
-{% if is_admin %}<p class="muted t13">전사 서버·이용 권한은 <a href="{% url 'org_settings' org.pk %}?tab=meeting#stt">설정 → 회의·전사</a>에서 바꿉니다.</p>{# COPY:transcribe_settings_link #}
+{% if is_admin %}<p class="muted t13">전사 서버와 전사 이용 권한은 <a href="{% url 'org_settings' org.pk %}?tab=meeting#stt">설정 → 회의·전사</a>에서 설정할 수 있습니다.</p>{# COPY:transcribe_settings_link #}
 {% endif %}
 <section class="card" aria-label="전사 작업">
   {% include "orgs/_transcribe_jobs.html" %}

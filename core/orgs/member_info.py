@@ -210,7 +210,7 @@ def _check_nickname(membership, value, errors: dict):
     if definition(membership.org)["show_real_name"]:
         # COPY:nickname.real_name_org (services.set_nickname과 같은 문구)
         errors["nickname"] = (
-            "이 조직은 구성원 이름을 실명으로 표시하므로 조직 표시 이름을 변경할 수 없습니다."
+            "이 조직은 구성원 이름을 실명으로 표시합니다. 본인과 관리자 모두 조직 표시 이름을 변경할 수 없습니다."
         )
         return None
     return new

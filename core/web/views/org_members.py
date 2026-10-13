@@ -21,9 +21,24 @@ from .common import can_admin, org_or_404
 
 # COPY:members.fields.kind_help.text/long/choice — (형식, 이름, 설명, 예시)
 KIND_HELP = (
-    ("text", "짧은 글", "한 줄 입력, 200자", "예: 학번"),
-    ("long", "긴 글", "여러 줄, 2000자", "예: 가능한 시간"),
-    ("choice", "선택지", "목록에서 하나 고름", "예: 학년(1·2·3·4)"),
+    (
+        "text",
+        "짧은 글",
+        "구성원이 한 줄로 입력하는 형식입니다. 최대 200자입니다.",
+        "예: 항목 이름 ‘학번’ → 입력값 ‘20260001’",
+    ),
+    (
+        "long",
+        "긴 글",
+        "구성원이 여러 줄로 입력하는 형식입니다. 최대 2,000자입니다.",
+        "예: 항목 이름 ‘참여 가능한 시간’ → 입력값 ‘월요일 오후 2시부터 4시까지’",
+    ),
+    (
+        "choice",
+        "선택지",
+        "관리자가 등록한 선택지 중 구성원이 하나를 고르는 형식입니다.",
+        "예: 항목 이름 ‘학년’, 선택지 ‘1학년·2학년·3학년·4학년’ → 선택값 ‘2학년’",
+    ),
 )
 
 
@@ -154,12 +169,14 @@ def member_profile(request, membership_id):
     n = _missing_count(m)
     if was_missing and not n:
         messages.success(
-            request, "이제 이 구성원은 조직을 쓸 수 있습니다."
+            request,
+            "구성원 정보를 저장했습니다. 필수 항목이 모두 입력되어 이 구성원은 이제 이 조직을 사용할 수 있습니다.",
         )  # COPY:members.panel.unblocked
     elif n:
         messages.warning(
-            request, f"필수 항목 {n}개가 아직 비었습니다."
+            request,
+            f"구성원 정보를 저장했습니다. 필수 항목 {n}개가 아직 입력되지 않아 이 구성원은 이 조직을 사용할 수 없습니다.",
         )  # COPY:members.panel.still_missing
     else:
-        messages.success(request, "저장했습니다.")  # COPY:members.panel.saved
+        messages.success(request, "구성원 정보를 저장했습니다.")  # COPY:members.panel.saved
     return redirect(panel_url(m))

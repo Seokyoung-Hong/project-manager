@@ -1152,7 +1152,7 @@ ORG_TABS: list[tuple[str, str, list[tuple[str, str, tuple[str, ...]]]]] = [
 ]  # fmt: skip
 ADMIN_TABS = ("members", "work", "notify", "ai", "meeting", "integrations", "org")
 
-# ORG_TABS 라벨의 임시 문구(최종은 docs/COPY-14.md, F 갈래). 화면은 COPY_DRAFT.get(키, 키)로 그린다.
+# ORG_TABS 라벨(최종 문구: docs/drafts/org-settings-copy.md). 화면은 COPY_DRAFT.get(키, 키)로 그린다.
 COPY_DRAFT = {
     "org_settings.tab.me": "내 정보",
     "org_settings.tab.members": "구성원 관리",
@@ -1162,7 +1162,7 @@ COPY_DRAFT = {
     "org_settings.tab.meeting": "회의·전사",
     "org_settings.tab.integrations": "연동",
     "org_settings.tab.org": "조직 관리",
-    "org_settings.section.me.name": "실명·조직 표시 이름",
+    "org_settings.section.me.name": "이름",
     "org_settings.section.me.info": "구성원 정보",
     "org_settings.section.me.links": "다른 설정",
     "org_settings.section.members.list": "구성원 목록",
@@ -1190,7 +1190,7 @@ COPY_DRAFT = {
     "org_settings.section.meeting.recording": "녹음 운영",
     "org_settings.section.meeting.visibility": "공개·보관",
     "org_settings.section.meeting.glossary": "전사 용어",
-    "org_settings.section.meeting.stt": "전사",
+    "org_settings.section.meeting.stt": "전사 수단·이용 권한",
     "org_settings.section.integrations.github": "GitHub",
     "org_settings.section.integrations.discord": "Discord",
     "org_settings.section.org.storage": "저장 공간",

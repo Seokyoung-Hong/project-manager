@@ -1,28 +1,28 @@
 {% load static %}{# 요청할 정보 항목(IMPL-PLAN-14 §8.4, 시안 A): 카드 목록 + 옆 "구성원에게 보이는 모습". 서버는 저장된 정의로 그리고, member-fields.js가 편집 중 초안을 바로 다시 그린다. 폼 칸 이름 f<n>-*는 orgs._fields_from_post 그대로. #}
-<p class="muted t13">구성원에게 받을 질문을 만드는 곳입니다. 답은 구성원이 내 정보에서 쓰고, 관리자는 구성원 패널에서 고칩니다.</p>{# COPY:members.fields.intro #}
+<p class="muted t13">이 조직에서 구성원에게 요청할 정보 항목을 만드는 곳입니다. 예를 들어 항목 이름을 ‘학번’으로 정하면 내 정보에 ‘학번’ 입력칸이 생깁니다. 구성원은 내 정보에서 값을 입력하며, 관리자는 구성원 목록에서 이름을 눌러 값을 수정할 수 있습니다. 이름 표시 방식은 별도 설정입니다.</p>{# COPY:members.fields.intro #}
 <p class="notice warn"><span aria-hidden="true">⚠</span><span>민감정보·고유식별정보(주민등록번호 등)·금융정보는 요구할 수 없습니다(<a href="{% url 'terms' %}#제6조-구성원-정보와-조직의-의무">이용약관 제6조</a>).</span></p>
 <div class="fields-split">
   {# 꺼져 있던 필수를 켤 때만 확인한다(data-confirm-if, app.js). #}
-  <form method="post" action="{% url 'org_member_fields' org.pk %}" class="field-cards stack" data-field-editor data-confirm="필수 항목을 비워 둔 구성원은 입력할 때까지 이 조직을 쓸 수 없습니다(관리자 포함). 저장하시겠습니까?" data-confirm-ok="필수로 저장" data-confirm-if="[data-was-optional]:checked">{# COPY:members.fields.required_confirm #}{% csrf_token %}
+  <form method="post" action="{% url 'org_member_fields' org.pk %}" class="field-cards stack" data-field-editor data-confirm="필수로 저장하면 이 항목을 입력하지 않은 구성원은 값을 입력할 때까지 이 조직을 사용할 수 없습니다. 관리자에게도 적용됩니다. 필수 항목으로 저장하시겠습니까?" data-confirm-ok="필수로 저장" data-confirm-if="[data-was-optional]:checked">{# COPY:members.fields.required_confirm #}{% csrf_token %}
     <input type="hidden" name="part" value="fields">
     {% if show_real_name %}<input type="hidden" name="show_real_name" value="on">{% endif %}{# part를 모르는 옛 처리에서도 이름 표시 방식을 지키게 #}
     {% for f in field_cards %}{% with i=forloop.counter0 %}
     <div class="field-card stack">
       <input type="hidden" name="f{{ i }}-id" value="{{ f.id }}">
       <div class="row">
-        <label class="field field-order">순서<input class="input" type="number" min="1" name="f{{ i }}-order" value="{{ forloop.counter }}"></label>
-        <label class="field grow">항목 이름 <span class="helptext">구성원에게 보이는 질문 제목</span><input class="input" name="f{{ i }}-label" value="{{ f.label }}" maxlength="50" required></label>
+        <label class="field field-order">순서 <span class="helptext">내 정보에서 항목이 표시되는 순서입니다. 작은 숫자부터 표시됩니다.</span>{# COPY:members.fields.order_help #}<input class="input" type="number" min="1" name="f{{ i }}-order" value="{{ forloop.counter }}"></label>
+        <label class="field grow">항목 이름 <span class="helptext">내 정보에 표시할 입력 항목의 제목입니다. 예: 학번</span>{# COPY:members.fields.label_help #}<input class="input" name="f{{ i }}-label" value="{{ f.label }}" maxlength="50" required></label>
       </div>
       <fieldset class="field-kinds"><legend class="t13 muted">형식</legend>
         {% for v, name, desc, ex in field_kinds %}<label class="radio-card"><input type="radio" name="f{{ i }}-kind" value="{{ v }}"{% if v == f.kind %} checked{% endif %}><span><b>{{ name }}</b><span class="t12 muted">{{ desc }}</span><span class="t12 muted">{{ ex }}</span></span></label>{% endfor %}
       </fieldset>
-      <label class="field field-choices">선택지 <span class="helptext">한 줄에 하나, 50자·30개까지. 형식이 ‘선택지’일 때만 씁니다.</span><textarea class="textarea" name="f{{ i }}-choices" rows="3">{% for c in f.choices %}{{ c }}
+      <label class="field field-choices">선택지 <span class="helptext">‘선택지’ 형식에서 구성원이 고를 값입니다. 한 줄에 하나씩 입력해 주세요. 최대 30개이며 각 선택지는 50자까지입니다. 예: 1학년, 2학년을 각각 한 줄에 입력</span>{# COPY:members.fields.choices_help #}<textarea class="textarea" name="f{{ i }}-choices" rows="3">{% for c in f.choices %}{{ c }}
 {% endfor %}</textarea></label>
-      <label class="field">도움말<input class="input" name="f{{ i }}-help" value="{{ f.help }}" maxlength="200" placeholder="예: 숫자 8자리로 적어 주세요."><span class="helptext">입력칸 아래에 회색 글로 보입니다.</span></label>{# COPY:members.fields.help_help #}
+      <label class="field">도움말<input class="input" name="f{{ i }}-help" value="{{ f.help }}" maxlength="200" placeholder="예: 숫자 8자리로 입력해 주세요."><span class="helptext">구성원이 값을 입력할 때 참고할 설명입니다. 내 정보의 입력칸 아래에 표시됩니다.</span></label>{# COPY:members.fields.help_help #}
       {# 차단 경고는 필수를 켠 항목에만, 꺼져 있으면 같은 숫자를 중립 정보로(CSS :has, 체크를 바꾸면 바로 바뀐다) #}
       <div class="field-required stack">
-        <label class="check"><input type="checkbox" name="f{{ i }}-required"{% if f.required %} checked{% else %} data-was-optional{% endif %}> <b>필수</b> <span class="t13 muted">비워 두면 조직을 쓸 수 없습니다(관리자 포함).</span></label>
-        {% if f.empty %}<p class="notice warn t13 impact-on" data-impact><span aria-hidden="true">⚠</span><span>지금 {{ f.empty }}명이 비워 두었습니다. 필수로 저장하면 입력할 때까지 조직을 쓸 수 없습니다(관리자 포함).</span></p>{# COPY:members.fields.required_impact #}
+        <label class="check"><input type="checkbox" name="f{{ i }}-required"{% if f.required %} checked{% else %} data-was-optional{% endif %}> <b>필수</b> <span class="t13 muted">값을 입력해야 이 조직을 사용할 수 있습니다. 관리자에게도 적용됩니다.</span></label>{# COPY:members.fields.required_help #}
+        {% if f.empty %}<p class="notice warn t13 impact-on" data-impact><span aria-hidden="true">⚠</span><span>현재 이 항목을 입력하지 않은 구성원은 {{ f.empty }}명입니다. 필수로 저장하면 이 구성원들은 값을 입력할 때까지 이 조직을 사용할 수 없습니다. 관리자에게도 적용됩니다.</span></p>{# COPY:members.fields.required_impact #}
         <p class="muted t13 impact-off">지금 {{ f.empty }}명이 비워 두었습니다. 필수가 아니라 조직 사용에는 영향이 없습니다.</p>{% endif %}{# COPY:members.fields.empty_info #}
       </div>
       <div class="field-card-foot">
@@ -40,9 +40,9 @@
         <fieldset class="field-kinds"><legend class="t13 muted">형식</legend>
           {% for v, name, desc, ex in field_kinds %}<label class="radio-card"><input type="radio" name="f{{ i }}-kind" value="{{ v }}"{% if forloop.first %} checked{% endif %}><span><b>{{ name }}</b><span class="t12 muted">{{ desc }}</span><span class="t12 muted">{{ ex }}</span></span></label>{% endfor %}
         </fieldset>
-        <label class="field field-choices">선택지 <span class="helptext">한 줄에 하나</span><textarea class="textarea" name="f{{ i }}-choices" rows="3"></textarea></label>
+        <label class="field field-choices">선택지 <span class="helptext">‘선택지’ 형식에서 구성원이 고를 값입니다. 한 줄에 하나씩 입력해 주세요. 최대 30개이며 각 선택지는 50자까지입니다. 예: 1학년, 2학년을 각각 한 줄에 입력</span><textarea class="textarea" name="f{{ i }}-choices" rows="3"></textarea></label>
         <label class="field">도움말<input class="input" name="f{{ i }}-help" maxlength="200"></label>
-        <label class="check"><input type="checkbox" name="f{{ i }}-required" data-was-optional> <b>필수</b></label>
+        <label class="check"><input type="checkbox" name="f{{ i }}-required" data-was-optional> <b>필수</b> <span class="t13 muted">값을 입력해야 이 조직을 사용할 수 있습니다. 관리자에게도 적용됩니다.</span></label>
       </div>
     </details>
     {% endwith %}{% endif %}
@@ -53,11 +53,11 @@
       <a class="btn sm field-preview-jump" href="#field-preview">미리보기 보기</a>{# COPY:members.fields.preview_jump #}
     </div>
   </form>
-  <aside class="field-preview card" id="field-preview" aria-label="구성원에게 보이는 모습">
-    <h3 class="t13">구성원에게 보이는 모습 <span class="muted">내 정보 탭 · 편집 중 초안</span></h3>{# COPY:members.fields.preview_title #}
+  <aside class="field-preview card" id="field-preview" aria-label="구성원에게 보이는 입력 항목">
+    <h3 class="t13">구성원에게 보이는 입력 항목 <span class="muted">내 정보 탭 · 편집 중 초안</span></h3>{# COPY:members.fields.preview_title #}
     <div class="stack" data-field-preview aria-live="polite">
     {% if preview_rows %}{% include "orgs/_member_info_fields.html" with rows=preview_rows disabled=True %}
-    {% else %}<p class="muted t13">이 조직은 구성원 정보를 받지 않습니다.</p>{% endif %}{# COPY:me.no_fields #}
+    {% else %}<p class="muted t13">이 조직에서 요청하는 구성원 정보 항목이 없습니다.</p>{% endif %}{# COPY:me.no_fields #}
     </div>
   </aside>
 </div>

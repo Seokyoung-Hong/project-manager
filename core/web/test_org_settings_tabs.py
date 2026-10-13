@@ -136,7 +136,7 @@ def test_me_hides_nickname_when_real_name_shown(client, org, admin, member):
     client.force_login(member)
     body = client.get(_url(org, "me")).content.decode()
     assert 'name="nickname"' not in body and "실명으로 표시합니다" in body
-    assert "이 조직에서는 <strong>김팀원</strong>" in body
+    assert "이 조직에서 표시되는 이름: <strong>김팀원</strong>" in body
     client.post(f"/orgs/{org.pk}/member-info", {"real_name": "김팀원", "nickname": "몰래"})
     assert _m(org, member).nickname == ""
 

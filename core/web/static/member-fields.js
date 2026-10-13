@@ -27,7 +27,7 @@
   }
   function render(box, fields) {
     box.replaceChildren();
-    if (!fields.length) { box.append(el("p", "muted t13", "이 조직은 구성원 정보를 받지 않습니다.")); return; } // COPY:me.no_fields
+    if (!fields.length) { box.append(el("p", "muted t13", "이 조직에서 요청하는 구성원 정보 항목이 없습니다.")); return; } // COPY:me.no_fields
     fields.forEach(function (f) {
       var lab = el("label", "field", f.label + (f.required ? " (필수)" : "")), input;
       if (f.kind === "long") { input = el("textarea", "textarea"); input.rows = 4; }

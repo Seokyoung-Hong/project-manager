@@ -145,8 +145,8 @@ def test_fields_editor_cards_preview_and_impact(client, org, admin, member, monk
     client.force_login(admin)
     body = _page(client, org).content.decode()
     assert 'class="field-card' in body and "member-fields-table" not in body
-    assert "구성원에게 보이는 모습" in body and "disabled" in body
-    assert "예: 학번" in body and "예: 가능한 시간" in body  # 형식별 설명·예시
+    assert "구성원에게 보이는 입력 항목" in body and "disabled" in body
+    assert "입력값 ‘20260001’" in body and "‘참여 가능한 시간’" in body  # 형식별 설명·예시
     # 관리자·구성원 둘 다 비워 둠
     assert "지금 2명이 비워 두었습니다" in body
     # 필수 아닌 항목: 차단 경고(impact-on)와 중립 정보(impact-off)를 함께 그리고 CSS가 필수 체크로 고른다

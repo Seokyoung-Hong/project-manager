@@ -7,25 +7,25 @@
       <h2>{{ panel.name }}</h2>
       <div class="t13 muted">{% if panel.pending %}<span class="badge">가입 전</span> 아직 계정이 없습니다{% else %}계정 표시 이름 {{ m.user.display_name }} · @{{ m.user.username }}{% endif %}</div>
     </div>
-    {% if panel.missing and not panel.pending %}<p class="notice warn"><span aria-hidden="true">⚠</span><span>필수 항목 {{ panel.missing }}개가 비어 있어 이 구성원은 조직을 쓸 수 없습니다.</span></p>{% endif %}{# COPY:members.panel.blocked #}
+    {% if panel.missing and not panel.pending %}<p class="notice warn"><span aria-hidden="true">⚠</span><span>필수 항목 {{ panel.missing }}개가 입력되지 않아 이 구성원은 이 조직을 사용할 수 없습니다.</span></p>{% endif %}{# COPY:members.panel.blocked #}
 
     <section class="stack" aria-labelledby="mp-account">
-      <h3 id="mp-account">계정 공통 <span class="muted t12">열람만</span></h3>{# COPY:members.panel.account #}
+      <h3 id="mp-account">계정 공통 정보 <span class="muted t12">열람만 가능</span></h3>{# COPY:members.panel.account #}
       <dl class="t13">
         <dt class="muted">실명</dt><dd>{% if m.user.real_name %}{{ m.user.real_name }}{% else %}<span class="muted">실명 미입력</span>{% endif %}</dd>
         {% if not panel.pending %}<dt class="muted">계정 표시 이름</dt><dd>{{ m.user.display_name }}</dd><dt class="muted">아이디</dt><dd>@{{ m.user.username }}</dd>{% endif %}
       </dl>
-      <p class="t12 muted">실명과 계정 표시 이름은 본인만 바꿀 수 있는 계정 정보입니다.</p>{# COPY:members.panel.account_note #}
+      <p class="t12 muted">실명·계정 표시 이름·아이디는 모든 조직에서 공통으로 사용하는 계정 정보입니다. 조직 관리자는 이곳에서 열람만 할 수 있습니다. 실명과 계정 표시 이름은 본인만 수정할 수 있습니다.</p>{# COPY:members.panel.account_note #}
     </section>
 
     <section class="stack" aria-labelledby="mp-org">
       <h3 id="mp-org">이 조직에 제공한 정보</h3>{# COPY:members.panel.org_info #}
       {# 관리자는 필수 항목을 비운 채 저장할 수 있다(admin_save) — 브라우저 required 검사를 끈다. #}
       <form method="post" action="{% url 'member_profile' m.pk %}" class="stack" novalidate>{% csrf_token %}
-        {% if show_real_name %}<p class="t13 muted">이 조직은 실명으로 표시하므로 조직 표시 이름 칸이 없습니다.</p>{# COPY:members.panel.real_name_org #}
+        {% if show_real_name %}<p class="t13 muted">이 조직은 구성원 이름을 실명으로 표시합니다. 조직 표시 이름은 사용하지 않으며, 본인과 관리자 모두 변경할 수 없습니다. 아래 구성원 정보는 수정할 수 있습니다.</p>{# COPY:members.panel.real_name_org #}
         {% else %}<label class="field">조직 표시 이름<input class="input" name="nickname" value="{{ m.nickname }}" maxlength="50" placeholder="{{ m.user.display_name }}"></label>{% endif %}
         {% include "orgs/_member_info_fields.html" with rows=panel.info_rows disabled=False %}
-        <p class="t12 muted">관리자는 필수 항목을 비워 둔 채로도 저장할 수 있습니다. 고친 기록은 조직 관리 → 정책 변경 이력에 남습니다.</p>{# COPY:members.panel.admin_note #}
+        <p class="t12 muted">관리자는 필수 항목이 비어 있어도 저장할 수 있습니다. 필수 항목이 비어 있으면 이 구성원은 이 조직을 사용할 수 없습니다. 수정 기록은 조직 관리 → 정책 변경 이력에 남으며 관리자만 볼 수 있습니다. 구성원 본인에게 수정 기록은 표시되지 않습니다.</p>{# COPY:members.panel.admin_note #}
         <div><button class="btn primary">구성원 정보 저장</button></div>{# COPY:members.panel.save #}
       </form>
     </section>

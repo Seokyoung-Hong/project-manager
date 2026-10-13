@@ -390,7 +390,7 @@ def set_nickname(membership, value, actor, source: str = "web") -> OrgMembership
         # COPY:nickname.real_name_org
         raise ServiceError(
             {
-                "nickname": "이 조직은 구성원 이름을 실명으로 표시하므로 조직 표시 이름을 변경할 수 없습니다."
+                "nickname": "이 조직은 구성원 이름을 실명으로 표시합니다. 본인과 관리자 모두 조직 표시 이름을 변경할 수 없습니다."
             }
         )
     new = clean_real_name(value, field="nickname", required=False)

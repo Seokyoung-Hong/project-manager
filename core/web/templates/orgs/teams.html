@@ -1,7 +1,7 @@
 {% extends "base.html" %}{% load names %}{% block title %}조직 → 팀{% endblock %}
 {% block main %}
 {% include "orgs/_tabs.html" %}
-<p class="notice t13"><span>구성원·초대는 <a href="{% url 'org_settings' org.pk %}?tab=members">설정 → 구성원 관리</a>에서 관리합니다. 실명으로 표시도 <a href="{% url 'org_settings' org.pk %}?tab=members#settings-members-names">이름 표시 방식</a>에서 바꿉니다.</span></p>{# COPY:teams.members_moved #}
+<p class="notice t13"><span>구성원과 초대 링크는 <a href="{% url 'org_settings' org.pk %}?tab=members">설정 → 구성원 관리</a>에서 관리할 수 있습니다. 실명 표시 켜기·끄기는 같은 탭의 <a href="{% url 'org_settings' org.pk %}?tab=members#settings-members-names">이름 표시 방식</a>에서 설정할 수 있습니다.</span></p>{# COPY:teams.members_moved #}
 <section class="card">
   <div class="card-head">
     <h2>팀</h2>
