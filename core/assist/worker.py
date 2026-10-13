@@ -151,7 +151,7 @@ def _fail(job, token, code, status_from=("running",)):
     _finish(job, token, status_from, status="failed", error=code, finished_at=timezone.now())
 
 
-def advance(job, token, code=None, status_from=("running",)):
+def advance(job, token, code=None, status_from=("running",), budget_retries=0):
     """지금 항목을 tried에 남기고 다음 항목으로 다시 queued. 없으면 failed(마지막 오류 코드).
 
     code=None은 이미 tried에 남은 작업(PC가 보고해 route=""로 되돌린 작업)을 넘길 때.
@@ -160,7 +160,10 @@ def advance(job, token, code=None, status_from=("running",)):
 
     tried = list(job.tried or [])
     if code and job.route:
-        tried.append({"route": job.route, "source_id": job.source_id, "error": code})
+        row = {"route": job.route, "source_id": job.source_id, "error": code}
+        if budget_retries:
+            row["budget_retries"] = budget_retries  # 작업 전체 누계(다음 AI도 이어서 센다)
+        tried.append(row)
         if job.route != "org":
             _mark_source(job.source, code)
     job.tried = tried
@@ -285,7 +288,17 @@ def execute(job, route) -> tuple[str, dict]:
     user = job.user
     spec = prompts.spec_of(job)
     ep = _endpoint(job, route)
-    state = {"usage": {}}
+    # 예산 늘림 횟수는 작업 전체에서 센다: 앞선 AI들에서 쓴 횟수(tried 누계)부터 이어서.
+    prior = max((t.get("budget_retries", 0) for t in (job.tried or [])), default=0)
+    state = {"usage": {}, "budget_retries": prior}
+    try:
+        return _execute(job, route, user, spec, ep, state)
+    except NetError as e:
+        e.budget_retries = state["budget_retries"]
+        raise
+
+
+def _execute(job, route, user, spec, ep, state) -> tuple[str, dict]:
     transcript = None
     long = prompts.long_text(job, user)
     if long:
@@ -373,7 +386,7 @@ def run(job_id: int) -> None:
                 finished_at=timezone.now(),
             )
         log.info("assist job %s %s %s", job.pk, job.route, e.code)
-        advance(job, token, e.code)
+        advance(job, token, e.code, budget_retries=getattr(e, "budget_retries", 0))
         return
     if len(result.encode()) > AiJob.MAX_RESULT:
         advance(job, token, "too_large")

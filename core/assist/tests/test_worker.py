@@ -166,6 +166,29 @@ def test_reasoning_budget_twice_is_reasoning_budget(on, member, task, fake):
     assert len(f.calls) == 2 and f.calls[1][1]["max_tokens"] == 8000
 
 
+def test_budget_retry_cap_spans_sources(on, member, task, fake):
+    """작업당 늘림 상한은 AI를 바꿔도 이어서 센다(Sol 지적)."""
+    from assist.models import AiJob
+    from assist.worker import MAX_BUDGET_RETRIES
+
+    job = services.create_job(member, on, field="task.title", target=f"task:{task.pk}")
+    AiJob.objects.filter(pk=job.pk).update(
+        tried=[
+            {
+                "route": "direct",
+                "source_id": 0,
+                "error": "reasoning_budget",
+                "budget_retries": MAX_BUDGET_RETRIES,
+            }
+        ]
+    )
+    f = fake(_spent(), json.dumps({"options": ["a"]}))
+    run_once()
+    job.refresh_from_db()
+    assert len(f.calls) == 1  # 이미 상한이라 늘려 다시 묻지 않는다
+    assert job.tried[-1]["error"] == "reasoning_budget"
+
+
 def test_bigger_budget_is_only_for_that_request(on, member, task, fake):
     """예산을 늘린 값은 그 요청에만 쓴다. 형식 재질문 등 다음 요청은 원래 예산으로(Sol 지적: 비용)."""
     f = fake(_spent(), "형식 아님", json.dumps({"options": ["a"]}))
