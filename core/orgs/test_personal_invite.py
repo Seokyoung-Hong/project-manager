@@ -35,6 +35,7 @@ def _signup(client, token, username="kim.new"):
         f"/join/{token}",
         {
             "username": username,
+            "real_name": "김신입",
             "display_name": "김신입(본인)",
             "password1": PW,
             "password2": PW,
@@ -109,8 +110,9 @@ def test_claim_keeps_account_and_logs_in(client, org, admin, project, pending):
     task.refresh_from_db()
     assert task.assignee_id == user.pk
     assert int(client.session["_auth_user_id"]) == user.pk
-    # 세션이 살아 있다. 실명은 아직 비어 다른 화면은 실명 관문이 프로필로 보낸다(orgs/test_names.py)
-    assert client.get("/settings/profile").status_code == 200
+    # 세션이 살아 있고, 인계 때 받은 실명으로 관문 없이 조직 화면이 열린다
+    assert user.real_name == "김신입"
+    assert client.get(f"/orgs/{org.pk}").status_code == 200
     invite.refresh_from_db()
     assert invite.use_count == 1
     assert ChangeLog.objects.filter(target_id=org.pk, field="invite_claimed").exists()

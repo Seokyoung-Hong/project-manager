@@ -296,6 +296,7 @@ def test_signup_lands_on_org_list_with_create_button(client):
         "/signup",
         {
             "username": "newbie",
+            "real_name": "새사람",
             "display_name": "새사람",
             "password1": "verysecret123",
             "password2": "verysecret123",
@@ -304,9 +305,6 @@ def test_signup_lands_on_org_list_with_create_button(client):
     )
     assert r.status_code == 302
     assert r.headers["Location"] == "/orgs"
-    User.objects.filter(username="newbie").update(
-        real_name="새사람"
-    )  # 실명 관문 통과(가입 폼 실명은 갈래 E)
     body = client.get("/orgs").content.decode()
     assert "조직 만들기" in body
     assert "초대 링크" in body
@@ -424,7 +422,10 @@ def test_profile_has_no_discord_id_input(client, admin, member):
     client.login(username="admin1", password="pw12345678")
     assert 'name="discord_user_id"' not in client.get("/settings/profile").content.decode()
 
-    r = client.post("/settings/profile", {"display_name": "관리자", "discord_user_id": "222"})
+    r = client.post(
+        "/settings/profile",
+        {"real_name": "김관리", "display_name": "관리자", "discord_user_id": "222"},
+    )
     assert r.status_code == 302
     admin.refresh_from_db()
     assert admin.display_name == "관리자"
@@ -1975,6 +1976,7 @@ def test_eleventh_signup_from_one_ip_is_refused(client, db):
             "/signup",
             {
                 "username": f"user{i}",
+                "real_name": "김가입",
                 "display_name": "",
                 "password1": "verysecret123",
                 "password2": "verysecret123",

@@ -32,8 +32,9 @@
   <p class="muted t13">구성원이 이 조직에 내야 하는 정보입니다. 필수 항목을 입력하지 않은 구성원(관리자 포함)은 입력할 때까지 이 조직을 쓸 수 없습니다. 항목 이름을 바꿔도 입력한 값은 남고, 항목을 삭제하면 그 값은 더 이상 보이지 않습니다.</p>
   <p class="notice warn"><span aria-hidden="true">⚠</span> 민감정보·고유식별정보(주민등록번호 등)·금융정보는 요구할 수 없습니다(<a href="{% url 'terms' %}#제6조-구성원-정보와-조직의-의무">이용약관 제6조</a>).</p>
   <form method="post" action="{% url 'org_member_fields' org.pk %}" class="stack">{% csrf_token %}
-    {# 자리표시(갈래 E·F가 문구·설명을 채운다) COPY:member_fields.show_real_name #}
-    <label class="check"><input type="checkbox" name="show_real_name"{% if member_def.show_real_name %} checked{% endif %}> 구성원 이름을 실명으로 표시</label>
+    {# COPY:member_fields.show_real_name · COPY:member_fields.show_real_name_help #}
+    <label class="check"><input type="checkbox" name="show_real_name" aria-describedby="show-real-name-help"{% if member_def.show_real_name %} checked{% endif %}> 구성원 이름을 실명으로 표시</label>
+    <p class="muted t13" id="show-real-name-help">켜면 이 조직에서 모든 구성원의 조직 표시 이름이 계정 실명으로 바뀌고, 본인과 관리자 모두 조직 표시 이름을 바꿀 수 없습니다. 끄면 원래 조직 표시 이름으로 돌아갑니다.</p>
     <p class="table-scroll-hint">항목 표는 좌우로 이동해 확인해 주세요.</p>
     <div class="table-scroll" tabindex="0" role="region" aria-label="구성원 정보 항목, 좌우로 스크롤 가능">
     <table class="grid">

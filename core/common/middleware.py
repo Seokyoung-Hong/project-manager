@@ -44,7 +44,10 @@ _REAL_NAME_OPEN = {
 # 조직 화면으로 보는 첫 경로 조각. 계정 설정·운영 콘솔·로그인·도움말 등은 조직과 상관없어 막지 않는다.
 _ORG_PREFIXES = {"today", "me", "requests", "org", "orgs", "projects", "tasks", "teams", "docs", "notes", "milestones", "search"}  # fmt: skip
 # 막혀도 열 수 있는 화면: 입력 화면, 조직 목록·만들기(전환), 항목 정의를 고치는 조직 설정.
-_OPEN_VIEWS = {"org_member_info", "org_list", "org_new", "org_settings", "org_member_fields"}
+_OPEN_VIEWS = {
+    "org_member_info", "org_list", "org_new", "org_settings", "org_member_fields",
+    "member_nickname",  # 필수 구성원 정보를 비운 사람도 입력 화면에서 표시 이름은 저장할 수 있다
+}  # fmt: skip
 # 여러 조직에 걸친 화면. 막힌 조직의 데이터는 열람 관문(usable_orgs)이 빼고 셸이 안내를 붙이므로
 # 세션의 현재 조직으로 막지 않는다.
 _CROSS_ORG_VIEWS = {"today", "today_quick", "me", "search", "request_index"}

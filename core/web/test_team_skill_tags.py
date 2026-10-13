@@ -18,5 +18,5 @@ def test_member_skill_inputs_have_member_specific_labels():
     assert 'aria-label="조직 멤버 관리, 좌우로 스크롤 가능"' in template
     assert 'class="grid member-table"' in template
     assert 'for="member-tags-{{ r.m.pk }}"' in template
-    assert "{{ r.m.user.display_name }} 스킬 태그" in template
+    assert "{{ name }} 스킬 태그" in template
     assert 'id="member-tags-{{ r.m.pk }}"' in template

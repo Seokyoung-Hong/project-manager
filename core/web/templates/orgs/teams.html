@@ -1,4 +1,4 @@
-{% extends "base.html" %}{% block title %}조직 → 팀{% endblock %}
+{% extends "base.html" %}{% load names %}{% block title %}조직 → 팀{% endblock %}
 {% block main %}
 {% include "orgs/_tabs.html" %}
 <section class="card">
@@ -13,15 +13,24 @@
     <tbody>
     {% for r in rows %}
     <tr>
-      <td>{{ r.m.user.display_name }}{% if r.pending %} <span class="badge">가입 전</span>{% endif %}<div class="muted t13">{{ r.m.user.username }}</div>
+      {% with name=r.m.user|name_in:org %}
+      <td>{{ name }}{% if r.pending %} <span class="badge">가입 전</span>{% endif %}<div class="muted t13">{{ r.m.user.display_name }} · {{ r.m.user.username }}</div>
+        {# 관리자는 조직 옵션과 무관하게 계정 실명을 본다(IMPL-PLAN-13 §6.2). 이 화면은 관리자 분기만 그린다. #}
+        <div class="t13">{% if r.m.user.real_name %}<span class="muted">실명</span> {{ r.m.user.real_name }}{% elif not r.pending %}<span class="badge warn">실명 미입력</span>{% endif %}</div>{# COPY:members.real_name_missing #}
+        {% if show_real_name %}<span class="badge" title="조직 설정에서 실명으로 표시를 켜 두어 조직 표시 이름을 바꿀 수 없습니다.">실명으로 표시 중</span>{# COPY:members.real_name_locked #}
+        {% else %}<form method="post" action="{% url 'member_nickname' r.m.pk %}" class="row gap-2">{% csrf_token %}
+          <label class="sr-only" for="member-nick-{{ r.m.pk }}">{{ name }} 조직 표시 이름</label>
+          <input class="input member-skills-input" id="member-nick-{{ r.m.pk }}" name="nickname" value="{{ r.m.nickname }}" maxlength="50" placeholder="{{ r.m.user.display_name }}">
+          <button class="btn sm">표시 이름 저장</button>
+        </form>{% endif %}
         {% if r.pending %}<div class="row gap-2">
           {% if r.invite %}<button type="button" class="btn sm" data-copy-text="{{ site_url }}{{ r.invite.path }}" data-copy-label="초대 링크 복사됨" title="{{ r.invite.expires_at|date:'Y-m-d H:i' }}까지">초대 링크 복사</button>{% if not r.invite.is_usable %}<span class="badge">만료</span>{% endif %}{% endif %}
-          <form method="post" action="{% url 'member_invite' r.m.pk %}"{% if r.invite %} data-confirm="초대 링크를 새로 만듭니다. 이전 초대 링크는 더 이상 쓸 수 없습니다." data-confirm-ok="초대 링크 만들기"{% endif %}>{% csrf_token %}<button class="btn sm" aria-label="{{ r.m.user.display_name }} 초대 링크 만들기">초대 링크 만들기</button></form>
+          <form method="post" action="{% url 'member_invite' r.m.pk %}"{% if r.invite %} data-confirm="초대 링크를 새로 만듭니다. 이전 초대 링크는 더 이상 쓸 수 없습니다." data-confirm-ok="초대 링크 만들기"{% endif %}>{% csrf_token %}<button class="btn sm" aria-label="{{ name }} 초대 링크 만들기">초대 링크 만들기</button></form>
         </div>{% endif %}
       </td>
       <td>
         <form method="post" action="{% url 'member_role' r.m.pk %}" class="row">{% csrf_token %}
-          <select name="role" class="select auto" aria-label="{{ r.m.user.display_name }} 역할" onchange="this.form.requestSubmit()">
+          <select name="role" class="select auto" aria-label="{{ name }} 역할" onchange="this.form.requestSubmit()">
             <option value="admin"{% if r.m.role == "admin" %} selected{% endif %}>관리자</option>
             <option value="member"{% if r.m.role == "member" %} selected{% endif %}>멤버</option>
           </select>
@@ -29,20 +38,20 @@
       </td>
       <td>{% for t in r.m.user.teams.all %}{% if t.org_id == org.pk %}<span class="badge">{{ t.name }}</span> {% endif %}{% endfor %}</td>
       {% if org.member_info_on %}<td class="t13">{% if r.info_missing %}<span class="badge warn">입력 필요</span>{% endif %}
-        {% if r.m.real_name %}<div><span class="muted">실명</span> {{ r.m.real_name }}</div>{% endif %}
         {% for f in r.info %}{% if f.value %}<div><span class="muted">{{ f.label }}</span> {{ f.value|linebreaksbr }}</div>{% endif %}{% endfor %}
       </td>{% endif %}
       <td class="member-skills-cell">
         <form method="post" action="{% url 'member_tags' r.m.pk %}" class="row member-skills-form">{% csrf_token %}
-          <label class="sr-only" for="member-tags-{{ r.m.pk }}">{{ r.m.user.display_name }} 스킬 태그</label>
+          <label class="sr-only" for="member-tags-{{ r.m.pk }}">{{ name }} 스킬 태그</label>
           <input class="input member-skills-input" id="member-tags-{{ r.m.pk }}" name="tags" value="{{ r.m.tags|join:', ' }}" placeholder="백엔드, Django">
           <button class="btn sm">기술 태그 저장</button>
         </form>
       </td>
       <td class="t13">{% if r.m.user.discord_user_id %}연결{% else %}<span class="muted">없음</span>{% endif %}</td>
       <td class="num">{{ r.load.open|default:0 }}{% if r.load.overdue %} <span class="danger t13">초과 {{ r.load.overdue }}</span>{% endif %}</td>
-      <td>{% if r.can_remove %}<form method="post" action="{% url 'member_remove' r.m.pk %}" data-confirm="조직에서 제거합니다. 담당 중인 태스크는 담당자 그대로 조직에 남습니다. 조직과 사용자 모두 GitHub에 연결되어 있으면 GitHub 조직에서도 제거를 요청합니다. 처리 결과를 확인해 주세요." data-confirm-ok="조직에서 제거">{% csrf_token %}<button class="btn sm danger" aria-label="{{ r.m.user.display_name }} 조직에서 제거">조직에서 제거</button></form>
+      <td>{% if r.can_remove %}<form method="post" action="{% url 'member_remove' r.m.pk %}" data-confirm="조직에서 제거합니다. 담당 중인 태스크는 담당자 그대로 조직에 남습니다. 조직과 사용자 모두 GitHub에 연결되어 있으면 GitHub 조직에서도 제거를 요청합니다. 처리 결과를 확인해 주세요." data-confirm-ok="조직에서 제거">{% csrf_token %}<button class="btn sm danger" aria-label="{{ name }} 조직에서 제거">조직에서 제거</button></form>
         {% else %}<button class="btn sm" disabled title="마지막 관리자는 제거할 수 없습니다">조직에서 제거</button>{% endif %}</td>
+      {% endwith %}
     </tr>
     {% endfor %}
     </tbody>
