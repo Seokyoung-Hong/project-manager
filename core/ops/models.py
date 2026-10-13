@@ -17,6 +17,8 @@ class OpsAuditLog(models.Model):
         ("audit.export", "감사 기록 내보내기"),
         ("admin.access", "Django 관리 화면 접근"),
         ("backup.record", "백업 결과 기록"),
+        ("assist.host_add", "AI 허용 호스트 추가"),  # IMPL-PLAN-12 §3.3, 운영 콘솔 /ops/assist
+        ("assist.host_remove", "AI 허용 호스트 삭제"),
     ]
     created_at = models.DateTimeField(auto_now_add=True)
     actor = models.ForeignKey(

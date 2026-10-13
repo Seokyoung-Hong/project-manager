@@ -651,6 +651,9 @@ class SttHeartbeatIn(Schema):
     concurrency: int = Field(1, ge=1, le=32)
     device: dict = {}
     models: list[dict] = []
+    # AI 자동완성(IMPL-PLAN-12 §6.2). ai=1인 PC에만 ai_job을 준다. ai_job_id = 지금 처리 중인 AI 작업.
+    ai: int = 0
+    ai_job_id: int | None = None
 
 
 class SttRowIn(Schema):
@@ -672,4 +675,16 @@ class SttJobReportIn(Schema):
     segments_failed: int | None = Field(None, ge=0)
     rows: list[SttRowIn] | None = Field(None, max_length=20000)
     stats: dict | None = None
+    error: str = Field("", max_length=40)
+
+
+class SttAiReportIn(Schema):
+    """PC가 AI 작업을 끝낼 때 한 번(IMPL-PLAN-12 §6.2). 진행 보고는 없다.
+
+    content 길이는 라우터가 본다(256KB 넘으면 413) — 스키마에서 막으면 422가 되어 코드가 달라진다.
+    """
+
+    status: Literal["done", "failed", "cancelled"]
+    content: str = ""
+    usage: dict | None = None
     error: str = Field("", max_length=40)

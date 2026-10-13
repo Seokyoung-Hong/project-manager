@@ -48,6 +48,7 @@ INSTALLED_APPS = [
     "reports",
     "api",
     "ops",
+    "assist",
     "web",
 ]
 
@@ -79,6 +80,7 @@ TEMPLATES = [
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
                 "web.context.shell",
+                "assist.context_processors.ai_on",
             ],
         },
     },
@@ -179,6 +181,8 @@ DISCORD_CLIENT_ID = os.environ.get("DISCORD_CLIENT_ID", "")
 DISCORD_CLIENT_SECRET = os.environ.get("DISCORD_CLIENT_SECRET", "")
 # 사용자 GitHub 토큰을 Fernet으로 암호화하는 키. 갈면 저장된 토큰을 전부 못 읽는다.
 CREDENTIAL_KEY = os.environ.get("CREDENTIAL_KEY", "")
+# AI 자동완성 워커 스레드 수(purge 컨테이너, IMPL-PLAN-12 §4.1). 0이면 워커를 띄우지 않는다(되돌리기).
+ASSIST_WORKERS = int(os.environ.get("ASSIST_WORKERS", "3"))
 # 내 PC 전사 서버 한 줄 설치(/stt/install.ps1 등)가 302로 보내는 udally-stt 저장소 원본 주소.
 # 저장소·커밋이 정해지면 커밋 sha로 고정한다(태그는 옮길 수 있다). IMPL-PLAN-11-local-stt-link §10.1
 STT_SCRIPT_BASE = os.environ.get(

@@ -1,4 +1,4 @@
-from django.urls import path
+from django.urls import include, path
 
 from .realtime import views as rt
 from .views import (
@@ -440,4 +440,7 @@ urlpatterns = [
         name="doc_task_unlink",
     ),
     path("notes/<int:note_id>/finalize", notes.note_finalize, name="note_finalize"),
+    # AI 자동완성(IMPL-PLAN-12): 작업 화면은 C 갈래, 설정·운영 화면은 B 갈래가 각 파일만 고친다.
+    path("", include("web.urls_assist")),
+    path("", include("web.urls_assist_settings")),
 ]

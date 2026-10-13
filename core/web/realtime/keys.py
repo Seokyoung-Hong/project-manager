@@ -159,6 +159,8 @@ IGNORE = {
     "notes_sttserver", "notes_sttdevicecode",  # 내 PC 전사 연결(개인 설정 화면만)
     "github_githubinstallation", "github_gitrelease", "github_gitevent", "github_githubteamlink",
     "api_integrationstatus", "ops_opsauditlog",
+    # AI 자동완성(IMPL-PLAN-12 §4.4): 요청자 한 사람만 보므로 대화상자가 폴링한다
+    "assist_aisource", "assist_aijob", "assist_allowedhost",
 }  # fmt: skip
 IGNORE_PREFIXES = ("portfolio_", "orgs_discord")
 

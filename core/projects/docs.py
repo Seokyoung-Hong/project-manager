@@ -302,10 +302,14 @@ def create_doc(
 
 
 @transaction.atomic
-def update_doc(doc, field: str, value, *, actor, expected_version: int, source="web") -> Doc:
+def update_doc(
+    doc, field: str, value, *, actor, expected_version: int, source="web", force_new=False
+) -> Doc:
     """한 번에 한 항목. 버전이 다르면 ConflictError(최신 객체).
 
     source는 누가 고쳤는지 남기려는 것이다 — AI(mcp)도 문서를 고치므로 사람이 구별할 수 있어야 한다.
+    force_new=True면 10분 안 같은 사람이어도 이전 버전 행을 새로 만든다 — AI 결과 [적용]이 적용 직전
+    상태를 덮어쓰지 않게(IMPL-PLAN-12 §7.3).
     """
     if not can_view_doc(actor, doc):
         raise ServiceError(
@@ -345,7 +349,7 @@ def update_doc(doc, field: str, value, *, actor, expected_version: int, source="
         raise ConflictError(doc)
     doc.refresh_from_db()
     if field in EDITABLE:
-        _record_revision(doc, actor, source)
+        _record_revision(doc, actor, source, force_new=force_new)
     return doc
 
 

@@ -93,6 +93,13 @@ def validate_stt_url(url: str) -> str:
     return ""
 
 
+def _check_assist_org_url(url: str) -> str:
+    """조직 AI 주소 검사는 assist 관문이 한다(IMPL-PLAN-12 §11.1). assist가 이 모듈을 읽으므로 늦게 부른다."""
+    from assist.net import check_org_url
+
+    return check_org_url(url)
+
+
 SPECS: dict[str, Spec] = {
     s.key: s
     for s in [
@@ -904,6 +911,75 @@ SPECS: dict[str, Spec] = {
             "조직 전사 서버와 조직 OpenAI 키로 전사를 시작할 수 있는 사람입니다. 멤버는 녹음마다 한 번만 쓸 수 있습니다.",
             choices=(("member", "멤버 누구나"), ("admin", "조직 관리자만")),
         ),
+        # --- AI 자동완성(IMPL-PLAN-12 §3.4). 문구는 임시(docs/drafts/ai-assist-copy.md) ---
+        # assist.enabled 기본 켬은 "기본값 = 이 라운드 전의 동작" 원칙의 예외다(사용자 결정, 계획서 §15).
+        # 켜져 있어도 조직 AI 주소나 개인 AI를 누군가 등록해야 실제 전송이 시작된다.
+        Spec(
+            "assist.enabled",
+            "bool",
+            True,
+            "org",
+            False,
+            "assist",
+            "AI 자동완성 사용",  # COPY:assist_enabled_label
+            "끄면 이 조직 내용으로는 조직 AI·개인 AI 모두 자동완성과 태스크 후보 뽑기를 쓸 수 없습니다.",  # COPY:assist_enabled_help
+        ),
+        Spec(
+            "assist.org_url",
+            "text",
+            "",
+            "org",
+            False,
+            "assist",
+            "조직 AI 주소",  # COPY:assist_org_url_label
+            "OpenAI 호환 서버 주소입니다(예: https://api.example.com/v1).",  # COPY:assist_org_url_help
+            hi=300,
+            validate=_check_assist_org_url,
+        ),
+        Spec(
+            "assist.org_model",
+            "text",
+            "",
+            "org",
+            False,
+            "assist",
+            "조직 AI 모델",  # COPY:assist_org_model_label
+            "조직 AI 서버에 보낼 모델 이름입니다.",  # COPY:assist_org_model_help
+            hi=200,
+        ),
+        Spec(
+            "assist.org_api_key",
+            "secret",
+            SECRET_UNSET,
+            "org",
+            False,
+            "assist",
+            "조직 AI 키",  # COPY:assist_org_api_key_label
+            "암호화해 저장하며 화면에는 설정 여부만 보입니다.",  # COPY:assist_org_api_key_help
+        ),
+        Spec(
+            "assist.org_level",
+            "choice",
+            "member",
+            "org",
+            False,
+            "assist",
+            "조직 AI를 쓸 수 있는 사람",  # COPY:assist_org_level_label
+            "",
+            choices=(("member", "멤버 누구나"), ("admin", "조직 관리자만")),
+        ),
+        Spec(
+            "assist.org_daily_limit",
+            "int",
+            30,
+            "org",
+            False,
+            "assist",
+            "조직 AI 하루 한도(멤버 한 사람)",  # COPY:assist_org_daily_limit_label
+            "멤버 한 사람이 하루에 조직 AI로 실행할 수 있는 작업 수입니다. 관리자는 세지 않습니다. 0이면 제한하지 않습니다.",  # COPY:assist_org_daily_limit_help
+            lo=0,
+            hi=1000,
+        ),
         # --- 4.6 개인 설정 ---
         Spec(
             "user.notify_dm",
@@ -1009,6 +1085,7 @@ GROUPS = [
     ("project", "프로젝트 권한"),
     ("org", "조직 운영"),
     ("ai", "AI 정책"),
+    ("assist", "AI 자동완성"),  # COPY:assist_group
     ("notify", "알림"),
     ("meeting", "회의 녹음"),
     ("user", "내 설정"),
