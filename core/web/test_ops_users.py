@@ -181,3 +181,13 @@ def test_user_detail_shows_no_work_content(client, member, staff, task):
     for url in (f"/ops/users/{member.pk}", "/ops/users", "/ops/access"):
         body = client.get(url).content.decode()
         assert task.title not in body and "비밀설정값" not in body
+
+
+def test_user_page_shows_terms_agreements_by_version(client, member, staff):
+    from accounts.models import TermsAgreement
+
+    TermsAgreement.objects.create(user=member, doc="terms", version="v1")
+    TermsAgreement.objects.create(user=member, doc="terms", version="v2")
+    client.force_login(staff)
+    body = client.get(f"/ops/users/{member.pk}").content.decode()
+    assert "동의 기록" in body and body.count("<td>이용약관</td>") == 2

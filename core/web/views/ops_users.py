@@ -10,7 +10,8 @@ from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 
-from accounts.models import ApiToken, LoginLock, User
+from accounts.consents import TARGETS
+from accounts.models import ApiToken, Consent, LoginLock, TermsAgreement, User
 from common.errors import ServiceError
 from github.models import GitHubIdentity
 from ops import services as ops_services
@@ -144,6 +145,11 @@ def user_detail(request, user_id):
             .values("org__name", "role"),
             "tokens": ApiToken.objects.filter(user=user),
             "lock": LoginLock.objects.filter(kind="user", key=key).first(),
+            "agreements": TermsAgreement.objects.filter(user=user),
+            "consents": [
+                (dict(TARGETS).get(c.target, c.target), c)
+                for c in Consent.objects.filter(user=user).order_by("-agreed_at")
+            ],
             "audits": OpsAuditLog.objects.filter(
                 Q(target_type="user", target_id=user.pk) | Q(target_type="login", target_label=key)
             )[:20],

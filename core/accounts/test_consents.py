@@ -177,17 +177,20 @@ def test_github_only_account_cannot_withdraw_github_consent(logged, admin):
     assert GitHubIdentity.objects.filter(user=admin).exists() and _active(admin, "github")
 
 
-def test_login_records_terms_consent_once_per_version(client, member, monkeypatch):
-    """로그인 화면 고지대로 로그인 = 시행 중인 약관에 동의. 같은 판은 한 행, 판이 바뀌면 새 행."""
+def test_login_records_terms_agreement_per_version(client, member, monkeypatch):
+    """로그인 화면 고지대로 로그인 = 시행 중인 약관·처리방침에 동의. 판마다 한 행, 옛 판 행은 남는다."""
+    from accounts.models import TermsAgreement
+
     assert "동의하는 것으로 봅니다" in client.get("/login").content.decode()
     login = {"username": "member1", "password": "pw12345678"}
     client.post("/login", login)
     client.logout()
     client.post("/login", login)
-    rows = Consent.objects.filter(user=member, target="terms")
-    assert [(c.version, c.withdrawn_at) for c in rows] == [("2026-10-13", None)]
-    monkeypatch.setattr("accounts.services.TERMS_VERSION", "2027-01-01")
+    rows = TermsAgreement.objects.filter(user=member)
+    assert sorted(rows.values_list("doc", "version")) == [("privacy", "v2"), ("terms", "v1")]
+    monkeypatch.setattr("accounts.services.DOC_VERSIONS", {"terms": "v2", "privacy": "v2"})
     client.logout()
     client.post("/login", login)
-    assert rows.filter(withdrawn_at__isnull=True).get().version == "2027-01-01"
-    assert rows.all().count() == 2  # 위 목록 비교가 rows를 캐시했다
+    assert sorted(rows.values_list("doc", "version")) == [
+        ("privacy", "v2"), ("terms", "v1"), ("terms", "v2")
+    ]  # fmt: skip

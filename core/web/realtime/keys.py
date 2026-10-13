@@ -150,7 +150,7 @@ IGNORE = {
     "django_admin_log", "django_content_type", "auth_permission", "auth_group",
     "auth_group_permissions", "accounts_user_groups", "accounts_user_user_permissions",
     "accounts_apitoken", "accounts_idempotencykey", "accounts_oauthclient", "accounts_oauthcode",
-    "accounts_loginlock", "accounts_consent",
+    "accounts_loginlock", "accounts_consent", "accounts_termsagreement",
     "orgs_invite", "orgs_changerequest",
     "projects_milestone", "projects_apispec", "projects_docrevision", "projects_projectdependency",
     "projects_doc_attendees",

@@ -248,3 +248,26 @@ class Consent(models.Model):
 
     def __str__(self):
         return f"{self.user}:{self.target}:{self.version}"
+
+
+class TermsAgreement(models.Model):
+    """이용약관·처리방침 동의. 로그인(가입 포함) 화면 고지대로 로그인할 때 그때 판에 남긴다.
+
+    판마다 한 행이고 지우거나 덮어쓰지 않는다 — 누가 어느 판에 언제 처음 동의했는지가 근거다.
+    """
+
+    DOCS = [("terms", "이용약관"), ("privacy", "개인정보 처리방침")]
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="terms_agreements")
+    doc = models.CharField(max_length=10, choices=DOCS)
+    version = models.CharField(max_length=20)
+    agreed_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["user", "doc", "version"], name="terms_agreement_once")
+        ]
+        ordering = ["-agreed_at"]
+
+    def __str__(self):
+        return f"{self.user}:{self.doc}:{self.version}"

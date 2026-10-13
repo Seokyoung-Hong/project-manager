@@ -28,6 +28,19 @@
   <ul class="stack">{% for m in orgs %}<li>{{ m.org__name }} <span class="badge">{% if m.role == "admin" %}조직 관리자{% else %}멤버{% endif %}</span></li>{% empty %}<li class="muted t13">속한 조직이 없습니다.</li>{% endfor %}</ul>
 </section>
 <section class="card">
+  <div class="card-head"><h2>동의 기록</h2></div>
+  <div class="table-scroll" tabindex="0">
+  <table class="grid">
+    <thead><tr><th>대상</th><th>판</th><th>동의</th><th>철회</th></tr></thead>
+    <tbody>
+    {% for a in agreements %}<tr><td>{{ a.get_doc_display }}</td><td>{{ a.version }}</td><td>{{ a.agreed_at|date:"Y-m-d H:i" }}</td><td class="muted">—</td></tr>{% endfor %}
+    {% for label, c in consents %}<tr><td>국외 이전 · {{ label }}</td><td>{{ c.version }}</td><td>{{ c.agreed_at|date:"Y-m-d H:i" }}</td><td>{{ c.withdrawn_at|date:"Y-m-d H:i"|default:"—" }}</td></tr>{% endfor %}
+    {% if not agreements and not consents %}<tr><td colspan="4" class="empty-cell">동의 기록이 없습니다.</td></tr>{% endif %}
+    </tbody>
+  </table>
+  </div>
+</section>
+<section class="card">
   <div class="card-head"><h2>API 토큰</h2></div>
   {% include "ops/_tokens.html" %}
 </section>

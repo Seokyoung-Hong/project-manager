@@ -17,9 +17,9 @@ from common.errors import ServiceError
 from github.models import GitHubIdentity
 from orgs.settings import clean
 
-from .consents import NOTICES, POLICY_VERSION, TARGETS, TERMS_VERSION
+from .consents import DOC_VERSIONS, NOTICES, POLICY_VERSION, TARGETS
 from .identity import resolve
-from .models import ApiToken, Consent, IdempotencyKey, LoginLock, OAuthCode, User
+from .models import ApiToken, Consent, IdempotencyKey, LoginLock, OAuthCode, TermsAgreement, User
 
 CODE_TTL = timedelta(minutes=10)
 
@@ -168,14 +168,10 @@ def give_consent(user, target: str) -> Consent:
     return consent
 
 
-@transaction.atomic
 def agree_terms(user) -> None:
-    """로그인·가입 = 그때 시행 중인 이용약관·처리방침에 동의(로그인 화면에 고지). 판이 바뀌면 새 행을 남긴다."""
-    rows = Consent.objects.filter(user=user, target="terms", withdrawn_at__isnull=True)
-    if rows.filter(version=TERMS_VERSION).exists():
-        return
-    rows.update(withdrawn_at=timezone.now())
-    Consent.objects.create(user=user, target="terms", version=TERMS_VERSION)
+    """로그인·가입 = 그때 시행 중인 이용약관·처리방침에 동의(로그인 화면에 고지). 판마다 한 행."""
+    for doc, version in DOC_VERSIONS.items():
+        TermsAgreement.objects.get_or_create(user=user, doc=doc, version=version)
 
 
 def missing_consents(user) -> list[str]:
