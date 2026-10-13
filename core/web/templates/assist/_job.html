@@ -1,7 +1,7 @@
 {# AI 작업 한 건(IMPL-PLAN-12 §7.1). 진행 중이면 1초마다 상태를 묻고(바뀐 때만 다시 그림), 끝나면 미리보기와 반영 버튼. 결과는 글로만 넣는다(|safe 금지). 문구는 임시 — COPY:ai_job_* #}
 <div class="stack" id="ai-job"{% if active %} data-ai-active="{% url 'assist_job_cancel' job.pk %}" hx-get="{% url 'assist_job' job.pk %}?s={{ job.status }}" hx-trigger="every 1s" hx-swap="outerHTML"{% endif %}>
   {% if active %}
-  <p role="status">{% if job.status == "queued" %}AI 작업이 차례를 기다리고 있습니다.{% elif job.status == "running" %}AI가 쓰는 중입니다. 대화상자를 닫으면 작업을 취소합니다.{% else %}AI 작업을 취소하는 중입니다.{% endif %}</p>
+  <p role="status">{% if job.status == "queued" %}AI 작업이 차례를 기다리고 있습니다.{% elif job.status == "running" %}AI가 쓰는 중입니다.{% else %}AI 작업을 취소하는 중입니다.{% endif %}</p>
   {% if job.status != "cancelling" %}<div class="row"><button type="button" class="btn sm" hx-post="{% url 'assist_job_cancel' job.pk %}" hx-target="#ai-job" hx-swap="outerHTML">AI 작업 취소</button></div>{% endif %}
   {% elif error_text %}
   <p class="error" role="alert"><span aria-hidden="true">⚠</span> {{ error_text }}</p>

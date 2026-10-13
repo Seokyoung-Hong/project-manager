@@ -106,6 +106,18 @@ def test_bundle_roundtrip_keeps_code_and_html_and_checks_urls():
     assert r.returncode == 0, r.stdout + r.stderr
 
 
+@pytest.mark.skipif(
+    not shutil.which("node") or not (BUNDLE_DIR / "node_modules" / "happy-dom").exists(),
+    reason="node와 tools/tiptap-bundle의 npm install(happy-dom)이 있을 때만",
+)
+def test_ai_fill_inline_icon_fill_undo_preview_cancel():
+    """AI 자동완성 칸 안 아이콘: 폼 칸은 채우고 되돌리기, 자동 저장 칸은 미리보기 후 적용, 다시 누르면 취소."""
+    r = subprocess.run(
+        ["node", str(BUNDLE_DIR / "check-ai-fill.mjs")], capture_output=True, text=True, timeout=60
+    )
+    assert r.returncode == 0, r.stdout + r.stderr
+
+
 def test_doc_editor_stays_on_failed_save_and_flushes_before_finalize():
     script = (WEB_DIR / "static" / "doc-tiptap.js").read_text(encoding="utf-8")
     assert (

@@ -175,6 +175,7 @@ animation·transition을 끈다(파일 맨 끝 규칙).
 |---|---|---|---|
 | 버튼 | `.btn` + `.primary` `.tint` `.sm` `.icon` `.link` `.danger`, `[aria-pressed]` | 화면당 주 버튼(`.primary`) 하나. 폼을 여는 주 버튼은 `data-hide-open`을 붙여 열린 동안 숨긴다(폼의 제출 버튼이 주 버튼으로 남는다). 카드가 여럿인 화면은 저장 하나만 주 버튼, 파일 올리기·연결은 `.btn`. 되돌릴 수 없는 행동은 `.danger`. 누르면 1px 내려간다 | 주 버튼 둘, 열면 [닫기]로 바뀌는 주 버튼(토글형 주 버튼), 카드마다 주 버튼, 링크를 버튼처럼 칠하기, 아이콘만 있는 버튼에 `aria-label` 빠뜨리기 |
 | 입력 | `label.field` > `.input`/`.select`/`.textarea`, `.helptext`, `label.check` | 라벨은 위, 도움말·오류는 아래. 테두리는 `--c-line-strong`. 한 줄 필터·추가 칸처럼 라벨 자리가 없으면 `.seg-label` 라벨을 앞에 두거나 `aria-label`을 단다. 클래스 없는 Django 위젯도 `:where()` 기본 규칙으로 같은 모양 | placeholder로 라벨 대신하기, 입력을 알약 모양으로 |
+| AI 자동완성 | `.ai-spark` `.ai-inline` `.ai-wrap` | `[data-ai]` 칸 → `ai-fill.js`가 칸 안 오른쪽 끝(긴 글은 오른쪽 위)에 `.ai-spark`(반짝이 SVG, `aria-label`·`title` "AI 자동완성")를 붙이고, 칸 아래 `.ai-inline`(aria-live)에 결과를 둔다. 누르면 스피너, 다시 누르면 취소. 저장 버튼 폼 칸은 바로 채우고 [되돌리기](후보 여럿이면 ‹ ›), 자동 저장 칸은 미리보기 [적용]·[뒤에 붙이기]·[버리기]. 칸이 아닌 기능(`[data-ai-mode]`)은 글자 버튼 앞에 같은 아이콘 | 반짝이를 AI 기능 표시 밖(장식·"자동 추가" 표시)에 쓰기, 칸 바깥 [AI로 쓰기] 글자 버튼, 칸에 포커스가 있을 때의 단축키 |
 | 마크다운 긴 글 | `.md-field` > `label` + `textarea[data-md][data-toolbar="top\|bottom"]` → `md-field.js`가 `.mdf` 칸(Tiptap)을 붙인다. 읽기 전용은 `.md-view` | 모든 칸이 같은 기능·같은 우선순위. 서식 줄은 초점이 있을 때만, 아이콘만(이름은 `title`·`aria-label`, [더보기] 메뉴만 아이콘+글씨). 큰 칸은 위(sticky), 작은 칸은 아래, 모바일은 화면 키보드 위 40px 한 줄. 고정 제목·라벨은 칸 밖, 칸 안 제목은 그보다 작게 | 칸마다 기능 빼기, 글자 버튼, 테두리 없는 편집 영역, 열기만으로 저장 |
 | 카드 | `.card`, `.card-head`, `.card > h2`, `.box`, `.card.compact`, `.card.alert` | 묶음에 의미가 있을 때만. 제목은 Jua 24px | 카드 안 카드, 한 줄짜리 묶음마다 카드 쌓기(→ `.group-stack` 구분선) |
 | 배지 | `.badge` + `.high` `.primary` `.ok` `.warn` `.danger` `.info`, `.tag`, GitHub용 `.pr-open` `.pr-merged` `.pr-closed` `.pr-draft` | 6px 모서리의 납작한 표식. 상태·수량·종류 | 알약 배지 남발, 배지에 클릭 동작 |
@@ -302,7 +303,7 @@ SVG 칠은 `fill="#…"`이 아니라 `.art-pot` `.art-leaf` 같은 클래스로
 | 모든 요소 같은 둥글기 | redesign-skill/SKILL.md:53 | 역할별 모서리(2.3). 배지·기한·태그·코드·연결 상태를 알약 → 6px, 입력류 알약(필터 셀렉트·검색) → 12px, 카드·패널 24 → 18px |
 | 알약 모양 배지 남발 | redesign-skill/SKILL.md:95 | 위와 같음. 알약은 누를 수 있는 것(버튼·탭·칩·상태 select)만 |
 | 장식용 그라데이션·광원 원(orb) | taste-skill/SKILL.md:101, soft-skill/SKILL.md:25 | 환영 면 오른쪽 위 반투명 원 제거. 식물·반짝이(1차 원본)만 남김 |
-| 의미 없는 아이콘·이모지 | redesign-skill/SKILL.md:107-108 | 일반 알림의 ⓘ 글리프 전부 제거(⚠만 남김), "자동 추가" 앞 ✦(AI '마법' 반짝이) 제거 → 기울임 글자 |
+| 의미 없는 아이콘·이모지 | redesign-skill/SKILL.md:107-108 | 일반 알림의 ⓘ 글리프 전부 제거(⚠만 남김), "자동 추가" 앞 ✦(AI '마법' 반짝이) 제거 → 기울임 글자. 반짝이는 AI 자동완성 버튼 표시(3. AI 자동완성)에만 |
 | 획일적 카드 반복 | taste-skill/SKILL.md:52-54, redesign-skill/SKILL.md:93 | 내 태스크의 묶음별 카드(한 줄짜리 카드 4~5장) → 카드 한 장 안 구분선(`.group-stack`) |
 | 의미 없는 색 돌림 | taste-skill/SKILL.md:45 (강조 하나) | 지표 타일 세이지·노랑·코랄 순환 → 대표 지표만 세이지, 위험 수치만 코랄 |
 | 장식 텍스트(자간 벌린 머리글) | redesign-skill/SKILL.md:28 | 한글 eyebrow 자간 .14em → .02em, 페이지 머리 조직 링크 자간 제거 |

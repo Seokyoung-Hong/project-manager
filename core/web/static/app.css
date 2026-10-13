@@ -1580,6 +1580,31 @@ form:has(option[value="person"]:checked) .person-only { display: flex; }
 @media (pointer: coarse) {
   .md-edit-row > .muted { display: none; }
 }
+/* AI 자동완성(IMPL-PLAN-12 §7.1): 칸 안 오른쪽 끝 반짝이 아이콘 버튼 — ai-fill.js가 붙인다 */
+.ai-wrap { position: relative; display: block; min-width: 0; color: var(--c-ink); font-weight: 400; }
+.row > .ai-wrap { flex: 1 1 12rem; }
+.ai-wrap > .ai-has { width: 100%; padding-inline-end: 40px; }
+.ai-spark { position: absolute; inset-inline-end: 4px; top: 50%; transform: translateY(-50%); z-index: 1;
+  display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; padding: 0;
+  border: 0; border-radius: var(--r-sm); background: transparent; color: var(--c-muted); cursor: pointer;
+  transition: color var(--dur-fast) var(--ease), background var(--dur-fast) var(--ease); }
+.ai-spark:hover, .ai-spark.busy { color: var(--c-accent); background: var(--c-accent-soft); }
+.ai-wrap.tall > .ai-spark, .mdf > .ai-spark { top: 4px; transform: none; }
+.mdf.ai-has .mdf-body { padding-inline-end: 44px; }
+.mdf.ai-has[data-toolbar="top"] .mdf-bar { padding-inline-end: 44px; }
+.ai-spin { animation: ai-spin .9s linear infinite; }
+@keyframes ai-spin { to { transform: rotate(360deg); } }
+.ai-inline:empty { display: none; }
+.ai-inline { margin-top: var(--sp-1); }
+.ai-inline #ai-job[data-ai-active] { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; }
+.ai-bar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-1) var(--sp-2); color: var(--c-muted); }
+.ai-bar.stack { align-items: stretch; padding: var(--sp-2) var(--sp-3); border: 1px dashed var(--c-line-strong); border-radius: var(--r-sm); }
+.ai-preview { margin: 0; color: var(--c-ink); }
+[data-ai-mode] > .ai-ico { vertical-align: -3px; margin-inline-end: 6px; color: var(--c-muted); }
+@media (max-width: 700px) {
+  .ai-spark { width: 40px; height: 40px; }
+  .ai-wrap > .ai-has { padding-inline-end: 48px; }
+}
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
 }
