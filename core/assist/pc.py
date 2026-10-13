@@ -1,4 +1,41 @@
-"""내 PC 거쳐 보내기(IMPL-PLAN-12 §5.3·§6.2·§6.3). 몸체는 D 갈래."""
+"""내 PC 거쳐 보내기(IMPL-PLAN-12 §5.3·§6.2·§6.3).
+
+소유자 불변식: 배정은 AiJob.server == server AND AiJob.user == server.owner인 작업만, 보고도 같은 조건.
+PC를 끊으면 AiJob.server가 NULL(SET_NULL)이 되어 어느 PC에도 배정되지 않는다(정리는 worker.sweep).
+"""
+
+import logging
+
+from django.db import transaction
+from django.http import Http404
+from django.utils import timezone
+
+from github.crypto import decrypt
+
+from . import fields, prompts
+from .models import AiJob, AiSource
+
+log = logging.getLogger(__name__)
+
+# PC가 보낼 수 있는 오류 코드(assist.models.ERROR_CODES 중 PC 쪽). 목록 밖이면 pc_error.
+PC_ERRORS = {
+    "connect_failed",
+    "timeout",
+    "http_4xx",
+    "http_5xx",
+    "auth_failed",
+    "model_not_found",
+    "bad_output",
+    "too_large",
+    "blocked_address",
+    "pc_error",
+}
+LIVE = ("running", "cancelling")
+_ENC = "enc:"
+
+
+class Finished(Exception):
+    """이미 끝난 작업에 온 보고. 라우터가 409로 돌려준다."""
 
 
 def on_heartbeat(server, data: dict) -> dict:
@@ -8,12 +45,126 @@ def on_heartbeat(server, data: dict) -> dict:
     temperature, response_format, timeout_s}}, 보고한 ai_job_id가 cancelling이면 {"ai_cancel": True}.
     배정은 server.owner_id == job.user_id인 작업만(불변식 2). 줄 것이 없으면 {}.
     """
-    raise NotImplementedError
+    if not data.get("ai"):
+        return {}  # 옛 PC(능력 표시 없음)는 전사만
+    current = data.get("ai_job_id")
+    # PC가 잊은 작업(재시작 등): 하던 것과 다른 진행 중 작업은 놓아준다.
+    for pk in (
+        AiJob.objects.filter(server=server, status__in=LIVE)
+        .exclude(pk=current)
+        .values_list("pk", flat=True)
+    ):
+        _release(pk, server, "pc_error")
+    if current:
+        live = AiJob.objects.filter(pk=current, server=server, status="running").exists()
+        return {} if live else {"ai_cancel": True}  # 취소 중이거나 더는 이 PC 작업이 아님
+    job = claim(server)
+    return {"ai_job": job} if job else {}
+
+
+def claim(server) -> dict | None:
+    """대기 중인 PC 작업 하나를 running으로 바꾸고 PC에 줄 내용을 돌려준다(불변식 2)."""
+    mine = AiJob.objects.filter(status="queued", route="pc", server=server, user_id=server.owner_id)
+    for pk in mine.order_by("created_at", "id").values_list("pk", flat=True)[:5]:
+        with transaction.atomic():
+            job = (
+                mine.select_for_update(skip_locked=True, of=("self",))
+                .select_related("source", "user")
+                .filter(pk=pk)
+                .first()
+            )
+            if job is None:
+                continue
+            try:
+                payload = _payload(job)
+            except Exception as e:  # 권한 회수·대상 삭제 등 — 조립 실패는 다른 항목으로도 안 된다
+                log.warning("assist pc build failed job=%s err=%s", job.pk, type(e).__name__)
+                _finish(job, "failed", error="pc_error")
+                continue
+            job.status, job.claimed_at = "running", timezone.now()
+            job.save(update_fields=["status", "claimed_at"])
+            return payload
+    return None
+
+
+def _payload(job) -> dict:
+    """§8.3 생성 파라미터. ponytail: 워커(A)와 같은 표 — A가 공용 함수를 두면 그것으로 바꾼다."""
+    src = job.source
+    if src is None or not src.base_url:
+        raise ValueError("no source")
+    shape = fields.FIELDS[job.field].shape if job.kind == "field" else job.kind
+    raw = src.api_key or ""
+    return {
+        "id": job.pk,
+        "url": src.base_url,
+        "model": src.model,
+        "api_key": decrypt(raw[len(_ENC) :]) if raw.startswith(_ENC) else "",
+        "messages": prompts.build_messages(job, job.user),
+        "max_tokens": {"line": 200, "text": 1500, "list": 800}.get(shape, 4000),
+        "temperature": 0.2 if job.kind == "extract" else 0.3,
+        "response_format": {"type": "json_object"}
+        if shape in ("line", "list", "extract")
+        else None,
+        "timeout_s": 30 if job.kind == "field" else 120,
+    }
 
 
 def report(job_id: int, server, data: dict):
     """PATCH /api/integrations/stt/ai-jobs/{id}. data = SttAiReportIn.dict().
 
-    job.server == server이고 그 주인 == 요청자일 때만(아니면 Http404), 끝난 작업이면 409.
+    job.server == server이고 그 주인 == 요청자일 때만(아니면 Http404), 끝난 작업이면 Finished(409).
     """
-    raise NotImplementedError
+    with transaction.atomic():
+        job = (
+            AiJob.objects.select_for_update(of=("self",))
+            .filter(pk=job_id, server=server, user_id=server.owner_id)
+            .first()
+        )
+        if job is None:
+            raise Http404
+        if job.status not in LIVE:
+            raise Finished
+        status = data.get("status")
+        if job.status == "cancelling" or status == "cancelled":
+            _finish(job, "cancelled", error="cancelled")
+        elif status == "done":
+            job.result, job.usage = data.get("content") or "", data.get("usage") or {}
+            _finish(job, "done")
+            if job.source_id:
+                AiSource.objects.filter(pk=job.source_id).update(
+                    last_ok_at=job.finished_at, last_error=""
+                )
+        else:
+            code = data.get("error") or ""
+            _fall_through(job, code if code in PC_ERRORS else "pc_error")
+        return job
+
+
+def _release(pk: int, server, code: str) -> None:
+    """PC가 놓친 작업: 취소 중이면 취소로 끝내고, 아니면 다음 항목으로 넘긴다."""
+    with transaction.atomic():
+        job = (
+            AiJob.objects.select_for_update(of=("self",))
+            .filter(pk=pk, server=server, status__in=LIVE)
+            .first()
+        )
+        if job is None:
+            return
+        if job.status == "cancelling":
+            _finish(job, "cancelled", error="cancelled")
+        else:
+            _fall_through(job, code)
+
+
+def _fall_through(job, code: str) -> None:
+    """PC 시도 실패 → tried에 남기고 다시 queued(route 빈 값). 다음 항목은 워커(A)가 tried를 보고 고른다(§4)."""
+    job.tried = [*job.tried, {"route": "pc", "source_id": job.source_id, "error": code}]
+    if job.source_id:
+        AiSource.objects.filter(pk=job.source_id).update(last_error=code)
+    job.status, job.route, job.server, job.claimed_at, job.error = "queued", "", None, None, code
+    job.save(update_fields=["tried", "status", "route", "server", "claimed_at", "error"])
+
+
+def _finish(job, status: str, *, error: str = "") -> None:
+    job.status, job.error, job.finished_at = status, error, timezone.now()
+    job.save(update_fields=["status", "error", "finished_at", "result", "usage"])

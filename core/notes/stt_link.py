@@ -14,6 +14,7 @@ from django.db import IntegrityError, transaction
 from django.utils import timezone
 
 from accounts.models import ApiToken, User
+from assist import pc as assist_pc
 from common.errors import ServiceError
 
 from . import transcription as tx
@@ -251,6 +252,7 @@ def heartbeat(server: SttServer, data: dict) -> dict:
         job = tx.claim_for(server)
         if job is not None:
             out["job"] = job_payload(job)
+    out.update(assist_pc.on_heartbeat(server, data))  # AI 작업은 전사와 따로(IMPL-PLAN-12 §6.2)
     return out
 
 
