@@ -149,6 +149,11 @@ def test_fields_editor_cards_preview_and_impact(client, org, admin, member, monk
     assert "예: 학번" in body and "예: 가능한 시간" in body  # 형식별 설명·예시
     # 관리자·구성원 둘 다 비워 둠
     assert "지금 2명이 비워 두었습니다" in body
+    # 필수 아닌 항목: 차단 경고(impact-on)와 중립 정보(impact-off)를 함께 그리고 CSS가 필수 체크로 고른다
+    assert "impact-on" in body and "필수가 아니라 조직 사용에는 영향이 없습니다" in body
+    assert "지금 0명이 입력했습니다" in body
+    assert "member-fields.js" in body and "data-field-preview" in body  # 편집 중 초안 미리보기
+    assert 'data-label="역할"' in body and 'class="names-effect"' in body
     assert 'data-confirm-if="[data-was-optional]:checked"' in body
     assert 'name="part" value="fields"' in body and 'name="part" value="names"' in body
 

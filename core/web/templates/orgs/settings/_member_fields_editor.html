@@ -1,9 +1,9 @@
-{# 요청할 정보 항목(IMPL-PLAN-14 §8.4, 시안 A): 카드 목록 + 옆 "구성원에게 보이는 모습"(저장된 정의, JS 없음). 폼 칸 이름 f<n>-*는 orgs._fields_from_post 그대로. #}
+{% load static %}{# 요청할 정보 항목(IMPL-PLAN-14 §8.4, 시안 A): 카드 목록 + 옆 "구성원에게 보이는 모습". 서버는 저장된 정의로 그리고, member-fields.js가 편집 중 초안을 바로 다시 그린다. 폼 칸 이름 f<n>-*는 orgs._fields_from_post 그대로. #}
 <p class="muted t13">구성원에게 받을 질문을 만드는 곳입니다. 답은 구성원이 내 정보에서 쓰고, 관리자는 구성원 패널에서 고칩니다.</p>{# COPY:members.fields.intro #}
 <p class="notice warn"><span aria-hidden="true">⚠</span><span>민감정보·고유식별정보(주민등록번호 등)·금융정보는 요구할 수 없습니다(<a href="{% url 'terms' %}#제6조-구성원-정보와-조직의-의무">이용약관 제6조</a>).</span></p>
 <div class="fields-split">
   {# 꺼져 있던 필수를 켤 때만 확인한다(data-confirm-if, app.js). #}
-  <form method="post" action="{% url 'org_member_fields' org.pk %}" class="field-cards stack" data-confirm="필수 항목을 비워 둔 구성원은 입력할 때까지 이 조직을 쓸 수 없습니다(관리자 포함). 저장하시겠습니까?" data-confirm-ok="필수로 저장" data-confirm-if="[data-was-optional]:checked">{# COPY:members.fields.required_confirm #}{% csrf_token %}
+  <form method="post" action="{% url 'org_member_fields' org.pk %}" class="field-cards stack" data-field-editor data-confirm="필수 항목을 비워 둔 구성원은 입력할 때까지 이 조직을 쓸 수 없습니다(관리자 포함). 저장하시겠습니까?" data-confirm-ok="필수로 저장" data-confirm-if="[data-was-optional]:checked">{# COPY:members.fields.required_confirm #}{% csrf_token %}
     <input type="hidden" name="part" value="fields">
     {% if show_real_name %}<input type="hidden" name="show_real_name" value="on">{% endif %}{# part를 모르는 옛 처리에서도 이름 표시 방식을 지키게 #}
     {% for f in field_cards %}{% with i=forloop.counter0 %}
@@ -19,11 +19,16 @@
       <label class="field field-choices">선택지 <span class="helptext">한 줄에 하나, 50자·30개까지. 형식이 ‘선택지’일 때만 씁니다.</span><textarea class="textarea" name="f{{ i }}-choices" rows="3">{% for c in f.choices %}{{ c }}
 {% endfor %}</textarea></label>
       <label class="field">도움말<input class="input" name="f{{ i }}-help" value="{{ f.help }}" maxlength="200" placeholder="예: 숫자 8자리로 적어 주세요."><span class="helptext">입력칸 아래에 회색 글로 보입니다.</span></label>{# COPY:members.fields.help_help #}
+      {# 차단 경고는 필수를 켠 항목에만, 꺼져 있으면 같은 숫자를 중립 정보로(CSS :has, 체크를 바꾸면 바로 바뀐다) #}
       <div class="field-required stack">
         <label class="check"><input type="checkbox" name="f{{ i }}-required"{% if f.required %} checked{% else %} data-was-optional{% endif %}> <b>필수</b> <span class="t13 muted">비워 두면 조직을 쓸 수 없습니다(관리자 포함).</span></label>
-        {% if f.empty %}<p class="notice warn t13" data-impact><span aria-hidden="true">⚠</span><span>지금 {{ f.empty }}명이 비워 두었습니다. 필수로 저장하면 입력할 때까지 조직을 쓸 수 없습니다(관리자 포함).</span></p>{% endif %}{# COPY:members.fields.required_impact #}
+        {% if f.empty %}<p class="notice warn t13 impact-on" data-impact><span aria-hidden="true">⚠</span><span>지금 {{ f.empty }}명이 비워 두었습니다. 필수로 저장하면 입력할 때까지 조직을 쓸 수 없습니다(관리자 포함).</span></p>{# COPY:members.fields.required_impact #}
+        <p class="muted t13 impact-off">지금 {{ f.empty }}명이 비워 두었습니다. 필수가 아니라 조직 사용에는 영향이 없습니다.</p>{% endif %}{# COPY:members.fields.empty_info #}
       </div>
-      <label class="check t13"><input type="checkbox" name="f{{ i }}-delete"> 이 항목 삭제</label>
+      <div class="field-card-foot">
+        {% if f.filled is not None %}<span class="t12 muted">지금 {{ f.filled }}명이 입력했습니다.</span>{% endif %}{# COPY:members.fields.filled #}
+        <label class="check t13"><input type="checkbox" name="f{{ i }}-delete"> 이 항목 삭제</label>
+      </div>
     </div>
     {% endwith %}{% endfor %}
     {% if field_cards|length < max_fields %}{% with i=new_field_index %}
@@ -41,11 +46,19 @@
       </div>
     </details>
     {% endwith %}{% endif %}
-    <div class="row"><button class="btn primary">정보 항목 저장</button><span class="muted t13">저장 전까지 구성원 화면과 오른쪽 미리보기는 바뀌지 않습니다.</span></div>{# COPY:members.fields.save #}
+    {# 편집 중에도 닿도록 화면 아래에 붙는 저장 막대. 좁은 화면은 미리보기로 가는 링크를 함께 둔다. #}
+    <div class="field-save-bar">
+      <button class="btn primary">정보 항목 저장</button>{# COPY:members.fields.save #}
+      <span class="muted t13 grow">미리보기는 바로 바뀌고, 구성원 화면은 저장해야 바뀝니다.</span>{# COPY:members.fields.save_hint #}
+      <a class="btn sm field-preview-jump" href="#field-preview">미리보기 보기</a>{# COPY:members.fields.preview_jump #}
+    </div>
   </form>
-  <aside class="field-preview card" aria-label="구성원에게 보이는 모습">
-    <h3 class="t13">구성원에게 보이는 모습 <span class="muted">내 정보 탭</span></h3>{# COPY:members.fields.preview_title #}
+  <aside class="field-preview card" id="field-preview" aria-label="구성원에게 보이는 모습">
+    <h3 class="t13">구성원에게 보이는 모습 <span class="muted">내 정보 탭 · 편집 중 초안</span></h3>{# COPY:members.fields.preview_title #}
+    <div class="stack" data-field-preview aria-live="polite">
     {% if preview_rows %}{% include "orgs/_member_info_fields.html" with rows=preview_rows disabled=True %}
     {% else %}<p class="muted t13">이 조직은 구성원 정보를 받지 않습니다.</p>{% endif %}{# COPY:me.no_fields #}
+    </div>
   </aside>
 </div>
+<script src="{% static 'member-fields.js' %}" defer></script>

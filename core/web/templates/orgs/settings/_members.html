@@ -7,8 +7,8 @@
 <details class="card settings-section" id="settings-members-list" open>
   <summary class="settings-section-summary"><span>구성원 목록</span><span class="muted t12">{{ member_rows|length }}명 · 이름을 누르면 구성원 패널이 열립니다</span></summary>{# COPY:members.list.hint #}
   <div class="settings-section-body">
-  <div class="table-scroll" tabindex="0" role="region" aria-label="구성원 목록">
-  <table class="grid member-table">
+  {# 좁은 화면은 사람 카드(라벨 있는 줄)라 가로 스크롤 감싸개를 두지 않는다 #}
+  <table class="grid member-table" aria-label="구성원 목록">
     <thead><tr><th>이름</th><th>역할</th><th>소속 팀</th><th>Discord</th></tr></thead>
     <tbody>
     {% for r in member_rows %}
@@ -17,14 +17,13 @@
         {# 관리자는 계정 실명을 열람한다(IMPL-PLAN-13 §6.2). 실명으로 표시 조직은 이름 칸이 곧 실명이다. #}
         <div class="muted t12">{% if r.pending %}가입 전{% else %}{% if r.m.user.real_name %}{% if not show_real_name %}실명 {{ r.m.user.real_name }} · {% endif %}{% else %}<span class="badge warn">실명 미입력</span> {% endif %}@{{ r.m.user.username }}{% endif %}</div>{# COPY:members.real_name_missing #}
       </td>
-      <td>{% if r.m.role == "admin" %}<span class="badge primary">관리자</span>{% else %}구성원{% endif %}</td>
-      <td>{% for t in r.teams %}<span class="badge">{{ t.name }}</span> {% empty %}<span class="muted">—</span>{% endfor %}</td>
-      <td class="t13">{% if r.m.user.discord_user_id %}<span class="badge ok">연결됨</span>{% else %}<span class="muted">연결 안 됨</span>{% endif %}</td>
+      <td data-label="역할">{% if r.m.role == "admin" %}<span class="badge primary">관리자</span>{% else %}구성원{% endif %}</td>
+      <td data-label="소속 팀">{% for t in r.teams %}<span class="badge">{{ t.name }}</span> {% empty %}<span class="muted">—</span>{% endfor %}</td>
+      <td class="t13" data-label="Discord">{% if r.m.user.discord_user_id %}<span class="badge ok">연결됨</span>{% else %}<span class="muted">연결 안 됨</span>{% endif %}</td>
     </tr>
     {% endfor %}
     </tbody>
   </table>
-  </div>
   <p class="muted t13">Discord가 &lsquo;연결 안 됨&rsquo;인 구성원은 기한 알림 DM을 받지 못합니다. 본인이 프로필 → [Discord 연결]에서 연결합니다.</p>{# COPY:members.list.discord_note #}
   </div>
 </details>
@@ -86,13 +85,19 @@
   <div class="settings-section-body stack">
   <p class="muted t13">목록·담당자 칸·회의록 참석자처럼 이 조직 안에서 사람 이름이 나오는 모든 곳에 적용됩니다.</p>{# COPY:members.names.help #}
   {# 실명으로 켤 때만 확인한다(data-confirm-if, app.js). 이미 켜져 있으면 묻지 않는다. #}
-  <form method="post" action="{% url 'org_member_fields' org.pk %}" class="stack"{% if not show_real_name %} data-confirm="켜면 이 조직의 모든 구성원에게 실명이 표시됩니다. 본인과 관리자 모두 조직 표시 이름을 변경할 수 없습니다. 실명으로 표시하시겠습니까?" data-confirm-ok="실명으로 표시" data-confirm-if="[name=show_real_name][value=on]:checked"{% endif %}>{# COPY:members.names.confirm #}{% csrf_token %}
+  <form method="post" action="{% url 'org_member_fields' org.pk %}" class="stack names-form"{% if not show_real_name %} data-confirm="켜면 이 조직의 모든 구성원에게 실명이 표시됩니다. 본인과 관리자 모두 조직 표시 이름을 변경할 수 없습니다. 실명으로 표시하시겠습니까?" data-confirm-ok="실명으로 표시" data-confirm-if="[name=show_real_name][value=on]:checked"{% endif %}>{# COPY:members.names.confirm #}{% csrf_token %}
     <input type="hidden" name="part" value="names">
     <div class="names-opts">
       <label class="radio-card"><input type="radio" name="show_real_name" value="off"{% if not show_real_name %} checked{% endif %}><span><b>구성원이 정한 조직 표시 이름</b><span class="t13 muted">구성원이 내 정보에서 정한 이름을 씁니다. 비어 있으면 계정 표시 이름을 씁니다.</span></span></label>{# COPY:members.names.nickname #}
       <label class="radio-card"><input type="radio" name="show_real_name" value="on"{% if show_real_name %} checked{% endif %}><span><b>실명</b><span class="t13 muted">모든 구성원을 계정 실명으로 표시합니다. 조직 표시 이름 칸이 사라지고, 저장된 값은 지우지 않습니다.</span></span></label>{# COPY:members.names.real #}
     </div>
-    <p class="t13">목록·담당자 칸에 이렇게 보입니다: <b>{{ names_preview.nickname }}</b> / 실명으로 표시하면 <b>{{ names_preview.real }}</b> <span class="muted t12">(관리자 본인 기준)</span></p>{# COPY:members.names.preview #}
+    {# 고른 방식의 결과만 보인다(CSS :has, JS 없음) #}
+    <div class="names-effect" aria-live="polite">
+      <p class="t13" data-when="off"><b>목록·담당자 칸에 이렇게 보입니다</b> <span class="name-sample">{{ names_preview.nickname }}</span> <span class="muted t12">(관리자 본인 기준)</span></p>{# COPY:members.names.preview #}
+      <p class="t13" data-when="off">구성원은 내 정보에서, 관리자는 구성원 패널에서 조직 표시 이름을 바꿀 수 있습니다.</p>{# COPY:members.names.effect_off #}
+      <p class="t13" data-when="on"><b>목록·담당자 칸에 이렇게 보입니다</b> <span class="name-sample">{{ names_preview.real }}</span> <span class="muted t12">(관리자 본인 기준)</span></p>
+      <p class="t13" data-when="on">내 정보·구성원 패널에서 조직 표시 이름 칸이 사라집니다. 저장된 조직 표시 이름은 지우지 않으며, 다시 끄면 그대로 돌아옵니다.</p>{# COPY:members.names.effect_on #}
+    </div>
     <div><button class="btn">이름 표시 방식 저장</button></div>{# COPY:members.names.save #}
   </form>
   </div>

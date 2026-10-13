@@ -1210,6 +1210,8 @@ details.card.settings-section { padding: 0; gap: 0; }
 }
 .me-preview strong { font-size: var(--fs-lg); }
 .me-names { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr)); gap: var(--sp-4) var(--sp-6); align-items: start; }
+/* 내 정보 폼은 본문 폭을 채우고 입력만 420px에서 멈춘다(DESIGN.md §3.1 — form.stack 640px 제한 해제) */
+form.me-form { max-width: none; }
 .me-form .input, .me-form .select, .me-form .textarea { max-width: 420px; }
 .name-off { padding: var(--sp-3) var(--sp-4); border-radius: var(--r-md); background: var(--c-soft); font-size: var(--fs-sm); }
 .me-save { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-3); padding-top: var(--sp-4); border-top: 1px solid var(--c-line); }
@@ -1241,7 +1243,22 @@ details.card.settings-section { padding: 0; gap: 0; }
 .field-add > summary { cursor: pointer; font-weight: 600; list-style: none; }
 .field-add > summary::-webkit-details-marker { display: none; }
 .field-add[open] > summary { margin-bottom: var(--sp-3); }
-.field-preview { position: sticky; top: calc(var(--header-h) + var(--sp-4)); display: flex; flex-direction: column; gap: var(--sp-3); }
+.field-preview { position: sticky; top: calc(var(--header-h) + var(--sp-4)); display: flex; flex-direction: column; gap: var(--sp-3); scroll-margin-top: calc(var(--header-h) + var(--sp-4)); }
+form.field-cards { max-width: none; }
+/* 필수를 켠 항목만 차단 경고, 꺼진 항목은 같은 인원을 중립 정보로(체크 즉시 바뀐다) */
+.field-required:not(:has(input:checked)) .impact-on, .field-required:has(input:checked) .impact-off { display: none; }
+.field-card-foot { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: var(--sp-2); }
+/* 편집 중에도 닿는 저장 막대 */
+.field-save-bar {
+  position: sticky; bottom: 0; z-index: 2; display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2) var(--sp-3);
+  padding: var(--sp-3) 0; border-top: 1px solid var(--c-line); background: var(--c-surface);
+}
+.field-preview-jump { display: none; }
+/* 이름 표시 방식: 고른 방식의 결과만 강조 상자에 */
+.names-form:has([name="show_real_name"][value="on"]:checked) [data-when="off"],
+.names-form:has([name="show_real_name"][value="off"]:checked) [data-when="on"] { display: none; }
+.names-effect { display: flex; flex-direction: column; gap: var(--sp-2); padding: var(--sp-3) var(--sp-4); border-radius: var(--r-md); background: var(--c-sage); }
+.name-sample { display: inline-flex; padding: 2px 10px; border-radius: var(--r-pill); background: var(--c-surface); font-weight: 600; }
 @media (max-width: 1100px) { .settings-shell { grid-template-columns: 200px minmax(0, 1fr); gap: var(--sp-4); } }
 @media (max-width: 700px) {
   .settings-shell { display: block; }
@@ -1256,13 +1273,18 @@ details.card.settings-section { padding: 0; gap: 0; }
   .member-split.has-panel { display: block; }
   .member-split.has-panel > #settings-members-list { display: none; }
   .member-panel { position: static; box-shadow: none; }
-  .member-table thead { display: none; }
-  .member-table, .member-table tbody, .member-table tr, .member-table td { display: block; }
-  .member-table tr { padding: var(--sp-3) 0; border-bottom: 1px solid var(--c-line); }
-  .member-table td { padding: 2px 0; border: 0; }
+  /* table.grid의 좁은 화면 가로 스크롤 규칙(아래 ≤700px 블록)보다 앞서도록 선택자를 올린다 */
+  table.grid.member-table { display: block; overflow: visible; background: none; }
+  table.grid.member-table thead { display: none; }
+  table.grid.member-table tbody, table.grid.member-table tr, table.grid.member-table td { display: block; }
+  table.grid.member-table tr { padding: var(--sp-3) 0; border-bottom: 1px solid var(--c-line); }
+  table.grid.member-table td { padding: 2px 0; border: 0; }
+  table.grid.member-table td[data-label] { display: flex; align-items: center; flex-wrap: wrap; gap: var(--sp-1) var(--sp-2); font-size: var(--fs-sm); }
+  table.grid.member-table td[data-label]::before { content: attr(data-label); min-width: 64px; color: var(--c-muted); font-size: var(--fs-xs); }
   .member-row-link { display: inline-flex; align-items: center; min-height: 44px; }
 }
 @media (max-width: 1100px) {
+  .field-preview-jump { display: inline-flex; }
   .member-split.has-panel, .fields-split { grid-template-columns: minmax(0, 1fr); }
   .member-panel, .field-preview { position: static; }
 }

@@ -98,13 +98,22 @@ def members_ctx(request, org, member_id) -> dict:
         counts = member_info.empty_counts(org)
     except Exception:  # noqa: BLE001 — 영향 인원 안내만 빼고 화면은 그린다(§8.4)
         counts = {}
+    active = sum(1 for r in rows if not r["pending"])
     me = next((x for x in memberships if x.user_id == request.user.pk), None)
     nick = (me.nickname if me else "") or request.user.display_name
     return {
         "member_rows": rows,
         "panel": panel,
         "show_real_name": d["show_real_name"],
-        "field_cards": [{**f, "empty": counts.get(f["id"])} for f in d["fields"]],
+        # empty = 비운 사람 수(계산 실패면 None), filled = 입력한 사람 수(가입 전 제외)
+        "field_cards": [
+            {
+                **f,
+                "empty": counts.get(f["id"]),
+                "filled": active - counts[f["id"]] if f["id"] in counts else None,
+            }
+            for f in d["fields"]
+        ],
         "field_kinds": KIND_HELP,
         "new_field_index": len(d["fields"]),
         "preview_rows": [{**r, "error": ""} for r in member_info.rows(me)] if me else [],
