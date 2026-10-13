@@ -23,8 +23,8 @@ WEB = Path(__file__).resolve().parent
 ALLOWED = {
     "base.html": None,  # 내 메뉴 = 계정 이름
     "today/_head.html": None,  # 머리말 인사 = 계정 이름
-    # 관리자 구성원 목록: 조직 이름 아래 계정 이름·아이디, 표시 이름 칸 자리표시 = 계정 이름
-    "orgs/teams.html": r"\br\.m\.user\.display_name\b",
+    # 구성원 패널: 계정 공통 정보(계정 표시 이름) 열람, 표시 이름 칸 자리표시 = 계정 이름
+    "orgs/settings/_member_panel.html": r"\bm\.user\.display_name\b",
     # 본인 조직 표시 이름 칸의 자리표시 = 계정 이름(비우면 이 이름이 보인다)
     "orgs/member_info.html": r"\{\{ user\.display_name \}\}",
     # 프로필 폼의 표시 이름 필드(충돌 후보 폼도 그 값을 그대로 다시 보낸다)
