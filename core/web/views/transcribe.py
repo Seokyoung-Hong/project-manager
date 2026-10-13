@@ -19,7 +19,7 @@ from django.views.decorators.http import require_POST
 from common.errors import ServiceError
 from notes import transcription as tx
 from notes.models import SttServer, TranscriptionJob, VoiceRecording
-from notes.services import visible_notes
+from notes.services import GLOSSARY_MAX, glossary_terms, visible_notes
 from orgs import services as osv
 from orgs.settings import SPECS, STT_KEYS, display, effective, secret_value
 
@@ -247,7 +247,25 @@ def parse_choice(org, user, choice: str) -> dict:
     return {"engine": engine, "model": rest, "server": None, "info": info}
 
 
-def _panel(request, org, rec, *, error=""):
+def glossary_ctx(rec, user, posted=None) -> dict:
+    """[전사 시작] 전에 미리 채우는 용어집. 요청자가 볼 수 있는 자료로만 만든다(viewer=요청자).
+
+    posted: 오류로 다시 그릴 때 사람이 고친 값을 잃지 않게.
+    """
+    terms, dropped = glossary_terms(rec, viewer=user)
+    return {
+        "glossary": ", ".join(terms) if posted is None else posted,
+        "glossary_dropped": dropped,
+        "glossary_max": GLOSSARY_MAX,
+    }
+
+
+def posted_glossary(request):
+    """폼에 용어집 칸이 있었으면 그 값(빈 값 = 용어집 없이), 없었으면 None(보낼 때 자동)."""
+    return request.POST.get("glossary") if "glossary" in request.POST else None
+
+
+def _panel(request, org, rec, *, error="", glossary=None):
     jobs = list(rec.jobs.select_related("server__owner"))
     active = [j for j in jobs if j.status in TranscriptionJob.ACTIVE]
     eta = tx.queue_eta(active)
@@ -279,6 +297,7 @@ def _panel(request, org, rec, *, error=""):
             "error": error,
             "recording": rec,
             **audio_ctx(rec),
+            **(glossary_ctx(rec, request.user, glossary) if opts else {}),
         },
     )
 
@@ -302,8 +321,8 @@ def transcribe_progress(request, org_id, rec_id):
     return r
 
 
-def _after(request, org, rec, error=""):
-    r = _panel(request, org, rec, error=error)
+def _after(request, org, rec, error="", glossary=None):
+    r = _panel(request, org, rec, error=error, glossary=glossary)
     r["HX-Trigger"] = "transcribe-list"  # 패널은 이 응답으로 이미 새로 그렸다. 목록만 갱신
     return r
 
@@ -313,12 +332,16 @@ def _after(request, org, rec, error=""):
 def transcribe_retry(request, org_id, rec_id):
     org = org_or_404(request.user, org_id)
     rec = _recording(org, rec_id, request.user)
+    glossary = posted_glossary(request)
     try:
         tx.request_retry(
-            rec, actor=request.user, **parse_choice(org, request.user, request.POST.get("choice"))
+            rec,
+            actor=request.user,
+            glossary=glossary,
+            **parse_choice(org, request.user, request.POST.get("choice")),
         )
     except ServiceError as e:
-        return _after(request, org, rec, " ".join(e.errors.values()))
+        return _after(request, org, rec, " ".join(e.errors.values()), glossary)
     return _after(request, org, rec)
 
 

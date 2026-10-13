@@ -809,6 +809,21 @@ SPECS: dict[str, Spec] = {
             "회의록을 확정할 때 처음 선택되어 있는 공개 범위입니다.",
             choices=(("project", "프로젝트"), ("team", "팀"), ("org", "조직 전체")),
         ),
+        # 덮어쓰지 않고 합친다(프로젝트 → 조직 순, notes.services.glossary_terms).
+        # COPY:setting_glossary_label · COPY:setting_glossary_help (docs/drafts/glossary-copy.md)
+        Spec(
+            "meeting.glossary",
+            "text",
+            "",
+            "org",
+            True,
+            "meeting",
+            "전사 용어집",
+            "전사 정확도를 높이려고 전사 서버에 미리 알려 주는 용어입니다. 쉼표나 줄바꿈으로 구분해 주세요. "
+            "프로젝트 설정의 용어는 조직 용어와 합쳐지며 프로젝트 용어가 먼저 들어갑니다. "
+            "참여자·구성원 이름 다음, 자동으로 뽑은 용어보다 먼저 들어가고, 한도를 넘는 용어는 빠집니다.",
+            hi=1000,
+        ),
         Spec(
             "meeting.stt_url",
             "text",
@@ -974,6 +989,10 @@ SPECS: dict[str, Spec] = {
     ]
 }
 
+# 덮어쓰지 않고 조직 값과 합치는 설정. 프로젝트 값은 조직 값이 아니라 기본값과 비교해 정규화한다
+# (조직 값과 같다고 지우면 조직 값이 바뀔 때 프로젝트가 넣은 값이 사라진다).
+MERGED_KEYS = ("meeting.glossary",)
+
 # 전사 서버·모델 설정. 조직 설정 화면이 아니라 전사 메뉴에서 바꾼다(IMPL-PLAN-10-transcribe-menu).
 STT_KEYS = (
     "meeting.stt_url",
@@ -1126,7 +1145,7 @@ def clean(scope: str, data: dict, *, allow_locked: bool = False, org=None) -> di
         if err:
             errors[key] = err
             continue
-        if scope == "project" and org is not None:
+        if scope == "project" and org is not None and key not in MERGED_KEYS:
             base = effective(key, org=org)
             same = (list(value) == list(base)) if spec.kind == "set" else value == base
         else:
@@ -1168,6 +1187,13 @@ def effective(key: str, *, org=None, project=None, user=None):
         if got is not None:
             return got
     return spec.default
+
+
+def project_value(key: str, project):
+    """프로젝트 층에 저장한 값만(없거나 조직이 잠갔으면 None). 조직 값과 합치는 설정(meeting.glossary)용."""
+    if key in locked_keys(project.org):
+        return None
+    return (project.settings or {}).get(key)
 
 
 def display(key: str, value) -> str:

@@ -843,3 +843,69 @@ def test_long_row_text_is_cut_not_rejected(client, enabled, member, bot):
     first, second = job.transcript_md.split("\n")
     assert first.endswith("가" * 2000 + "") and "가" * 2001 not in first and second.endswith("짧음")
     assert job.stats["truncated"] == 1
+
+
+def test_menu_glossary_prefill_is_requester_scoped_and_edited_value_is_sent(
+    client, enabled, admin, member, bot
+):
+    """전사 메뉴: 요청자가 볼 수 있는 자료로 미리 채우고, 고친 값은 작업에 저장해 PC·Node에 그대로 보낸다."""
+    from projects.services import create_project, set_visibility
+
+    secret = create_project(org=enabled, name="비밀프로젝트 오메가", actor=admin, owners=[admin])
+    set_visibility(secret, "teams", actor=admin)
+    rec = _drafted_with_tracks(client, enabled, admin, bot)
+    rec.note.status = "final"
+    rec.note.save()
+    server, token = _pc(client, member)
+    client.force_login(member)
+    url = f"/orgs/{enabled.pk}/transcribe/recordings/{rec.pk}"
+    body = client.get(url + "/panel").content.decode()
+    prefill = body.split('name="glossary"')[1].split("</textarea>")[0]
+    assert "팀원" in prefill and "비밀프로젝트" not in prefill
+    # 한도를 넘으면 작업을 만들지 않고, 고친 값은 칸에 남는다
+    over = ", ".join(f"아주긴직접입력용어{i:02d}번" for i in range(20))
+    body = client.post(
+        url + "/retry", {"choice": f"pc|{server.pk}|{TURBO}", "glossary": over}
+    ).content.decode()
+    assert "한도를 넘습니다" in body and "아주긴직접입력용어19번" in body
+    assert not TranscriptionJob.objects.filter(kind="retry").exists()
+    client.post(url + "/retry", {"choice": f"pc|{server.pk}|{TURBO}", "glossary": "학식\n비밀단어"})
+    job = TranscriptionJob.objects.get(kind="retry")
+    assert job.glossary == "학식, 비밀단어"
+    assert _beat(client, token).json()["job"]["glossary"] == "학식, 비밀단어"
+
+    # 비우면 용어집 없이, 칸이 없으면(None) 자동. Node claim은 돌고 있는 작업이 없어야 가져간다.
+    def node_claim():
+        TranscriptionJob.objects.filter(status__in=("running", "cancelling")).update(status="done")
+        return bot("post", "/transcriptions/claim").json()["glossary"]
+
+    client.force_login(admin)
+    client.post(url + "/retry", {"choice": "openai|whisper-1", "glossary": ""})
+    assert TranscriptionJob.objects.get(status="queued").glossary == ""
+    assert node_claim() == ""
+    assert tx.request_retry(rec, engine="openai", model="", actor=admin).glossary is None
+    assert "비밀프로젝트" in node_claim()
+
+
+def test_upload_transcribe_form_prefills_and_saves_glossary(client, enabled, member):
+    """회의록 화면 [전사 시작]도 같은 용어집 칸을 쓴다."""
+    from notes.models import VoiceRecording
+    from notes.services import create_note
+
+    note = create_note(org=enabled, actor=member, title="올린 회의")
+    VoiceRecording.objects.create(
+        note=note,
+        source="upload",
+        status="draft",
+        guild_id="",
+        voice_channel_id="",
+        started_by=member,
+        host=member,
+        audio=ContentFile(b"mp3", name="a.mp3"),
+        audio_size=3,
+    )
+    client.force_login(member)
+    page = client.get(f"/orgs/{enabled.pk}/notes?note={note.pk}").content.decode()
+    assert "팀원" in page.split('name="glossary"')[1].split("</textarea>")[0]
+    client.post(f"/notes/{note.pk}/transcribe", {"choice": "openai|whisper-1", "glossary": "학식"})
+    assert TranscriptionJob.objects.get(kind="upload").glossary == "학식"

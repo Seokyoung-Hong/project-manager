@@ -14,7 +14,7 @@ from common.errors import ConflictError, ServiceError
 from github import services as gh_services
 from github.client import GitHubError
 from github.sync import releases_for
-from orgs.settings import GROUPS, effective, locked_keys, specs_for
+from orgs.settings import GROUPS, effective, locked_keys, project_value, specs_for
 from orgs.settings import display as org_display
 from projects.models import Project
 from projects.services import (
@@ -577,12 +577,19 @@ def project_settings(request, project_id):
             messages.error(request, " ".join(e.errors.values()))
         return redirect("project_settings", project_id=project.pk)
     groups = []
+
+    def value(s):
+        # 용어집은 조직 값과 합치므로(덮어쓰지 않으므로) 프로젝트가 더한 용어만 보여 준다.
+        if s.key == "meeting.glossary":
+            return project_value(s.key, project) or ""
+        return effective(s.key, org=project.org, project=project)
+
     for code, label in GROUPS:
         rows = [
             {
                 "spec": s,
-                "value": effective(s.key, org=project.org, project=project),
-                "display": org_display(s.key, effective(s.key, org=project.org, project=project)),
+                "value": value(s),
+                "display": org_display(s.key, value(s)),
                 "locked": s.key in locked,
                 "can_edit": editable and s.key not in locked,
                 "show_override": False,

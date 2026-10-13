@@ -350,23 +350,92 @@ def _terms(text: str):
             yield t
 
 
-def meeting_glossary(rec, viewer=None) -> str:
-    """전사 정확도용 용어집(전사 API의 prompt). 처음 진행자(started_by)가 볼 수 있는 자료에서만
-    뽑는다(결정 2-3). 진행자를 넘겨도 바꾸지 않는다 — 녹음 중 용어집이 넓어지지 않게.
-    viewer를 주면 그 사람도 볼 수 있는 자료로 더 좁힌다(내 PC 전사: PC 주인에게 나가는 용어집).
+GLOSSARY_KEY = "meeting.glossary"
+GLOSSARY_MAX = 1000  # 전사 메뉴에서 고친 용어집 입력 상한(글자)
+# 문서 본문 추출 상한: 문서 수·문서당 앞부분 글자. 본문이 커도 질의·처리가 이 이상 늘지 않는다.
+BODY_DOCS, BODY_CHARS = 50, 20_000
+MEMBER_CAP = 200  # 구성원 이름 상한
+_URL = re.compile(r"\S+://\S+")
+# 본문의 한글 용어 중 서술어·부사형 끝말(…다·…요·…한·…적)은 고유어가 아니라고 보고 뺀다.
+_PREDICATE_END = set("다요고서면며게지니한된할될던적음함됨임")
 
-    참여자 이름이 먼저, 그다음 프로젝트·마일스톤 이름(가중 2)과 문서·회의록·태스크 제목에 자주 나오는
-    용어 순. 한 번만 나온 일반 용어는 뺀다.
+
+def split_terms(text: str) -> list[str]:
+    """직접 입력한 용어. 쉼표·줄바꿈으로 나누고 순서를 지켜 중복을 뺀다."""
+    return list(dict.fromkeys(t.strip() for t in re.split(r"[,\n]", text or "") if t.strip()))
+
+
+def fit_budget(terms) -> tuple[list[str], list[str]]:
+    """앞에서부터 PROMPT_TOKENS 안에 들어가는 용어만. → (넣은 것, 한도를 넘어 뺀 것)."""
+    picked, dropped, budget = [], [], PROMPT_TOKENS
+    for term in dict.fromkeys(terms):  # 순서 유지 중복 제거
+        cost = _cost(term) + 1  # 구분자 ", "
+        if cost > budget:
+            dropped.append(term)
+            continue
+        picked.append(term)
+        budget -= cost
+    return picked, dropped
+
+
+def meeting_glossary(rec, viewer=None) -> str:
+    """전사 정확도용 용어집(전사 API의 prompt). glossary_terms 참고."""
+    return ", ".join(glossary_terms(rec, viewer)[0])
+
+
+def job_glossary(job, viewer=None) -> str:
+    """작업에 보낼 용어집. 전사 메뉴에서 고친 값(job.glossary)이 있으면 그대로, 없으면 자동."""
+    if job.glossary is not None:
+        return job.glossary
+    return meeting_glossary(job.recording, viewer)
+
+
+def glossary_terms(rec, viewer=None) -> tuple[list[str], list[str]]:
+    """→ (용어집에 넣는 용어, 한도를 넘어 빠진 이름·직접 입력 용어). 자동 추출이 빠지는 것은 알리지 않는다.
+
+    처음 진행자(started_by)가 볼 수 있는 자료에서만 뽑는다(결정 2-3). 진행자를 넘겨도 바꾸지 않는다 —
+    녹음 중 용어집이 넓어지지 않게. viewer를 주면 그 사람도 볼 수 있는 자료로 더 좁힌다(내 PC 전사:
+    PC 주인에게 나가는 용어집, 전사 메뉴: 미리 채우는 요청자).
+
+    순서: 진행자·참여자 이름 → 구성원 이름(회의 프로젝트, 없으면 팀, 없으면 조직) → 직접 입력 용어
+    (프로젝트 → 조직 설정 meeting.glossary를 합친다) → 프로젝트·마일스톤 이름(가중 2)과 문서·회의록·태스크
+    제목에 자주 나오는 용어 → 프로젝트 문서 본문에서 문서 2편 이상에 나온 용어(회의 프로젝트 문서 우선).
     """
+    from django.contrib.auth import get_user_model
+    from django.db.models import Case, IntegerField, Q, Value, When
+    from django.db.models.functions import Left
+
     from projects.models import Doc, Milestone
     from tasks.models import Task
 
-    starter, org = rec.started_by, rec.note.org
+    starter, note = rec.started_by, rec.note
+    org = note.org
     projects = visible_projects(starter, org)
     notes = visible_notes(starter).filter(org=org)
+    teams = visible_teams(starter, org)
     if viewer is not None:
         projects = projects.filter(pk__in=visible_projects(viewer, org).values("pk"))
         notes = notes.filter(pk__in=visible_notes(viewer).values("pk"))
+        teams = teams.filter(pk__in=visible_teams(viewer, org).values("pk"))
+    project = projects.filter(pk=note.project_id).first() if note.project_id else None
+
+    people = get_user_model().objects.filter(is_active=True, org_memberships__org=org)
+    if project is not None:
+        # 구성원 이름은 공개 정보 — 팀 가시성으로 거르지 않는다(사용자 결정 10-13)
+        people = people.filter(
+            Q(pk__in=project.owners.values("pk")) | Q(team_memberships__team__projects=project)
+        )
+    elif note.team_id and teams.filter(pk=note.team_id).exists():
+        people = people.filter(team_memberships__team_id=note.team_id)
+    # 20명 넘게 참여하는 회의는 없다고 가정한다(사용자 결정 10-13). 이름순 MEMBER_CAP명까지, 넘친 이름은 누락 목록에
+    members = list(
+        people.order_by("display_name").values_list("display_name", flat=True).distinct()
+    )
+    members, over_cap = members[:MEMBER_CAP], members[MEMBER_CAP:]
+    manual = split_terms(org_settings.effective(GLOSSARY_KEY, org=org))
+    if project is not None:
+        manual = split_terms(org_settings.project_value(GLOSSARY_KEY, project)) + manual
+
     counts = Counter()
     for weight, titles in (
         (2, projects.values_list("name", flat=True)),
@@ -390,19 +459,35 @@ def meeting_glossary(rec, viewer=None) -> str:
         for title in titles:
             for t in set(_terms(title)):
                 counts[t] += weight
+    # 문서 본문: 문서마다 한 번만 센다(한 문서에 여러 번 나와도 1). 문서 2편 이상에 나온 용어만.
+    body, own = Counter(), Counter()
+    heads = (
+        Doc.objects.filter(project__in=projects, kind="doc", is_template=False)
+        .annotate(
+            own=Case(
+                When(project_id=note.project_id, then=Value(1)),
+                default=Value(0),
+                output_field=IntegerField(),
+            ),
+            head=Left("body_md", BODY_CHARS),
+        )
+        .order_by("-own", "-updated_at")
+        .values_list("own", "head")[:BODY_DOCS]
+    )
+    for is_own, head in heads:
+        for t in set(_terms(_URL.sub(" ", head or ""))):
+            if "가" <= t[0] <= "힣" and t[-1] in _PREDICATE_END:
+                continue
+            body[t] += 1
+            own[t] += is_own
     names = [starter.display_name] + [
         s["display_name"].removesuffix(UNLINKED_MARK) for s in speaker_names(rec)
     ]
-    picked, budget = [], PROMPT_TOKENS
-    for term in dict.fromkeys(
-        names + [t for t, n in counts.most_common() if n >= 2]
-    ):  # 순서 유지 중복 제거
-        cost = _cost(term) + 1  # 구분자 ", "
-        if cost > budget:
-            continue
-        picked.append(term)
-        budget -= cost
-    return ", ".join(picked)
+    first = list(dict.fromkeys(names + members + manual))
+    auto = [t for t, n in counts.most_common() if n >= 2]
+    auto += sorted((t for t, n in body.items() if n >= 2), key=lambda t: (-own[t], -body[t], t))
+    picked, dropped = fit_budget(first + auto)
+    return picked, [t for t in dropped if t in first] + [t for t in over_cap if t not in first]
 
 
 @transaction.atomic

@@ -170,6 +170,8 @@ class TranscriptionJob(models.Model):
     claimed_at = models.DateTimeField(null=True, blank=True)
     # 처음 가져간 시각. 되돌려도 지우지 않는다 — 조직 수단 한도에서 "시작 전 취소"를 가르는 기준.
     first_claimed_at = models.DateTimeField(null=True, blank=True)
+    # 전사 메뉴에서 고친 용어집(전사 API prompt). None이면 보낼 때 자동으로 만든다(services.job_glossary).
+    glossary = models.TextField(null=True, blank=True)
 
     class Meta:
         ordering = ["-created_at", "-id"]

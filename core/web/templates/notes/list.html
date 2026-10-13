@@ -141,6 +141,7 @@
           <option value="">전사 수단 고르기</option>
           {% for o in transcribe_options %}<option value="{{ o.value }}"{% if o.disabled %} disabled{% endif %}>{{ o.label }}{% if o.eta %} · {{ o.eta }}{% endif %}</option>{% endfor %}
         </select></label>
+      {% include "orgs/_glossary_field.html" %}
       <button class="btn sm tint">전사 시작</button>
     </form>
     {% elif transcribe_org_reason and recording and recording.source == "upload" %}<p class="t13 muted">{{ transcribe_org_reason }} <a href="{% url 'settings_stt' %}">내 PC 연결</a></p>
