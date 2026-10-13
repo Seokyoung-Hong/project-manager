@@ -129,7 +129,8 @@ function onFragment(st) {
     p.querySelector(".row")?.insertAdjacentHTML("beforeend", '<button type="button" class="btn" data-ai-drop>버리기</button>'); // COPY:ai_discard
     return;
   }
-  if (!opts.length && text == null) return; // 오류·빈 결과는 조각 그대로([다시 쓰기])
+  if (!opts.length && text == null) return; // 오류·빈 결과는 조각 그대로([다시 쓰기]·[버리기])
+  st.src = p.querySelector("[data-ai-source]")?.textContent.trim() || ""; // 패널을 다시 그려도 "사용한 AI" 줄을 남긴다
   st.opts = opts.length ? opts : [text];
   st.i = 0;
   st.text = !opts.length;
@@ -145,7 +146,7 @@ function filled(st) {
   const n = st.opts.length;
   st.panel.innerHTML = `<div class="ai-bar t13"><span class="sr-only">AI가 칸을 채웠습니다. 내용을 확인한 뒤 저장해 주세요.</span>${
     n > 1 ? `<button type="button" class="btn link" data-ai-step="-1" aria-label="이전 후보">‹</button><span>${st.i + 1}/${n}</span><button type="button" class="btn link" data-ai-step="1" aria-label="다음 후보">›</button>` : ""
-  }<button type="button" class="btn link" data-ai-undo>되돌리기</button></div>`; // COPY:ai_filled·ai_undo
+  }<button type="button" class="btn link" data-ai-undo>되돌리기</button>${srcLine(st)}</div>`; // COPY:ai_filled·ai_undo
 }
 
 // 자동 저장 칸: 적용 전엔 저장하지 않는다
@@ -159,8 +160,10 @@ function preview(st) {
     n > 1 ? `<button type="button" class="btn link" data-ai-step="-1" aria-label="이전 후보">‹</button><span>${st.i + 1}/${n}</span><button type="button" class="btn link" data-ai-step="1" aria-label="다음 후보">›</button>` : ""
   }<button type="button" class="btn sm primary" data-ai-use="replace">적용</button>${
     st.text ? '<button type="button" class="btn sm" data-ai-use="append">뒤에 붙이기</button>' : ""
-  }<button type="button" class="btn sm" data-ai-drop>버리기</button></div></div>`; // COPY:ai_preview·ai_apply·ai_append·ai_discard
+  }<button type="button" class="btn sm" data-ai-drop>버리기</button></div>${srcLine(st)}</div>`; // COPY:ai_preview·ai_apply·ai_append·ai_discard
 }
+
+const srcLine = (st) => (st.src ? `<span class="ai-src t12">${esc(st.src)}</span>` : "");
 
 function inlineClick(e) {
   const p = e.target.closest(".ai-inline");
@@ -255,6 +258,7 @@ if (dlg) {
     if (b.hasAttribute("data-ai-close")) close();
     else if (b.hasAttribute("data-ai-retry")) open(cur, title.textContent);
     else if (b.dataset.aiApply) apply(b.dataset.aiApply, b.dataset.aiHow);
+    else if (b.hasAttribute("data-ai-drop")) close();
   });
 
   // 대화상자·칸 아래 패널 안의 거절 응답(400·403·409·429)도 그린다. 그 밖의 오류는 한 줄로 바꾼다(전체 오류 페이지를 넣지 않는다).

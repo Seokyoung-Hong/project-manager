@@ -37,13 +37,29 @@ def _message(code: str) -> str:
     return GENERIC.format(code=code or "unknown")
 
 
-def _error(request, text: str, status: int):
-    return render(request, "assist/_error.html", {"text": text}, status=status)
+# 설정에서 풀 수 있는 오류 — 오류 조각에 [AI 설정 열기]를 둔다
+SETUP_ERRORS = {
+    "no_source",
+    "rate",
+    "codex_missing",
+    "codex_auth",
+    "codex_link_update",
+    "auth_failed",
+    "model_not_found",
+    "blocked_address",
+    "pc_offline",
+    "pc_unlinked",
+}
+
+
+def _error(request, text: str, status: int, code: str = ""):
+    ctx = {"text": text, "setup": code in SETUP_ERRORS}
+    return render(request, "assist/_error.html", ctx, status=status)
 
 
 def _service_error(request, e: ServiceError, status=400):
     code = e.errors.get("assist") or " ".join(e.errors.values())
-    return _error(request, RATE if status == 429 else _message(code), status)
+    return _error(request, RATE if status == 429 else _message(code), status, code)
 
 
 def _own_job(request, job_id: int) -> AiJob:
@@ -126,6 +142,7 @@ def _job(request, job, status=200):
         "items": [o for o in data.get("items") or [] if isinstance(o, str)][:20],
         "active": job.status in AiJob.ACTIVE,
         "error_text": _message(job.error) if job.status in ("failed", "cancelled") else "",
+        "setup_errors": SETUP_ERRORS,
         "org_line": _org_line(request.user, job.org),
         "source_line": _source_line(job),
     }

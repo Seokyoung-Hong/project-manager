@@ -1,5 +1,5 @@
 {# 태스크 후보(IMPL-PLAN-12 §7.4). 골라서 고친 뒤 [고른 후보로 태스크 만들기]. 만든 행은 링크로, 실패한 행은 오류와 함께 다시 보인다. 문구는 임시 — COPY:ai_candidates_* #}
-<form class="stack" id="ai-job" hx-post="{% url 'assist_job_create_tasks' job.pk %}" hx-target="#ai-job" hx-swap="outerHTML">
+<form class="stack ai-cand" id="ai-job" hx-post="{% url 'assist_job_create_tasks' job.pk %}" hx-target="#ai-job" hx-swap="outerHTML">
   {% if rows %}
   <p class="t13 muted">태스크로 만들 후보를 선택하고 내용을 확인·수정해 주세요. 담당자와 기한은 AI가 추정한 값입니다.</p>
   <p class="table-scroll-hint" id="ai-cand-hint">표를 좌우로 이동하여 전체 항목을 확인해 주세요.</p>

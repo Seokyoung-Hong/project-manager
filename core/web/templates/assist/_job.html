@@ -5,7 +5,11 @@
   {% if job.status != "cancelling" %}<div class="row"><button type="button" class="btn sm" hx-post="{% url 'assist_job_cancel' job.pk %}" hx-target="#ai-job" hx-swap="outerHTML">AI 작업 취소</button></div>{% endif %}
   {% elif error_text %}
   <p class="error" role="alert"><span aria-hidden="true">⚠</span> {{ error_text }}</p>
-  <div class="row"><button type="button" class="btn sm" data-ai-retry>다시 쓰기</button></div>
+  <div class="row">
+    <button type="button" class="btn sm" data-ai-retry>다시 쓰기</button>
+    {% if job.error in setup_errors %}<a class="btn sm" href="{% url 'settings_ai' %}">AI 설정 열기</a>{% endif %}{# COPY:ai_open_settings (임시) #}
+    <button type="button" class="btn sm" data-ai-drop>버리기</button>{# COPY:ai_discard #}
+  </div>
   {% elif shape == "line" %}
   <p class="t13 muted">결과를 확인한 뒤 하나를 선택해 주세요. 선택한 결과를 칸에 적용하며, 해당 칸의 저장 방식에 따라 저장됩니다.</p>
   <div class="stack">
@@ -26,7 +30,7 @@
     </div>
   </form>
   {% else %}
-  <div class="md-view md"><textarea class="md-src textarea" rows="8" readonly data-ai-result aria-label="AI 결과 미리보기">{{ job.result }}</textarea></div>
+  <div class="md-view md ai-result-view"><textarea class="md-src textarea" rows="8" readonly data-ai-result aria-label="AI 결과 미리보기">{{ job.result }}</textarea></div>
   <div class="row">
     {% if shape == "text" %}
     <button type="button" class="btn primary" data-ai-use="replace">적용 · 칸 내용 바꾸기</button>
@@ -43,6 +47,6 @@
   </div>
   {% if shape != "text" %}<p class="t12 muted">미리보기를 확인한 뒤 적용해 주세요. 적용 전 본문은 이전 버전에 남습니다.</p>{% endif %}
   {% endif %}
-  {% if source_line %}<p class="t12 muted">사용한 AI: {{ source_line }}</p>{% endif %}
+  {% if source_line and not error_text %}<p class="t12 muted" data-ai-source>사용한 AI: {{ source_line }}</p>{% endif %}
   {% if org_line %}<p class="t12 muted">{{ org_line }}</p>{% endif %}
 </div>

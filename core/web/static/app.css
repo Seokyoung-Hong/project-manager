@@ -1106,7 +1106,7 @@ details > summary { cursor: pointer; font-weight: 600; }
 .mdf .mdf-bar .btn[aria-pressed="true"] { background: var(--c-ink); color: var(--c-surface); }
 .mdf .mdf-bar .btn[hidden] { display: none; }
 .mdf .mdf-bar .more { margin-left: auto; }
-.mdf svg { width: 18px; height: 18px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.mdf svg:not(.ai-ico):not(.ai-spin) { width: 18px; height: 18px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 .mdf-link { display: flex; align-items: center; gap: var(--sp-1); padding: 2px 6px 2px 14px; min-width: 0; font-weight: 400; border-top: 1px dashed var(--c-line); }
 .mdf-link[hidden] { display: none; }
 .mdf-link .mdf-href { flex: 1; min-width: 0; color: var(--c-accent); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -1601,9 +1601,35 @@ form:has(option[value="person"]:checked) .person-only { display: flex; }
 .ai-bar.stack { align-items: stretch; padding: var(--sp-2) var(--sp-3); border: 1px dashed var(--c-line-strong); border-radius: var(--r-sm); }
 .ai-preview { margin: 0; color: var(--c-ink); }
 [data-ai-mode] > .ai-ico { vertical-align: -3px; margin-inline-end: 6px; color: var(--c-muted); }
+.ai-bar [data-ai-step] { display: inline-flex; align-items: center; justify-content: center; min-width: 32px; min-height: 32px; }
+.ai-src { color: var(--c-muted); }
+.ai-bar.stack > .ai-src { display: block; }
+/* AI 대화상자: 안쪽 폼(후보 표)의 작업 줄은 sticky를 풀어 아래 [닫기]를 덮지 않게 한 흐름으로 */
+#ai-dlg form.stack > .row:last-child { position: static; margin: 0; padding: var(--sp-3) 0 0; background: none; }
+/* 태스크 후보: 넓은 대화상자 + 열 최소 폭(담당자·프로젝트·제목이 읽히게). 좁은 화면은 표 가로 스크롤 */
+#ai-dlg:has(.ai-cand) { max-width: 1160px; }
+.ai-cand table.grid { min-width: 900px; table-layout: fixed; }
+.ai-cand th:nth-child(1) { width: 64px; }
+.ai-cand th:nth-child(3) { width: 180px; }
+.ai-cand th:nth-child(4) { width: 168px; }
+.ai-cand th:nth-child(5) { width: 200px; }
+.ai-cand td .select, .ai-cand td .input { width: 100%; min-width: 0; }
+/* 문서·회의록 결과 미리보기: 영역 구분, 길면 안에서 스크롤, 결과 제목이 대화상자 제목보다 크지 않게 */
+#ai-job .ai-result-view { max-height: min(50vh, 480px); overflow: auto; padding: var(--sp-3) var(--sp-4);
+  border: 1px solid var(--c-line); border-radius: var(--r-md); background: var(--c-bg); }
+#ai-job .ai-result-view h1 { font-size: var(--fs-lead); margin-top: var(--sp-4); }
+#ai-job .ai-result-view h2 { font-size: var(--fs-lg); margin-top: var(--sp-3); }
+#ai-job .ai-result-view h3 { font-size: var(--fs-md); margin-top: var(--sp-3); }
+/* Codex를 고르면 주소·키 칸을 감춘다(서버도 무시한다) */
+.ai-fields:has(select[name="backend"] option[value="codex"]:checked) .ai-openai-only,
+.ai-fields:not(:has(select[name="backend"] option[value="codex"]:checked)) .ai-codex-only { display: none; }
 @media (max-width: 700px) {
-  .ai-spark { width: 40px; height: 40px; }
-  .ai-wrap > .ai-has { padding-inline-end: 48px; }
+  /* 터치 대상 44px(아이콘은 16px 그대로) */
+  .ai-spark { width: 44px; height: 44px; inset-inline-end: 0; }
+  .ai-wrap > .ai-has { padding-inline-end: 50px; }
+  .mdf.ai-has .mdf-body { padding-inline-end: 50px; }
+  .ai-wrap.tall > .ai-spark, .mdf > .ai-spark { top: 0; }
+  .ai-bar [data-ai-step] { min-width: 44px; min-height: 44px; }
 }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
