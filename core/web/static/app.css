@@ -363,11 +363,14 @@ aside#panel > .panel { box-shadow: var(--sh-pop); }
   background: var(--art-plant) center / contain no-repeat;
 }
 
-/* 메모 장식: 살짝 기운 색면 + 테이프 */
+/* 메모 장식: 색면 + 테이프. 평소엔 반듯하게, 올리면 살짝 기울고, 처음 열 때 한 번만 흔든다(app.js가 .memo-wiggle을 붙임) */
 .memo {
   position: relative; border-radius: var(--r-xl); padding: var(--sp-6); background: var(--c-coral); color: var(--c-ink);
-  transform: rotate(-1.2deg); box-shadow: var(--sh-2);
+  box-shadow: var(--sh-2); transition: transform var(--dur-base, .2s) var(--ease, ease);
 }
+.memo:hover { transform: rotate(-1.2deg); }
+.memo.memo-wiggle { animation: memo-wiggle .9s var(--ease, ease) .25s 1; }
+@keyframes memo-wiggle { 0%, 100% { transform: rotate(0); } 20% { transform: rotate(-2deg); } 45% { transform: rotate(1.5deg); } 70% { transform: rotate(-.8deg); } }
 .memo::before {
   content: ""; position: absolute; width: 64px; height: 18px; background: var(--c-tape); top: -8px;
   left: calc(50% - 32px); transform: rotate(3deg); border-radius: 2px;
@@ -1605,7 +1608,7 @@ form:has(option[value="person"]:checked) .person-only { display: flex; }
   .tally-main b { font-size: var(--fs-stat); }
   .tally .stat { flex-direction: column; gap: 0; align-items: flex-end; min-height: 44px; justify-content: center; }
   .tally .stat b { font-size: var(--fs-h3); }
-  .memo { padding: 20px; transform: rotate(-.8deg); }
+  .memo { padding: 20px; }
   .focus-memo h2 { font-size: var(--fs-h3); }
   .today-focus-actions form, .today-focus-actions > .btn { flex: 1 1 auto; }
   .today-focus-actions .btn { width: 100%; }

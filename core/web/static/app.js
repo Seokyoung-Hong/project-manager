@@ -629,6 +629,15 @@
     });
   })();
 
+  // 오늘 화면의 메모 카드: 페이지를 처음 열 때만 한 번 흔든다(실시간으로 다시 그려질 때는 흔들지 않는다)
+  if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    var memo = document.querySelector(".memo");
+    if (memo) {
+      memo.classList.add("memo-wiggle");
+      memo.addEventListener("animationend", function () { memo.classList.remove("memo-wiggle"); }, { once: true });
+    }
+  }
+
   // 설정 화면: 저장하면 서버가 같은 화면으로 다시 보내(redirect) 첫 섹션만 열린 채 맨 위로 돌아간다.
   // 저장 직전의 열린 섹션과 스크롤 위치를 이 탭에만 잠깐 적어 두었다가 돌아온 화면에서 되살린다.
   (function () {
