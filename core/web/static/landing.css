@@ -126,7 +126,7 @@ ul, ol { margin: 0; padding: 0; list-style: none; }
 .today-list .done-text { color: var(--c-muted); text-decoration: line-through; }
 .today-list .t { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .today-list .auto { display: block; font-size: var(--fs-xs); color: var(--c-muted); font-style: italic; }
-.memo { position: relative; border-radius: var(--r-xl); padding: var(--sp-5) var(--sp-6); background: var(--c-coral); color: var(--c-ink); transform: rotate(-1.2deg); box-shadow: var(--sh-2); margin: 0 var(--sp-4) calc(-1 * var(--sp-3)) var(--sp-8); z-index: 1; }
+.memo { position: relative; border-radius: var(--r-xl); padding: var(--sp-5) var(--sp-6); background: var(--c-coral); color: var(--c-ink); box-shadow: var(--sh-2); margin: 0 var(--sp-4) calc(-1 * var(--sp-3)) var(--sp-8); z-index: 1; }
 .memo::before { content: ""; position: absolute; width: 64px; height: 18px; background: var(--c-tape); top: -8px; left: calc(50% - 32px); transform: rotate(3deg); border-radius: 2px; }
 .memo small { font-size: var(--fs-xs); font-weight: 700; }
 .memo p { font-family: var(--f-display); font-size: var(--fs-xl); line-height: 1.35; margin-top: 2px; }

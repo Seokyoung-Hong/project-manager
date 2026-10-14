@@ -20,3 +20,11 @@
     });
   });
 })();
+
+// 소개 화면의 메모 카드: 앱과 같이 평소엔 반듯하게, 처음 열 때 한 번만 흔든다(기울기·흔들기 규칙은 app.css .memo)
+if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+  document.querySelectorAll(".memo").forEach(function (memo) {
+    memo.classList.add("memo-wiggle");
+    memo.addEventListener("animationend", function () { memo.classList.remove("memo-wiggle"); }, { once: true });
+  });
+}
