@@ -15,3 +15,8 @@ staticfiles/
 /uploads/
 .thumbnail
 *.pem
+
+# 외부 AI 스킬은 사용자 전역(~/.agents/skills, ~/.claude/skills)에 둔다. 프로젝트에 설치돼도 커밋하지 않는다
+.agents/
+.claude/skills/
+skills-lock.json
