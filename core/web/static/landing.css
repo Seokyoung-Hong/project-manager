@@ -461,7 +461,7 @@ ul, ol { margin: 0; padding: 0; list-style: none; }
 
 @media (prefers-color-scheme: dark) {
   .art-petal { fill: var(--c-accent); }
-  .lp-hero h1 .stroke::after { bottom: -3px; height: 5px; }
+  .lp-hero h1 .stroke::after { opacity: .35; }
   .trust, .ba-after { background: var(--c-soft); }
   /* 노란 마무리 면 안의 보조 문장·링크도 진한 잉크를 쓴다. */
   .closing-box .muted, .closing-box .closing-note, .closing-box a:not(.btn) { color: var(--c-on-yellow); }

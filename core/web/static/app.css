@@ -1773,8 +1773,8 @@ form:has(option[value="person"]:checked) .person-only { display: flex; }
   .swagger-card .swagger-ui :is(.content-type-wrapper, .response-control-media-type) select { width: 100%; }
 }
 
-/* 다크 화면의 넓은 면은 중성색, 노란 붓질은 밝은 글자와 겹치지 않는 밑줄로. */
+/* 다크 화면의 넓은 면은 중성색. 노란 붓질은 크기 그대로 옅게만(밝은 글자 대비 5:1 이상). */
 @media (prefers-color-scheme: dark) {
-  .page-head > h1::after { bottom: -3px; height: 5px; opacity: 1; }
+  .page-head > h1::after { opacity: .35; }
   .tiles .tile:first-child, .shelf, .me-preview, .names-effect, .sg-art-box { background: var(--c-soft); }
 }
