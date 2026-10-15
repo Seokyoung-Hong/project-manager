@@ -28,8 +28,12 @@ SETTINGS_TABS = [
     ("API 토큰", "tokens"),
     ("내 PC 연결", "settings_stt"),
     ("AI", "settings_ai"),
-    ("계정", "account"),
-    ("개인정보 동의", "consents"),
+]
+# 프로필 안 섹션(탭이 아니라 앵커·하위 페이지)
+PROFILE_SECTIONS = [
+    ("연결(GitHub·Discord)", "profile", "#connections"),
+    ("개인정보 동의", "profile", "#consents"),
+    ("탈퇴", "withdraw", ""),
 ]
 # orgs/_tabs.html 조직 메뉴(조직 번호를 받는다)
 ORG_MENU = [
@@ -50,6 +54,10 @@ def _entries(user, org):
     """보는 사람이 열 수 있는 화면·설정. (묶음 screen|setting, 이름, 위치, 주소, 설명)"""
     out = [("screen", label, "주 메뉴", reverse(n), "") for label, n in HEADER_NAV]
     out += [("screen", label, "개인 설정", reverse(n), "") for label, n in SETTINGS_TABS]
+    out += [
+        ("screen", label, "개인 설정 · 프로필", reverse(n) + a, "")
+        for label, n, a in PROFILE_SECTIONS
+    ]
     out.append(("screen", "내 포트폴리오", "내 메뉴", reverse("portfolio"), ""))
     if user.is_staff:
         out.append(("screen", "운영 콘솔", "내 메뉴", reverse("ops"), ""))
