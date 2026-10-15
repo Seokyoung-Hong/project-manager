@@ -712,7 +712,8 @@ dialog form.stack > .row:last-child {
 .today-focus-actions .btn:not(.primary) { background: color-mix(in srgb, var(--c-surface) 70%, transparent); border-color: transparent; }
 /* 지금 할 태스크가 없으면 왼쪽 칸이 비지 않게 지표가 한 줄을 다 쓴다 */
 #today-head:not(:has(.focus-memo)) > .tally { grid-column: 1 / -1; }
-.today-grid:not(:has(.focus-memo, #today-schedule)) > #today-list { grid-column: 1 / -1; }
+/* 일정 칸을 닫으면 오른쪽 칸이 비지 않게 목록이 한 줄을 다 쓴다 */
+.today-grid:not(:has(#today-schedule)) > #today-list { grid-column: 1 / -1; }
 .me-member { flex: none; }
 .filter-chip { pointer-events: none; }
 .today-list-head { align-items: flex-start; }
