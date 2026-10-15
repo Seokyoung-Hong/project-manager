@@ -23,7 +23,7 @@
   --c-warning: #84520A; --c-warning-soft: #FBEFCB; --c-info: #285480; --c-info-soft: #E3ECF5;
   --c-violet: #4B2A7B; --c-violet-soft: #ECE2F7;
   /* 색: 외부 브랜드(DESIGN.md 6.1) — 로고·GitHub 로그인 버튼에만 */
-  --c-github: #1F2328; --c-on-github: #FFFFFF; --c-discord: #5865F2;
+  --c-github: #1F2328; --c-on-github: #FFFFFF; --c-discord: #5865F2; --c-openrouter: #03080A; --c-brand-on-accent: #FFFFFF;
   /* 색: 식물 그림 */
   --plant-pot: #BD7250; --plant-rim: #DBA87D; --plant-soil: #635A43; --plant-stem: #60774D;
   --plant-leaf: #8CAA73; --plant-leaf-2: #ABC18C; --plant-vein: #DCE8D5; --plant-face: #594A37;
@@ -65,7 +65,7 @@
     --c-danger: #F2A297; --c-danger-soft: #442824; --c-success: #B1CD9B; --c-success-soft: #2C3528;
     --c-warning: #E7C183; --c-warning-soft: #3D3120; --c-info: #ADC9E6; --c-info-soft: #283440;
     --c-violet: #CFB8E9; --c-violet-soft: #362B43;
-    --c-github: #FFFFFF; --c-on-github: #1F2328; --c-discord: #5865F2;
+    --c-github: #FFFFFF; --c-on-github: #1F2328; --c-discord: #5865F2; --c-openrouter: #FCFCFE; --c-brand-on-accent: #000000;
     --plant-pot: #BD7250; --plant-rim: #DBA87D; --plant-soil: #635A43; --plant-stem: #8CAA73;
     --plant-leaf: #8CAA73; --plant-leaf-2: #ABC18C; --plant-vein: #DCE8D5; --plant-face: #594A37;
     --plant-shadow: rgba(12, 10, 8, .22);
@@ -405,11 +405,13 @@ aside#panel > .panel { box-shadow: var(--sh-pop); }
 .btn.danger:hover { background: var(--c-danger-soft); }
 .btn.link.danger { border: 0; }
 .btn:disabled, .btn[aria-disabled="true"] { opacity: .5; cursor: default; transform: none; }
-/* 외부 브랜드 로고(DESIGN.md 6.1). 크기는 글자와 같고 두 모드가 같다. GitHub 마크는 흑·백만, Discord는 Blurple, 나머지는 단색(글자색). */
+/* 외부 브랜드 로고(DESIGN.md 6.1). 크기는 글자와 같고 두 모드가 같다. GitHub 마크는 흑·백만, Discord는 Blurple, OpenRouter는 Ink/Cloud, Hugging Face는 원본 컬러 파일. */
 .brand-icon { width: 1em; height: 1em; flex: none; fill: currentColor; vertical-align: -.125em; }
-.brand-icon-github, .brand-icon-copilot { fill: var(--c-github); }
+.brand-icon-github { fill: var(--c-github); }
 .brand-icon-discord { fill: var(--c-discord); }
-.btn.primary .brand-icon, .btn.brand-github .brand-icon { fill: currentColor; }
+.brand-icon-openrouter { fill: var(--c-openrouter); width: auto; } /* 원본 비율 1024:730 */
+.btn.brand-github .brand-icon { fill: currentColor; }
+.btn.primary .brand-icon { fill: var(--c-brand-on-accent); } /* 주 버튼 위 마크는 흑·백(라이트 흰색, 다크 검정) */
 :is(h2, h4, b, a:not(.btn)) > .brand-icon { margin-inline-end: .3em; }
 .btn.brand-github { background: var(--c-github); border-color: var(--c-github); color: var(--c-on-github); }
 .btn.brand-github:hover { background: var(--c-github); opacity: .88; }

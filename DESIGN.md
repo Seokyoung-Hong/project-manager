@@ -70,8 +70,10 @@
 | `--c-warning` / `--c-warning-soft` | `#84520A` / `#FBEFCB` | `#E7C183` / `#3D3120` | 확인 필요·오늘 마감 |
 | `--c-info` / `--c-info-soft` | `#285480` / `#E3ECF5` | `#ADC9E6` / `#283440` | 정보·PR 열림·GET |
 | `--c-violet` / `--c-violet-soft` | `#4B2A7B` / `#ECE2F7` | `#CFB8E9` / `#362B43` | PR 병합(GitHub 관례) 전용 |
-| `--c-github` / `--c-on-github` | `#1F2328` / `#FFFFFF` | `#FFFFFF` / `#1F2328` | GitHub·Copilot 마크, GitHub로 로그인 버튼 바탕/글자(6.1) |
+| `--c-github` / `--c-on-github` | `#1F2328` / `#FFFFFF` | `#FFFFFF` / `#1F2328` | GitHub 마크(Copilot 자리 포함), GitHub로 로그인 버튼 바탕/글자(6.1) |
 | `--c-discord` | `#5865F2` | `#5865F2` | Discord 마크(Blurple, 6.1) |
+| `--c-openrouter` | `#03080A` | `#FCFCFE` | OpenRouter 마크(Ink/Cloud, 6.1) |
+| `--c-brand-on-accent` | `#FFFFFF` | `#000000` | 주 버튼 위 브랜드 마크(흑·백, 6.1) |
 
 식물 그림 전용(라이트/다크): `--plant-pot` `#BD7250`/`#BD7250`,
 `--plant-rim` `#DBA87D`/`#DBA87D`,
@@ -308,8 +310,8 @@ SVG 칠은 `fill="#…"`이 아니라 `.art-pot` `.art-leaf` 같은 클래스로
 외부 서비스로 가거나 그 서비스와 잇는 버튼·카드 제목·AI 행에는 그 서비스 로고를 이름 글자 **앞에** 둔다. 로고는 장식이라
 `aria-hidden`, 이름은 글자가 말한다. 기존 문구는 그대로 두고 로고만 더한다. 로고는 우리 로고·이름보다 작게(글자 크기 1em), 변형·그림자·그라데이션 없이.
 
-- 부품: `{% include "_brand_icon.html" with brand="github|copilot|discord|huggingface|openrouter" %}` → `svg.brand-icon.brand-icon-{brand}`. 경로는 공식 배포본 그대로(GitHub·Copilot = primer/octicons `mark-github-16`·`copilot-16`, MIT / Discord·Hugging Face·OpenRouter = simple-icons 16.35.0, CC0). 외부 CDN에서 불러오지 않는다.
-- 색: GitHub·Copilot 마크는 `--c-github`(라이트 검정 `#1F2328`, 다크 흰색) — 흑·백만. Discord는 `--c-discord` Blurple `#5865F2`(두 모드 같음). Hugging Face·OpenRouter는 단색(글자색) — 다시 칠하지 않는다. `.btn.primary` 안에서는 모두 버튼 글자색(흰 계열) 단색.
+- 부품: `{% include "_brand_icon.html" with brand="github|discord|huggingface|openrouter" %}` → `.brand-icon.brand-icon-{brand}`. 공식 자산을 고치지 않고 쓴다: GitHub = primer/octicons `mark-github-16`(MIT) · Discord = simple-icons 16.35.0(CC0) · OpenRouter = openrouter.ai/brand `glyph-ink.svg`/`glyph-cloud.svg` 경로(원본 비율 1024:730, `width: auto`) · Hugging Face = huggingface.co/brand `hf-logo.svg` 원본 컬러 파일(`static/brand/huggingface-logo.svg`, `<img alt="">`). GitHub Copilot은 독립 Copilot 아이콘의 제3자 사용 범위가 확정되지 않아(<https://brand.github.com/brand-identity/copilot>) **GitHub 마크**를 쓰고 이름은 "GitHub Copilot" 그대로. 외부 CDN에서 불러오지 않는다.
+- 색: GitHub 마크는 `--c-github`(라이트 검정 `#1F2328`, 다크 흰색) — 흑·백만. Discord는 `--c-discord` Blurple `#5865F2`(두 모드 같음). OpenRouter는 `--c-openrouter`(라이트 Ink `#03080A`, 다크 Cloud `#FCFCFE`). Hugging Face는 원본 컬러 그대로. `.btn.primary` 안의 마크는 `--c-brand-on-accent` — 라이트 흰색 `#FFFFFF`, 다크 검정 `#000000`(버튼 바탕·글자색은 그대로).
 - **GitHub로 로그인·가입·계정 만들기**: `.btn.brand-github` — 라이트는 `--c-github` 바탕 + `--c-on-github` 흰 글자·마크, 다크는 반대(흰 바탕 + 검정). 크기·굵기·간격은 `.btn`과 같다. 이 버튼은 주 버튼(`.primary`)으로 세지 않는다(브랜드 버튼).
 - OpenAI·Codex: 공식 로고 배포본을 확인하지 못했고(브랜드 페이지 접근 불가, simple-icons에서도 빠짐) 로고 수정·과한 노출을 금지하므로 **로고 없이 이름 글자만** 쓴다.
 - 하지 말 것: 우리 서비스가 그 회사의 것이거나 보증받은 것처럼 보이게 하기, 연결 해제·위험 버튼에 로고, 장식으로 로고 반복.
