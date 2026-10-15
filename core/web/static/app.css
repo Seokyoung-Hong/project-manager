@@ -134,6 +134,8 @@ ul.stack, ol.stack { list-style: none; margin: 0; padding: 0; }
   padding: 0 var(--sp-8); background: color-mix(in srgb, var(--c-bg) 92%, transparent);
   border-bottom: 1px solid var(--c-line); backdrop-filter: blur(10px);
 }
+/* 머리줄의 펼침(검색 결과·메뉴)이 열려 있으면 머리줄 전체를 겹침 패널 위로 올린다. 머리줄이 쌓임 맥락이라 안쪽 z-index만으로는 못 넘는다 */
+.header:has([aria-expanded="true"]) { z-index: var(--z-dropdown); }
 .logo {
   font-family: var(--f-display); font-weight: 400; font-size: var(--fs-2xl); color: var(--c-ink); text-decoration: none;
   display: inline-flex; align-items: center; gap: var(--sp-2);
@@ -1197,7 +1199,9 @@ details > summary { cursor: pointer; font-weight: 600; }
 .consent-name { min-width: 140px; font-weight: 600; }
 .consent-states .consent-action { margin-left: auto; }
 .consent-note { flex-basis: 100%; }
-.withdraw-entry { margin-top: var(--sp-6); }
+.profile-foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--sp-3) var(--sp-5); margin-top: var(--sp-6); }
+.consent-mini { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-1) var(--sp-4); color: var(--c-muted); }
+.consent-mini .conn-state { margin-left: 2px; }
 .settings-subnav { margin-bottom: var(--sp-4); }
 .settings-save-bar {
   position: sticky; top: calc(var(--header-h) + 8px); z-index: var(--z-sticky); display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3);

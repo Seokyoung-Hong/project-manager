@@ -9,7 +9,7 @@
   <form method="post" class="row">{% csrf_token %}
     <input type="hidden" name="next" value="{{ next }}">
     <button class="btn primary">동의하고 {{ label }} 연결하기</button>
-    <a class="btn" href="{% if next %}{{ next }}{% else %}{% url 'profile' %}#consents{% endif %}">연결하지 않고 돌아가기</a>
+    <a class="btn" href="{% if next %}{{ next }}{% else %}{% url 'consents' %}{% endif %}">연결하지 않고 돌아가기</a>
   </form>
 </section>
 {% endblock %}

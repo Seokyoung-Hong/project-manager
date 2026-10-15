@@ -1,0 +1,31 @@
+{% extends "base.html" %}{% block title %}개인정보 동의{% endblock %}
+{% block main %}
+{% with settings_tab="profile" %}{% include "settings/_tabs.html" %}{% endwith %}
+<div class="settings-subnav"><a class="btn sm" href="{% url 'profile' %}">‹ 프로필</a></div>
+<section class="card form-card" id="consents">
+  <h2>개인정보 동의</h2>
+  <ul class="consent-states t13">
+    <li><span class="consent-name">개인정보 처리방침</span>
+      {% if privacy_agreement %}<span class="conn-state on">동의함</span> <span class="muted">{{ privacy_agreement.agreed_at|date:"Y-m-d" }} · {{ privacy_agreement.version }}</span>
+      {% else %}<span class="conn-state off">동의하지 않음</span>{% endif %}</li>
+    {% for r in consent_rows %}
+    <li><span class="consent-name">국외 이전 · {{ r.label }}</span>
+      {% if r.consent %}
+      <span class="conn-state on">동의함</span> <span class="muted">{{ r.consent.agreed_at|date:"Y-m-d" }} · {{ r.consent.version }}</span>
+      {% if r.target == "github" and not user.has_usable_password %}
+      <span class="consent-note muted">GitHub로만 로그인하는 계정이라 철회할 수 없습니다. 비밀번호를 먼저 설정하거나(운영자에게 재설정 링크 요청) <a href="{% url 'withdraw' %}">탈퇴</a>해 주세요.</span>
+      {% else %}
+      <form class="consent-action" method="post" action="{% url 'consent_withdraw' r.target %}" data-confirm="{{ r.label }} 동의를 철회합니다. {{ r.confirm }}" data-confirm-ok="동의 철회">{% csrf_token %}<button class="btn link danger">동의 철회</button></form>
+      {% endif %}
+      {% elif r.missing %}
+      <span class="conn-state warn">동의 필요</span> <span class="muted">연결되어 있으나 동의 기록이 없습니다.</span>
+      <a class="btn link consent-action" href="{% url 'consent' r.target %}">내용 확인</a>
+      {% else %}
+      <span class="conn-state off">동의하지 않음</span>
+      {% endif %}
+    </li>
+    {% endfor %}
+  </ul>
+  <p class="t13 muted">철회하면 해당 연결이 끊깁니다. GitHub는 계정 연결, Discord는 개인 연결, AI 도구는 AI용 토큰과 커넥터 토큰이 해제됩니다.</p>
+</section>
+{% endblock %}

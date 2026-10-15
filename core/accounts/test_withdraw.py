@@ -249,14 +249,16 @@ def test_every_member_org_is_locked_in_pk_order(member, org):
 
 
 def test_withdraw_moved_under_profile(client, member):
-    """탈퇴는 프로필 맨 아래 [탈퇴하기] → 하위 화면. 옛 계정·개인정보 동의 탭 주소는 프로필 쪽으로 보낸다."""
+    """탈퇴·동의 관리는 프로필 맨 아래에서 들어가는 하위 화면. 프로필에는 동의 여부만 작게."""
     client.force_login(member)
     profile = client.get("/settings/profile").content.decode()
     assert 'href="/settings/profile/withdraw"' in profile and "탈퇴하기" in profile
     assert "회원 탈퇴" not in profile  # 탈퇴 카드는 하위 화면에만
     assert 'id="consents"' in profile and "개인정보 처리방침" in profile
-    assert 'href="/settings/account"' not in profile and 'href="/settings/consents"' not in profile
+    assert 'href="/settings/account"' not in profile and 'href="/settings/consents"' in profile
+    assert "동의 철회" not in profile  # 철회는 동의 관리 화면에서
     assert client.get("/settings/account")["Location"] == "/settings/profile/withdraw"
-    assert client.get("/settings/consents")["Location"] == "/settings/profile#consents"
+    consents = client.get("/settings/consents").content.decode()
+    assert "개인정보 처리방침" in consents and 'href="/settings/profile"' in consents
     page = client.get("/settings/profile/withdraw").content.decode()
     assert "회원 탈퇴" in page and 'href="/settings/profile"' in page

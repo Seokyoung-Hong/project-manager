@@ -170,7 +170,7 @@ def test_github_only_account_cannot_withdraw_github_consent(logged, admin):
     logged.force_login(admin)  # 비밀번호가 바뀌면 세션이 끊긴다
     give_consent(admin, "github")
     GitHubIdentity.objects.create(user=admin, github_id=8, login="only")
-    page = logged.get("/settings/profile").content.decode()
+    page = logged.get("/settings/consents").content.decode()
     assert "비밀번호를 먼저 설정하거나" in page and 'href="/settings/profile/withdraw"' in page
     r = logged.post("/settings/consents/github/withdraw", follow=True)
     assert "비밀번호를 먼저 설정하거나" in r.content.decode()

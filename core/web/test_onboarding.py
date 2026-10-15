@@ -59,7 +59,7 @@ def test_consent_withdraw_confirms_with_token_count(client, admin):
     give_consent(admin, "ai")
     admin.tokens.model.issue(admin, "a", for_ai=True)
     admin.tokens.model.issue(admin, "b", for_ai=True)
-    body = client.get("/settings/profile").content.decode()
+    body = client.get("/settings/consents").content.decode()
     assert "data-confirm=" in body and "2개가 폐기됩니다" in body
     assert 'data-confirm-ok="동의 철회"' in body
     tokens = client.get("/settings/tokens").content.decode()

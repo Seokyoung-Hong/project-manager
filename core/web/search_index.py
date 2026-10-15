@@ -32,7 +32,7 @@ SETTINGS_TABS = [
 # 프로필 안 섹션(탭이 아니라 앵커·하위 페이지)
 PROFILE_SECTIONS = [
     ("연결(GitHub·Discord)", "profile", "#connections"),
-    ("개인정보 동의", "profile", "#consents"),
+    ("개인정보 동의", "consents", ""),
     ("탈퇴", "withdraw", ""),
 ]
 # orgs/_tabs.html 조직 메뉴(조직 번호를 받는다)

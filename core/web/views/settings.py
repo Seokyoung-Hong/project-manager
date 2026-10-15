@@ -64,7 +64,7 @@ def profile(request):
             # 연결 코드는 발급 직후 한 번만 보여준다(토큰 화면의 new_token과 같은 방식).
             "link_code": request.session.pop("discord_link_code", None),
             "real_name_candidates": u.settings.get("real_name_candidates", []),
-            # 개인정보 동의는 프로필 맨 아래 한 줄씩(처리방침 + 국외 이전 대상별)
+            # 개인정보 동의는 프로필 맨 아래에 여부만 작게(관리는 consents 하위 화면)
             "privacy_agreement": u.terms_agreements.filter(doc="privacy").first(),
             "consent_rows": _consent_rows(u),
         },
@@ -286,7 +286,7 @@ def consent(request, target):
     if request.method == "POST":
         give_consent(request.user, target)
         _resume(request, target, nxt)
-        return redirect(nxt or reverse("profile") + "#consents")
+        return redirect(nxt or reverse("consents"))
     return render(
         request,
         "settings/consent.html",
@@ -317,9 +317,18 @@ def _consent_rows(user):
     ]
 
 
+@login_required
 def consents(request):
-    """옛 '개인정보 동의' 탭 주소. 동의 상태는 프로필 아래로 옮겼다."""
-    return redirect(reverse("profile") + "#consents")
+    """동의 관리(프로필의 하위 화면). 프로필에는 동의 여부만 작게 보이고, 날짜·판·철회는 여기서 한다."""
+    u = request.user
+    return render(
+        request,
+        "settings/consents.html",
+        {
+            "privacy_agreement": u.terms_agreements.filter(doc="privacy").first(),
+            "consent_rows": _consent_rows(u),
+        },
+    )
 
 
 @login_required
@@ -330,4 +339,4 @@ def consent_withdraw(request, target):
             messages.success(request, "동의를 철회하고 연결을 끊었습니다.")
     except ServiceError as e:
         messages.error(request, " ".join(e.errors.values()))
-    return redirect(reverse("profile") + "#consents")
+    return redirect(reverse("consents"))

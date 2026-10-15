@@ -73,32 +73,16 @@
   {% endif %}
   </div>
 </section>
-<section class="card" id="consents">
-  <h2>개인정보 동의</h2>
-  <ul class="consent-states t13">
-    <li><span class="consent-name">개인정보 처리방침</span>
-      {% if privacy_agreement %}<span class="conn-state on">동의함</span> <span class="muted">{{ privacy_agreement.agreed_at|date:"Y-m-d" }} · {{ privacy_agreement.version }}</span>
-      {% else %}<span class="conn-state off">동의하지 않음</span>{% endif %}</li>
-    {% for r in consent_rows %}
-    <li><span class="consent-name">국외 이전 · {{ r.label }}</span>
-      {% if r.consent %}
-      <span class="conn-state on">동의함</span> <span class="muted">{{ r.consent.agreed_at|date:"Y-m-d" }} · {{ r.consent.version }}</span>
-      {% if r.target == "github" and not user.has_usable_password %}
-      <span class="consent-note muted">GitHub로만 로그인하는 계정이라 철회할 수 없습니다. 비밀번호를 먼저 설정하거나(운영자에게 재설정 링크 요청) <a href="{% url 'withdraw' %}">탈퇴</a>해 주세요.</span>
-      {% else %}
-      <form class="consent-action" method="post" action="{% url 'consent_withdraw' r.target %}" data-confirm="{{ r.label }} 동의를 철회합니다. {{ r.confirm }}" data-confirm-ok="동의 철회">{% csrf_token %}<button class="btn link danger">동의 철회</button></form>
-      {% endif %}
-      {% elif r.missing %}
-      <span class="conn-state warn">동의 필요</span> <span class="muted">연결되어 있으나 동의 기록이 없습니다.</span>
-      <a class="btn link consent-action" href="{% url 'consent' r.target %}">내용 확인</a>
-      {% else %}
-      <span class="conn-state off">동의하지 않음</span>
-      {% endif %}
-    </li>
-    {% endfor %}
-  </ul>
-  <p class="t13 muted">철회하면 해당 연결이 끊깁니다. GitHub는 계정 연결, Discord는 개인 연결, AI 도구는 AI용 토큰과 커넥터 토큰이 해제됩니다.</p>
-</section>
+
 </div>
-<div class="withdraw-entry"><a class="btn sm danger" href="{% url 'withdraw' %}">탈퇴하기</a></div>
+{# 프로필에는 동의 여부만 작게. 날짜·판·철회는 [동의 관리] 하위 화면(settings/consents.html) #}
+<div class="profile-foot">
+  <section id="consents" class="consent-mini t13" aria-labelledby="consent-mini-title">
+    <h2 id="consent-mini-title" class="sr-only">개인정보 동의</h2>
+    <span>개인정보 처리방침 <span class="conn-state {% if privacy_agreement %}on">동의함{% else %}off">동의하지 않음{% endif %}</span></span>
+    {% for r in consent_rows %}<span>국외 이전 · {{ r.label }} <span class="conn-state {% if r.consent %}on">동의함{% elif r.missing %}warn">동의 필요{% else %}off">동의하지 않음{% endif %}</span></span>{% endfor %}
+    <a href="{% url 'consents' %}">동의 관리</a>
+  </section>
+  <a class="btn sm danger" href="{% url 'withdraw' %}">탈퇴하기</a>
+</div>
 {% endblock %}
