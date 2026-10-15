@@ -445,7 +445,9 @@
     var m = /#task-(\d+)/.exec(location.hash);
     if (m) openPanel("/tasks/" + m[1] + "/panel", null);
     // 검색에서 고른 설정(#setting-…·#settings-…)이 접힌 섹션 안에 있으면 펼쳐서 보여 준다
-    var target = location.hash.length > 1 && document.getElementById(decodeURIComponent(location.hash.slice(1)));
+    var hash = location.hash.slice(1);
+    try { hash = decodeURIComponent(hash); } catch (e) { /* #% 같은 깨진 주소는 그대로 쓴다 */ }
+    var target = hash && document.getElementById(hash);
     var fold = target && target.closest("details");
     if (fold && !fold.open) { fold.open = true; target.scrollIntoView({ block: "center" }); }
   }
