@@ -51,7 +51,9 @@ class FakeCore:
         token = auth.removeprefix("Bearer ")
         profile = TOKENS.get(token)
         if profile is None:
-            return httpx.Response(401, json={"detail": "Unauthorized"})
+            return httpx.Response(
+                401, json={"detail": "등록되지 않은 토큰입니다. 다시 로그인해 주세요."}
+            )
         p = request.url.path
         if p == "/api/me":
             return httpx.Response(

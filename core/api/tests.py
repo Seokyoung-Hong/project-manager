@@ -40,6 +40,15 @@ def test_revoked_token_401(client, member):
     assert "등록되지 않은" in client.get("/api/me", headers=_h("pm_nope")).json()["detail"]
 
 
+def test_docs_bad_token_falls_back_to_session(client, member):
+    """API 명세: 무효 Bearer는 401(이유 포함)이지만, 웹에 로그인했으면 세션으로 연다."""
+    bad = _h("pm_nope")
+    r = client.get("/api/openapi.json", headers=bad)
+    assert r.status_code == 401 and "등록되지 않은" in r.content.decode()
+    client.force_login(member)
+    assert client.get("/api/openapi.json", headers=bad).status_code == 200
+
+
 def test_expiring_token_slides_while_used(client, member):
     """기한 있는 토큰(OAuth)은 쓰면 기한이 90일 뒤로 밀리고, 지나면 만료 이유와 함께 401."""
     from django.utils import timezone

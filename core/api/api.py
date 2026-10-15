@@ -42,7 +42,9 @@ def _docs_auth(view):
             if TokenAuth()(request) is not None:
                 return view(request, *args, **kwargs)
         except HttpError as e:  # ninja 밖이라 직접 응답으로 바꾼다
-            return HttpResponse(str(e), status=e.status_code)
+            # 무효 토큰(401)이어도 웹에 로그인한 사람은 세션으로 본다(종전과 같다)
+            if e.status_code != 401 or not request.user.is_authenticated:
+                return HttpResponse(str(e), status=e.status_code)
         return session_view(request, *args, **kwargs)
 
     return wrapped

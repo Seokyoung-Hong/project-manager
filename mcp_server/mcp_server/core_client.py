@@ -54,7 +54,8 @@ class Core:
                     data.setdefault("blocked_orgs", notes)
             return data
         if r.status_code == 401:
-            raise CoreError("토큰이 유효하지 않습니다. 폐기됐거나 만료됐을 수 있습니다.")
+            # core가 이유(등록 안 됨·폐기·만료)를 준다. 짐작하지 않고 그대로 전한다.
+            raise CoreError(_detail(r) or "토큰이 유효하지 않습니다. 커넥터를 다시 연결해 주세요.")
         if r.status_code == 403:
             detail = _detail(r)
             raise CoreError(

@@ -125,7 +125,7 @@ def test_bad_token_message(fake_core):
     try:
         with pytest.raises(CoreError) as e:
             fn("list_orgs")()
-        assert "유효하지 않습니다" in str(e.value)
+        assert "등록되지 않은 토큰" in str(e.value)  # core의 이유를 그대로 전한다
     finally:
         current_token.reset(tok)
 
