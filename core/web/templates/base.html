@@ -42,10 +42,24 @@
     <a href="{% url 'request_index' %}"{% if nav == "request" %} aria-current="page"{% endif %}>요청{% if request_badge %} <span class="badge danger">{{ request_badge }}</span>{% endif %}</a>
     <a href="{% url 'project_index' %}"{% if nav == "project" %} aria-current="page"{% endif %}>프로젝트</a>
     <a href="{% url 'org' %}"{% if nav == "org" %} aria-current="page"{% endif %}>조직</a>
-    <a href="{% url 'search' %}"{% if nav == "search" %} aria-current="page"{% endif %}>검색</a>
   </nav>
   {% endblock %}
   <span class="spacer"></span>
+  {# 통합 검색: 입력하면 아래 펼침 패널에 화면·설정·태스크·문서가 뜬다. Enter(항목 선택 없이)는 전체 결과(/search). 좁은 화면은 돋보기 버튼으로 연다. #}
+  <div class="hsearch">
+    <button type="button" class="btn sm icon hsearch-toggle" aria-label="검색 열기" aria-expanded="false" aria-controls="hsearch-form"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="8.5" cy="8.5" r="5.5"/><path d="m13 13 4.5 4.5"/></svg></button>
+    <form id="hsearch-form" class="hsearch-form" role="search" method="get" action="{% url 'search' %}">
+      <label for="hsearch-q" class="sr-only">태스크·문서·화면·설정 검색</label>
+      <svg class="hsearch-glass" width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="8.5" cy="8.5" r="5.5"/><path d="m13 13 4.5 4.5"/></svg>
+      <input id="hsearch-q" class="input hsearch-input" type="search" name="q" placeholder="검색" autocomplete="off" spellcheck="false"
+             role="combobox" aria-expanded="false" aria-controls="hsearch-list" aria-autocomplete="list" aria-keyshortcuts="/ Control+K"
+             hx-get="{% url 'search' %}?panel=1" hx-trigger="input changed delay:200ms" hx-target="#hsearch-pop" hx-sync="this:replace">
+      <kbd class="hsearch-key" aria-hidden="true">/</kbd>
+      <button type="button" class="btn sm hsearch-close">닫기</button>
+      <div id="hsearch-pop" class="hsearch-pop" hidden></div>
+      <span id="hsearch-status" class="sr-only" aria-live="polite"></span>
+    </form>
+  </div>
   {% block header_actions %}
   {% if nav == "today" %}
   <button type="button" class="btn sm tint" data-action="toggle" data-target="#quick" data-alt="닫기">빠른 추가</button>

@@ -1,0 +1,16 @@
+{# 헤더 검색 펼침 패널(views/search._panel). 입력칸이 combobox, 이 목록이 listbox다 — 키보드는 app.js가 맡는다. #}
+{% if q.strip %}<div class="hs-body" data-summary="{% if total %}검색 결과 {{ total }}개{% else %}검색 결과가 없습니다{% endif %}">
+{% if total %}
+<div id="hsearch-list" role="listbox" aria-label="검색 결과">
+  {% for label, items in groups %}{% if items %}
+  <div role="group" aria-labelledby="hs-g-{{ forloop.counter }}">
+    <div class="hs-ghead" id="hs-g-{{ forloop.counter }}" role="presentation">{{ label }}</div>
+    {% for it in items %}<a class="hs-opt" role="option" aria-selected="false" tabindex="-1" id="hs-o-{{ forloop.parentloop.counter }}-{{ forloop.counter }}" href="{{ it.url }}"><span class="hs-label">{{ it.label }}</span><span class="hs-hint">{{ it.hint }}</span></a>{% endfor %}
+  </div>
+  {% endif %}{% endfor %}
+  <a class="hs-opt hs-all" role="option" aria-selected="false" tabindex="-1" id="hs-o-all" href="{% url 'search' %}?q={{ q|urlencode }}">“{{ q }}” 전체 결과 보기</a>
+</div>
+{% else %}
+<p class="hs-empty">“{{ q }}”에 맞는 결과가 없습니다.<br><span class="muted t13">태스크 번호·제목, 문서 제목, 화면·설정 이름으로 찾아 주세요.</span></p>
+{% endif %}
+</div>{% endif %}

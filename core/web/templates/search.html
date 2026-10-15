@@ -3,7 +3,7 @@
 <div class="card">
   <h1 class="t24">검색</h1>
   <form method="get" class="stack">
-    <input class="input lg" name="q" value="{{ q }}" placeholder="예: TASK-121, 메뉴, 설계 문서" aria-label="태스크·문서·회의록 검색" autofocus>
+    <input class="input lg" name="q" value="{{ q }}" placeholder="예: TASK-121, 메뉴, 설계 문서" aria-label="태스크·문서·화면·설정 검색" autofocus>
     <div class="row">
       <label class="check muted t13"><input type="checkbox" name="include_closed" value="1"{% if include_closed %} checked{% endif %}> 완료·취소 포함</label>
       <label class="check muted t13"><input type="checkbox" name="include_archived" value="1"{% if include_archived %} checked{% endif %}> 보관한 프로젝트 포함</label>
@@ -17,6 +17,14 @@
     <ul class="tasks">{% for r in rows %}{% task_row r %}{% empty %}{% if q %}{% include "_empty.html" with tag="li" what="찾는 태스크가 없습니다." why="위의 [완료·취소 포함]과 [보관한 프로젝트 포함]을 켜고 다시 찾아 주세요." %}{% else %}{% include "_empty.html" with tag="li" compact=True what="태스크 번호·제목·프로젝트 이름으로 찾아 주세요." %}{% endif %}{% endfor %}</ul>
   </div>
   {% if q %}
+  <div class="group">
+    <h2>화면·탭 <span class="muted">{{ screens|length }}</span></h2>
+    <ul class="plain-list">{% for it in screens %}<li><a href="{{ it.url }}">{{ it.label }}</a> <span class="muted t13">{{ it.hint }}</span></li>{% empty %}<li class="empty compact">이름에 “{{ q }}”가 든 화면이 없습니다.</li>{% endfor %}</ul>
+  </div>
+  <div class="group">
+    <h2>설정 <span class="muted">{{ settings_found|length }}</span></h2>
+    <ul class="plain-list">{% for it in settings_found %}<li><a href="{{ it.url }}">{{ it.label }}</a> <span class="muted t13">{{ it.hint }}</span></li>{% empty %}<li class="empty compact">이름·설명에 “{{ q }}”가 든 설정이 없습니다.</li>{% endfor %}</ul>
+  </div>
   <div class="group">
     <h2>문서 <span class="muted">{{ docs|length }}</span></h2>
     <ul class="plain-list">{% for d in docs %}<li><a href="{% url 'doc_home' d.pk %}">{{ d.title }}</a> <span class="muted t13">{% if d.project %}{{ d.project.name }}{% else %}{{ d.org.name }}{% endif %} · {{ d.updated_at|date:"n/j" }}</span></li>{% empty %}<li class="empty compact">제목·본문에 “{{ q }}”가 든 문서가 없습니다.</li>{% endfor %}</ul>
