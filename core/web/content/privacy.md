@@ -304,8 +304,8 @@ AI 요청에 필요한 업무 맥락은 요청자의 접근 권한 안에서 조
 
 | 수탁자·연락처 | 위탁 업무 | 이용 조건·위탁 기간 |
 |---|---|---|
-| OpenAI, L.L.C. · https://privacy.openai.com/ | 회의 음성 전사, 웹에서 요청한 요약 처리 | 조직이 녹음을 켜거나 이용자가 요약을 요청한 경우 처리합니다. 해당 기능 제공과 적용 계약의 유효 기간 동안 위탁하며 보유 기준은 제6조에 기재합니다. |
-| Anthropic, PBC · https://privacy.claude.com/ | Anthropic(Claude)을 이용한 웹 요약 처리 | 이용자가 해당 AI 기능을 요청한 경우 처리합니다. 해당 기능 제공과 적용 계약의 유효 기간 동안 위탁하며 보유 기준은 제6조에 기재합니다. |
+| OpenAI, L.L.C. · https://privacy.openai.com/ | 회의 음성 전사, 웹에서 요청한 요약 처리 | 조직이 녹음을 켜거나 이용자가 요약을 요청한 경우 처리합니다. 해당 기능 제공과 적용 계약의 유효 기간 동안 위탁하며 보유 기준은 별표 2에 기재합니다. |
+| Anthropic, PBC · https://privacy.claude.com/ | Anthropic(Claude)을 이용한 웹 요약 처리 | 이용자가 해당 AI 기능을 요청한 경우 처리합니다. 해당 기능 제공과 적용 계약의 유효 기간 동안 위탁하며 보유 기준은 별표 2에 기재합니다. |
 | Discord Inc. · https://discord.com/privacy | 조직 채널 알림·주간 보고 전송, 채널 권한 조정 | 조직 관리자가 Discord 채널을 연결한 경우 해당 연동을 제공하는 동안 위탁합니다. 이전 항목과 보유 기준은 별표 2의 조직 연동 표에 기재합니다. |
 | GitHub, Inc. · https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement | GitHub 조직·저장소의 태스크·이슈·마일스톤 동기화(다른 구성원의 담당 정보 포함) | 조직 관리자가 GitHub 조직·저장소를 연결하고 동기화를 사용하는 경우 해당 연동을 제공하는 동안 위탁합니다. 이전 항목과 보유 기준은 별표 2의 조직 연동 표에 기재합니다. |
 
