@@ -24,7 +24,7 @@
   {% if real_name_candidates %}<form method="post" id="pick-real-name" hidden>{% csrf_token %}<input type="hidden" name="display_name" value="{{ form.display_name.value|default:'' }}"><input type="hidden" name="next" value="{{ form.next.value|default:'' }}"></form>{% endif %}
 </div>
 <div class="card">
-  <h2>Discord 연결</h2>
+  <h2>{% include "_brand_icon.html" with brand="discord" %}Discord 연결</h2>
   <p class="muted t13">연결하면 기한 알림(D-3 · D-1 · 당일 · 기한 초과)을 개인 DM으로 받고, 봇에게 DM으로 태스크를 처리할 수 있습니다.</p>
   {% if link_code %}
   <p>Discord에서 봇에게 <b>DM</b>으로 아래 한 줄을 <b>10분 안에</b> 보내 주세요.</p>
@@ -38,13 +38,13 @@
   <p class="muted t13">해제하면 DM 알림이 멈춥니다. Discord에서 봇에게 <code>연결해제</code>를 보내도 됩니다.</p>
   {% else %}
   <p class="conn"><span class="conn-state off">미연결</span></p>
-  <form method="post" action="{% url 'discord_link' %}">{% csrf_token %}<button class="btn">Discord 연결 코드 받기</button></form>
+  <form method="post" action="{% url 'discord_link' %}">{% csrf_token %}<button class="btn">{% include "_brand_icon.html" with brand="discord" %} Discord 연결 코드 받기</button></form>
   <p class="muted t13">봇과 같은 서버에 있어야 하고, 서버 우클릭 → 개인정보 보호 설정에서 &lsquo;서버 멤버의 DM 허용&rsquo;이 켜져 있어야 DM이 도착합니다.</p>
   {% endif %}
 </div>
 {% if github_enabled %}
 <div class="card">
-  <h2>GitHub 연결</h2>
+  <h2>{% include "_brand_icon.html" with brand="github" %}GitHub 연결</h2>
   {% if user.github %}
   <div class="conn"><span class="conn-state on">연결됨</span> <code>@{{ user.github.login }}</code>
     <form method="post" action="{% url 'github_unlink' %}" data-confirm="GitHub 연결을 해제합니다. 태스크와 저장소를 잇는 기능을 내 계정으로 쓸 수 없게 됩니다. 다시 쓰려면 다시 연결해야 합니다." data-confirm-ok="GitHub 연결 해제">{% csrf_token %}<button class="btn sm danger">GitHub 계정 연결 해제</button></form>
@@ -55,7 +55,7 @@
   {% else %}
   <p class="conn"><span class="conn-state off">미연결</span></p>
   <p class="muted t13">연결하면 접근 가능한 저장소의 이슈·브랜치·PR을 태스크와 잇고, 자동 전환 규칙을 쓸 수 있습니다.</p>
-  <a class="btn primary" href="{% url 'github_connect' %}">GitHub 연결</a>
+  <a class="btn primary" href="{% url 'github_connect' %}">{% include "_brand_icon.html" with brand="github" %} GitHub 연결</a>
   {% endif %}
   <p class="t13"><a href="{% url 'integration_help' %}#oauth">연결·저장소 목록 문제 해결 및 질문 복사</a></p>
 </div>

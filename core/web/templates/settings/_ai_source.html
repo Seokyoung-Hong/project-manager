@@ -3,7 +3,7 @@
 <div id="ai-source-{{ s.pk }}" class="group stack" role="listitem">
   <div class="conn">
     <span class="badge" aria-label="{{ n }}번째">{{ n }}</span>
-    <b>{% if s.kind == "org" %}조직 AI{% else %}{{ s.name }}{% endif %}</b>
+    <b>{% if s.is_copilot %}{% include "_brand_icon.html" with brand="copilot" %}{% endif %}{% if s.kind == "org" %}조직 AI{% else %}{{ s.name }}{% endif %}</b>
     {% if not s.enabled %}<span class="conn-state off">꺼짐</span>{% elif s.unusable %}<span class="conn-state warn">사용 불가</span>{% else %}<span class="conn-state on">켜짐</span>{% endif %}{# COPY:assist_src_state · 사용 불가 = COPY:assist_src_state_unusable #}
     {% if s.kind == "personal" %}<span class="badge">{{ s.get_route_display }}</span>{# 배지는 늘 경로, 공급자는 옆 글로 #}
     <span class="muted t13">{% if s.is_codex %}Codex(내 구독) · {{ s.model|default:"Codex 기본 모델" }}{% elif s.is_copilot %}GitHub Copilot(내 구독) · {{ s.model }}{% else %}{{ s.model|default:"모델 미입력" }} · 키 {% if s.api_key %}설정됨{% else %}미설정{% endif %}{% endif %}</span>{% endif %}

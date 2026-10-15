@@ -289,6 +289,10 @@ CONTRAST_PAIRS = [
     ("line-strong", "soft", 3.0, "soft 면 위 입력 경계"),
     ("accent", "surface", 3.0, "초점 테두리"),
     ("accent", "accent-soft", 3.0, "AI 자동완성 아이콘 hover·진행"),
+    ("on-github", "github", 4.5, "GitHub로 로그인 버튼"),
+    ("github", "surface", 3.0, "GitHub·Copilot 마크"),
+    ("discord", "surface", 3.0, "Discord 마크"),
+    ("discord", "bg", 3.0, "바탕 위 Discord 마크"),
 ]
 
 

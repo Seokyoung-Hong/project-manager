@@ -23,7 +23,7 @@
   {% elif gh.state == "none" %}
   <p class="conn t13"><span class="conn-state off">저장소 미연결</span> <a href="{% url 'project_repo' task.project_id %}">저장소 연결</a></p>
   {% elif gh.state == "unlinked" %}
-  <p class="conn t13"><span class="conn-state off">계정 미연결</span> <span class="muted">GitHub를 연결하면 저장소 정보가 보입니다.</span> <a href="{% url 'profile' %}">GitHub 연결</a></p>
+  <p class="conn t13"><span class="conn-state off">계정 미연결</span> <span class="muted">GitHub를 연결하면 저장소 정보가 보입니다.</span> <a href="{% url 'profile' %}">{% include "_brand_icon.html" with brand="github" %}GitHub 연결</a></p>
   {% elif gh.state == "denied" %}
   <p class="conn t13"><span class="conn-state bad">저장소 접근 권한 없음</span></p>
   {% else %}
@@ -77,7 +77,7 @@
         {% endif %}
       </span>
       {% if not gh.link.pr_number and gh.link.branch and gh.pr_url %}
-      <a class="btn sm" target="_blank" rel="noopener" href="{{ gh.pr_url }}">GitHub에서 PR 만들기</a>
+      <a class="btn sm" target="_blank" rel="noopener" href="{{ gh.pr_url }}">{% include "_brand_icon.html" with brand="github" %} GitHub에서 PR 만들기</a>
       {% elif gh.link.pr_number %}
       <form hx-post="{% url 'git_unlink' task.pk %}" hx-target="#panel" hx-swap="innerHTML"><input type="hidden" name="what" value="pr"><button class="btn sm">PR 연결 해제</button></form>
       {% endif %}

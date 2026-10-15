@@ -162,6 +162,15 @@
   <h2>연동 화면 부품</h2>
   <h3 class="t15">연결 상태 <span class="muted t12">.conn .conn-state (+ on · off · warn · bad)</span></h3>
   <div class="row"><span class="conn-state on">연결됨</span><span class="conn-state off">미연결</span><span class="conn-state warn">감시 꺼짐</span><span class="conn-state bad">권한 밖 1명</span></div>
+  <h3 class="t15">외부 브랜드 <span class="muted t12">{% verbatim %}{% include "_brand_icon.html" with brand=… %}{% endverbatim %} · .btn.brand-github</span></h3>
+  <div class="row">
+    <button type="button" class="btn brand-github">{% include "_brand_icon.html" with brand="github" %} GitHub로 로그인</button>
+    <button type="button" class="btn primary">{% include "_brand_icon.html" with brand="github" %} GitHub 앱 설치</button>
+    <button type="button" class="btn">{% include "_brand_icon.html" with brand="discord" %} Discord 연결 코드 받기</button>
+    <button type="button" class="btn">{% include "_brand_icon.html" with brand="copilot" %} GitHub Copilot으로 연결</button>
+    <button type="button" class="btn">{% include "_brand_icon.html" with brand="openrouter" %} OpenRouter 계정으로 연결</button>
+    <button type="button" class="btn">{% include "_brand_icon.html" with brand="huggingface" %} Hugging Face 계정으로 연결</button>
+  </div>
   <h3 class="t15">Discord <span class="muted t12">서버 연결 · 채널 관리 · 알림 채널</span></h3>
   <p class="conn"><span class="conn-state on">연결됨</span> 서버 id <code>123456789012345678</code></p>
   <div class="notice warn"><span aria-hidden="true">⚠</span><span class="grow"><strong>권한 갱신 필요</strong> · 봇에 역할 관리 권한이 없습니다.</span><button type="button" class="btn sm">봇 다시 설치</button></div>

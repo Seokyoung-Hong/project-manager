@@ -3,8 +3,8 @@
 <div class="stack">
   <p class="muted t13">AI 서비스 계정으로 로그인하여 키를 복사하지 않고 개인 AI를 연결할 수 있습니다. OpenRouter 발급 키 또는 Hugging Face 접근·갱신 토큰은 암호화하여 저장합니다. 업무 내용은 유달리 서버가 해당 서비스와 모델 처리 사업자로 전송합니다. 요금·처리 국가·보관 조건은 해당 서비스와 모델의 조건에 따릅니다. 조직의 [AI 자동완성 사용]이 켜져 있을 때만 이 조직의 내용을 전송합니다.</p>{# COPY:assist_oauth_help #}
   <div class="row">
-    {% if "openrouter" in oauth_providers %}<form method="post" action="{% url 'settings_ai_oauth' 'openrouter' %}">{% csrf_token %}<button class="btn">OpenRouter 계정으로 연결</button></form>{# COPY:assist_oauth_openrouter #}{% endif %}
-    {% if "hf" in oauth_providers %}<form method="post" action="{% url 'settings_ai_oauth' 'hf' %}">{% csrf_token %}<button class="btn">Hugging Face 계정으로 연결</button></form>{# COPY:assist_oauth_hf #}{% endif %}
+    {% if "openrouter" in oauth_providers %}<form method="post" action="{% url 'settings_ai_oauth' 'openrouter' %}">{% csrf_token %}<button class="btn">{% include "_brand_icon.html" with brand="openrouter" %} OpenRouter 계정으로 연결</button></form>{# COPY:assist_oauth_openrouter #}{% endif %}
+    {% if "hf" in oauth_providers %}<form method="post" action="{% url 'settings_ai_oauth' 'hf' %}">{% csrf_token %}<button class="btn">{% include "_brand_icon.html" with brand="huggingface" %} Hugging Face 계정으로 연결</button></form>{# COPY:assist_oauth_hf #}{% endif %}
   </div>
 </div>
 {% endif %}

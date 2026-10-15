@@ -1,6 +1,6 @@
 {% load names %}<section id="discord" aria-label="Discord">
 <div class="card">
-  <h2>Discord 서버</h2>
+  <h2>{% include "_brand_icon.html" with brand="discord" %}Discord 서버</h2>
   {% if org.discord_guild_id %}
   <p class="conn"><span class="conn-state on">연결됨</span> 서버 id <code>{{ org.discord_guild_id }}</code></p>
   <p class="muted t13">
@@ -13,7 +13,7 @@
   {% else %}
   <p class="conn"><span class="conn-state off">미연결</span></p>
   <p class="muted t13">이 조직에 아직 Discord 서버가 연결되지 않았습니다. 기한 알림과 주간 보고가 나가지 않습니다.</p>
-  <a class="btn primary" href="{% url 'discord_connect' org.pk %}">Discord 서버 연결</a>
+  <a class="btn primary" href="{% url 'discord_connect' org.pk %}">{% include "_brand_icon.html" with brand="discord" %} Discord 서버 연결</a>
   <p class="muted t13">연결 화면에서 서버를 고를 수 있는 사람은 그 서버의 관리 권한자뿐입니다.</p>
   {% endif %}
 </div>

@@ -1,7 +1,7 @@
 {% extends "ops/base.html" %}{% block title %}연동 · 운영 콘솔{% endblock %}
 {% block ops %}
 <section class="card">
-  <div class="card-head"><h2>GitHub 설치</h2></div>
+  <div class="card-head"><h2>{% include "_brand_icon.html" with brand="github" %}GitHub 설치</h2></div>
   {% if not github_enabled %}
   <div class="notice">GitHub 앱이 설정되지 않았습니다.</div>
   {% else %}
@@ -21,7 +21,7 @@
   {% endif %}
 </section>
 <section class="card">
-  <div class="card-head"><h2>Discord</h2>
+  <div class="card-head"><h2>{% include "_brand_icon.html" with brand="discord" %}Discord</h2>
     {% if beat is None %}<span class="conn-state warn">보고 없음</span>
     {% elif beat_stale %}<span class="conn-state warn">보고 없음 · 마지막 {{ beat.last_run_at|date:"m-d H:i" }}</span>
     {% elif beat.ok %}<span class="conn-state on">봇 정상 · {{ beat.last_run_at|date:"H:i" }}</span>

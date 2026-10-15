@@ -17,7 +17,7 @@
 </div>
 {% if github_enabled and gh_install %}
 <section class="card">
-  <h2>GitHub 팀 연결</h2>
+  <h2>{% include "_brand_icon.html" with brand="github" %}GitHub 팀 연결</h2>
   {% if gh_link %}
   <p class="row">연결됨 · <span class="badge">@{{ gh_link.slug }}</span></p>
   <div class="row">
@@ -31,10 +31,10 @@
       <option value="">GitHub 팀 선택</option>
       {% for t in gh_teams %}<option value="{{ t.id }}:{{ t.slug }}:{{ t.name }}">{{ t.name }} (@{{ t.slug }})</option>{% endfor %}
     </select>
-    <button class="btn sm">선택한 GitHub 팀 연결</button>
+    <button class="btn sm">{% include "_brand_icon.html" with brand="github" %} 선택한 GitHub 팀 연결</button>
   </form>
   <p class="muted t13">기존 팀 연결은 연결 정보만 저장합니다. 연결 후 GitHub에 멤버 추가를 별도로 실행해 주세요.</p>
-  <form method="post" action="{% url 'team_github_create' team.pk %}">{% csrf_token %}<button class="btn sm">GitHub 팀 만들고 연결</button></form>
+  <form method="post" action="{% url 'team_github_create' team.pk %}">{% csrf_token %}<button class="btn sm">{% include "_brand_icon.html" with brand="github" %} GitHub 팀 만들고 연결</button></form>
   {% endif %}
 </section>
 {% elif github_enabled and gh_user_install %}

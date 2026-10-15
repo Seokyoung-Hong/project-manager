@@ -9,7 +9,7 @@
   <button class="btn primary">로그인</button>
   <p class="t13 muted">로그인하면 <a href="{% url 'terms' %}">이용약관</a>과 <a href="{% url 'privacy' %}">개인정보 처리방침</a>(2026-10-13 시행)에 동의하는 것으로 봅니다.</p>
 </form>
-{% if github_enabled %}<a class="btn" href="{% url 'github_login' %}?next={{ request.GET.next|urlencode }}">GitHub로 로그인</a>{% endif %}
+{% if github_enabled %}<a class="btn brand-github" href="{% url 'github_login' %}?next={{ request.GET.next|urlencode }}">{% include "_brand_icon.html" with brand="github" %}GitHub로 로그인</a>{% endif %}
 <p class="t13">계정이 없으면 <a href="{% url 'signup' %}?next={{ request.GET.next }}">가입</a>해 주세요.</p>
 <p class="t13 muted">비밀번호를 잊었다면 운영자(<a href="mailto:contact@quanect.kr">contact@quanect.kr</a>)에게 재설정 링크를 요청해 주세요.</p>
 {% endblock %}
