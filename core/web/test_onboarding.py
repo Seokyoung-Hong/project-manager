@@ -59,9 +59,9 @@ def test_consent_withdraw_confirms_with_token_count(client, admin):
     give_consent(admin, "ai")
     admin.tokens.model.issue(admin, "a", for_ai=True)
     admin.tokens.model.issue(admin, "b", for_ai=True)
-    body = client.get("/settings/consents").content.decode()
+    body = client.get("/settings/profile").content.decode()
     assert "data-confirm=" in body and "2개가 폐기됩니다" in body
-    assert "동의 철회하고 연결 끊기" in body
+    assert 'data-confirm-ok="동의 철회"' in body
     tokens = client.get("/settings/tokens").content.decode()
     assert tokens.count('data-confirm-ok="토큰 폐기"') == 2  # 토큰마다 폐기 확인
 
@@ -134,10 +134,10 @@ def test_last_admin_sees_block_before_typing(client, org, admin, member):
     assert last_admin_orgs(admin) == [org]
     assert last_admin_orgs(member) == []
     client.force_login(admin)
-    body = client.get("/settings/account").content.decode()
+    body = client.get("/settings/profile/withdraw").content.decode()
     assert "마지막 관리자라 아직 탈퇴할 수 없습니다" in body and " disabled>" in body
     OrgMembership.objects.filter(org=org, user=member).update(role="admin")
-    assert " disabled>" not in client.get("/settings/account").content.decode()
+    assert " disabled>" not in client.get("/settings/profile/withdraw").content.decode()
 
 
 # ---------- B6: 조직 GitHub 탭에서 계정 연결 → 앱 설치로 이어짐 ----------

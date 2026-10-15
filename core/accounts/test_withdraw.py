@@ -152,14 +152,14 @@ def test_withdraw_screen_ends_every_session(client, member, org, task):
     other = Client()
     other.force_login(member)
     client.force_login(member)
-    page = client.get("/settings/account")
+    page = client.get("/settings/profile/withdraw")
     assert page.status_code == 200
     assert "되돌릴 수 없습니다" in page.content.decode()
 
-    bad = client.post("/settings/account", {"confirm": "nope"})
+    bad = client.post("/settings/profile/withdraw", {"confirm": "nope"})
     assert "비밀번호가 일치하지 않습니다" in bad.content.decode()
 
-    done = client.post("/settings/account", {"confirm": "pw12345678"})
+    done = client.post("/settings/profile/withdraw", {"confirm": "pw12345678"})
     assert "탈퇴를 마쳤습니다" in done.content.decode()
     assert not Session.objects.exists()
     assert other.get("/settings/profile").status_code == 302
@@ -246,3 +246,17 @@ def test_every_member_org_is_locked_in_pk_order(member, org):
     lock = [s for s in sqls if s.startswith('SELECT "orgs_organization"')]
     assert lock and "orgs_orgmembership" in lock[0] and '"role"' not in lock[0]
     assert lock[0].rstrip().endswith('ORDER BY "orgs_organization"."id" ASC')
+
+
+def test_withdraw_moved_under_profile(client, member):
+    """탈퇴는 프로필 맨 아래 [탈퇴하기] → 하위 화면. 옛 계정·개인정보 동의 탭 주소는 프로필 쪽으로 보낸다."""
+    client.force_login(member)
+    profile = client.get("/settings/profile").content.decode()
+    assert 'href="/settings/profile/withdraw"' in profile and "탈퇴하기" in profile
+    assert "회원 탈퇴" not in profile  # 탈퇴 카드는 하위 화면에만
+    assert 'id="consents"' in profile and "개인정보 처리방침" in profile
+    assert 'href="/settings/account"' not in profile and 'href="/settings/consents"' not in profile
+    assert client.get("/settings/account")["Location"] == "/settings/profile/withdraw"
+    assert client.get("/settings/consents")["Location"] == "/settings/profile#consents"
+    page = client.get("/settings/profile/withdraw").content.decode()
+    assert "회원 탈퇴" in page and 'href="/settings/profile"' in page

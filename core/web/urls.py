@@ -1,4 +1,5 @@
 from django.urls import include, path
+from django.views.generic import RedirectView
 
 from .realtime import views as rt
 from .views import (
@@ -284,7 +285,9 @@ urlpatterns = [
         name="consent_withdraw",
     ),
     path("settings/tokens/<int:token_id>/revoke", settings.token_revoke, name="token_revoke"),
-    path("settings/account", settings.account, name="account"),
+    path("settings/profile/withdraw", settings.withdraw_account, name="withdraw"),
+    # 옛 '계정' 탭 주소 — 탈퇴는 프로필 아래로 옮겼다
+    path("settings/account", RedirectView.as_view(pattern_name="withdraw"), name="account"),
     path("ops", ops.ops, name="ops"),
     path("ops/system", ops.system, name="ops_system"),
     path("ops/unlock", ops.unlock_login, name="ops_unlock"),

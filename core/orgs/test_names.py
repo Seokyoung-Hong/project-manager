@@ -147,7 +147,7 @@ def test_web_gate_sends_to_profile_with_next(client, org, member):
     assert client.get("/today?x=1")["Location"] == "/settings/profile?next=/today%3Fx%3D1"
     r = client.get(f"/orgs/{org.pk}", headers={"HX-Request": "true"})
     assert r.status_code == 204 and r["HX-Redirect"] == "/settings/profile"
-    for path in ("/settings/profile", "/privacy", "/terms", "/settings/consents", "/settings/account"):  # fmt: skip
+    for path in ("/settings/profile", "/privacy", "/terms", "/settings/profile/withdraw"):  # fmt: skip
         assert client.get(path).status_code == 200, path
     User.objects.filter(pk=member.pk).update(real_name="김팀원")
     assert client.get(f"/orgs/{org.pk}").status_code == 200

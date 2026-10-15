@@ -119,7 +119,7 @@ def login_user(request, user, method: str) -> None:
                 if left > 0
                 else " 동의하지 않은 연결은 멈춰 있습니다."
             )
-        messages.info(request, text + " 설정 → 개인정보 동의에서 확인해 주세요.")
+        messages.info(request, text + " 설정 → 프로필에서 확인해 주세요.")
 
 
 def logout_user(request) -> None:

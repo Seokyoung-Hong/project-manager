@@ -64,6 +64,9 @@ def profile(request):
             # 연결 코드는 발급 직후 한 번만 보여준다(토큰 화면의 new_token과 같은 방식).
             "link_code": request.session.pop("discord_link_code", None),
             "real_name_candidates": u.settings.get("real_name_candidates", []),
+            # 개인정보 동의는 프로필 맨 아래 한 줄씩(처리방침 + 국외 이전 대상별)
+            "privacy_agreement": u.terms_agreements.filter(doc="privacy").first(),
+            "consent_rows": _consent_rows(u),
         },
     )
 
@@ -191,8 +194,8 @@ def preferences(request):
 
 
 @login_required
-def account(request):
-    """개인 설정 > 계정 > 회원 탈퇴(개인정보 처리 결정 A)."""
+def withdraw_account(request):
+    """개인 설정 > 프로필 > [탈퇴하기] > 회원 탈퇴(개인정보 처리 결정 A)."""
     error = None
     if request.method == "POST":
         try:
@@ -204,7 +207,7 @@ def account(request):
             return render(request, "settings/withdrawn.html")
     # 마지막 관리자인 조직이 있으면 입력받기 전에 알린다(탈퇴 시 서비스에서도 다시 막는다)
     blocked = last_admin_orgs(request.user)
-    return render(request, "settings/account.html", {"error": error, "blocked": blocked})
+    return render(request, "settings/withdraw.html", {"error": error, "blocked": blocked})
 
 
 # ---------- 국외 이전 동의 ----------
@@ -283,7 +286,7 @@ def consent(request, target):
     if request.method == "POST":
         give_consent(request.user, target)
         _resume(request, target, nxt)
-        return redirect(nxt or "consents")
+        return redirect(nxt or reverse("profile") + "#consents")
     return render(
         request,
         "settings/consent.html",
@@ -291,11 +294,10 @@ def consent(request, target):
     )
 
 
-@login_required
-def consents(request):
-    active = {c.target: c for c in request.user.consents.filter(withdrawn_at__isnull=True)}
-    missing = missing_consents(request.user)
-    ai_tokens = request.user.tokens.filter(for_ai=True, revoked_at__isnull=True).count()
+def _consent_rows(user):
+    active = {c.target: c for c in user.consents.filter(withdrawn_at__isnull=True)}
+    missing = missing_consents(user)
+    ai_tokens = user.tokens.filter(for_ai=True, revoked_at__isnull=True).count()
     # 철회하면 무엇이 끊기는지 확인 창에 구체적으로 적는다(A3)
     confirm = {
         "github": "GitHub 계정 연결이 끊기고 GitHub 로그인과 저장소 연동을 쓸 수 없게 됩니다.",
@@ -303,19 +305,21 @@ def consents(request):
         "ai": f"AI용 토큰(Claude 커넥터 포함) {ai_tokens}개가 폐기됩니다. "
         "폐기한 토큰은 되살릴 수 없어, 다시 쓰려면 새로 발급해야 합니다.",
     }
-    connect = {"github": reverse("profile"), "discord": reverse("profile"), "ai": reverse("tokens")}
-    rows = [
+    return [
         {
             "target": t,
             "label": label,
             "consent": active.get(t),
             "missing": t in missing,
             "confirm": confirm[t],
-            "connect": connect[t],
         }
         for t, label in TARGETS
     ]
-    return render(request, "settings/consents.html", {"rows": rows})
+
+
+def consents(request):
+    """옛 '개인정보 동의' 탭 주소. 동의 상태는 프로필 아래로 옮겼다."""
+    return redirect(reverse("profile") + "#consents")
 
 
 @login_required
@@ -326,4 +330,4 @@ def consent_withdraw(request, target):
             messages.success(request, "동의를 철회하고 연결을 끊었습니다.")
     except ServiceError as e:
         messages.error(request, " ".join(e.errors.values()))
-    return redirect("consents")
+    return redirect(reverse("profile") + "#consents")

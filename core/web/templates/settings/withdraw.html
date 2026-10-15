@@ -1,6 +1,7 @@
 {% extends "base.html" %}{% block title %}계정{% endblock %}
 {% block main %}
-{% with settings_tab="account" %}{% include "settings/_tabs.html" %}{% endwith %}
+{% with settings_tab="profile" %}{% include "settings/_tabs.html" %}{% endwith %}
+<div class="settings-subnav"><a class="btn sm" href="{% url 'profile' %}">‹ 프로필</a></div>
 <section class="card form-card" aria-labelledby="withdraw-title">
   <h2 id="withdraw-title">회원 탈퇴</h2>
   {% if blocked %}
