@@ -21,7 +21,7 @@ ul, ol { margin: 0; padding: 0; list-style: none; }
 /* 상태 알약 (app.css .pill 색, 모양은 표시 전용) */
 .lp-pill { display: inline-flex; align-items: center; padding: 1px 10px; border-radius: var(--r-xs); font-size: var(--fs-xs); font-weight: 700; line-height: 20px; background: var(--c-soft); color: var(--c-ink); white-space: nowrap; }
 .lp-pill.doing { background: var(--c-sage); }
-.lp-pill.review { background: var(--c-yellow); }
+.lp-pill.review { background: var(--c-yellow); color: var(--c-on-yellow); }
 .lp-pill.done { background: var(--c-success-soft); color: var(--c-success); }
 .lp-logo { display: inline-flex; border-radius: var(--r-sm); }
 
@@ -101,9 +101,9 @@ ul, ol { margin: 0; padding: 0; list-style: none; }
 /* 1. Discord 채널 주간 보고 */
 .dc { background: var(--c-surface); border: 1px solid var(--c-line); border-radius: var(--r-lg); padding: var(--sp-4); box-shadow: var(--sh-1); }
 .dc-head { display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap; }
-.dc-ava { width: 32px; height: 32px; border-radius: 50%; background: var(--c-yellow); display: grid; place-items: center; flex: none; }
-.dc-ava svg { width: 22px; height: 22px; fill: var(--c-ink); }
-.dc-ava path { fill: none; stroke: var(--c-ink); stroke-width: 1.8; stroke-linecap: round; }
+.dc-ava { color: var(--c-on-yellow); width: 32px; height: 32px; border-radius: 50%; background: var(--c-yellow); display: grid; place-items: center; flex: none; }
+.dc-ava svg { width: 22px; height: 22px; fill: var(--c-on-yellow); }
+.dc-ava path { fill: none; stroke: var(--c-on-yellow); stroke-width: 1.8; stroke-linecap: round; }
 .dc-name { font-weight: 700; font-size: var(--fs-md); }
 .dc-time { color: var(--c-muted); font-size: var(--fs-xs); }
 .dc-chan { margin-left: auto; font-family: var(--f-mono); font-size: var(--fs-xs); color: var(--c-muted); }
@@ -253,7 +253,7 @@ ul, ol { margin: 0; padding: 0; list-style: none; }
 
 /* closing: 다 자란 화분 */
 .closing { padding: 72px 0 96px; }
-.closing-box { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: var(--sp-8); align-items: center; background: var(--c-yellow); border-radius: var(--r-xl); padding: var(--sp-8) var(--sp-10); }
+.closing-box { color: var(--c-on-yellow); display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: var(--sp-8); align-items: center; background: var(--c-yellow); border-radius: var(--r-xl); padding: var(--sp-8) var(--sp-10); }
 .closing-box .bloom { width: 220px; height: 220px; }
 .closing-box h2 { font-family: var(--f-display); font-weight: 400; font-size: var(--fs-page); line-height: 1.25; }
 .closing-box p { margin-top: var(--sp-3); font-size: var(--fs-lg); }
@@ -458,3 +458,11 @@ ul, ol { margin: 0; padding: 0; list-style: none; }
 #main { scroll-margin-top: 72px; }
 @media (max-width: 1150px) { #main { scroll-margin-top: 124px; } }
 @media (max-width: 700px) { #main { scroll-margin-top: 0; } }
+
+@media (prefers-color-scheme: dark) {
+  .art-petal { fill: var(--c-accent); }
+  .lp-hero h1 .stroke::after { bottom: -3px; height: 5px; }
+  .trust, .ba-after { background: var(--c-soft); }
+  /* 노란 마무리 면 안의 보조 문장·링크도 진한 잉크를 쓴다. */
+  .closing-box .muted, .closing-box .closing-note, .closing-box a:not(.btn) { color: var(--c-on-yellow); }
+}

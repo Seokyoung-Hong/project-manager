@@ -268,21 +268,28 @@ def export_json(request):
 
 CSS = Path(__file__).resolve().parent.parent / "static" / "app.css"
 TOKEN = re.compile(r"(--[a-z0-9-]+):\s*([^;]+);")
+DARK = "@media (prefers-color-scheme: dark)"
 
 
-def css_tokens() -> dict:
-    """app.css의 토큰(첫 :root). 견본이 코드와 늘 같다. 다크 모드는 지원하지 않는다."""
+def css_tokens() -> tuple[dict, dict]:
+    """app.css의 라이트(첫 :root)·다크(prefers-color-scheme 안 :root) 토큰. 견본이 코드와 늘 같다."""
     css = CSS.read_text(encoding="utf-8")
-    return dict(TOKEN.findall(css.split("\n}\n", 1)[0]))
+    light = dict(TOKEN.findall(css.split(DARK)[0]))
+    dark = dict(TOKEN.findall(css.split(DARK, 1)[1].split("\n}\n", 1)[0]))
+    return light, dark
 
 
 @ops_required
 def design(request):
     """살아 있는 스타일 가이드: 토큰 견본과 실제 클래스로 그린 컴포넌트(DESIGN.md의 화면판)."""
-    light = css_tokens()
+    light, dark = css_tokens()
 
     def group(*prefixes):
-        return [(k, v.strip()) for k, v in light.items() if k.startswith(prefixes)]
+        return [
+            (k, v.strip(), dark.get(k, "").strip())
+            for k, v in light.items()
+            if k.startswith(prefixes)
+        ]
 
     return render(
         request,

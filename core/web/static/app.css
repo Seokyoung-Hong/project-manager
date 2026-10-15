@@ -16,7 +16,7 @@
   /* 색: 강조 */
   --c-accent: #A63E2E; --c-accent-strong: #873022; --c-accent-soft: #F6E1D6; --c-on-accent: #FFFDF6;
   /* 색: 작업실 색면 */
-  --c-yellow: #F5D575; --c-yellow-strong: #E3B53C; --c-sage: #DCE8D5; --c-sage-strong: #8CAA73;
+  --c-on-yellow: #33372D; --c-yellow: #F5D575; --c-yellow-strong: #E3B53C; --c-sage: #DCE8D5; --c-sage-strong: #8CAA73;
   --c-coral: #F4C1AC; --c-tape: rgba(255, 255, 255, .55);
   /* 색: 의미 */
   --c-danger: #A52F2B; --c-danger-soft: #FBE3DE; --c-success: #2F6B3A; --c-success-soft: #DCE8D5;
@@ -50,7 +50,28 @@
   /* 쌓임 순서: 고정 막대 < 머리줄 < 겹침 패널 < 펼침 메뉴 < 알림 < 건너뛰기. 지역 쌓임(-1·0·1)은 숫자 그대로 쓴다 */
   --z-sticky: 4; --z-header: 10; --z-overlay: 20; --z-dropdown: 30; --z-toast: 60; --z-skip: 100;
 }
-/* 다크 모드는 지원하지 않는다(2026-10-15 결정) — 운영체제가 다크여도 라이트로 그린다(color-scheme: light) */
+/* 따뜻한 먹색 바탕. 노랑은 로고 그대로, 세이지는 작은 상태 강조에만 쓴다. */
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --c-bg: #1C1B18; --c-surface: #25231F; --c-soft: #302D27; --c-fill: #3C382F; --c-line: #484339;
+    --c-line-strong: #928A7B;
+    --c-ink: #F1EBDD; --c-muted: #BCB3A3; --c-faint: #908879;
+    --c-accent: #E99782; --c-accent-strong: #F4B39E; --c-accent-soft: #482E27; --c-on-accent: #2B1711;
+    --c-on-yellow: #33372D; --c-yellow: #F5D575; --c-yellow-strong: #E3B53C;
+    --c-sage: #30352B; --c-sage-strong: #8CAA73; --c-coral: #51382F; --c-tape: rgba(255, 243, 220, .16);
+    --c-danger: #F2A297; --c-danger-soft: #442824; --c-success: #B1CD9B; --c-success-soft: #2C3528;
+    --c-warning: #E7C183; --c-warning-soft: #3D3120; --c-info: #ADC9E6; --c-info-soft: #283440;
+    --c-violet: #CFB8E9; --c-violet-soft: #362B43;
+    --plant-pot: #BD7250; --plant-rim: #DBA87D; --plant-soil: #635A43; --plant-stem: #8CAA73;
+    --plant-leaf: #8CAA73; --plant-leaf-2: #ABC18C; --plant-vein: #DCE8D5; --plant-face: #594A37;
+    --plant-shadow: rgba(12, 10, 8, .22);
+    --sh-1: 0 2px 0 rgba(12, 10, 8, .12);
+    --sh-2: 0 6px 15px rgba(12, 10, 8, .22);
+    --sh-pop: 0 16px 36px rgba(12, 10, 8, .40);
+    --scrim: rgba(12, 10, 8, .64);
+  }
+}
 
 /* ---- 1. 기본 · 글자 · 도우미 ---- */
 * { box-sizing: border-box; }
@@ -451,7 +472,7 @@ fieldset > legend { padding: 0 var(--sp-1); font-size: var(--fs-sm); font-weight
   font-size: var(--fs-xs); line-height: 18px; background: var(--c-soft); color: var(--c-muted); border: 0; font-weight: 600;
 }
 .badge.high { background: var(--c-accent-soft); color: var(--c-accent); }
-.badge.primary { background: var(--c-yellow); color: var(--c-ink); }
+.badge.primary { background: var(--c-yellow); color: var(--c-on-yellow); }
 .badge.danger { background: var(--c-danger-soft); color: var(--c-danger); }
 .badge.ok { background: var(--c-success-soft); color: var(--c-success); }
 .badge.warn { background: var(--c-warning-soft); color: var(--c-warning); }
@@ -487,7 +508,7 @@ fieldset > legend { padding: 0 var(--sp-1); font-size: var(--fs-sm); font-weight
 }
 select.pill { padding-right: 8px; }
 .pill.doing { background: var(--c-sage); }
-.pill.review { background: var(--c-yellow); }
+.pill.review { background: var(--c-yellow); color: var(--c-on-yellow); }
 .pill.blocked { background: var(--c-coral); }
 .pill.paused, .pill.cancelled { background: var(--c-soft); color: var(--c-muted); }
 .pill.done { background: var(--c-success-soft); color: var(--c-success); }
@@ -655,16 +676,18 @@ dialog form.stack > .row:last-child {
 .today-line p { font-size: var(--fs-sm); color: var(--c-muted); }
 .tally {
   grid-area: tally; position: relative; overflow: hidden; display: flex; flex-direction: column; gap: var(--sp-3);
-  align-self: stretch; padding: var(--sp-6); border-radius: var(--r-xl); background: var(--c-yellow); color: var(--c-ink);
+  align-self: stretch; padding: var(--sp-6); border-radius: var(--r-xl); background: var(--c-yellow); color: var(--c-on-yellow);
 }
 .tally h2 { font-size: var(--fs-lg); font-weight: 700; }
 .tally-main { display: flex; align-items: baseline; gap: var(--sp-2); text-decoration: none; color: inherit; }
 .tally-main b { font-family: var(--f-display); font-weight: 400; font-size: var(--fs-tally); line-height: 1; }
 .tally-badge {
   position: absolute; right: 22px; top: 22px; width: 78px; height: 78px; border-radius: 50%;
-  border: 2px dashed color-mix(in srgb, var(--c-ink) 45%, transparent); display: grid; place-items: center;
+  border: 2px dashed color-mix(in srgb, var(--c-on-yellow) 45%, transparent); display: grid; place-items: center;
 }
+.tally-badge .art-ink-soft { fill: color-mix(in srgb, var(--c-on-yellow) 55%, transparent); }
 .tally-badge svg { width: 34px; height: 34px; animation: twinkle 2.4s ease-in-out 2; }
+.tally .stat { color: var(--c-on-yellow); }
 .tally .stats { gap: var(--sp-2) var(--sp-5); margin-top: auto; }
 .tally .stat span { color: inherit; opacity: .85; }
 .tally-scope { font-size: var(--fs-xs); font-weight: 600; opacity: .8; }
@@ -686,8 +709,8 @@ dialog form.stack > .row:last-child {
   display: inline-flex; align-items: baseline; gap: 5px; min-height: 36px; padding: 6px 14px;
   border-radius: var(--r-md); background: var(--c-soft); color: var(--c-ink); text-decoration: none;
 }
-.today-assigned-stats a:hover { background: var(--c-yellow); }
-/* muted는 yellow 위에서 4.5:1이 안 된다 — hover 때 잉크로 */
+.today-assigned-stats a:hover { background: var(--c-yellow); color: var(--c-on-yellow); }
+/* 노란 면 위 보조 글자도 --c-on-yellow를 따른다 */
 .today-assigned-stats a:hover span { color: inherit; }
 .today-assigned-stats b { font-size: var(--fs-task); line-height: 20px; }
 .today-assigned-stats span { font-size: var(--fs-sm); line-height: 19px; color: var(--c-muted); }
@@ -904,7 +927,7 @@ details > summary { cursor: pointer; font-weight: 600; }
 .git-steps { display: flex; flex-direction: column; gap: var(--sp-2); margin: 0; padding: 0; list-style: none; }
 .git-steps > li { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; font-size: var(--fs-sm); }
 .git-steps .dot { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 50%; font-size: var(--fs-2xs); color: var(--c-muted); border: 1px solid var(--c-line); flex: none; }
-.git-steps > li.progress .dot { background: var(--c-yellow); color: var(--c-ink); border-color: transparent; }
+.git-steps > li.progress .dot { background: var(--c-yellow); color: var(--c-on-yellow); border-color: transparent; }
 .git-steps > li.done .dot { background: var(--c-sage-strong); color: var(--c-surface); border-color: transparent; }
 .git-commits { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: var(--sp-1); }
 .decision-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--sp-3); }
@@ -1748,4 +1771,10 @@ form:has(option[value="person"]:checked) .person-only { display: flex; }
   .swagger-card { padding-inline: 0; }
   .swagger-card .swagger-ui table.model td:last-child { min-width: 12em; }
   .swagger-card .swagger-ui :is(.content-type-wrapper, .response-control-media-type) select { width: 100%; }
+}
+
+/* 다크 화면의 넓은 면은 중성색, 노란 붓질은 밝은 글자와 겹치지 않는 밑줄로. */
+@media (prefers-color-scheme: dark) {
+  .page-head > h1::after { bottom: -3px; height: 5px; opacity: 1; }
+  .tiles .tile:first-child, .shelf, .me-preview, .names-effect, .sg-art-box { background: var(--c-soft); }
 }

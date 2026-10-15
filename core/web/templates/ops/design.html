@@ -3,7 +3,7 @@
 {# 살아 있는 스타일 가이드. 토큰 표는 app.css를 읽어 그리고, 컴포넌트는 실제 클래스로 그린다. 규칙과 이유는 DESIGN.md. #}
 <section class="card">
   <div class="card-head"><h2>디자인 시스템 · 모여서, 한 걸음</h2><span class="badge primary">장식 강</span></div>
-  <p class="muted t13">규칙과 이유는 저장소 루트 <code>DESIGN.md</code>, 값은 <code>core/web/static/app.css</code>가 기준입니다. 이 화면의 토큰 표는 app.css를 직접 읽어 그리므로 코드와 어긋나지 않습니다.</p>
+  <p class="muted t13">규칙과 이유는 저장소 루트 <code>DESIGN.md</code>, 값은 <code>core/web/static/app.css</code>가 기준입니다. 이 화면의 토큰 표는 app.css를 직접 읽어 그리므로 코드와 어긋나지 않습니다. 운영체제의 라이트·다크 설정을 바꾸면 견본도 바뀝니다.</p>
   <nav class="chips" aria-label="이 화면 안 이동">
     <a class="chip" href="#sg-color">색</a><a class="chip" href="#sg-type">글자</a><a class="chip" href="#sg-scale">간격·모서리·그림자</a>
     <a class="chip" href="#sg-components">컴포넌트</a><a class="chip" href="#sg-work">업무 부품</a><a class="chip" href="#sg-art">그림</a><a class="chip" href="#sg-integrations">연동</a><a class="chip" href="#sg-ops">운영 콘솔</a>
@@ -14,8 +14,8 @@
   <h2>색 토큰</h2>
   <div class="table-scroll" tabindex="0" role="region" aria-label="색 토큰, 좌우로 스크롤 가능">
   <table class="grid">
-    <thead><tr><th>견본</th><th>토큰</th><th>값</th></tr></thead>
-    <tbody>{% for k, v in colors %}<tr><td><span class="sg-swatch" style="background: var({{ k }})"></span></td><td><code>{{ k }}</code></td><td class="mono t12">{{ v }}</td></tr>{% endfor %}</tbody>
+    <thead><tr><th>견본</th><th>토큰</th><th>라이트</th><th>다크</th></tr></thead>
+    <tbody>{% for k, v, d in colors %}<tr><td><span class="sg-swatch" style="background: var({{ k }})"></span></td><td><code>{{ k }}</code></td><td class="mono t12">{{ v }}</td><td class="mono t12">{{ d|default:"—" }}</td></tr>{% endfor %}</tbody>
   </table>
   </div>
 </section>
@@ -23,7 +23,7 @@
 <section class="card" id="sg-type">
   <h2>글자</h2>
   <p class="muted t13">제목·숫자는 Jua(<code>.display</code>, <code>--f-display</code>), 나머지는 Pretendard(<code>--f-body</code>). 본문 기준 14px·줄 높이 1.55.</p>
-  <ul class="stack">{% for k, v in font_sizes %}
+  <ul class="stack">{% for k, v, d in font_sizes %}
     <li class="sg-type-row"><code>{{ k }}</code> <span class="muted t12 mono">{{ v }}</span>
       <span style="font-size: var({{ k }})">같이 하면, 한 걸음 더</span>
       <span class="display" style="font-size: var({{ k }})">같이 하면</span></li>{% endfor %}
@@ -34,13 +34,13 @@
   <h2>간격 · 모서리 · 그림자 · 쌓임 · 모션</h2>
   <div class="sg-cols">
     <div><h3 class="t15">간격 (4px 단위)</h3>
-      <ul class="stack">{% for k, v in spaces %}<li class="row"><code>{{ k }}</code><span class="sg-bar" style="width: var({{ k }})"></span><span class="muted t12">{{ v }}</span></li>{% endfor %}</ul></div>
+      <ul class="stack">{% for k, v, d in spaces %}<li class="row"><code>{{ k }}</code><span class="sg-bar" style="width: var({{ k }})"></span><span class="muted t12">{{ v }}</span></li>{% endfor %}</ul></div>
     <div><h3 class="t15">모서리</h3>
-      <ul class="stack">{% for k, v in radii %}<li class="row"><span class="sg-radius" style="border-radius: var({{ k }})"></span><code>{{ k }}</code><span class="muted t12">{{ v }}</span></li>{% endfor %}</ul></div>
+      <ul class="stack">{% for k, v, d in radii %}<li class="row"><span class="sg-radius" style="border-radius: var({{ k }})"></span><code>{{ k }}</code><span class="muted t12">{{ v }}</span></li>{% endfor %}</ul></div>
     <div><h3 class="t15">그림자</h3>
-      <ul class="stack">{% for k, v in shadows %}<li class="row"><span class="sg-radius" style="box-shadow: var({{ k }})"></span><code>{{ k }}</code></li>{% endfor %}</ul></div>
+      <ul class="stack">{% for k, v, d in shadows %}<li class="row"><span class="sg-radius" style="box-shadow: var({{ k }})"></span><code>{{ k }}</code></li>{% endfor %}</ul></div>
     <div><h3 class="t15">쌓임 · 모션</h3>
-      <ul class="stack t13">{% for k, v in layers %}<li><code>{{ k }}</code> {{ v }}</li>{% endfor %}{% for k, v in motions %}<li><code>{{ k }}</code> {{ v }}</li>{% endfor %}</ul></div>
+      <ul class="stack t13">{% for k, v, d in layers %}<li><code>{{ k }}</code> {{ v }}</li>{% endfor %}{% for k, v, d in motions %}<li><code>{{ k }}</code> {{ v }}</li>{% endfor %}</ul></div>
   </div>
 </section>
 

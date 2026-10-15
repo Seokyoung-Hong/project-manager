@@ -38,57 +38,64 @@
 
 ## 2. 토큰
 
-모든 값은 `:root`에 있다(다크 모드 없음, 10절). 템플릿에 색·크기를 직접 적지
+모든 값은 `:root`에 있다(다크 값은 `prefers-color-scheme: dark`, 10절). 템플릿에 색·크기를 직접 적지
 않는다(`#RRGGBB`는 테스트가 막는다). 예외: 데이터에서 나오는 퍼센트 폭·위치(`style="width: N%"`)와 `/ops/design`의 견본.
 
 ### 2.1 색
 
 | 토큰 | 라이트 | 다크 | 역할 |
 |---|---|---|---|
-| `--c-bg` | `#F8F5EE` | `#242921` | 페이지 바탕 |
-| `--c-surface` | `#FFFDF8` | `#30362C` | 카드·패널·입력 |
-| `--c-soft` | `#EFE9DC` | `#3C4434` | 약한 면: 배지·보드 열·표 머리 |
-| `--c-fill` | `#E6E0D1` | `#465040` | 진행 막대 바탕·이니셜 |
-| `--c-line` | `#E2DFD4` | `#4A5143` | 구분선·카드 테두리 |
-| `--c-line-strong` | `#8A8677` | `#8A9480` | 입력·셀렉트·편집 칸 테두리 전용(바탕·표면·soft 위 3:1 이상) |
-| `--c-ink` | `#33372D` | `#F5F0DF` | 본문·제목 |
-| `--c-muted` | `#64655A` | `#BDC2B3` | 보조 글자(메타·도움말) |
-| `--c-faint` | `#8A8A7C` | `#8F9984` | 장식·placeholder·비활성 전용 — 읽어야 하는 글자에 쓰지 않는다 |
-| `--c-accent` | `#A63E2E` | `#FFC3AD` | 하나뿐인 강조: 주 버튼·링크·선택·초점 |
-| `--c-accent-strong` | `#873022` | `#FFD8C8` | 주 버튼 hover |
-| `--c-accent-soft` | `#F6E1D6` | `#533B30` | 선택된 행·초점 링 |
-| `--c-on-accent` | `#FFFDF6` | `#3A1E16` | 강조 위 글자 |
-| `--c-yellow` | `#F5D575` | `#675723` | 집계 면·검토 대기·붓질 |
-| `--c-yellow-strong` | `#E3B53C` | `#C9A63E` | 반짝이·검토 점 |
-| `--c-sage` | `#DCE8D5` | `#3D563C` | 진행 중·대표 지표·현재 위치 |
+| `--c-bg` | `#F8F5EE` | `#1C1B18` | 페이지 바탕 |
+| `--c-surface` | `#FFFDF8` | `#25231F` | 카드·패널·입력 |
+| `--c-soft` | `#EFE9DC` | `#302D27` | 약한 면: 배지·보드 열·표 머리 |
+| `--c-fill` | `#E6E0D1` | `#3C382F` | 진행 막대 바탕·이니셜 |
+| `--c-line` | `#E2DFD4` | `#484339` | 구분선·카드 테두리 |
+| `--c-line-strong` | `#8A8677` | `#928A7B` | 입력·셀렉트·편집 칸 테두리 전용(바탕·표면·soft 위 3:1 이상) |
+| `--c-ink` | `#33372D` | `#F1EBDD` | 본문·제목 |
+| `--c-muted` | `#64655A` | `#BCB3A3` | 보조 글자(메타·도움말) |
+| `--c-faint` | `#8A8A7C` | `#908879` | 장식·placeholder·비활성 전용 — 읽어야 하는 글자에 쓰지 않는다 |
+| `--c-accent` | `#A63E2E` | `#E99782` | 하나뿐인 강조: 주 버튼·링크·선택·초점 |
+| `--c-accent-strong` | `#873022` | `#F4B39E` | 주 버튼 hover |
+| `--c-accent-soft` | `#F6E1D6` | `#482E27` | 선택된 행·초점 링 |
+| `--c-on-accent` | `#FFFDF6` | `#2B1711` | 강조 위 글자 |
+| `--c-on-yellow` | `#33372D` | `#33372D` | 노란 면 전용 글자·기호(로고 먹색 유지) |
+| `--c-yellow` | `#F5D575` | `#F5D575` | 집계 면·검토 대기·붓질 |
+| `--c-yellow-strong` | `#E3B53C` | `#E3B53C` | 반짝이·검토 점 |
+| `--c-sage` | `#DCE8D5` | `#30352B` | 진행 중·대표 지표·현재 위치 |
 | `--c-sage-strong` | `#8CAA73` | `#8CAA73` | 진행 점·잎 |
-| `--c-coral` | `#F4C1AC` | `#654638` | 메모·막힘·위험 지표 |
-| `--c-tape` | `rgba(255, 255, 255, .55)` | `rgba(255, 255, 255, .16)` | 메모 테이프 |
-| `--c-danger` / `--c-danger-soft` | `#A52F2B` / `#FBE3DE` | `#FFB2A6` / `#4A2A26` | 실패·삭제·기한 초과 |
-| `--c-success` / `--c-success-soft` | `#2F6B3A` / `#DCE8D5` | `#A9D99A` / `#34472F` | 완료·연결됨 |
-| `--c-warning` / `--c-warning-soft` | `#84520A` / `#FBEFCB` | `#F5CA86` / `#4A3D22` | 확인 필요·오늘 마감 |
-| `--c-info` / `--c-info-soft` | `#285480` / `#E3ECF5` | `#A9CDF4` / `#2A3A4C` | 정보·PR 열림·GET |
-| `--c-violet` / `--c-violet-soft` | `#4B2A7B` / `#ECE2F7` | `#D9C4F5` / `#3D3150` | PR 병합(GitHub 관례) 전용 |
+| `--c-coral` | `#F4C1AC` | `#51382F` | 메모·막힘·위험 지표 |
+| `--c-tape` | `rgba(255, 255, 255, .55)` | `rgba(255, 243, 220, .16)` | 메모 테이프 |
+| `--c-danger` / `--c-danger-soft` | `#A52F2B` / `#FBE3DE` | `#F2A297` / `#442824` | 실패·삭제·기한 초과 |
+| `--c-success` / `--c-success-soft` | `#2F6B3A` / `#DCE8D5` | `#B1CD9B` / `#2C3528` | 완료·연결됨 |
+| `--c-warning` / `--c-warning-soft` | `#84520A` / `#FBEFCB` | `#E7C183` / `#3D3120` | 확인 필요·오늘 마감 |
+| `--c-info` / `--c-info-soft` | `#285480` / `#E3ECF5` | `#ADC9E6` / `#283440` | 정보·PR 열림·GET |
+| `--c-violet` / `--c-violet-soft` | `#4B2A7B` / `#ECE2F7` | `#CFB8E9` / `#362B43` | PR 병합(GitHub 관례) 전용 |
 
-식물 그림 전용: `--plant-pot` `#BD7250`/`#B5684A`, `--plant-rim` `#DBA87D`/`#C9946B`, `--plant-soil` `#635A43`/`#4A4334`,
-`--plant-stem` `#60774D`/`#7F9A69`, `--plant-leaf` `#8CAA73`/`#7E9E66`, `--plant-leaf-2` `#ABC18C`/`#9AB37E`,
-`--plant-vein` `#DCE8D5`/`#3D563C`, `--plant-face` `#594A37`/`#3A2E22`, `--plant-shadow` `rgba(38, 58, 48, .10)`/`rgba(0, 0, 0, .22)`.
+식물 그림 전용(라이트/다크): `--plant-pot` `#BD7250`/`#BD7250`,
+`--plant-rim` `#DBA87D`/`#DBA87D`,
+`--plant-soil` `#635A43`/`#635A43`,
+`--plant-stem` `#60774D`/`#8CAA73`,
+`--plant-leaf` `#8CAA73`/`#8CAA73`,
+`--plant-leaf-2` `#ABC18C`/`#ABC18C`,
+`--plant-vein` `#DCE8D5`/`#DCE8D5`,
+`--plant-face` `#594A37`/`#594A37`,
+`--plant-shadow` `rgba(38, 58, 48, .10)`/`rgba(12, 10, 8, .22)`.
 빈 상태용 데이터 URI는 `--art-plant`(라이트 색 고정, 다크에서도 그대로 — 테라코타 화분은 양쪽에서 읽힌다).
 
 **대비(WCAG, 계산값)** — 라이트 / 다크
 
 | 글자 / 바탕 | 라이트 | 다크 |
 |---|---|---|
-| ink / bg · surface | 11.2 · 12.0 | 13.0 · 10.9 |
-| muted / bg · surface · soft | 5.4 · 5.8 · 4.9 | 8.2 · 6.8 · 5.6 |
-| accent / surface | 6.2 | 8.1 |
-| on-accent / accent | 6.2 | 9.9 |
-| ink / yellow · sage · coral | 8.5 · 9.6 · 7.6 | 6.2 · 7.1 · 7.4 |
-| danger / danger-soft · success / success-soft · warning / warning-soft · info / info-soft | 5.6 · 5.0 · 5.7 · 6.6 | 7.4 · 6.3 · 6.9 · 7.0 |
-| faint / surface (장식 전용) | 3.4 | 4.2 |
-| line-strong / bg · surface · soft (입력 경계, 비텍스트 3:1) | 3.4 · 3.6 · 3.0 | 4.7 · 3.9 · 3.2 |
-| muted / yellow — **쓰지 않는다**(yellow·coral·fill 위 보조 글자는 잉크로) | 4.1 | 3.9 |
-| danger / coral — **쓰지 않는다** | 4.3 | 4.9 |
+| ink / bg · surface | 11.2 · 12.0 | 14.5 · 13.2 |
+| muted / bg · surface · soft | 5.4 · 5.8 · 4.9 | 8.3 · 7.6 · 6.6 |
+| accent / surface | 6.2 | 6.9 |
+| on-accent / accent · accent-strong | 6.2 · 8.3 | 7.5 · 9.6 |
+| on-yellow / yellow · ink / sage · coral | 8.5 · 9.6 · 7.6 | 8.5 · 10.6 · 9.0 |
+| danger / danger-soft · success / success-soft · warning / warning-soft · info / info-soft | 5.6 · 5.0 · 5.7 · 6.6 | 6.6 · 7.3 · 7.4 · 7.4 |
+| faint / surface (장식 전용) | 3.4 | 4.5 |
+| line-strong / bg · surface · soft (입력 경계, 비텍스트 3:1) | 3.4 · 3.6 · 3.0 | 5.0 · 4.6 · 4.0 |
+
+노란 면의 모든 글자는 `--c-on-yellow`를 쓴다. coral·fill 위 보조 글자는 잉크로 표시하며, danger / coral 조합은 쓰지 않는다.
 
 ### 2.2 글자
 
@@ -126,8 +133,8 @@
   `--r-md` 12px 입력·지표 타일·셀렉트 / `--r-lg` 18px 카드·패널·카드형 행 / `--r-xl` 24px 초점 면(집계·메모·선반·보드 열) /
   `--r-pill` 999px 버튼·탭·칩·상태 알약·진행 막대.
 - 그림자는 바탕색 계열로 물들인다(검정 금지): `--sh-1` `0 2px 0 rgba(51, 55, 45, .04)` 눌린 면 / `--sh-2` `0 6px 15px rgba(51, 55, 45, .08)`
-  hover·선택 탭 / `--sh-pop` `0 16px 36px rgba(34, 41, 31, .16)` 메뉴·대화상자·알림. 다크는 각각 `rgba(0, 0, 0, .12/.22/.40)`.
-  `--scrim` `rgba(36, 41, 33, .38)`/`rgba(0, 0, 0, .52)`: 대화상자 뒤·넓은 패널 뒤·표 스크롤 끝 그림자.
+  hover·선택 탭 / `--sh-pop` `0 16px 36px rgba(34, 41, 31, .16)` 메뉴·대화상자·알림. 다크는 각각 따뜻한 먹색 `rgba(12, 10, 8, .12/.22/.40)`.
+  `--scrim` `rgba(36, 41, 33, .38)`/`rgba(12, 10, 8, .64)`: 대화상자 뒤·넓은 패널 뒤·표 스크롤 끝 그림자.
 
 ### 2.4 쌓임(z-index)
 
@@ -250,7 +257,7 @@ animation·transition을 끈다(파일 맨 끝 규칙).
 | 메모·테이프 | `.memo`(코랄, -1.2°, 모바일 -0.8°) + `::before` 테이프 64×18 | 화면당 하나 | 오늘 '지금 할 한 가지' |
 | 붓질 | `.page-head > h1::after` 노랑 14px(모바일 10px), -1° | 페이지 제목에 자동 | 프로젝트·조직·설정·요청 제목 |
 | 반짝이 | 집계 면 `.tally-badge`(화분 SVG 안 `.spark`) | 2.4s 2회 | 오늘 집계 |
-| 로고(워드마크) | `static/brand/udally.svg` — 파비콘과 같은 `--c-yellow` 바탕, 얼굴(ll = 눈, y = 웃는 입) `--c-ink`, Uda는 한 톤 물러난 황토 #7A5C16(바탕 대비 4.3:1). 바탕이 있어 다크 모드도 같은 색, 다크 값은 파일 안 `prefers-color-scheme` | 헤더 높이 38px | 상단 바(로그인 전·후), README |
+| 로고(워드마크) | `static/brand/udally.svg` — 파비콘과 같은 `--c-yellow` 바탕, 얼굴(ll = 눈, y = 웃는 입) `--c-ink`, Uda는 한 톤 물러난 황토 #7A5C16(바탕 대비 4.3:1). 바탕이 있어 다크 모드도 같은 고정 색(노랑 위 글자는 `--c-on-yellow` 계열) | 헤더 높이 38px | 상단 바(로그인 전·후), README |
 | 로고(아이콘) | `static/brand/udally-icon.svg` — 얼굴만 잘라 `--c-yellow` 바탕에 `--c-ink` | 16px까지 읽힘 | 파비콘 |
 | 로고(아바타) | `static/brand/udally-avatar.svg` — 아이콘과 같은 색, 원형으로 잘려도 얼굴이 다 들어가게 여백을 둠 | 512px PNG로 올림 | Discord 봇 아바타·앱 아이콘 |
 
@@ -340,10 +347,16 @@ SVG 칠은 `fill="#…"`이 아니라 `.art-pot` `.art-leaf` 같은 클래스로
 | ≤700px | 머리줄 2줄(`--header-h` 115px, 메뉴 줄 오른쪽 끝을 흐려 더 있음을 알린다), 레일 → 프로젝트 선택기, 보드 열 스냅 스크롤, 지표 가로 스크롤 한 줄, 집계 가로 한 줄, 터치 44px, 입력 16px |
 | ≤360px | 회의록 메타 1열, 설정 선택지 1열 |
 
-## 10. 다크 모드 — 지원하지 않음
+## 10. 다크 모드 — 따뜻한 먹색 작업실
 
-- 2026-10-15 결정: 다크 모드를 지원하지 않는다. 운영체제가 다크여도 `color-scheme: light`로 라이트 화면을 그린다.
-- 다크 토큰·`@media (prefers-color-scheme: dark)` 규칙을 다시 넣지 않는다(`test_no_dark_mode`가 막는다). 이 문서의 표에 남은 "다크" 열은 옛 기록이다.
+- 운영체제의 `prefers-color-scheme: dark`를 따른다. app.css의 첫 라이트 `:root`는 유지하고, 미디어 쿼리 안 `:root`에서 모든 `--c-*`·`--plant-*`·그림자·`--scrim`을 덮어쓰며 `color-scheme: dark`를 선언한다.
+- 바탕 `#1C1B18`, 표면 `#25231F`, 약한 면 `#302D27`은 따뜻한 먹색 계열이다. 상대 휘도는 각각 1.1%·1.7%·2.7%로, 모두 5% 아래를 유지한다. 올리브·초록을 넓은 바탕으로 쓰지 않는다.
+- 라이트의 테라코타는 같은 색상 계열의 `#E99782`, 코랄 메모는 `#51382F`로 옮긴다. 세이지 `#30352B`·새싹 `#8CAA73`은 작은 상태·선택·그림에만 쓴다. 대표 지표·선반·소개 페이지의 넓은 면은 중성 `--c-soft`로 그린다.
+- 로고 노랑 `--c-yellow: #F5D575`와 황토·먹색 로고는 그대로 유지한다. 집계 카드·검토 대기 알약·노란 배지·hover·랜딩 마무리 면은 `--c-on-yellow: #33372D`로 글자와 기호를 그린다. 이 토큰의 라이트 값은 기존 잉크와 같아서 라이트 모양은 바뀌지 않는다.
+- 제목 아래 노란 붓질은 다크에서 글자에 겹치지 않는 5px 밑줄로 낮춘다. 제목 글자는 밝은 잉크, 노란 면 글자는 진한 잉크로 분리한다.
+- Swagger의 `.swagger-card`는 `color-scheme: light`와 밝은 판을 유지한다. 주변 셸·폼은 다크 토큰을 따른다.
+- `test_every_light_token_has_dark_value_for_colors`가 누락을, `test_dark_canvas_stays_dark_and_warm`이 밝거나 초록인 바탕을 막는다. `CONTRAST_PAIRS`의 모든 글자 조합은 양쪽 모드 AA 4.5:1 이상, 입력 경계·초점은 3:1 이상을 통과해야 한다.
+- 화면 확인은 오늘(1440·390), 태스크 상세, 조직 설정 구성원 관리, 소개 랜딩, API 문서를 양쪽 모드에서 확인한다. `/ops/design`은 라이트·다크 값을 app.css에서 직접 읽어 나란히 표시한다.
 
 ## 11. 새 화면 체크리스트
 
