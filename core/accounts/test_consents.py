@@ -187,10 +187,10 @@ def test_login_records_terms_agreement_per_version(client, member, monkeypatch):
     client.logout()
     client.post("/login", login)
     rows = TermsAgreement.objects.filter(user=member)
-    assert sorted(rows.values_list("doc", "version")) == [("privacy", "v5"), ("terms", "v4")]
-    monkeypatch.setattr("accounts.services.DOC_VERSIONS", {"terms": "v5", "privacy": "v5"})
+    assert sorted(rows.values_list("doc", "version")) == [("privacy", "v6"), ("terms", "v5")]
+    monkeypatch.setattr("accounts.services.DOC_VERSIONS", {"terms": "v6", "privacy": "v6"})
     client.logout()
     client.post("/login", login)
     assert sorted(rows.values_list("doc", "version")) == [
-        ("privacy", "v5"), ("terms", "v4"), ("terms", "v5")
+        ("privacy", "v6"), ("terms", "v5"), ("terms", "v6")
     ]  # fmt: skip
