@@ -1,0 +1,5 @@
+core/web/static/brand/ — 외부 브랜드 로고 출처
+
+- huggingface-logo.svg: Hugging Face 공식 로고(https://huggingface.co/brand). 상표는 Hugging Face, Inc.
+- core/web/templates/_brand_icon.html의 GitHub·Copilot 자리 마크: primer/octicons mark-github-16(MIT, LICENSE-octicons.txt). 상표는 GitHub, Inc.
+- 같은 파일의 Discord·OpenRouter 경로: simple-icons 16.35.0(CC0)·OpenRouter 공식 glyph(https://openrouter.ai/brand). 상표는 각 회사.
