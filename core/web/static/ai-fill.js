@@ -85,6 +85,9 @@ function attach(root) {
   }
 }
 
+// 진행 중에는 칸 아래에 안내와 [취소]를 보인다(아이콘을 다시 누르는 취소는 눈에 띄지 않는다)
+const RUNNING = '<div class="ai-bar ai-running t13 row" role="status"><span>AI가 작성 중입니다.</span><button type="button" class="btn sm" data-ai-stop>취소</button></div>'; // COPY:ai_running·ai_cancel
+
 function busy(st, on) {
   st.b.classList.toggle("busy", on);
   st.b.innerHTML = on ? SPIN : SPARK;
@@ -97,7 +100,7 @@ function start(st) {
   st.cancel = false;
   st.prev = st.el.value;
   busy(st, true);
-  st.panel.innerHTML = "";
+  st.panel.innerHTML = RUNNING;
   htmx.ajax("POST", dlg.dataset.url, {
     source: dlg, target: st.panel, swap: "innerHTML",
     values: { field: st.el.dataset.ai, target: targetOf(st.el), input: st.el.value, options: "{}" },
@@ -118,8 +121,10 @@ function onFragment(st) {
   const active = p.querySelector("[data-ai-active]");
   if (active) {
     if (st.cancel) stop(st);
+    else if (!p.querySelector("[data-ai-stop]")) p.insertAdjacentHTML("beforeend", RUNNING);
     return;
   }
+  p.querySelector(".ai-running")?.remove();
   if (st.cancel) { p.innerHTML = ""; return; } // 취소한 뒤 늦게 온 결과는 버린다
   if (!st.b.classList.contains("busy")) return; // 이미 처리했다
   busy(st, false);
@@ -170,7 +175,8 @@ function inlineClick(e) {
   const b = e.target.closest("button");
   if (!p || !b || !p._ai) return;
   const st = p._ai;
-  if (b.hasAttribute("data-ai-retry")) start(st);
+  if (b.hasAttribute("data-ai-stop")) { stop(st); st.el.focus(); }
+  else if (b.hasAttribute("data-ai-retry")) start(st);
   else if (b.hasAttribute("data-ai-drop")) p.innerHTML = "";
   else if (b.hasAttribute("data-ai-undo")) {
     put(st.el, st.prev);

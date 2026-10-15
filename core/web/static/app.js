@@ -323,6 +323,17 @@
     }
   });
 
+  // 줄바꿈되는 제목 칸: Enter는 저장(blur → change), 높이는 내용만큼(field-sizing 미지원 브라우저용)
+  function fitTitle(t) { t.style.height = "auto"; t.style.height = t.scrollHeight + "px"; }
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "Enter" && !e.isComposing && e.target.matches && e.target.matches("textarea.title-input")) {
+      e.preventDefault(); e.target.blur();
+    }
+  });
+  document.addEventListener("input", function (e) {
+    if (e.target.matches && e.target.matches("textarea.title-input") && !CSS.supports("field-sizing", "content")) fitTitle(e.target);
+  });
+
   // 패널·다이얼로그 스왑 후 처리
   function panelSwapped(panel) {
     var layout = document.querySelector(".layout");
@@ -332,6 +343,7 @@
     layout.classList.toggle("wide", open && localStorage.getItem("panel-wide") === "1");
     var w = panel.querySelector("[data-action='toggle-wide']");
     if (w) w.textContent = layout.classList.contains("wide") ? "패널 좁히기" : "패널 넓히기";
+    if (!CSS.supports("field-sizing", "content")) panel.querySelectorAll("textarea.title-input").forEach(fitTitle);
     var f = panel.querySelector("[data-focus]");
     if (!f && open && panelOpening) f = panel.querySelector("select, button, input:not([type=hidden]), textarea, a[href]");
     if (f) f.focus({ preventScroll: true });
@@ -579,7 +591,8 @@
       panel.addEventListener(type, function () { touched = true; });
     });
     function shown(url) { return panel.firstElementChild && panel.firstElementChild.getAttribute("hx-get") === url; }
-    function put(html) { panel.innerHTML = html; htmx.process(panel); panelSwapped(panel); requestAnimationFrame(syncAllBoardNavigation); }
+    // htmx.process는 htmx:load를 내지 않는다. 미리 받은 패널에도 AI 아이콘·마크다운 칸이 붙게 직접 낸다(받는 쪽은 중복에 안전하다)
+    function put(html) { panel.innerHTML = html; htmx.process(panel); htmx.trigger(panel, "htmx:load"); panelSwapped(panel); requestAnimationFrame(syncAllBoardNavigation); }
     // 밖에서 패널을 여는 GET(행·버튼·달력·openPanel)만 가로챈다. 패널 안 새로고침과 ?block=1 같은 변형은 그대로 보낸다.
     body.addEventListener("htmx:beforeRequest", function (e) {
       var d = e.detail || {}, cfg = d.requestConfig || {}, url = d.pathInfo && d.pathInfo.requestPath;

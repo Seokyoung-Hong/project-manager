@@ -41,8 +41,9 @@
         </form>
         {% if sub.due_warn %}<div class="notice warn" role="status"><span>⚠ 기한이 상위 {{ sub.group.number }}({{ sub.group.due_date|date:"n월 j일" }})보다 늦습니다.</span></div>{% endif %}
         {% endif %}
-        <input class="title-input" name="value" value="{{ task.title }}" aria-label="제목" data-autosave{% if ai_on %} data-ai="task.title" data-ai-target="task:{{ task.pk }}"{% endif %}
-               hx-post="{% url 'task_text' task.pk 'title' %}" hx-trigger="change" hx-swap="none">
+        {# 긴 제목도 잘리지 않게 줄바꿈되는 칸. Enter는 줄바꿈 대신 저장(app.js) #}
+        <textarea class="title-input" name="value" rows="1" aria-label="제목" data-autosave{% if ai_on %} data-ai="task.title" data-ai-target="task:{{ task.pk }}"{% endif %}
+               hx-post="{% url 'task_text' task.pk 'title' %}" hx-trigger="change" hx-swap="none">{{ task.title }}</textarea>
         <p class="muted t13">{{ task.status_hint }}</p>
         {# 보이는 라벨이 붙은 2열 목록(b-workspace 중-1). hx-post는 셀렉트 자신에 둔다. 폼에 두면 submit에만 반응한다. #}
         <div class="meta panel-meta">

@@ -433,7 +433,10 @@ def task_text(request, task_id, field):
     """자동 저장. 성공 204 + HX-Trigger: saved. 실패 400(본문은 메시지)."""
     task = task_or_404(request.user, task_id)
     try:
-        ts.update_text(task, field, request.POST.get("value", ""), actor=request.user)
+        value = request.POST.get("value", "")
+        if field == "title":  # 제목 칸은 줄바꿈되는 textarea라 붙여 넣은 줄바꿈이 섞일 수 있다
+            value = " ".join(value.split())
+        ts.update_text(task, field, value, actor=request.user)
     except ServiceError as e:
         return JsonResponse(
             {"error": " ".join(e.errors.values())},

@@ -2262,3 +2262,13 @@ def test_no_external_font_requests(client, logged):
         assert "fonts.googleapis" not in body and "jsdelivr" not in body
     css = (Path(settings.BASE_DIR) / "web/static/fonts.css").read_text(encoding="utf8")
     assert "url(http" not in css
+
+
+def test_task_title_textarea_saves_one_line(logged, task):
+    """패널 제목은 줄바꿈되는 칸이다. 붙여 넣은 줄바꿈은 공백 하나로 저장한다."""
+    r = logged.post(f"/tasks/{task.pk}/text/title", {"value": "긴 제목\n둘째 줄  끝"})
+    assert r.status_code == 204
+    task.refresh_from_db()
+    assert task.title == "긴 제목 둘째 줄 끝"
+    body = logged.get(f"/tasks/{task.pk}", HTTP_HX_REQUEST="true").content.decode()
+    assert 'textarea class="title-input"' in body
