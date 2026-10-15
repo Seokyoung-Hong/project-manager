@@ -50,26 +50,7 @@
   /* 쌓임 순서: 고정 막대 < 머리줄 < 겹침 패널 < 펼침 메뉴 < 알림 < 건너뛰기. 지역 쌓임(-1·0·1)은 숫자 그대로 쓴다 */
   --z-sticky: 4; --z-header: 10; --z-overlay: 20; --z-dropdown: 30; --z-toast: 60; --z-skip: 100;
 }
-@media (prefers-color-scheme: dark) {
-  :root {
-    color-scheme: dark;
-    --c-bg: #242921; --c-surface: #30362C; --c-soft: #3C4434; --c-fill: #465040; --c-line: #4A5143; --c-line-strong: #8A9480;
-    --c-ink: #F5F0DF; --c-muted: #BDC2B3; --c-faint: #8F9984;
-    --c-accent: #FFC3AD; --c-accent-strong: #FFD8C8; --c-accent-soft: #533B30; --c-on-accent: #3A1E16;
-    --c-yellow: #675723; --c-yellow-strong: #C9A63E; --c-sage: #3D563C; --c-sage-strong: #8CAA73;
-    --c-coral: #654638; --c-tape: rgba(255, 255, 255, .16);
-    --c-danger: #FFB2A6; --c-danger-soft: #4A2A26; --c-success: #A9D99A; --c-success-soft: #34472F;
-    --c-warning: #F5CA86; --c-warning-soft: #4A3D22; --c-info: #A9CDF4; --c-info-soft: #2A3A4C;
-    --c-violet: #D9C4F5; --c-violet-soft: #3D3150;
-    --plant-pot: #B5684A; --plant-rim: #C9946B; --plant-soil: #4A4334; --plant-stem: #7F9A69;
-    --plant-leaf: #7E9E66; --plant-leaf-2: #9AB37E; --plant-vein: #3D563C; --plant-face: #3A2E22;
-    --plant-shadow: rgba(0, 0, 0, .22);
-    --sh-1: 0 2px 0 rgba(0, 0, 0, .12);
-    --sh-2: 0 6px 15px rgba(0, 0, 0, .22);
-    --sh-pop: 0 16px 36px rgba(0, 0, 0, .40);
-    --scrim: rgba(0, 0, 0, .52);
-  }
-}
+/* 다크 모드는 지원하지 않는다(2026-10-15 결정) — 운영체제가 다크여도 라이트로 그린다(color-scheme: light) */
 
 /* ---- 1. 기본 · 글자 · 도우미 ---- */
 * { box-sizing: border-box; }
@@ -1756,7 +1737,7 @@ form:has(option[value="person"]:checked) .person-only { display: flex; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
 }
-/* API 문서: Swagger UI는 밝은 화면 전제라 다크 모드에서도 밝은 판 위에 그린다(글자 대비 유지) */
+/* API 문서: Swagger UI를 밝은 판 위에 그린다 */
 .swagger-card { background: #fff; color: #3b4151; color-scheme: light; padding: var(--sp-2) var(--sp-3); overflow-x: auto; }
 .swagger-card .swagger-ui .wrapper { padding: 0; max-width: none; }
 /* 설명의 엔터를 그대로(표준 Markdown은 한 줄 줄바꿈을 공백으로 합친다). 들여쓰기는 서버가 swagger_spec에서 살린다 */

@@ -21,21 +21,22 @@ def test_design_page_is_staff_only(client, member):
     r = client.get("/ops/design")
     assert r.status_code == 200
     body = r.content.decode()
-    light, _ = css_tokens()
+    light = css_tokens()
     for name in light:
         if name.startswith("--c-"):
             assert f"<code>{name}</code>" in body  # 견본은 app.css를 그대로 읽는다
 
 
-def test_every_light_token_has_dark_value_for_colors():
-    light, dark = css_tokens()
-    missing = [k for k in light if k.startswith(("--c-", "--plant-")) and k not in dark]
-    assert missing == []
+def test_no_dark_mode():
+    """다크 모드는 지원하지 않는다(2026-10-15). 운영체제가 다크여도 라이트로 그린다."""
+    for name in ("app.css", "landing.css"):
+        css = (Path(__file__).parent / "static" / name).read_text(encoding="utf-8")
+        assert "prefers-color-scheme: dark" not in css
 
 
 @pytest.mark.skipif(not DESIGN_MD.exists(), reason="저장소 루트 DESIGN.md가 없는 배포 이미지")
 def test_design_md_documents_every_token():
-    light, _ = css_tokens()
+    light = css_tokens()
     doc = DESIGN_MD.read_text(encoding="utf-8")
     assert [k for k in light if f"`{k}`" not in doc] == []
 
@@ -289,10 +290,10 @@ CONTRAST_PAIRS = [
 
 
 def test_color_pairs_meet_wcag_contrast():
-    """(e) 쓰는 글자·바탕 조합이 라이트·다크 모두 AA를 넘는다. 토큰을 바꾸면 DESIGN.md 2.1 표도 고친다."""
-    light, dark = css_tokens()
+    """(e) 쓰는 글자·바탕 조합이 AA를 넘는다. 토큰을 바꾸면 DESIGN.md 2.1 표도 고친다."""
+    light = css_tokens()
     failed = []
-    for mode, tokens in (("light", light), ("dark", {**light, **dark})):
+    for mode, tokens in (("light", light),):
         for fg, bg, need, why in CONTRAST_PAIRS:
             got = contrast(tokens[f"--c-{fg}"].strip(), tokens[f"--c-{bg}"].strip())
             if got < need:

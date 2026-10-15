@@ -16,7 +16,6 @@ ul, ol { margin: 0; padding: 0; list-style: none; }
 .art-stem, .art-face-line { stroke-linecap: round; }
 /* 꽃잎: 라이트는 코랄, 다크는 코랄이 탁해 강조 살구로 */
 .art-petal { fill: var(--c-coral); }
-@media (prefers-color-scheme: dark) { .art-petal { fill: var(--c-accent); } }
 .btn.lg { height: 48px; padding: 0 24px; font-size: var(--fs-lg); }
 .badge.violet { background: var(--c-violet-soft); color: var(--c-violet); }
 /* 상태 알약 (app.css .pill 색, 모양은 표시 전용) */
