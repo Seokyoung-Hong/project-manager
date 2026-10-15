@@ -50,6 +50,8 @@ class ApiToken(models.Model):
         ("bot", "Discord 봇"),
         ("stt", "전사 서버"),  # 내 PC 전사 서버. /api/integrations/stt/ 밖에서는 못 쓴다
     ]
+    # 기한 있는 토큰(OAuth로 받은 스킬·커넥터 토큰)의 수명. 쓸 때마다 다시 이만큼 밀린다(슬라이딩).
+    SLIDING_TTL = timedelta(days=90)
 
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="tokens")
     name = models.CharField(max_length=50)
@@ -99,8 +101,26 @@ class ApiToken(models.Model):
         token = cls.objects.select_related("user").filter(key_hash=cls._hash(raw)).first()
         if token is None or not token.is_valid:
             return None
-        cls.objects.filter(pk=token.pk).update(last_used_at=timezone.now())
+        now = timezone.now()
+        fields = {"last_used_at": now}
+        # 쓰는 동안은 만료되지 않는다. 기한 쓰기는 하루 한 번이면 충분하다.
+        if token.expires_at and token.expires_at < now + cls.SLIDING_TTL - timedelta(days=1):
+            fields["expires_at"] = token.expires_at = now + cls.SLIDING_TTL
+        cls.objects.filter(pk=token.pk).update(**fields)
         return token
+
+    @classmethod
+    def rejection(cls, raw: str | None) -> str:
+        """authenticate가 None일 때의 이유. 401 본문에 실어 스킬·커넥터가 원인을 짐작하지 않게 한다."""
+        token = cls.objects.select_related("user").filter(key_hash=cls._hash(raw or "")).first()
+        again = "다시 로그인해 주세요(스킬은 `pm.py login`, 커넥터는 다시 연결)."
+        if token is None:
+            return f"등록되지 않은 토큰입니다. {again}"
+        if token.revoked_at:
+            return f"폐기된 토큰입니다({token.revoked_at:%Y-%m-%d}). {again}"
+        if not token.user.is_active:
+            return "사용이 중지된 계정의 토큰입니다."
+        return f"{token.expires_at:%Y-%m-%d}에 만료된 토큰입니다. {again}"
 
     @property
     def is_valid(self) -> bool:

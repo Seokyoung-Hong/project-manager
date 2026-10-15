@@ -10,7 +10,6 @@ MCP 클라이언트는 사전 등록이 불가능하므로 동적 등록(RFC 759
 """
 
 import json
-from datetime import timedelta
 from urllib.parse import urlencode, urlparse
 
 from django.conf import settings
@@ -25,8 +24,9 @@ from accounts.consents import NOTICES
 from accounts.models import ApiToken, OAuthClient, OAuthCode
 from accounts.services import give_consent, has_consent
 
-# 커넥터 토큰 수명. 만료되면 커넥터에서 다시 '연결'한다(refresh_token은 두지 않는다).
-TOKEN_TTL = timedelta(days=90)
+# 커넥터·스킬 토큰 수명. 쓸 때마다 밀리고(ApiToken.authenticate), 90일 안 쓰면 만료된다.
+# 만료되면 다시 '연결'한다(refresh_token은 두지 않는다).
+TOKEN_TTL = ApiToken.SLIDING_TTL
 
 SCOPES = ["read", "write"]
 

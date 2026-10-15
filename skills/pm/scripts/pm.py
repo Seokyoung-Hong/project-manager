@@ -155,6 +155,9 @@ def call(method, path, query=None, body=None, key=None):
         # 사용자에게 입력 화면 주소가 든 core 문구를 그대로 보여 준다
         if isinstance(err, dict) and err.get("error") in ("profile_required", "real_name_required"):
             raise SystemExit(err.get("message") or err.get("detail"))
+        if e.code == 401:  # 서버가 이유(등록 안 됨·폐기·만료)를 준다. 짐작하지 않고 그대로 보여 준다
+            reason = err.get("detail") if isinstance(err, dict) else text
+            raise SystemExit(f"인증 실패(401): {reason} 사용자가 `python pm.py login`을 실행해 주세요.")
         raise SystemExit(f"HTTP {e.code}: {text}")
     except URLError as e:
         raise SystemExit(f"연결 실패: {e.reason}")

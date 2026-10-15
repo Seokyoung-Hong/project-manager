@@ -47,7 +47,7 @@ class TokenAuth(HttpBearer):
     def authenticate(self, request, token):
         t = ApiToken.authenticate(token)
         if t is None:
-            return None
+            raise HttpError(401, ApiToken.rejection(token))
         # 전사 서버(PC) 토큰은 자기 경로 밖에서 GET까지 막는다. 아래 쓰기 검사만으로는 읽기가 열린다.
         if t.scope == "stt" and not request.path.startswith(STT_PREFIX):
             raise HttpError(403, "전사 서버 토큰은 전사 서버 연결에만 쓸 수 있습니다.")

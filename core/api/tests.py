@@ -34,7 +34,29 @@ def test_unauthenticated_401(client, member):
 def test_revoked_token_401(client, member):
     token, raw = ApiToken.issue(member, "t", "read")
     token.revoke()
-    assert client.get("/api/me", headers=_h(raw)).status_code == 401
+    r = client.get("/api/me", headers=_h(raw))
+    assert r.status_code == 401
+    assert "폐기된 토큰" in r.json()["detail"]
+    assert "등록되지 않은" in client.get("/api/me", headers=_h("pm_nope")).json()["detail"]
+
+
+def test_expiring_token_slides_while_used(client, member):
+    """기한 있는 토큰(OAuth)은 쓰면 기한이 90일 뒤로 밀리고, 지나면 만료 이유와 함께 401."""
+    from django.utils import timezone
+
+    now = timezone.now()
+    token, raw = ApiToken.issue(member, "t", "read", expires_at=now + timedelta(days=3))
+    assert client.get("/api/me", headers=_h(raw)).status_code == 200
+    token.refresh_from_db()
+    assert token.expires_at > now + timedelta(days=89)
+    ApiToken.objects.filter(pk=token.pk).update(expires_at=now - timedelta(days=1))
+    r = client.get("/api/me", headers=_h(raw))
+    assert r.status_code == 401 and "만료된 토큰" in r.json()["detail"]
+    # 기한 없는 토큰(웹 발급)은 기한이 생기지 않는다
+    plain, raw2 = ApiToken.issue(member, "p", "read")
+    client.get("/api/me", headers=_h(raw2))
+    plain.refresh_from_db()
+    assert plain.expires_at is None
 
 
 def test_read_token_cannot_write(client, read_token, task, org):
