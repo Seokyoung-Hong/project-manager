@@ -38,7 +38,6 @@ NAV_BY_URL = {
     "org_discord": "org",
     "org_issues": "org",
     "org_github": "org",
-    "search": "search",
     "request_index": "request",
     "request_new": "request",
     "request_detail": "request",

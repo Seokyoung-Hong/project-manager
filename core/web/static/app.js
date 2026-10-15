@@ -432,6 +432,10 @@
   function openHash() {
     var m = /#task-(\d+)/.exec(location.hash);
     if (m) openPanel("/tasks/" + m[1] + "/panel", null);
+    // 검색에서 고른 설정(#setting-…·#settings-…)이 접힌 섹션 안에 있으면 펼쳐서 보여 준다
+    var target = location.hash.length > 1 && document.getElementById(decodeURIComponent(location.hash.slice(1)));
+    var fold = target && target.closest("details");
+    if (fold && !fold.open) { fold.open = true; target.scrollIntoView({ block: "center" }); }
   }
   openHash();
   window.addEventListener("hashchange", openHash);
@@ -656,5 +660,77 @@
     if (!saved || location.hash) return; // 주소에 섹션(#)을 지정해 온 경우는 그쪽을 따른다
     document.querySelectorAll("details.settings-section[id]").forEach(function (d) { d.open = saved.open.indexOf(d.id) >= 0; });
     requestAnimationFrame(function () { window.scrollTo(0, saved.y || 0); });
+  })();
+
+  // 헤더 통합 검색(combobox + listbox). 결과 조각은 htmx가 #hsearch-pop에 넣고, 여기서는 펼침·키보드·안내만 한다.
+  (function () {
+    var form = document.getElementById("hsearch-form");
+    if (!form) return;
+    var input = document.getElementById("hsearch-q"), pop = document.getElementById("hsearch-pop");
+    var status = document.getElementById("hsearch-status"), toggle = document.querySelector(".hsearch-toggle");
+    var header = form.closest(".header"), active = -1;
+    function opts() { return pop.querySelectorAll("[role=option]"); }
+    function setActive(i) {
+      var o = opts();
+      o.forEach(function (el, j) { el.setAttribute("aria-selected", j === i ? "true" : "false"); });
+      active = o[i] ? i : -1;
+      if (o[i]) { input.setAttribute("aria-activedescendant", o[i].id); o[i].scrollIntoView({ block: "nearest" }); }
+      else input.removeAttribute("aria-activedescendant");
+    }
+    function show(on) {
+      on = on && !!pop.firstElementChild;
+      pop.hidden = !on;
+      input.setAttribute("aria-expanded", on ? "true" : "false");
+      if (!on) setActive(-1);
+    }
+    function isOverlay() { return toggle && getComputedStyle(toggle).display !== "none"; }
+    function openSearch() {
+      if (isOverlay()) { header.classList.add("hsearch-open"); toggle.setAttribute("aria-expanded", "true"); }
+      input.focus(); input.select();
+    }
+    function closeOverlay() {
+      show(false);
+      if (!header.classList.contains("hsearch-open")) return;
+      header.classList.remove("hsearch-open"); toggle.setAttribute("aria-expanded", "false"); toggle.focus();
+    }
+    pop.addEventListener("htmx:afterSwap", function () {
+      var box = pop.firstElementChild;
+      show(document.activeElement === input && input.value.trim() !== "");
+      setActive(-1);
+      status.textContent = box ? box.dataset.summary : "";
+    });
+    pop.addEventListener("mousedown", function (e) { e.preventDefault(); }); // 누르는 동안 입력칸 초점 유지
+    input.addEventListener("focus", function () { if (input.value.trim()) show(true); });
+    form.addEventListener("focusout", function (e) { if (!form.contains(e.relatedTarget)) show(false); });
+    input.addEventListener("keydown", function (e) {
+      var n = opts().length;
+      if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+        e.preventDefault();
+        if (pop.hidden) { show(true); return; }
+        if (n) setActive(e.key === "ArrowDown" ? (active + 1) % n : (active <= 0 ? n - 1 : active - 1));
+      } else if (e.key === "Enter" && active >= 0 && !pop.hidden) {
+        e.preventDefault(); opts()[active].click();
+      } else if (e.key === "Escape") {
+        e.stopPropagation(); // 태스크 패널 닫기(문서 keydown)로 번지지 않게
+        if (!pop.hidden) show(false);
+        else if (header.classList.contains("hsearch-open")) closeOverlay();
+        else if (input.value) input.value = "";
+        else input.blur();
+      }
+    });
+    if (toggle) toggle.addEventListener("click", function () {
+      if (header.classList.contains("hsearch-open")) closeOverlay(); else openSearch();
+    });
+    form.querySelector(".hsearch-close").addEventListener("click", closeOverlay);
+    // 단축키: / (글 입력 중이 아닐 때), Ctrl·⌘+K. 편집기 안 Ctrl+K(링크)는 md-field가 먼저 가져간다.
+    document.addEventListener("keydown", function (e) {
+      if (e.defaultPrevented || e.isComposing) return;
+      var typing = e.target.closest && e.target.closest("input, textarea, select, [contenteditable]:not([contenteditable=false])");
+      var slash = e.key === "/" && !typing && !e.ctrlKey && !e.metaKey && !e.altKey;
+      var ctrlK = (e.ctrlKey || e.metaKey) && !e.altKey && e.key.toLowerCase() === "k";
+      if (!slash && !ctrlK) return;
+      if (document.querySelector("dialog[open]")) return;
+      e.preventDefault(); openSearch();
+    });
   })();
 })();
