@@ -194,3 +194,17 @@ def test_login_records_terms_agreement_per_version(client, member, monkeypatch):
     assert sorted(rows.values_list("doc", "version")) == [
         ("privacy", "v6"), ("terms", "v5"), ("terms", "v6")
     ]  # fmt: skip
+
+
+@pytest.mark.django_db(databases=[])
+def test_doc_versions_match_published_docs():
+    """동의 기록 판(DOC_VERSIONS)이 게시 문서(md·html) 머리의 판과 같다."""
+    from pathlib import Path
+
+    from accounts.consents import DOC_VERSIONS
+
+    d = Path(__file__).resolve().parent.parent / "web" / "content"
+    for doc, label in (("terms", "약관 버전"), ("privacy", "방침 버전")):
+        line = f"{label}: {DOC_VERSIONS[doc]}"
+        assert f"- {line}" in (d / f"{doc}.md").read_text("utf-8")
+        assert f"<li>{line}</li>" in (d / f"{doc}.html").read_text("utf-8")
